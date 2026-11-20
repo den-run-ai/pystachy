@@ -31,7 +31,8 @@
 # wall-clock time its worker took (needs GNU date's %N; tools/case_weights.py turns such files into the
 # weights that balance tests/corpus.sh's shards).
 # Mode wasm (experimental, wasm/README.md) builds each program for wasm32-wasi through LLVM and runs it
-# under Node's WASI.
+# under Node's WASI; mode wasm-tir emits it from its typed IR module without LLVM (wasm/tir_wasm.py),
+# through LLVM where the emitter refuses it (WASM_TIR_LOG names which).
 # usage: tests/run.sh [COMPILER [MODES [FILE...]]]   (default: ./pystachy "jit aot" and every case;
 #        e.g. "python3 pystachy.py", or tests/run.sh ./pystachy jit tests/programs/strings/str_*.py
 #        tests/errors/syntax/x.py; FILEs are relative to the repository root)
@@ -101,8 +102,8 @@ program() { # tests/programs/AREA/NAME.py, its sidecars B.in, B.out... (B: the p
     : > "$T/$n.build"; : > "$T/$n.err"
     if [ $mode = jit ]; then
       (PYSTACHY_PATH=$mp $PYS run "$1" a1 a2 < "$in" <&$si >&$o 2>&$se; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
-    elif [ $mode = wasm ]; then
-      PYSTACHY_PATH=$mp PYSTACHY=$PYS wasm/build.sh program "$1" "$T/$n.exe.wasm" 2> "$T/$n.build" &&
+    elif [ $mode = wasm ] || [ $mode = wasm-tir ]; then
+      PYSTACHY_PATH=$mp PYSTACHY=$PYS wasm/build.sh "$([ $mode = wasm ] && echo program || echo tir)" "$1" "$T/$n.exe.wasm" 2> "$T/$n.build" &&
         ($WASMRUN "$T/$n.exe.wasm" a1 a2 < "$in" <&$si >&$o 2>&$se; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
     else
       PYSTACHY_PATH=$mp $PYS build "$1" -o "$T/$n.exe" 2> "$T/$n.build" &&
@@ -131,8 +132,8 @@ deviation() { # tests/deviations/NAME.py
   for mode in $MODES; do
     if [ $mode = jit ]; then
       ($PYS run "$1" a1 a2 < /dev/null 2>&1; echo "[exit $?]") > "$T/dev.$n.$mode"
-    elif [ $mode = wasm ]; then
-      { PYSTACHY=$PYS wasm/build.sh program "$1" "$T/dev.$n.exe.wasm" 2>&1 && $WASMRUN "$T/dev.$n.exe.wasm" a1 a2 < /dev/null 2>&1; echo "[exit $?]"; } > "$T/dev.$n.$mode"
+    elif [ $mode = wasm ] || [ $mode = wasm-tir ]; then
+      { PYSTACHY=$PYS wasm/build.sh "$([ $mode = wasm ] && echo program || echo tir)" "$1" "$T/dev.$n.exe.wasm" 2>&1 && $WASMRUN "$T/dev.$n.exe.wasm" a1 a2 < /dev/null 2>&1; echo "[exit $?]"; } > "$T/dev.$n.$mode"
     else
       { $PYS build "$1" -o "$T/dev.$n.exe" 2>&1 && $XENV "$T/dev.$n.exe" a1 a2 < /dev/null 2>&1; echo "[exit $?]"; } > "$T/dev.$n.$mode"
     fi
@@ -200,7 +201,10 @@ worker() {
 WASMRUN="node --disable-warning=ExperimentalWarning wasm/run.mjs"
 if command -v timeout > /dev/null 2>&1; then WASMRUN="timeout 120 $WASMRUN"; fi
 case " $MODES " in
-  *" wasm "*) PYSTACHY=$PYS wasm/build.sh runtime || { echo "tests/run.sh: cannot build the WebAssembly runtime" >&2; exit 1; } ;;
+  *" wasm "* | *" wasm-tir "*) PYSTACHY=$PYS wasm/build.sh runtime || { echo "tests/run.sh: cannot build the WebAssembly runtime" >&2; exit 1; } ;;
+esac
+case " $MODES " in
+  *" wasm-tir "*) PYSTACHY=$PYS wasm/build.sh runtime-wasm || { echo "tests/run.sh: cannot build runtime.wasm" >&2; exit 1; } ;;
 esac
 echo pass > "$T/warm.py" || exit 1
 if $PYS run "$T/warm.py" > "$T/warm.log" 2>&1; then :; else

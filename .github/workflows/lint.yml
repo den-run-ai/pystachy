@@ -121,8 +121,10 @@ jobs:
       - name: Router benchmark validation tests
         run: python3 -m unittest discover -s tools -p test_route_bench.py
 
-      - name: WebAssembly IR rewrite tests
-        run: python3 -m unittest discover -s tools -p test_wasm32_ir.py
+      - name: WebAssembly IR rewrite and typed IR emitter tests
+        run: |
+          python3 -m unittest discover -s tools -p test_wasm32_ir.py
+          python3 -m unittest discover -s tools -p test_tir_wasm.py
 
       - name: Example benchmark validation tests
         run: python3 -m unittest discover -s tools -p test_example_bench.py

@@ -5,6 +5,16 @@
 #                                              sources changed (or WASM_RUNTIME's directory)
 #        wasm/build.sh program FILE.py OUT.wasm  compile FILE.py and link OUT.wasm (a WASI
 #                                              command: node wasm/run.mjs OUT.wasm ARGS...)
+# Without LLVM (wasm/README.md's typed IR emitter):
+#        wasm/build.sh runtime-wasm            build/wasm/runtime.wasm, the runtime as a module that
+#                                              programs import, if runtime.o or reactor.c changed
+#        wasm/build.sh emitter                 build/wasm/tir_wasm: wasm/tir_wasm.py, compiled by
+#                                              PYSTACHY (else the build runs it on PY)
+#        wasm/build.sh tir FILE.py OUT.wasm    FILE.py's typed IR module (tools/inspect_compiler.py,
+#                                              tools/typed_ir_text.py print, both on PY), emitted
+#                                              as a module of runtime.wasm's; where tir_wasm.py
+#                                              refuses it, as program does. WASM_TIR_LOG: a file
+#                                              that gets "FILE.py emitted" or "FILE.py refused: WHY"
 # Environment: PYSTACHY, the compiler (default ./pystachy; "python3 pystachy.py" works too);
 # PYSTACHY_LLVM, LLVM's bin directory (clang, llvm-link, opt, and wasm-ld there or on PATH);
 # WASI_SYSROOT, a wasi-libc sysroot (default: Ubuntu's wasi-libc package, whose headers and
@@ -65,6 +75,7 @@ runtime() {
   # shellcheck disable=SC2086
   "${LLVM}clang" $W -O2 -Wall -Wextra -Werror -c wasm/wasi_stubs.c -o "$t/stubs.o"
   mv "$t/runtime.o" "$RT/runtime.o"; mv "$t/stubs.o" "$RT/stubs.o"
+  rm -rf "$t"; trap - EXIT
   touch "$stamp"
 }
 
@@ -84,8 +95,63 @@ program() { # FILE.py OUT.wasm
     -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
 }
 
+runtime_wasm() {
+  runtime
+  SYS=$(sysroot)
+  if [ -f "$RT/runtime.wasm" ] && [ -z "$(find "$RT/runtime.o" "$RT/stubs.o" wasm/reactor.c -newer "$RT/runtime.wasm" | head -1)" ]; then
+    return 0
+  fi
+  t=$(mktemp -d "$RT/rtw.XXXXXX")
+  trap 'rm -rf "$t"' EXIT
+  "${LLVM}clang" --target=$TARGET --sysroot="$SYS" -O2 -Wall -Wextra -Werror -c wasm/reactor.c -o "$t/reactor.o"
+  # a reactor (no main) exporting every symbol: a program module imports the runtime's functions
+  # and the recursion state by name; the runtime imports the program's code (program.init) and
+  # the class dispatchers (env.pys_obj_*), which wasm/run.mjs supplies
+  # shellcheck disable=SC2086
+  "${LLVM}clang" --target=$TARGET --sysroot="$SYS" -mexec-model=reactor "$t/reactor.o" "$RT/runtime.o" "$RT/stubs.o" \
+    -o "$t/runtime.wasm" -Wl,--export-all -Wl,--allow-undefined -Wl,-z,stack-size=8388608 $LIBS
+  mv "$t/runtime.wasm" "$RT/runtime.wasm"
+  rm -rf "$t"; trap - EXIT
+}
+
+emitter() {
+  mkdir -p "$RT"
+  # shellcheck disable=SC2086
+  PYSTACHY_PATH=. $PYSTACHY build wasm/tir_wasm.py -o "$RT/tir_wasm"
+}
+
+tir() { # FILE.py OUT.wasm
+  [ -f "$RT/runtime.wasm" ] || { echo "wasm/build.sh: no $RT/runtime.wasm: run wasm/build.sh runtime-wasm" >&2; exit 1; }
+  d=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-tir.XXXXXX")
+  trap 'rm -rf "$d"' EXIT
+  "$PY" tools/inspect_compiler.py "$1" --output "$d/inspect" --typed-after-only > /dev/null 2>&1 || true
+  why=
+  if [ ! -f "$d/inspect/typed-after.json" ]; then
+    why="no typed-after snapshot"
+  elif ! "$PY" tools/typed_ir_text.py print "$d/inspect/typed-after.json" > "$d/prog.tir" 2> "$d/print.err"; then
+    why="the module does not print: $(head -1 "$d/print.err")"
+  else
+    if [ -x "$RT/tir_wasm" ]; then
+      "$RT/tir_wasm" "$d/prog.tir" "$2" 2> "$d/emit.err" || why=$(head -1 "$d/emit.err")
+    else
+      PYTHONPATH=. "$PY" wasm/tir_wasm.py "$d/prog.tir" "$2" 2> "$d/emit.err" || why=$(head -1 "$d/emit.err")
+    fi
+  fi
+  rm -rf "$d"; trap - EXIT
+  if [ -z "$why" ]; then
+    [ -z "${WASM_TIR_LOG:-}" ] || echo "$1 emitted" >> "$WASM_TIR_LOG"
+    return 0
+  fi
+  [ -z "${WASM_TIR_LOG:-}" ] || echo "$1 refused: ${why#tir_wasm: refused: }" >> "$WASM_TIR_LOG"
+  rm -f "$2"
+  program "$1" "$2"
+}
+
 case ${1:-} in
   runtime) runtime ;;
   program) [ $# = 3 ] || { echo "usage: wasm/build.sh program FILE.py OUT.wasm" >&2; exit 2; }; program "$2" "$3" ;;
-  *) echo "usage: wasm/build.sh runtime | program FILE.py OUT.wasm" >&2; exit 2 ;;
+  runtime-wasm) runtime_wasm ;;
+  emitter) emitter ;;
+  tir) [ $# = 3 ] || { echo "usage: wasm/build.sh tir FILE.py OUT.wasm" >&2; exit 2; }; tir "$2" "$3" ;;
+  *) echo "usage: wasm/build.sh runtime | program FILE.py OUT.wasm | runtime-wasm | emitter | tir FILE.py OUT.wasm" >&2; exit 2 ;;
 esac

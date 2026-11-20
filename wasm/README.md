@@ -22,6 +22,35 @@ tests/run.sh ./pystachy wasm tests/programs/apps/ouro2_*.py   # the corpus's was
 compiles it with `clang --target=wasm32-wasi -O2` and links it with `wasm-ld` against the
 runtime. The link treats a signature mismatch as an error, because a mismatched call traps.
 
+## Without LLVM: the typed IR emitter
+
+`tir_wasm.py` compiles a program's typed IR module, as `tools/typed_ir_text.py print` writes
+it, straight to a WebAssembly module. That module does not link the runtime: it imports the
+memory, functions and recursion state of `runtime.wasm`, the same runtime objects linked once
+as a WASI reactor, and `run.mjs` instantiates both. The emitter is written in the subset, so
+`wasm/build.sh emitter` compiles it to a native executable.
+
+```sh
+wasm/build.sh runtime-wasm               # build/wasm/runtime.wasm
+wasm/build.sh emitter                    # build/wasm/tir_wasm (optional: else it runs on Python)
+wasm/build.sh tir prog.py prog.wasm      # emitted, or through LLVM where the emitter refuses it
+node --disable-warning=ExperimentalWarning wasm/run.mjs prog.wasm ARGS...
+tests/run.sh ./pystachy wasm-tir tests/programs/apps/ouro2_*.py
+```
+
+Each typed IR value is a WebAssembly local, and so is a slot that only loads and stores
+read. A function's blocks lie in order inside nested `block`s within a `loop`: a forward
+branch is a `br` to its target's label, and a backward branch sets the next block's index
+and continues the loop, whose `br_table` dispatches it. The emitter handles the operations
+of scalar code, runtime calls, direct calls, globals, strings, class fields and list items.
+It refuses, by name, exception handlers, generators, function values, dynamic values,
+classes that the runtime compares or prints through the program's dispatchers, module
+imports and constants other than strings; `wasm/build.sh tir` then builds the program
+through LLVM, and `WASM_TIR_LOG` records which way each program went.
+
+The typed IR module text comes from `tools/inspect_compiler.py` on Python, so `wasm/build.sh
+tir` is not yet fast end to end: the compiler cannot print the module itself.
+
 ## What differs from a native build
 
 - **The collector is off.** The conservative stack scan cannot see WebAssembly locals, so
@@ -43,8 +72,10 @@ runtime. The link treats a signature mismatch as an error, because a mismatched 
 
 | File | Purpose |
 |---|---|
-| `build.sh` | Runtime and program builds |
-| `run.mjs` | Node WASI runner |
+| `build.sh` | Runtime, `runtime.wasm`, emitter and program builds |
+| `run.mjs` | Node WASI runner, for a command or a module on `runtime.wasm` |
+| `tir_wasm.py` | Typed IR module text to a WebAssembly module, without LLVM |
+| `reactor.c` | `runtime.wasm`'s entry: arguments, `pys_init`, the program's code, `pys_finish` |
 | `wasm32_ir.py` | IR rewrite for wasm32 constants, `main` and C library lengths |
 | `wasi_stubs.c` | Missing POSIX functions, unwinder stubs, working directory |
 | `include/` | Headers that `wasi-libc` lacks (`dlfcn.h`, `pthread.h`, `pwd.h`, `sys/wait.h`) and declarations `runtime.c` needs (`pystachy_wasi.h`) |

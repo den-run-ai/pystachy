@@ -1,30 +1,79 @@
-// Runs a WASI (preview 1) command module under Node: node wasm/run.mjs PROGRAM.wasm [ARGS...].
-// The program sees its arguments, the environment, and the file system through "/" (the host's,
-// read and written as the user who runs node). Its exit status is node's.
+// Runs a WASI (preview 1) program under Node (wasm/README.md):
+//   node wasm/run.mjs [--runtime RUNTIME.wasm] PROGRAM.wasm [ARGS...]
+// PROGRAM.wasm is a command (wasm/build.sh program), or a module of wasm/tir_wasm.py's, which its
+// custom section pystachy.data marks, on the runtime module RUNTIME.wasm (default:
+// build/wasm/runtime.wasm, wasm/build.sh runtime-wasm). The program sees its arguments, the
+// environment, and the file system through "/" (the host's, as the user who runs node); its
+// working directory is node's. Its exit status is node's.
 import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { WASI } from "node:wasi";
 import process from "node:process";
 
-const [path, ...args] = process.argv.slice(2);
-if (!path) {
-  process.stderr.write("usage: node wasm/run.mjs PROGRAM.wasm [ARGS...]\n");
+let argv = process.argv.slice(2);
+let runtimePath = fileURLToPath(new URL("../build/wasm/runtime.wasm", import.meta.url));
+if (argv[0] === "--runtime" && argv.length > 1) {
+  runtimePath = argv[1];
+  argv = argv.slice(2);
+}
+const [path, ...args] = argv;
+if (!path || path === "--runtime") {
+  process.stderr.write("usage: node wasm/run.mjs [--runtime RUNTIME.wasm] PROGRAM.wasm [ARGS...]\n");
   process.exit(2);
 }
+const trap = (e) => {
+  // a trap (unreachable, out of bounds, stack exhausted): as a native program's crash
+  process.stderr.write(`wasm trap: ${e && e.message ? e.message : e}\n`);
+  return 134;
+};
+const programModule = await WebAssembly.compile(await readFile(path));
+const [section] = WebAssembly.Module.customSections(programModule, "pystachy.data");
 const wasi = new WASI({
   version: "preview1",
   args: [path, ...args],
   env: { ...process.env, PWD: process.cwd() }, // (wasi_stubs.c starts there)
   preopens: { "/": "/" },
-  returnOnExit: true,
+  // (a command returns its status from start(); on the runtime module, proc_exit ends node)
+  returnOnExit: section === undefined,
 });
-const module = await WebAssembly.compile(await readFile(path));
-const instance = await WebAssembly.instantiate(module, wasi.getImportObject());
-let status;
-try {
-  status = wasi.start(instance);
-} catch (e) {
-  // a trap (unreachable, out of bounds, stack exhausted): as a native program's crash
-  process.stderr.write(`wasm trap: ${e && e.message ? e.message : e}\n`);
-  status = 134;
+if (section === undefined) {
+  const instance = await WebAssembly.instantiate(programModule, wasi.getImportObject());
+  let status;
+  try {
+    status = wasi.start(instance);
+  } catch (e) {
+    status = trap(e);
+  }
+  process.exitCode = status;
+} else {
+  // The runtime first (its WASI reactor initialized), then the program, which imports its memory,
+  // the block allocated for its data (env.data, whose size pystachy.data holds) and its
+  // functions. The runtime calls the program's module code as program.init; it calls
+  // pys_obj_eq, pys_obj_cmp and pys_obj_repr only for objects of classes that compare, hash or
+  // print through them, which tir_wasm.py refuses.
+  const runtimeModule = await WebAssembly.compile(await readFile(runtimePath));
+  let program = null;
+  const none = (name) => () => { throw new Error(`${name}: the program has no such dispatcher`); };
+  const runtime = await WebAssembly.instantiate(runtimeModule, {
+    ...wasi.getImportObject(),
+    program: { init: () => program.exports.init() },
+    env: { pys_obj_eq: none("pys_obj_eq"), pys_obj_cmp: none("pys_obj_cmp"), pys_obj_repr: none("pys_obj_repr") },
+  });
+  wasi.initialize(runtime);
+  let size = 0;
+  for (let k = 0, shift = 0, b = new Uint8Array(section); k < b.length; k++, shift += 7) size += (b[k] & 0x7f) * 2 ** shift;
+  const data = runtime.exports.malloc(Math.max(size, 8));
+  if (data === 0) {
+    process.stderr.write("MemoryError: no room for the program's data\n");
+    process.exit(1);
+  }
+  program = await WebAssembly.instantiate(programModule, {
+    env: { memory: runtime.exports.memory, data: new WebAssembly.Global({ value: "i32", mutable: false }, data) },
+    rt: runtime.exports,
+  });
+  try {
+    process.exitCode = runtime.exports.pys_wasi_run();
+  } catch (e) {
+    process.exitCode = trap(e);
+  }
 }
-process.exitCode = status;
