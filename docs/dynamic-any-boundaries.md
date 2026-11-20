@@ -42,12 +42,17 @@ consumer only after preserving its aliases and the boundary to existing users.
 
 | Modules | Current boundary | Concrete work and remaining containment debt |
 |---|---|---|
-| `json_repair.py`, `json_parser.py`, `parse_array.py`, `parse_object.py`, `parse_string.py`, `parse_comment.py`, `parse_string_helpers/parse_json_llm_block.py` | Dynamic repaired results, nested mutable containers, optional result/log tuples and interoperability with dynamic JSON. | Scanning state is largely concrete already. Recursive typed storage and known log-record fields are candidates; returning logs through an existing `Any` tuple is an alias/layout boundary to preserve. |
-| `parse_number.py` | Returns numbers or delegated parsing results to its parent. Promoting integers independently preserve large JSON integers. | Number scanning is concrete. Delegation can return broader results than an int/float/string union; specialize only after following those paths. |
-| `utils/object_comparer.py` | Recursively compares existing heterogeneous repaired graphs and accepts supported `Any` inputs. | A closed JSON specialization may coexist with the open helper; narrowing existing callers requires evidence. |
-| `parser_parenthesized.py`, `parse_string_helpers/parse_boolean_or_null.py`, `parse_string_helpers/object_value_context.py`, `utils/json_context.py` | These helpers operate on inferred parser objects; they declare no `Any` annotation. | Their local pragmas are removable candidates, subject to mixed-display and inference checks. Context-stack state is known int/bool/None storage. Pragma deletion alone does not remove imported identity tracking. |
-| `__main__.py` | The CLI serializes the repair result; it declares no `Any` annotation. | Check encoder dispatch before removing its opt-in. A smaller pragma count is not a cost result. |
-| `__init__.py`, `utils/__init__.py`, `parse_string_helpers/__init__.py` | Re-exports or package documentation; no dynamic storage originates here. | Local opt-ins are hygiene candidates, with no independent performance claim. |
+| `json_repair.py`, `json_parser.py`, `parse_array.py`, `parse_object.py`, `parse_string.py` | Dynamic repaired results, nested mutable containers, optional result/log tuples and interoperability with dynamic JSON. | Scanning state is largely concrete already. Recursive typed storage and known log-record fields are candidates; returning logs through an existing `Any` tuple is an alias/layout boundary to preserve. |
+| `__main__.py` | The CLI serializes the repair result; it declares no `Any` annotation. | The opt-in only selects the dynamic `json.dumps()` encoder: without it the result is checked against typed `JSONValue` and the CLI raises `TypeError`. Choosing the encoder from the argument's type would make this opt-in removable. |
+
+Eleven other modules of the port no longer opt in: the three package `__init__.py` files,
+`parse_comment.py`, `parse_number.py`, `parser_parenthesized.py`, `utils/json_context.py`,
+`utils/object_comparer.py` and, under `parse_string_helpers/`, `parse_json_llm_block.py`,
+`parse_boolean_or_null.py` and `object_value_context.py`. Their `Any` annotations are
+inferred from each call, and the five modules above box what they store. Removing these
+comments is containment, not a cost result. The modules stay inside the import closure
+that tracks numeric identity, so `tests/programs/apps/port_json_repair.py` compiles to
+40,175 lines of LLVM IR instead of 40,361, with the same 403 numeric box sites.
 
 ## Evidence required for a migration
 

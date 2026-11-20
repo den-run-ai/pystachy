@@ -1,4 +1,3 @@
-# pystachy: dynamic-any
 from types import TracebackType
 
 

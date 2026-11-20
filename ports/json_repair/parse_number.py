@@ -1,6 +1,5 @@
-# pystachy: dynamic-any
 # pystachy: python-int
-# Pystachy port: annotate recursive JSON values directly with dynamic Any.
+# Pystachy port: Any is inferred from each call here; the modules that store repaired values opt in.
 # Number values promote; the parser's cursor fields retain their declared integer bounds.
 from typing import Any
 
