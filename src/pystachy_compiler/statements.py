@@ -397,6 +397,10 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
             # Numeric class defaults need their defining module's object too, including
             # literals read from another module. class_default owns the shared GC root.
             cv = fl == "__slots__" or ci.name + "." + fl in self.cvars or (numeric_identity(t) and self.class_identity(ci))
+            # (a numeric literal for a dataclass's __init__ in a program with Any values, which a
+            # call that leaves out its field reads from the global, whatever the field's type:
+            # early_default, as calls.py decides from the default, int | C's too)
+            cv = cv or (syn and identity_default(st.kids[2]))
             if (cv or not is_const(st.kids[2])) and (fl not in ci.fglob or ci.fglob[fl] in self.pending):
                 self.class_store(ci, fl, self.expr(st.kids[2], t))
                 self.pending.pop(ci.fglob[fl], False)
