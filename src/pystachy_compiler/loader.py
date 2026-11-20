@@ -59,7 +59,7 @@ from src.pystachy_compiler.ctypes_schema import ctypes_import, lower_ctypes
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, NeedHandlers, dynamic_pragma, fail, int_pragma, leading_pragma
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer, host_text
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import ENUMCLASSES, NESTED, ORDERED, owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, LOCALS, LOCALWHY, NESTED, ORDERED, owner, short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import (
     ABCS,
@@ -450,6 +450,322 @@ def nested_classes(n: Node) -> None:
     for st in n.kids:
         hoist_nested(st, out, enums, kinds)
     n.kids = out
+
+
+# the names whose use reads a module's or an object's names at run time, as a string may name them:
+# a function or method that one may reach runs as often as the program decides (once_functions)
+ONCE_DYNAMIC = "getattr setattr hasattr delattr vars dir globals locals eval exec compile __import__ __dict__ attrgetter methodcaller getmembers".split()
+# the decorators that a function's class statement may apply to a class that local_classes hoists,
+# and to its methods: what they do does not depend on when the class statement runs
+LOCAL_CLASS_DECOS = "dataclass dataclasses.dataclass total_ordering functools.total_ordering final typing.final unique enum.unique".split()
+LOCAL_METHOD_DECOS = "staticmethod classmethod property abstractmethod abc.abstractmethod functools.cached_property cached_property".split()
+
+
+def once_walk(n: Node, scope: str, top: int, once: bool, call: bool, refs: dict[str, list[tuple[str, int, bool, bool]]]) -> None:
+    # (once_functions) each name n mentions (a name, an attribute's name, a decorator's names, an
+    # import's alias, a string), with its scope ("" the module's code, F a function's, K.F a
+    # method's, "?" another's), the module's statement it is in (top), whether it runs at most once
+    # each time its scope runs (once) and whether a call calls it (call)
+    k = n.kind
+    if k == "name" or k == "alias" or k == "str" or k == "attr":
+        refs[n.s] = refs.get(n.s, []) + [(scope, top, once, call)]
+    if k == "deco":
+        for part in n.s.split("."):
+            refs[part] = refs.get(part, []) + [(scope, top, False, False)]
+    if k == "for" or k == "while" or k == "lambda" or k == "listcomp" or k == "setcomp" or k == "dictcomp" or k == "asynccomp":
+        once = False  # (what runs again: a loop's code, a lambda's, a comprehension's)
+    if k == "def" or k == "class" or k == "subclass":
+        scope = "?"  # (a function's own: it may be called often)
+        once = False
+    for i in range(len(n.kids)):
+        once_walk(n.kids[i], scope, top, once, k == "call" and i == 0, refs)
+
+
+def once_functions(body: Node, fns: dict[str, Node], dyn: list[str]) -> dict[str, int]:
+    # the main program's functions (F, top-level defs) and methods (K.F, of its top-level classes)
+    # that run at most once, each with the module statement during which it runs: the one name
+    # that names it is a call that its module's code makes, outside loops, comprehensions and
+    # lambdas, or one that such a function makes so in turn. fns: each function's def; dyn: the
+    # names of ONCE_DYNAMIC the module uses (a method may then run through its name)
+    refs: dict[str, list[tuple[str, int, bool, bool]]] = {}
+    for i in range(len(body.kids)):
+        st = body.kids[i]
+        if st.kind == "def":
+            fns[st.s] = st if st.s not in fns else body  # (bound twice: no function of its own)
+            for x in st.kids[:2] + st.kids[3:]:
+                once_walk(x, "", i, False, False, refs)
+            once_walk(st.kids[2], st.s, i, True, False, refs)
+        elif st.kind == "class" or st.kind == "subclass":
+            c = st.kids[0] if st.kind == "subclass" else st
+            for x in st.kids[1:] + c.kids[1:]:
+                once_walk(x, "", i, False, False, refs)
+            for d in c.kids[0].kids:
+                if d.kind == "def":
+                    key = c.s + "." + d.s
+                    fns[key] = d if key not in fns else body
+                    for x in d.kids[:2] + d.kids[3:]:
+                        once_walk(x, "", i, False, False, refs)
+                    once_walk(d.kids[2], key, i, True, False, refs)
+                else:
+                    once_walk(d, "?", i, False, False, refs)
+        else:
+            once_walk(st, "", i, True, False, refs)
+    for dn in ONCE_DYNAMIC:
+        if dn in refs:
+            dyn.append(dn)
+    out: dict[str, int] = {}
+    grew = True
+    while grew:
+        grew = False
+        for key in fns:
+            nm = key[key.rfind(".") + 1 :]
+            if key in out or fns[key] is body or len(fns[key].kids) > 3 or (nm.startswith("__") and nm.endswith("__")) or len(dyn) > 0:
+                continue
+            rs = refs.get(nm, [])
+            if len(rs) != 1 or not rs[0][3] or not rs[0][2]:
+                continue
+            if rs[0][0] == "":
+                out[key] = rs[0][1]
+                grew = True
+            elif rs[0][0] in out and rs[0][0] != key:
+                out[key] = out[rs[0][0]]
+                grew = True
+    return out
+
+
+def local_reads(n: Node, out: dict[str, bool]) -> None:
+    # (local_classes) every name n reads or binds, also in the functions, lambdas and
+    # comprehensions it nests (more than it reads from its scope: as safe)
+    if n.kind == "name":
+        out[n.s] = True
+    for k in n.kids:
+        local_reads(k, out)
+
+
+def local_inert(e: Node) -> bool:
+    # (local_classes) does evaluating expression e, a class body's value or a default, run no code
+    # of the program's and no call: literals, names, attributes and the displays of them, and
+    # dataclasses.field() of them
+    k = e.kind
+    if is_const(e) or k == "name" or k == "Ellipsis" or k == "bytes" or k == "noann":
+        return True
+    if k == "attr" or k == "tuple" or k == "list" or k == "kw" or k == "index" or (k == "binop" and e.s == "|"):
+        return all(local_inert(x) for x in e.kids)  # (also the types of annotations: list[int], int | None)
+    if k == "call" and e.kids[0].kind == "name" and e.kids[0].s in ["field", "dataclasses.field"]:
+        return all(local_inert(x) for x in e.kids[1:])
+    return k == "call" and e.kids[0].kind == "attr" and e.kids[0].s == "field" and e.kids[0].kids[0].kind == "name" and e.kids[0].kids[0].s == "dataclasses" and all(local_inert(x) for x in e.kids[1:])
+
+
+def local_binds(n: Node, name: str) -> bool:
+    # (local_problem) does a function, lambda, comprehension or class that code n holds bind name
+    k = n.kind
+    if (k == "def" or k == "class" or k == "subclass") and name in scope_names(n.kids[0] if k == "subclass" else n):
+        return True
+    if k == "lambda" and len([p for p in n.kids[0].kids if p.s == name]) > 0:
+        return True
+    if k == "listcomp":
+        bound: list[str] = []
+        comp_names(n, bound)
+        if name in bound:
+            return True
+    for x in n.kids:
+        if local_binds(x, name):
+            return True
+    return False
+
+
+def attr_named(n: Node, name: str) -> bool:
+    # (Loader.program) does code n read an attribute name, or hold the string name
+    if (n.kind == "attr" or n.kind == "str") and n.s == name:
+        return True
+    for k in n.kids:
+        if attr_named(k, name):
+            return True
+    return False
+
+
+def local_rename(n: Node, names: dict[str, str]) -> None:
+    # (local_classes) each read of a class a function's body defines (names: its name there, and
+    # the module's), in code that runs after its statement, as the module's class; also in the
+    # strings of annotations (forward references: -> "Square")
+    if n.kind == "name" and n.s in names:
+        n.s = names[n.s]
+    if n.kind == "def":
+        for p in n.kids[0].kids:
+            if len(p.kids) > 0:
+                local_rename_ann(p.kids[0], names)
+        local_rename_ann(n.kids[1], names)
+    if n.kind == "annassign" and len(n.kids) > 1:
+        local_rename_ann(n.kids[1], names)
+    for k in n.kids:
+        local_rename(k, names)
+
+
+def local_rename_ann(n: Node, names: dict[str, str]) -> None:
+    # (local_rename) the strings in annotation n: each identifier of them that names one of names
+    if n.kind == "str":
+        out = ""
+        word = ""
+        for ch in n.s + " ":
+            if ch.isalnum() or ch == "_" or (ch == "." and word != ""):
+                word += ch
+                continue
+            out += names[word] if word in names else word
+            out += ch
+            word = ""
+        n.s = out[:-1]
+    for k in n.kids:
+        local_rename_ann(k, names)
+
+
+def local_problem(st: Node, j: int, body: list[Node], d: Node, flocals: dict[str, bool], hoisted: dict[str, str], early: dict[str, bool]) -> str:
+    # (local_classes) why class statement st, statement j of the body of function d (whose names
+    # flocals are), cannot be a class of the module, or "": what it does tells nothing of when it
+    # runs (inert decorators, header and class body), its methods read none of the function's
+    # names but the classes it hoists (hoisted), and the function reads its name only after it
+    c = st.kids[0] if st.kind == "subclass" else st
+    if c.s.startswith("__"):
+        return "a private name"
+    for x in body[:j]:
+        if names_name(x, c.s):
+            return f"the function names {c.s} before its class statement"
+    if bind_count(body, c.s) != 2:
+        return f"the function binds {c.s} otherwise too"
+    for x in body[j + 1 :]:
+        if local_binds(x, c.s):
+            return f"a function, lambda, comprehension or class after it binds {c.s}"
+    for x in c.kids[1:]:
+        if x.s not in LOCAL_CLASS_DECOS or not all(local_inert(a) for a in x.kids):
+            return f"decorator @{x.s}"
+    bases = st.kids[1:] if st.kind == "subclass" else []
+    for x in bases:
+        if not local_inert(x):
+            return "a base that runs code"
+    reads: dict[str, bool] = {}
+    eager: dict[str, bool] = {}  # (what the class statement reads as it runs, which Pystachy runs earlier)
+    for x in bases + c.kids[1:]:
+        local_reads(x, reads)
+        local_reads(x, eager)
+    for x in c.kids[1:]:
+        eager[x.s.split(".")[0]] = True  # (a decorator's name)
+    for x in c.kids[0].kids:
+        k = x.kind
+        if k == "pass" or (k == "expr" and (x.kids[0].kind == "str" or x.kids[0].kind == "Ellipsis")):
+            continue
+        if (k == "assign" or k == "annassign") and all(t.kind == "name" for t in x.kids[:1]) and local_inert(x.kids[-1]):
+            local_reads(x, reads)
+            if k == "assign" or len(x.kids) == 3:
+                local_reads(x.kids[-1], eager)
+            continue
+        if k != "def":
+            return f"a {k} statement in its body"
+        for dd in x.kids[3:]:
+            if dd.s not in LOCAL_METHOD_DECOS and not dd.s.endswith(".setter") and not dd.s.endswith(".deleter") and not dd.s.endswith(".getter"):
+                return f"method decorator @{dd.s}"
+            if not dd.s.endswith(".setter") and not dd.s.endswith(".deleter") and not dd.s.endswith(".getter"):
+                eager[dd.s.split(".")[0]] = True
+        for p in x.kids[0].kids:
+            for dv in p.kids[1:]:
+                if not local_inert(dv):
+                    return f"a default of {x.s}() that runs code"
+                local_reads(dv, eager)
+        own = scope_names(x)
+        for h in hoisted:
+            if h in own:
+                return f"{x.s}() binds {h}"
+        if c.s in own:
+            return f"{x.s}() binds {c.s}"
+        mr: dict[str, bool] = {}
+        local_reads(x, mr)
+        for nm in mr:
+            if nm not in own:
+                reads[nm] = True
+        if has_kind(x, "nonlocal"):
+            return f"{x.s}() declares a nonlocal name"
+    for nm in reads:
+        if nm in flocals and nm not in hoisted and nm != c.s:
+            return f"it reads {nm}, a name of the function"
+    for nm in eager:
+        if nm not in hoisted and nm not in early:
+            return f"its statement reads {nm}, which the module may bind or change while the function runs (Pystachy makes the class before the module statement that runs the function)"
+    return ""
+
+
+def local_classes(n: Node) -> list[str]:
+    # each class statement directly in the body of a main program's function that runs at most once
+    # (once_functions), whose class statement then runs at most once too: a class of the module,
+    # named F._pys_locals_.C (its __qualname__, F.<locals>.C: Gen.prepare_program's RENAMED), whose
+    # statement comes just before the module statement during which F runs, as nothing it does (its
+    # inert decorators, bases and body: local_problem) tells when it runs; the code of F that runs
+    # after it reads it by that name. One class object is all CPython makes too. The methods whose
+    # running once this assumes (a module of lib calling such a name is an error: Loader.program)
+    fns: dict[str, Node] = {}
+    dyn: list[str] = []
+    once = once_functions(n, fns, dyn)
+    rebound: dict[str, bool] = {}
+    globals_deep(n.kids, rebound)
+    deleted(n.kids, rebound)
+    before: dict[int, list[Node]] = {}
+    assumed: list[str] = []
+    for key in fns:
+        for st in fns[key].kids[2].kids if key not in once and fns[key] is not n else []:
+            if st.kind == "class" or st.kind == "subclass":
+                LOCALWHY[st.line] = f"{key}() is no function that runs at most once, whose one call (outside loops, comprehensions and lambdas) the module's code or such a function makes: each run of the class statement makes a new class"
+    for key in once:
+        d = fns[key]
+        body = d.kids[2].kids
+        if len([x for x in body if x.kind == "class" or x.kind == "subclass"]) == 0:
+            continue
+        # (the module's names that the statements before the one that runs the function bind, and no
+        # function rebinds: what they are when its class statements run; and builtins it never binds)
+        early: dict[str, bool] = {}
+        for i in range(once[key]):
+            x = n.kids[i]
+            if x.kind == "def" or x.kind == "class" or x.kind == "subclass":
+                early[x.s] = True
+            for a in x.kids if x.kind == "import" else []:
+                early[a.s] = True
+            for t in x.kids[:-1] if x.kind == "assign" else x.kids[:1] if x.kind == "annassign" and len(x.kids) == 3 else []:
+                if t.kind == "name":
+                    early[t.s] = True
+        for nm in PYBUILTINS:
+            if bind_count(n.kids, nm) == 0:
+                early[nm] = True
+        for nm in rebound:
+            early.pop(nm, False)
+        flocals = scope_names(d)
+        decl: dict[str, bool] = {}
+        globals_in(body, decl)
+        hoisted: dict[str, str] = {}
+        keep: list[Node] = []
+        for j in range(len(body)):
+            st = body[j]
+            why = local_problem(st, j, body, d, flocals, hoisted, early) if st.kind == "class" or st.kind == "subclass" else ""
+            if why == "" and (st.kind == "class" or st.kind == "subclass") and st.s in decl:
+                why = f"{key}() declares {st.s} global"
+            if why != "":
+                LOCALWHY[st.line] = why
+            if (st.kind == "class" or st.kind == "subclass") and why == "":
+                c = st.kids[0] if st.kind == "subclass" else st
+                name = key + LOCALS + c.s
+                hoisted[c.s] = name
+                local_rename(st, hoisted)  # (its own name, and its siblings' before it)
+                c.s = name
+                st.s = name
+                before[once[key]] = before.get(once[key], []) + [st]
+                if "." in key:
+                    assumed.append(key[key.rfind(".") + 1 :])
+                continue
+            local_rename(st, hoisted)
+            keep.append(st)
+        d.kids[2].kids = keep if len(keep) > 0 else [mk("pass", "", d.line, [])]
+    if len(before) > 0:
+        out: list[Node] = []
+        for i in range(len(n.kids)):
+            out += before.get(i, [])
+            out.append(n.kids[i])
+        n.kids = out
+    return assumed
 
 
 def enum_based(st: Node, enums: dict[str, str], kinds: dict[str, bool]) -> bool:
@@ -2312,6 +2628,7 @@ class Loader:
         FILES.clear()
         ENUMCLASSES.clear()
         NESTED.clear()
+        LOCALWHY.clear()
         ORDERED.clear()
         DYNFILES.clear()
         IDINERT.clear()
@@ -2326,6 +2643,7 @@ class Loader:
         if not self.rtmode and len(self.dirs) > 0:
             bytearray_import(m.body)
         import_module_calls(m.body, "")
+        assumed = local_classes(m.body)
         nested_classes(m.body)
         cm_methods(m.body, cm_names(m.body))
         functools_classes(m.body, functools_names(m.body))
@@ -2363,6 +2681,16 @@ class Loader:
                     b.kids = b.kids[:j] + out + b.kids[j + 1 :]
                     break
         self.intry = 0
+        for x in self.order:
+            # (local_classes assumed that the main program's own call runs each such method once:
+            # another module may call it through its name, or import the main program's module)
+            if x is m or len(assumed) == 0:
+                continue
+            for nm in assumed:
+                if names_name(x.body, nm) or attr_named(x.body, nm):
+                    fail(f"the class statements in method {nm}() are not supported: module {x.name} may call a method named {nm}, which then runs more than once", m.body.line)
+            if names_name(x.body, "__main__"):
+                fail(f"the class statements in functions of the main program are not supported: module {x.name} may import it", m.body.line)
         # (each module that uses one of these modules of lib's depends on it as on an import: Mod.deps)
         users = [x for x in self.order if range_values(x.body, 0) and module_reads(x.body, "range")] if not self.rtmode and len(self.dirs) > 0 and RANGES not in self.mods else []
         if len(users) > 0:
@@ -5566,6 +5894,9 @@ class Loader:
         # C.M.N): its qualified name, or ""
         if n.kind != "attr" or len(n.kids) != 1:
             return ""
+        d = dotted(n)
+        if LOCALS in d and m.kinds.get(d, "") == "c" and d[: d.find(".")] not in loc:
+            return m.q + d  # (F._pys_locals_.C, which a string annotation spells: local_classes)
         b = n.kids[0]
         q = ""
         if b.kind == "name" and b.s not in loc and "$" in b.s:

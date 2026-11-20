@@ -27,7 +27,7 @@ from src.pystachy_compiler.dynamic import XCMP, boxed_list_items, comparison_rec
 from src.pystachy_compiler.frames import Frame, IterArg
 from src.pystachy_compiler.ir import Blk, Ins, Val, tmpname, one_num
 from src.pystachy_compiler.symbols import Closure, FnInfo
-from src.pystachy_compiler.names import ENUMCLASSES, owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, local_class, owner, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, BYTEARRAYC, COMPLEXC, INERT_DECOS, NONEVAR, NONE_ITEM, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
 from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, made_var, mk, name_targets, starred_target
 from src.pystachy_compiler.utils import (
@@ -830,7 +830,7 @@ def gen_unbound(self, name: str, imp: bool = False) -> str:
     # from M import x, naming the file of M, as found when compiling)
     s = short(name)
     i = name.rfind("$") + 1
-    if "." in name[i:] and name in self.classes:
+    if "." in name[i:] and name in self.classes and not local_class(name):
         s = name[i : name.find(".", i)]  # (C.N of a nested class, read before C is bound: CPython's error names C)
     if self.foreign(name) and imp:
         f = self.mfile[owner(name)]

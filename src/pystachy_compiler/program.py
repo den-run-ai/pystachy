@@ -8,7 +8,7 @@ from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_pr
 from src.pystachy_compiler.ir import Val
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import ENUMCLASSES, ORDERED, RENAMED, owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, LOCALS, ORDERED, RENAMED, local_class, owner, short
 from src.pystachy_compiler.pipeline import PreparedProgram
 from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
@@ -1815,6 +1815,10 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
         m.body.kids = self.typing_forms(m, m.body.kids, False, False, True)
         for i in range(len(m.body.kids)):
             st = m.body.kids[i]
+            if (st.kind == "class" or st.kind == "subclass") and local_class(st.s):
+                # (a class that a function's body defines: its __qualname__ is F.<locals>.C,
+                # Loader's local_classes)
+                RENAMED[st.s] = st.s.replace(LOCALS, ".<locals>.")
             if st.kind == "subclass" and len(st.kids) == 2 and self.nt_base(st.kids[1]):
                 m.body.kids[i] = st.kids[0]  # class P(NamedTuple): a class (see nt_class)
                 self.nts[st.s] = True

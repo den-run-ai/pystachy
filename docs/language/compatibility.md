@@ -557,7 +557,9 @@ See [object protocols](semantics.md#object-protocols) and
   functions, including inside containers; comparing containers of functions.
 - **Closures:** capturing possibly unassigned or later-unbound enclosing variables, or
   comprehension variables; a decorated nested function capturing its own name; classes
-  defined in functions. An undecorated nested function may reference itself.
+  defined in functions but those directly in one that runs at most once, whose methods read
+  none of its names ([classes inside functions](typing.md#classes-inside-functions)). An
+  undecorated nested function may reference itself.
 
 ### Classes, dataclasses and NamedTuples
 

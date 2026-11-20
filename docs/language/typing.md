@@ -210,9 +210,10 @@ restriction on builtin module attributes.
 
 `Final[T]` uses type `T` without enforcing immutability. `x: Final = value` infers the
 value's type. In a class body, a constant gives a field its type, and any other value makes a
-class attribute typed as an unannotated one is (`FLAGS: Final = ["a", "b"]`). Nested classes,
-dataclasses, `NamedTuple`s and classes that are not compiled (whose creation may read the
-annotation, as a `TypedDict`'s does) still need a constant or `Final[T]`. `x: Final` alone
+class attribute typed as an unannotated one is (`FLAGS: Final = ["a", "b"]`), also in a class
+that a function running once defines ([classes inside functions](#classes-inside-functions)).
+Other nested classes, dataclasses, `NamedTuple`s and classes that are not compiled (whose
+creation may read the annotation, as a `TypedDict`'s does) still need a constant or `Final[T]`. `x: Final` alone
 binds nothing. In the same classes, `x: ClassVar[T] = value` is the class attribute
 `x: T = value`; `ClassVar` without a value, and in a dataclass, is unsupported.
 `@overload` stubs are discarded when followed by their implementation; they do not create
@@ -1404,6 +1405,26 @@ bases read a name that the outer body binds before it, which CPython reads in th
 outer body that reads a nested class ([test](../../tests/errors/classes/class_nested_deco_name.py))
 and classes nested in an enum class, a generic class of PEP 695 or a class of an `if` or `try`
 statement.
+
+### Classes inside functions
+
+A class statement directly in the body of a function that runs at most once makes a class of the
+module: the main program's function or method that one call runs, which the module's code, or
+another such function, makes outside loops, comprehensions and lambdas (`main()`, or a test
+method that a harness calls once). CPython makes one class object then too, which Pystachy makes
+before the module statement that runs the function. Its `__qualname__` is CPython's
+(`report.<locals>.Square`), and the function's code after the statement reads it, as do its own
+methods, also in quoted annotations ([test](../../tests/programs/classes/local_class_once.py));
+it may be a dataclass, an enum class, an exception class or a `NamedTuple`
+([test](../../tests/programs/classes/local_class_test_method.py)). What the class statement does
+must not tell when it runs: its decorators are `dataclass`, `total_ordering`, `final` or
+`unique`, its bases and class-body values are names, attributes and literals (no calls but
+`dataclasses.field()`), and its methods read none of the function's own names but the classes it
+defines before. A class inside a function that may run more than once, which CPython makes anew
+each time ([test](../../tests/errors/classes/local_class_called_twice.py)), one whose methods
+read the function's variables ([test](../../tests/errors/classes/local_class_capture.py)), and
+one inside a loop, an `if` or a nested function stay errors, which name the reason. A program
+that names functions or attributes at run time (`getattr()`, `globals()`) keeps them all errors.
 
 ## Single inheritance
 
