@@ -44,6 +44,20 @@ cold "Kind: text" -> L8
 loop kind=range mode="" head=L5 body=L8 step=L9 exit=L8 tests=[] indices=[%t3 "a b"] counter=%left.1 stop=(int 10) sequences=[] nonnegative=true
 }
 """
+MODULE = """module {
+  class Base tagged
+  class Error base=Exception
+  class Node base=Base roles=[Reader] tagged
+  class Reader overlaps=[Base "odd name"] tagged
+  class "odd name"
+  dyntype @dt.Node kind=8 cls=1 flags=256 base=@dt.Base role=@dt.Reader payload=Node
+  dyntype @dtf.0 kind=9 cls=-1 flags=8 payload=fn[m:Node.f]
+  dyntype @dt.Base kind=8 cls=0
+  layout Node descriptor=@dt.Node base=@dt.Base role=@dt.Reader number=1 members=[int tuple[int,str] dyn] llvm=[i64 "{i64, ptr}" ptr]
+  layout Base descriptor=@dt.Base number=0
+}
+
+""" + WRITTEN
 
 
 def compiled(path, source=None):
@@ -186,6 +200,91 @@ class TextTests(unittest.TestCase):
                 self.assertTrue(any(expected in error for error in text.roundtrip_errors(broken)))
 
 
+class ModuleTests(unittest.TestCase):
+    def test_written_module_reads_and_prints_unchanged(self):
+        module = text.parse_module(MODULE)
+        self.assertEqual(text.format_module(module), MODULE)
+        self.assertEqual(text.module_roundtrip_errors(module), [])
+        self.assertEqual(list(module), ["classes", "dynamic_types", "dynamic_layouts", "functions"])
+        self.assertEqual(list(module["classes"]), ["Base", "Error", "Node", "Reader", "odd name"])
+        self.assertEqual(module["classes"]["Node"], {"base": "Base", "roles": ["Reader"], "overlaps": [], "tagged": True})
+        self.assertEqual(module["classes"]["Reader"]["overlaps"], ["Base", "odd name"])
+        self.assertEqual(module["classes"]["odd name"], {"base": "", "roles": [], "overlaps": [], "tagged": False})
+        self.assertEqual(module["dynamic_types"][1], {"symbol": "@dtf.0", "kind": 9, "cls": -1, "flags": 8, "base": "",
+                                                      "role": "", "payload": "fn[m:Node.f]"})
+        self.assertEqual(module["dynamic_types"][2], {"symbol": "@dt.Base", "kind": 8, "cls": 0, "flags": 0, "base": "",
+                                                      "role": "", "payload": ""})
+        self.assertEqual(module["dynamic_layouts"][0], {"name": "Node", "descriptor": "@dt.Node", "base": "@dt.Base",
+                                                        "role": "@dt.Reader", "number": 1, "members": ["int", "tuple[int,str]", "dyn"],
+                                                        "llvm": ["i64", "{i64, ptr}", "ptr"]})
+        self.assertEqual(module["dynamic_layouts"][1]["members"], [])
+        self.assertEqual(module["functions"], [text.parse_function(WRITTEN)])
+        self.assertEqual(json.loads(json.dumps(module)), module)
+
+    def test_a_text_is_a_module_or_functions_alone(self):
+        self.assertIsInstance(text.parse(WRITTEN), list)
+        self.assertEqual(text.parse_functions(MODULE), text.parse_functions(WRITTEN))
+        self.assertEqual(text.parse_function(MODULE)["symbol"], "@written")
+        self.assertEqual(text.format_text(text.parse(WRITTEN)), WRITTEN)
+        self.assertEqual(text.format_text(text.parse(MODULE)), MODULE)
+        with self.assertRaisesRegex(text.TextError, "expected a module, found functions alone"):
+            text.parse_module(WRITTEN)
+        # (a module without declarations or functions)
+        self.assertEqual(text.format_module(text.parse_module("; empty\nmodule {\n}\n")), "module {\n}\n")
+
+    def test_malformed_module_is_rejected_with_its_line(self):
+        for old, new, expected in (
+                ("  class Base tagged\n", "  klass Base tagged\n", "line 2: expected a declaration: class, dyntype or layout"),
+                ("  class Base tagged\n", "class Base tagged\n", "line 2: expected a declaration, indented by two spaces"),
+                ("  class Base tagged\n", "  class Base tagged=1\n", "line 2: expected ' ' at column 18"),
+                ("  class Base tagged\n", "  class Base tagged base=X\n", "line 2: class field base must come before tagged"),
+                ("  class Base tagged\n", "  class Base tagged tagged\n", "line 2: class field tagged is repeated"),
+                ("  class Base tagged\n", "  class Base sort=X\n", "line 2: unknown class field 'sort'"),
+                ("  class Base tagged\n", '  class Base base="" tagged\n', "line 2: class field base is omitted where it holds its default"),
+                ("  class Base tagged\n", "  class Base roles=[] tagged\n", "line 2: class field roles is omitted where it holds its default"),
+                ("  class Base tagged\n", "  class Base roles=Reader\n", "line 2: expected '=['"),
+                ("  class Base tagged\n", '  class "Base" tagged\n', "line 2: atom 'Base' must be written bare"),
+                ("kind=8 cls=0\n", "kind=8 cls=0 flags=0\n", "line 9: dyntype field flags is omitted where it holds its default"),
+                ("kind=8 cls=0\n", "kind=8\n", "line 9: dyntype @dt.Base needs cls="),
+                ("cls=-1", "cls=-01", "line 8: cls= needs an integer"),
+                ("number=0\n", "number=x\n", "line 11: number= needs an integer"),
+                ("ptr]\n", "ptr\n", "line 10: llvm=[ has no closing ']'"),
+                ("  layout Base", "  class Late\n  layout Base", "line 11: a class after the layouts"),
+                ("  layout Base", "  dyntype @dt.Late kind=8 cls=2\n  layout Base", "line 11: a dyntype after the layouts"),
+                ("  class Error base=Exception\n", "  class Error base=Exception\n  class Error\n", "line 4: class Error is declared twice"),
+                ("  dyntype @dt.Base kind=8 cls=0\n", "  dyntype @dt.Base kind=8 cls=0\n  dyntype @dt.Node kind=8 cls=1\n",
+                 "line 10: dyntype @dt.Node is declared twice"),
+                ("}\n\nfunction", "\nfunction", "line 13: expected a declaration, indented by two spaces"),
+                ("function @written", "module {\n}\nfunction @written", "line 14: a module's declarations come once, before its functions")):
+            with self.subTest(expected=expected):
+                changed = MODULE.replace(old, new, 1)
+                self.assertNotEqual(changed, MODULE)
+                with self.assertRaises(text.TextError) as raised:
+                    text.parse(changed)
+                self.assertIn(expected, str(raised.exception))
+        for source, expected in (("module {\n  class A\n", "the module's declarations have no closing brace"),
+                                 (WRITTEN + "module {\n}\n", "line 21: a module's declarations come once, before its functions")):
+            with self.subTest(expected=expected), self.assertRaisesRegex(text.TextError, expected):
+                text.parse(source)
+
+    def test_records_the_printer_cannot_write_are_rejected(self):
+        module = text.parse_module(MODULE)
+        for change, expected in ((lambda m: m.pop("dynamic_layouts"), "a module record holds classes, dynamic_types, dynamic_layouts, functions"),
+                                 (lambda m: m.__setitem__("dynamic_types", {}), "a module's dynamic_types must be a list"),
+                                 (lambda m: m["classes"]["Base"].pop("tagged"), "class Base: the record must hold base, roles, overlaps, tagged"),
+                                 (lambda m: m["classes"]["Base"].__setitem__("tagged", 1), "class Base: tagged must be a flag"),
+                                 (lambda m: m["dynamic_types"][0].__setitem__("kind", "8"), "dyntype @dt.Node: kind must be an int"),
+                                 (lambda m: m["dynamic_types"][0].__setitem__("flags", True), "dyntype @dt.Node: flags must be an int"),
+                                 (lambda m: m["dynamic_layouts"][0].__setitem__("members", "int"), "layout Node: members must be a list"),
+                                 (lambda m: m["dynamic_layouts"][0]["llvm"].append(1), "an atom must be a string, not 1"),
+                                 (lambda m: m["functions"][0].__setitem__("coroutine", 1), "@written: coroutine must be a boolean")):
+            with self.subTest(expected=expected):
+                broken = json.loads(json.dumps(module))
+                change(broken)
+                self.assertTrue(any(expected in error for error in text.module_roundtrip_errors(broken)),
+                                text.module_roundtrip_errors(broken))
+
+
 class CompilerTests(unittest.TestCase):
     def test_compiled_functions_round_trip_before_the_passes_and_at_lowering(self):
         count = 0
@@ -227,6 +326,43 @@ class CompilerTests(unittest.TestCase):
             checked = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "check", str(listing)],
                                      capture_output=True, text=True, timeout=60)
             self.assertEqual(checked.returncode, 1)
+            # (typed-before.json holds no module data: its functions print alone)
+            before = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "print", str(output / "typed-before.json")],
+                                    check=True, capture_output=True, text=True, timeout=60).stdout
+            self.assertIsInstance(text.parse(before), list)
+
+    def test_a_typed_after_snapshot_prints_as_its_module(self):
+        program = ROOT / "tests/programs/classes/inheritance_secondary.py"
+        tool = [sys.executable, str(ROOT / "tools/typed_ir_text.py")]
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "inspect"
+            subprocess.run([sys.executable, str(ROOT / "tools/inspect_compiler.py"), str(program), "--output", str(output),
+                            "--typed-after-only", "--stop-after", "finalize"], check=True, capture_output=True, timeout=120)
+            snapshot = json.loads((output / "typed-after.json").read_text())
+            printed = subprocess.run(tool + ["print", str(output / "typed-after.json")],
+                                     check=True, capture_output=True, text=True, timeout=60).stdout
+            module = text.parse_module(printed)
+            self.assertEqual(module, text.module_from_snapshot(snapshot))
+            for table in ("classes", "dynamic_types", "dynamic_layouts"):
+                self.assertEqual(module[table], snapshot[table])
+            # (secondary bases, overlaps, and the DynTypes and layouts of a dynamic program are among them)
+            self.assertTrue(any(c["roles"] for c in module["classes"].values()))
+            self.assertTrue(any(c["overlaps"] for c in module["classes"].values()))
+            self.assertTrue(any(t["role"] for t in module["dynamic_types"]))
+            self.assertTrue(module["dynamic_layouts"])
+            # (its functions print as they do alone, after its declarations)
+            alone = subprocess.run(tool + ["print", str(output / "typed-after.json"), "--function", "@"],
+                                   check=True, capture_output=True, text=True, timeout=60).stdout
+            self.assertTrue(printed.endswith("}\n\n" + alone))
+            listing = Path(directory) / "module.tir"
+            listing.write_text(printed)
+            checked = subprocess.run(tool + ["check", str(listing)], capture_output=True, text=True, timeout=60)
+            declared = sum(len(module[table]) for table in ("classes", "dynamic_types", "dynamic_layouts"))
+            self.assertEqual((checked.returncode, checked.stdout),
+                             (0, f"typed_ir_text: a module of {declared} declarations and {len(module['functions'])} "
+                                 "functions parses and prints unchanged\n"))
+            listed = subprocess.run(tool + ["json", str(listing)], check=True, capture_output=True, text=True, timeout=60).stdout
+            self.assertEqual(json.loads(listed), module)
 
 
 class PassTests(unittest.TestCase):

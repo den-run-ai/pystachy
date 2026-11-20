@@ -1,17 +1,43 @@
 #!/usr/bin/env python3
-"""A text form of typed-IR functions, with its printer and parser.
+"""A text form of typed-IR modules and functions, with its printer and parser.
 
 A function record holds what the inspection snapshots hold of one function's IR: its symbol,
-parameters, return type, slots, blocks, check targets and loops. `format_function` prints a
-record, `parse_function` reads one back, and the two are inverse: parse(format(r)) == r for
-every record, and format(parse(t)) == t for every text that format printed. `to_ifn` builds
-the compiler's own IFn from a record, so a test can write IR as text, run the verifier or a
-pass on it and compare the printed result; `from_ifn` is its inverse.
+parameters, return type, slots, blocks, check targets and loops. A module record holds what a
+typed-after snapshot holds: the program's classes, the DynTypes it emits and their classes'
+layouts, and its function records. `format_module` and `format_function` print a record, `parse`
+reads a text back, and they are inverse: parse(format(r)) == r for every record, and
+format(parse(t)) == t for every text that format printed. `to_ifn` builds the compiler's own IFn
+from a function record, so a test can write IR as text, run the verifier or a pass on it and
+compare the printed result; `from_ifn` is its inverse.
 
     python3 tools/typed_ir_text.py print typed-after.json [--function NAME]
     python3 tools/typed_ir_text.py check FILE.tir          # parse, print again, compare
     python3 tools/typed_ir_text.py json FILE.tir           # the records, as JSON
     python3 tools/typed_ir_text.py verify FILE.tir         # verify each function, as expected
+
+`print` writes a typed-after snapshot as a module, and the functions alone where --function
+selects some or the snapshot holds no module data (typed-before.json). The other modes read a
+module or functions alone. A module gives its declarations, one a line, between `module {` and
+`}`, and then its functions:
+
+    module {
+      class Both base=Storage roles=[Reader] tagged
+      class Reader overlaps=[Storage] tagged
+      dyntype @dt.Both kind=8 cls=1 flags=256 base=@dt.Storage role=@dt.Reader payload=Both
+      layout Both descriptor=@dt.Both base=@dt.Storage role=@dt.Reader number=1 members=[int] llvm=[i64]
+    }
+
+    class NAME [base=CLASS] [roles=[CLASS ...]] [overlaps=[CLASS ...]] [tagged]
+    dyntype SYMBOL kind=INT cls=INT [flags=INT] [base=SYMBOL] [role=SYMBOL] [payload=TYPE]
+    layout NAME descriptor=SYMBOL [base=SYMBOL] [role=SYMBOL] number=INT [members=[TYPE ...]] [llvm=[TYPE ...]]
+
+A class gives its single base (a class or a builtin exception class), its fieldless secondary
+bases, the unrelated classes it shares a subclass with and whether its objects begin with a
+class tag; a dyntype, a DynType's kind, class number, flags, base and role DynTypes and its
+boxes' payload type (dynamic.py); a layout, the struct of a class that has a DynType, by its
+members' types and their LLVM types (inspect_compiler.py's classes, dynamic_types and
+dynamic_layouts). Classes come first, then dyntypes, then layouts; a field that holds its
+default ("", [], 0 or false) is omitted.
 
 One instruction is one line:
 
@@ -27,9 +53,9 @@ marks a temporary of the op's lowering (OP_TEMPS), which no operand names; print
 read those, and slot registers, from the compiler. TEXT is the op's Ins.s: its operator, runtime
 entry, callee, error or variable.
 
-An atom (a type, a value, a label, a text) is written bare where that is unambiguous, else as
-a JSON string. The form is for tests and review. It is no stable interchange format, and it
-holds no module data, class layouts or runtime declarations.
+An atom (a type, a value, a label, a text, a name) is written bare where that is unambiguous,
+else as a JSON string. The form is for tests and review. It is no stable interchange format,
+and it holds no class fields, globals or runtime declarations.
 
 `verify` runs the compiler's verifier (PYSTACHY_IRCHECK=1's) on each function, as MLIR's
 -verify-diagnostics does. A comment line `; expected-error {{MESSAGE}}` in a function says that
@@ -49,6 +75,20 @@ ROOT = Path(__file__).resolve().parent.parent
 
 LOOP_ATOMS = ("kind", "mode", "head", "body", "step", "exit", "counter")
 LOOP_LISTS = ("tests", "indices")
+# A module's declarations, by keyword, in the order a module gives them: the module record's
+# table that holds them, the key of a declaration's name in its record ("" where the table maps
+# names to records), and its fields in the order they are written: (key, kind, default). A field
+# that holds its default is omitted (None: none, it is always written). Kinds: an atom, an int, a
+# list of atoms, or a flag, written as its bare key where it is true.
+DECLARATIONS = {
+    "class": ("classes", "", (("base", "atom", ""), ("roles", "list", []), ("overlaps", "list", []),
+                              ("tagged", "flag", False))),
+    "dyntype": ("dynamic_types", "symbol", (("kind", "int", None), ("cls", "int", None), ("flags", "int", 0),
+                                           ("base", "atom", ""), ("role", "atom", ""), ("payload", "atom", ""))),
+    "layout": ("dynamic_layouts", "name", (("descriptor", "atom", None), ("base", "atom", ""), ("role", "atom", ""),
+                                          ("number", "int", None), ("members", "list", []), ("llvm", "list", []))),
+}
+MODULE_KEYS = [table for table, _, _ in DECLARATIONS.values()] + ["functions"]
 DECODER = json.JSONDecoder()
 
 
@@ -378,8 +418,93 @@ def read_header(text):
             "effects": effects, "slots": [], "blocks": [], "check_targets": {}, "loops": []}
 
 
-def parse_functions(text):
-    """The function records of a text, in order. A full-line `;` comment and a blank line are skipped."""
+def declaration_text(keyword, name, record):
+    """The line of one declaration of a module (DECLARATIONS), without its indentation."""
+    table, named, fields = DECLARATIONS[keyword]
+    keys = [named] * (named != "") + [key for key, _, _ in fields]
+    require(isinstance(record, dict) and sorted(record) == sorted(keys), f"{keyword} {name}: the record must hold {', '.join(keys)}")
+    parts = [keyword, atom(name)]
+    for key, kind, default in fields:
+        value = record[key]
+        require(type(value) is {"atom": str, "int": int, "list": list, "flag": bool}[kind],
+                f"{keyword} {name}: {key} must be {'an' if kind in ('atom', 'int') else 'a'} {kind}")
+        if value == default:
+            continue
+        if kind == "flag":
+            parts.append(key)
+        elif kind == "list":
+            parts.append(f"{key}=[{' '.join(atom(v) for v in value)}]")
+        else:
+            parts.append(f"{key}={value if kind == 'int' else atom(value)}")
+    return " ".join(parts)
+
+
+def read_declaration(text):
+    """(keyword, name, record) of the line of a declaration, without its indentation."""
+    found = re.compile(r"(class|dyntype|layout) ").match(text)
+    require(found is not None, "expected a declaration: class, dyntype or layout")
+    keyword = found.group(1)
+    table, named, fields = DECLARATIONS[keyword]
+    name, at = read_atom(text, found.end())
+    keys = [key for key, _, _ in fields]
+    record = {}
+    while at < len(text):
+        at = expect(text, at, " ")
+        word = re.compile(r"[a-z]+").match(text, at)
+        require(word is not None, f"expected a {keyword} field at column {at + 1}")
+        key = word.group(0)
+        require(key in keys, f"unknown {keyword} field {key!r}")
+        require(key not in record, f"{keyword} field {key} is repeated")
+        later = [k for k in keys[keys.index(key) + 1 :] if k in record]
+        require(not later, f"{keyword} field {key} must come before {later[0] if later else ''}")
+        _, kind, default = fields[keys.index(key)]
+        at = word.end()
+        if kind == "flag":
+            value = True
+        elif kind == "int":
+            number = re.compile(r"=(-?\d+)").match(text, at)
+            require(number is not None and str(int(number.group(1))) == number.group(1), f"{key}= needs an integer")
+            value, at = int(number.group(1)), number.end()
+        elif kind == "list":
+            at = expect(text, at, "=[")
+            value = []
+            while not text.startswith("]", at):
+                require(at < len(text), f"{key}=[ has no closing ']'")
+                if value:
+                    at = expect(text, at, " ")
+                item, at = read_atom(text, at)
+                value.append(item)
+            at += 1
+        else:
+            value, at = read_atom(text, expect(text, at, "="))
+        require(value != default, f"{keyword} field {key} is omitted where it holds its default")
+        record[key] = value
+    for key, kind, default in fields:
+        require(key in record or default is not None, f"{keyword} {name} needs {key}=")
+    record = {key: record[key] if key in record else list(default) if kind == "list" else default
+              for key, kind, default in fields}
+    return keyword, name, dict({named: name}, **record) if named else record
+
+
+def format_module(module):
+    """The text of a module record: its declarations, then its functions."""
+    require(isinstance(module, dict) and sorted(module) == sorted(MODULE_KEYS), f"a module record holds {', '.join(MODULE_KEYS)}")
+    lines = ["module {"]
+    for keyword, (table, named, fields) in DECLARATIONS.items():
+        entries = module[table]
+        require(isinstance(entries, list if named else dict), f"a module's {table} must be a {'list' if named else 'dict'}")
+        for name, record in ([(r.get(named) if isinstance(r, dict) else None, r) for r in entries] if named else entries.items()):
+            lines.append("  " + declaration_text(keyword, name, record))
+    lines.append("}")
+    return "\n".join(["\n".join(lines) + "\n"] + [format_function(r) for r in module["functions"]])
+
+
+def parse(text):
+    """The records of a text: a module record where it starts with a module's declarations, else
+    the function records it holds, in order. A full-line `;` comment and a blank line are skipped."""
+    module = None
+    declaring = False  # between "module {" and its "}"
+    names = {keyword: set() for keyword in DECLARATIONS}
     records = []
     record = None
     block = None
@@ -389,7 +514,27 @@ def parse_functions(text):
             if line.strip() == "" or line.lstrip().startswith(";"):
                 continue
             require(line == line.rstrip(), "trailing whitespace")
-            if record is None:
+            if declaring:
+                if line == "}":
+                    declaring = False
+                    continue
+                require(line.startswith("  "), "expected a declaration, indented by two spaces, or the module's '}'")
+                keyword, name, declared = read_declaration(line[2:])
+                table, named, fields = DECLARATIONS[keyword]
+                later = [k for k in list(DECLARATIONS)[list(DECLARATIONS).index(keyword) + 1 :] if names[k]]
+                require(not later, f"a {keyword} after the {later[-1] if later else ''}s")
+                require(name not in names[keyword], f"{keyword} {name} is declared twice")
+                names[keyword].add(name)
+                if named:
+                    module[table].append(declared)
+                else:
+                    module[table][name] = declared
+            elif record is None and line == "module {":
+                require(module is None and not records, "a module's declarations come once, before its functions")
+                module = {table: [] if named else {} for table, named, _ in DECLARATIONS.values()}
+                module["functions"] = records
+                declaring = True
+            elif record is None:
                 record, block, tail = read_header(line), None, False
             elif line == "}":
                 records.append(record)
@@ -426,14 +571,32 @@ def parse_functions(text):
                 record["blocks"].append(block)
         except TextError as error:
             raise TextError(f"line {number}: {error}: {line!r}") from None
+    require(not declaring, "the module's declarations have no closing brace")
     require(record is None, "the last function has no closing brace")
-    return records
+    return module if module is not None else records
+
+
+def parse_functions(text):
+    """The function records of a text, a module's or functions alone, in order."""
+    parsed = parse(text)
+    return parsed["functions"] if isinstance(parsed, dict) else parsed
 
 
 def parse_function(text):
     records = parse_functions(text)
     require(len(records) == 1, f"expected one function, found {len(records)}")
     return records[0]
+
+
+def parse_module(text):
+    parsed = parse(text)
+    require(isinstance(parsed, dict), "expected a module, found functions alone")
+    return parsed
+
+
+def format_text(parsed):
+    """The text of what parse returns: a module record, or function records."""
+    return format_module(parsed) if isinstance(parsed, dict) else "\n".join(format_function(r) for r in parsed)
 
 
 def from_snapshot(function):
@@ -452,6 +615,17 @@ def from_snapshot(function):
         "loops": [{"kind": lp["kind"], "mode": lp["mode"], "head": lp["head"], "body": lp["body"],
                    "step": lp["step"], "exit": lp["exit"], "tests": list(lp["tests"]),
                    "indices": list(lp["indices"])} for lp in function["loops"]],
+    }
+
+
+def module_from_snapshot(snapshot):
+    """The module record of a typed-after inspection snapshot: its tables as they are, and the
+    record of each of its functions."""
+    return {
+        "classes": {name: dict(c, roles=list(c["roles"]), overlaps=list(c["overlaps"])) for name, c in snapshot["classes"].items()},
+        "dynamic_types": [dict(t) for t in snapshot["dynamic_types"]],
+        "dynamic_layouts": [dict(t, members=list(t["members"]), llvm=list(t["llvm"])) for t in snapshot["dynamic_layouts"]],
+        "functions": [from_snapshot(f) for f in snapshot["functions"]],
     }
 
 
@@ -642,24 +816,46 @@ def roundtrip_errors(record):
     return []
 
 
+def module_roundtrip_errors(module):
+    """Why a module record does not survive print and parse, or []."""
+    problems = [e for record in module["functions"] for e in roundtrip_errors(record)]
+    if problems:
+        return problems
+    try:
+        text = format_module(module)
+        parsed = parse_module(text)
+    except TextError as error:
+        return [f"module: {error}"]
+    if parsed != module:
+        return ["module: the parsed record differs from the printed one"]
+    if format_module(parsed) != text:
+        return ["module: printing the parsed record gives another text"]
+    return []
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("mode", choices=("print", "check", "json", "verify"))
     parser.add_argument("path", type=Path)
-    parser.add_argument("--function", default="", help="print: only functions whose symbol contains this")
+    parser.add_argument("--function", default="", help="print: only functions whose symbol contains this, without the module")
     args = parser.parse_args()
     try:
         source = args.path.read_text(encoding="utf-8")
         if args.mode == "print":
             snapshot = json.loads(source)
-            records = [from_snapshot(f) for f in snapshot["functions"] if args.function in f["symbol"]]
-            problems = [e for r in records for e in roundtrip_errors(r)]
+            if args.function == "" and all(table in snapshot for table in MODULE_KEYS):
+                parsed = module_from_snapshot(snapshot)
+                problems = module_roundtrip_errors(parsed)
+            else:
+                parsed = [from_snapshot(f) for f in snapshot["functions"] if args.function in f["symbol"]]
+                problems = [e for r in parsed for e in roundtrip_errors(r)]
             if problems:
                 print("\n".join(problems), file=sys.stderr)
                 return 1
-            sys.stdout.write("\n".join(format_function(r) for r in records))
+            sys.stdout.write(format_text(parsed))
             return 0
-        records = parse_functions(source)
+        parsed = parse(source)
+        records = parsed["functions"] if isinstance(parsed, dict) else parsed
         if args.mode == "verify":
             problems = verify_errors(source)
             if problems:
@@ -668,13 +864,16 @@ def main():
             print(f"typed_ir_text: {len(records)} functions verify as expected")
             return 0
         if args.mode == "json":
-            print(json.dumps(records, indent=1))
+            print(json.dumps(parsed, indent=1))
             return 0
-        printed = "\n".join(format_function(r) for r in records)
-        if printed != source:
+        if format_text(parsed) != source:
             print(f"typed_ir_text: {args.path} is not in the printed form", file=sys.stderr)
             return 1
-        print(f"typed_ir_text: {len(records)} functions parse and print unchanged")
+        if isinstance(parsed, dict):
+            declared = sum(len(parsed[table]) for table, _, _ in DECLARATIONS.values())
+            print(f"typed_ir_text: a module of {declared} declarations and {len(records)} functions parses and prints unchanged")
+        else:
+            print(f"typed_ir_text: {len(records)} functions parse and print unchanged")
         return 0
     except (OSError, KeyError, TypeError, ValueError) as error:
         print(f"typed_ir_text: {error}", file=sys.stderr)

@@ -1006,9 +1006,9 @@ self-compile timings in the design log are not current test totals or performanc
 
 ## Text form
 
-`tools/typed_ir_text.py` prints a function's IR as text and parses it back. One instruction
-is one line: its results, the operation, its text (`Ins.s`), its other fields, its typed
-operands, its labels and its result type.
+`tools/typed_ir_text.py` prints a module's or a function's IR as text and parses it back. One
+instruction is one line: its results, the operation, its text (`Ins.s`), its other fields, its
+typed operands, its labels and its result type.
 
 ```text
 L7:
@@ -1034,16 +1034,41 @@ Types are the compiler's canonical strings. Most are Python's (`int`, `list[floa
 slot at `%s.3` and `list.load` returns a list item's slot; `%ptr`, `%byte`, `%i32` and `%slot`
 are machine types with no Python meaning.
 
-Printing and parsing are inverse: a printed function parses to the record it was printed
-from, and a text that is not in the printed form is rejected. The record holds a function's
-symbol, parameters, return type, effects, slots, blocks, check targets and loops, as the
-[inspection snapshots](compiler-inspection.md) do. `to_ifn` builds the compiler's own `IFn`
-from it, so a test writes IR as text, runs the verifier or one pass and compares the printed
-result: [`tools/test_typed_ir_text.py`](../tools/test_typed_ir_text.py) runs `listget` on
-[a fixture](../tools/fixtures/typed_ir/score_samples.listget.before.tir) that way, and
-checks that the fixture is what the compiler emits. The text holds no module data, class
-layouts or runtime declarations, so a function that needs those is tested from source. It
-is a test and review form of the hosted compiler, not an interchange format.
+A text holds functions alone, or a module: its declarations between `module {` and `}`, then
+its functions, each written as it is alone. `print` writes a typed-after snapshot as a module,
+whose declarations are the snapshot's tables of the program's classes, DynTypes and class
+layouts:
+
+```text
+module {
+  class Both base=Storage roles=[Reader] tagged
+  class Reader overlaps=[Storage] tagged
+  class Storage overlaps=[Reader] tagged
+  dyntype @dt.Both kind=8 cls=1 flags=256 base=@dt.Storage role=@dt.Reader payload=Both
+  layout Both descriptor=@dt.Both base=@dt.Storage role=@dt.Reader number=1 members=[int int bool dyn] llvm=[i64 i64 i1 ptr]
+}
+
+function @m.Storage.__init__.1(self: Both, value: int) -> None effects=wO {
+```
+
+A class gives its single base, a class of the program or a builtin exception class; its
+fieldless secondary bases (`roles`); the unrelated classes it shares a subclass with
+(`overlaps`); and whether its objects begin with a class tag. A `dyntype` is a DynType that the
+program emits for dynamic values, with its kind, class number, flags, base and role DynTypes
+and the static type of its boxes' payload, and a `layout` is the struct of a class that has
+one. A field that holds its default (`""`, `[]`, 0 or false) is omitted.
+
+Printing and parsing are inverse: a printed module or function parses to the record it was
+printed from, and a text that is not in the printed form is rejected. A function record holds
+a function's symbol, parameters, return type, effects, slots, blocks, check targets and loops,
+as the [inspection snapshots](compiler-inspection.md) do, and a module record holds the
+declarations and its function records. `to_ifn` builds the compiler's own `IFn` from a
+function record, so a test writes IR as text, runs the verifier or one pass and compares the
+printed result: [`tools/test_typed_ir_text.py`](../tools/test_typed_ir_text.py) runs `listget`
+on [a fixture](../tools/fixtures/typed_ir/score_samples.listget.before.tir) that way, and
+checks that the fixture is what the compiler emits. The text holds no class fields, globals or
+runtime declarations, so a function that needs those is tested from source. It is a test and
+review form of the hosted compiler, not an interchange format.
 
 `verify` runs the verifier on each function of a text file, as MLIR's `-verify-diagnostics`
 does. A comment line `; expected-error {{MESSAGE}}` says that the function's verification
