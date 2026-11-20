@@ -1,11 +1,11 @@
 """Positive-step loops retain the lower bound needed by negative offsets."""
-import json
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
 
+import check_lean_boundary as boundary
 import check_lean_access as access
 from test_lean_access import CHECKER  # imports the mandatory-checker guard too
 
@@ -85,7 +85,7 @@ print(out)
                                      "--output", str(inspected), "--typed-after-only"],
                                     cwd=ROOT, capture_output=True, text=True, timeout=60)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            report, code = access.check_all(json.loads((inspected / "typed-after.json").read_text()))
+            report, code = access.check_all(boundary.read_snapshot((inspected / "typed-after.json"), boundary.MAX_PROGRAM_BYTES)[0])
             self.assertEqual(code, 0, report)
             self.assertGreater(report["totals"]["accesses"], 0)
             self.assertEqual(report["totals"]["accesses"], report["totals"]["proved_accesses"])

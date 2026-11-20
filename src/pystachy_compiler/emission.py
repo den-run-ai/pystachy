@@ -322,6 +322,42 @@ def gen_select(self, c: str, x: Val, y: Val) -> str:
     self.put(i, 1)
     return tmpname(i.r[0])
 
+def gen_cast(self, v: Val, t: str, kind: str) -> Val:
+    # v read as a t: a cast op of kind (specs.CAST_KINDS), which lowering erases, so that its uses
+    # read v (Gen.erase_casts). Until its function is complete it is numbered below zero, by a
+    # count that only needs to tell casts apart (no frame keeps it, and dry() may use numbers
+    # it drops); number_casts then numbers the function's casts after its last value, so that
+    # no other value's number, and so no LLVM name, changes
+    self.ncasts += 1
+    i = Ins("cast", t, kind)
+    i.a = [v]
+    i.r = one_num(-self.ncasts)
+    self.add(i)
+    return Val(tmpname(-self.ncasts), t)
+
+def gen_number_casts(self) -> None:
+    # number the casts of the function being completed (gen_cast) after its last value, in the
+    # order of its blocks, and name them so in their operands
+    names: dict[str, str] = {}
+    for b in self.fn.blocks:
+        for i in b.code:
+            if i.op == "cast" and len(i.r) == 1 and i.r[0] < 0:
+                self.n += 1
+                names[tmpname(i.r[0])] = tmpname(self.n)
+                i.r = one_num(self.n)
+                self.fn.casts.append(self.n)
+    if len(names) == 0:
+        return
+    for b in self.fn.blocks:
+        for i in b.code:
+            for a in i.a:
+                if a.v in names:
+                    a.v = names[a.v]
+    for lp in self.fn.loops:
+        for v in [lp.stop] + lp.seqs:
+            if v.v in names:
+                v.v = names[v.v]
+
 def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
     # an rt op: a call of runtime function name (its LLVM symbol), whose LLVM result type is
     # ret, with args "<LLVM type> <value>", which must be what its RUNTIME entry says. (In

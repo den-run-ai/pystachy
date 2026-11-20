@@ -172,7 +172,7 @@ class SnapshotFixture(unittest.TestCase):
         if completed.returncode:
             raise AssertionError(completed.stdout + completed.stderr)
         cls.snapshot_path = output / "typed-after.json"
-        cls.snapshot = json.loads(cls.snapshot_path.read_text())
+        cls.snapshot = check_lean_boundary.read_snapshot(cls.snapshot_path, check_lean_boundary.MAX_PROGRAM_BYTES)[0]
 
     def selected(self, name="narrowed_float"):
         snapshot = copy.deepcopy(self.snapshot)

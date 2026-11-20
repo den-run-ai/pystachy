@@ -237,6 +237,7 @@ def aliased_store(mode="pointer", old=False):
         q = "%a3"
         if mode == "gep":
             q = c.op("mach.addr", "%ptr", "%ptr", [(q, "%ptr"), ("0", "int")])
+            q = c.op("cast", "&" + U, "bits", [(q, "%ptr")])  # (the machine address, read as the box's)
     v = c.op("mem.load", U, a=[(p, "&" + U)])
     c.guard(v)
     c.block("hit")
@@ -262,10 +263,12 @@ def raw_rebox(mixed=False, phi=False):
         c.block("left")
         t0, p0 = raw_parts(c, "%a0")
         _, bad0 = raw_parts(c, "%a1") if mixed else (t0, p0)
+        bad0 = c.op("cast", "int", "bits", [(bad0, "%slot")])  # (the bits as an int, which a phi joins as unionslots does)
         c.op("br", b=["merge"])
         c.block("right")
         t1, p1 = raw_parts(c, "%a1")
         _, bad1 = raw_parts(c, "%a0") if mixed else (t1, p1)
+        bad1 = c.op("cast", "int", "bits", [(bad1, "%slot")])
         c.op("br", b=["merge"])
         c.block("merge")
         tag = c.op("phi", "int", a=[(t0, "int"), (t1, "int")], b=["left", "right"])
@@ -1517,9 +1520,10 @@ class UnionProofTests(unittest.TestCase):
                 self.assertLess(max(sizes), 16)
 
     def test_select_between_none_and_a_fresh_box_carries_its_member(self):
-        # Gen.ubox boxes an object that may be None as select(obj is None, null, ubox(obj)): a
-        # machine pointer whose own type names no union. Its member reaches a later guarded read;
-        # a pointer of unknown provenance in its place, or a read with no None test, does not.
+        # Gen.ubox boxes an object that may be None as select(obj is None, null, ubox(obj)), of the
+        # union's type, whatever its condition says of the object. Its member reaches a later
+        # guarded read; a pointer of unknown provenance in its place, or a read with no None
+        # test, does not.
         mixed = "union[Item,int]"
         for mode, accepted, message in (("box", True, ""), ("optional-box", True, ""),
                                         ("unknown", False, "union.payload needs tag int"),
@@ -1539,7 +1543,7 @@ class UnionProofTests(unittest.TestCase):
                 else:
                     box = c.op("rt", "%ptr", "ubox", [(str(c.g.utags["Item"]), "int"), (bits, "*T")])
                 absent = c.op("ptr.cmp", "bool", "==", [("%a0", "Item"), ("null", "None")])
-                chosen = c.op("select", "%ptr", a=[(absent, "bool"), ("null", "%ptr"), ("%a3" if mode == "unknown" else box, "%ptr")])
+                chosen = c.op("select", mixed, a=[(absent, "bool"), ("null", mixed), ("%a3" if mode == "unknown" else box, mixed)])
                 c.op("br", b=["join"])
                 c.block("number")
                 number = c.op("rt", "%ptr", "ubox", [(str(c.g.utags["int"]), "int"), ("%a1", "*T")])

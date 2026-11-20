@@ -1,6 +1,5 @@
 """Corrupt actual compiler IR; failures must remain failures under Lean."""
 import copy
-import json
 import os
 from pathlib import Path
 import subprocess
@@ -55,7 +54,7 @@ class GuardTests(unittest.TestCase):
                                 cwd=ROOT, env=env, capture_output=True, text=True, timeout=40)
         if result.returncode:
             raise AssertionError(result.stdout + result.stderr)
-        cls.snapshot = json.loads((root / "inspection/typed-after.json").read_text())
+        cls.snapshot = boundary.read_snapshot((root / "inspection/typed-after.json"), boundary.MAX_PROGRAM_BYTES)[0]
 
     def sample(self):
         return copy.deepcopy(self.snapshot)

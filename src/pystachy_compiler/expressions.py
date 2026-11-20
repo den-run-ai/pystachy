@@ -1211,7 +1211,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                             f = cc.methods[mn]
                             name = f.node.pyname if f.node.pyname != "" else mn
                             subname = self.sconst(name if n.s == "__name__" else self.qualname(f))
-                            qn = self.select(matches, Val(subname, '%ptr'), Val(qn, '%ptr'))
+                            qn = self.select(matches, Val(subname, 'str'), Val(qn, 'str'))
                     done = self.cur
                     self.br(end)
                     self.place(end)
@@ -3174,12 +3174,13 @@ def gen_tget(self, v: Val, i: int) -> Val:
     return value
 
 def gen_tslot(self, v: Val, k: int) -> Val:
-    # slot k of tuple v, past its items: a promoting int item's Mpz word, as an int (tslots)
+    # slot k of tuple v, past its items: a promoting int item's Mpz word, which no type describes,
+    # read as an int by a bits cast (tslots)
     w = Ins("tuple.load", "%slot", BIG)
     w.k = k
     w.a = [v]
     self.put(w, 2)
-    return self.from_slot(tmpname(w.r[1]), "int")
+    return self.cast(Val(tmpname(w.r[1]), "%slot"), "int", "bits")
 
 def gen_tstore(self, v: Val, index: int, slot: str) -> None:
     # slot index of tuple v (an item's, or past them a promoting int item's Mpz word: tslots)
@@ -4647,12 +4648,12 @@ def gen_class_members(self, t: str) -> list[str]:
     return ms
 
 def gen_cmp_object(self, v: Val) -> Val:
-    # operand v of inherit_cmp as the object a union of classes' box holds (class_members), still
-    # of the union's type, which cmp_alts tells apart by the object's class; v otherwise. Each
-    # member's object is read where the box's tag proves the member, as union_arithmetic splits
-    # a union (a payload read that no tag test proves is no typed read). The union holds None as
-    # a null box (A | B | None is union[A,B]): None then, a null object, unless v is known not
-    # to be None
+    # operand v of inherit_cmp as the object a union of classes' box holds (class_members), read
+    # as the union by an object cast (specs.CAST_KINDS: no union op may read it), which cmp_alts
+    # tells apart by the object's class with member casts; v otherwise. Each member's object is
+    # read where the box's tag proves the member, as union_arithmetic splits a union (a payload
+    # read that no tag test proves is no typed read). The union holds None as a null box
+    # (A | B | None is union[A,B]): None then, a null object, unless v is known not to be None
     ms = self.class_members(v.t)
     if len(ms) == 0:
         return v
@@ -4677,7 +4678,7 @@ def gen_cmp_object(self, v: Val) -> Val:
         if miss != "":
             self.place(miss)
     self.place(end)
-    r = Val(self.phi(ph), v.t)
+    r = self.cast(Val(self.phi(ph), "%ptr"), v.t, "object")
     if not maybe:
         self.nn[r.v] = True
     return r
@@ -4686,14 +4687,14 @@ def gen_cmp_alts(self, v: Val) -> list[Val]:
     # what inherit_cmp tells operand v apart as: None where v may be None, then an object of each
     # class it may be of (cmp_kinds); v alone where it is no class's object, or one class's and
     # known not to be None. The object of a union of classes (cmp_object) is one of each class
-    # its members may be of
+    # its members may be of, which a member cast reads it as
     ms = self.class_members(v.t)
     if len(ms) > 0:
         alts: list[Val] = [Val("null", "None")] if v.v not in self.nn else []
         for m in ms:
             for c in self.cmp_kinds(m):
                 if len([x for x in alts if x.t == c]) == 0:
-                    alts.append(Val(v.v, c))
+                    alts.append(self.cast(v, c, "member"))
         return alts
     if v.t not in self.classes:
         return [v]

@@ -5,7 +5,7 @@ already-emitted immutable function objects are candidates. No source is inferred
 again, and no code or profiling state is created while the program runs.
 """
 from __future__ import annotations
-from src.pystachy_compiler.ir import Blk, IFn, Ins, Loop, Val, tmpname, one_num
+from src.pystachy_compiler.ir import Blk, IFn, Ins, Loop, Val, real_ops, tmpname, one_num
 from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.utils import identity_abi, is_callable
 
@@ -99,7 +99,7 @@ def callback_clone(fn: IFn, param: int, target: str, code: str, ft: str, codes: 
     g.synthetic, g.noret = True, f.noret
     g.cmpops = f.cmpops
     out = IFn(g)
-    out.ps, out.n = [p for p in fn.ps], fn.n
+    out.ps, out.n, out.casts = [p for p in fn.ps], fn.n, [n for n in fn.casts]
     out.numeric_only = fn.numeric_only
     out.fa, out.cold, out.coldh = dict(fn.fa), dict(fn.cold), dict(fn.coldh)
     out.rdepth, out.resumes, out.setslimit = fn.rdepth, fn.resumes, fn.setslimit
@@ -188,7 +188,7 @@ def specialize_callbacks(fns: list[IFn], adapters: dict[str, str], objects: dict
         params = [p for p in fn.ps if is_callable(f.ptypes[p])]
         if len(params) != 1 or f.ptypes[params[0]] not in candidates:
             continue
-        size = len(fn.slots) + sum(len(b.code) for b in fn.blocks)
+        size = len(fn.slots) + sum(real_ops(b.code) for b in fn.blocks)  # (no cast: lowering erases them)
         if size > 256 or (size + 4) * 2 + extra > 4096:
             continue
         param = params[0]

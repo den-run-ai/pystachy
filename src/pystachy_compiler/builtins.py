@@ -2129,7 +2129,7 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
         self.mstore(r.stt, self.coerce(result, r.stt, "math.prod() must preserve its start type").v, r.acc)
         return
     if r.collect:
-        self.list_store(Val(self.mload("%ptr", r.acc), self.ctype("list", [r.t])), self.list_hold(v, r.t), "append")
+        self.list_store(Val(self.mload(self.ctype("list", [r.t]), r.acc), self.ctype("list", [r.t])), self.list_hold(v, r.t), "append")
         return
     if r.name != "sum":
         # the first item is kept; another where it is greater (max) or less (min) than the kept one
@@ -3347,7 +3347,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     elif numx.t != "" and m == "index":
         fn = "pys_list_index_as"  # (its ValueError names x, not the item)
         # (the flag and the number as the bits of runtime words: a bool and an int)
-        av = av + ["i64 " + self.to_slot(Val(numok, "bool"), False, True), "i64 " + self.to_slot(numx, False, True), f"ptr {self.sconst(self.desc(numx.t, '=='))}"]
+        av = av + ["i64 " + self.slot_word(Val(numok, "bool")).v, "i64 " + self.slot_word(numx).v, f"ptr {self.sconst(self.desc(numx.t, '=='))}"]
     if bk.t != "":
         self.bool_find(o.v, bk, av[1][4:])
     x = self.key_fx(K) if base == "dict" else ""  # (Ins.x of a lookup: U? where the keys are objects)

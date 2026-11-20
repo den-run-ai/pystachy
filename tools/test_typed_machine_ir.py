@@ -178,6 +178,69 @@ class MachineStageTests(unittest.TestCase):
         self.assertEqual([x.op for x in fn.blocks[0].code], ["mach.addr", "mach.load", "ret.none"])
 
 
+def op(name, t, s, operands, numbers, labels=()):
+    i = Ins(name, t, s)
+    i.a = [Val(v, ty) for v, ty in operands]
+    i.r = list(numbers)
+    i.b = list(labels)
+    return i
+
+
+def cast_function(cast):
+    """A function whose frontend made values 1 to 3 (and, with cast, the cast 4 after them), to
+    which a pass then added a value and a block (numbered after them, as a pass numbers)."""
+    first = 5 if cast else 4
+    code = [op("mach.load", "%ptr", "", [("%a0", "%ptr")], [1])]
+    if cast:
+        code.append(op("cast", "&int", "bits", [("%t1", "%ptr")], [4]))
+    code += [op("mem.load", "int", "", [("%t4" if cast else "%t1", "&int")], [2]),
+             op("num.cmp", "bool", "<", [("%t2", "int"), ("0", "int")], [3]),
+             op("scalar.bin", "int", "add", [("%t2", "int"), ("1", "int")], [first]),
+             op("cbr", "", "", [("%t3", "bool")], [], [f"L{first + 1}", f"L{first + 1}"])]
+    fn = function([("entry", code), (f"L{first + 1}", [op("ret", "", "", [(f"%t{first}", "int")], [])])])
+    fn.f.params, fn.f.ptypes, fn.f.ret, fn.ps = ["p"], ["%ptr"], "int", [0]
+    fn.casts = [4] if cast else []
+    fn.n = first + 1  # (its label's number, the last it has)
+    return fn
+
+
+class CastErasureTests(unittest.TestCase):
+    """Lowering erases casts with their numbers: the LLVM text is the one without them."""
+
+    def lowered(self, fn):
+        g = Gen()
+        g.lower(fn)
+        return "\n".join(g.out)
+
+    def test_a_cast_and_its_number_go(self):
+        fn = cast_function(True)
+        text = self.lowered(fn)
+        self.assertEqual(text, self.lowered(cast_function(False)))
+        self.assertNotIn("cast", [i.op for b in fn.blocks for i in b.code])
+        self.assertIn("  %t2 = load i64, ptr %t1", text)  # (the load reads what the cast cast)
+        self.assertIn("  %t4 = add i64 %t2, 1", text)  # (the pass's value, numbered as without the cast)
+        self.assertEqual((fn.n, fn.casts, fn.blocks[1].label), (5, [], "L5"))
+
+    def test_a_dropped_casts_number_goes_too(self):
+        fn = cast_function(True)
+        fn.blocks[0].code.pop(1)
+        fn.blocks[0].code[1].a[0] = Val("%t1", "&int")  # (a pass dropped the cast: no op names it any more)
+        self.assertEqual(self.lowered(fn), self.lowered(cast_function(False)))
+
+    def test_casts_are_numbered_after_the_functions_values(self):
+        g = Gen()
+        word = Val(g.mload("%ptr", "%a0"), "%ptr")
+        cell = g.cast(word, "&int", "bits")
+        value = g.mem_load(cell)
+        self.assertTrue(cell.v.startswith("%t-"))  # (below zero while the function is built)
+        last = g.n
+        g.number_casts()
+        cast, = [i for i in g.fn.blocks[0].code if i.op == "cast"]
+        self.assertEqual((cast.r, g.n, g.fn.casts), ([last + 1], last + 1, [last + 1]))
+        load, = [i for i in g.fn.blocks[0].code if i.op == "mem.load"]
+        self.assertEqual((load.a[0].v, load.r), (f"%t{last + 1}", [int(value.v[2:])]))
+
+
 class MachineCheckTests(unittest.TestCase):
     def rejected(self, fn):
         errors = StringIO()

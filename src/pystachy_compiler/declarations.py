@@ -3602,7 +3602,7 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
             bad = self.scalar('xor', [Val(assigned, 'bool'), Val('true', 'bool')])
             r = self.select(own, fv, cv)
             if box != "":
-                box = self.select(own, Val(box, "%ptr"), Val(cb, "%ptr"))
+                box = self.cast(Val(self.select(own, Val(box, "%ptr"), Val(cb, "%ptr")), "%ptr"), "&dyn", "bits").v  # (the identity box's address)
         else:
             self.class_default(ci, name)
             r = self.select(own, fv, self.mem_load(Val(ci.fglob[name], "&" + p.t)))
@@ -3610,7 +3610,7 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
                 self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
             v = Val(r, p.t)
             if box != "":
-                box = self.select(own, Val(box, "%ptr"), Val(ci.fglob[name] + ".box", "%ptr"))
+                box = self.cast(Val(self.select(own, Val(box, "%ptr"), Val(ci.fglob[name] + ".box", "%ptr")), "%ptr"), "&dyn", "bits").v  # (the identity box's address)
                 self.dyn_id_read(v, box)
             return v
     shadows = self.exc_shadows(ci, name) if name in ci.fflag and name not in ci.fsure else []
@@ -3637,7 +3637,7 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
         bad = self.scalar('xor', [Val(assigned, 'bool'), Val('true', 'bool')])
         r = self.select(own, fv, cv)
         if box != "":
-            box = self.select(own, Val(box, "%ptr"), Val(cb, "%ptr"))
+            box = self.cast(Val(self.select(own, Val(box, "%ptr"), Val(cb, "%ptr")), "%ptr"), "&dyn", "bits").v  # (the identity box's address)
     if name in ci.fflag and name not in ci.fsure:
         f = self.fgep(o, ci.fflag[name])
         if bad == "":

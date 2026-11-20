@@ -25,6 +25,7 @@ from src.pystachy_compiler.memory_ir import (
     gen_verify_memory as memory_ir_verify_memory,
 )
 from src.pystachy_compiler.machine_ir import (
+    gen_erase_casts as machine_ir_erase_casts,
     gen_machine_ir as machine_ir_machine_ir,
     gen_verify_machine as machine_ir_verify_machine,
 )
@@ -627,6 +628,7 @@ from src.pystachy_compiler.conversions import (
     gen_floats as conversions_floats,
     gen_ufloats as conversions_ufloats,
     gen_from_slot as conversions_from_slot,
+    gen_slot_word as conversions_slot_word,
     gen_from_word as conversions_from_word,
     gen_is_dc as conversions_is_dc,
     gen_isnum as conversions_isnum,
@@ -793,6 +795,8 @@ from src.pystachy_compiler.emission import (
     gen_save as emission_save,
     gen_sconst as emission_sconst,
     gen_bconst as emission_bconst,
+    gen_cast as emission_cast,
+    gen_number_casts as emission_number_casts,
     gen_select as emission_select,
     gen_tmp as emission_tmp,
     gen_unreachable as emission_unreachable,
@@ -1594,6 +1598,7 @@ class Gen:
         self.iflag: dict[str, str] = {}
         self.modlevel = False
         self.n = 0
+        self.ncasts = 0  # (the casts made so far, numbered below zero until their function is complete: gen_cast)
         self.cur = "entry"
         self.term = False
         # the block convert_at's value reaches its phi from, which its caller reads at once (a
@@ -2591,8 +2596,8 @@ class Gen:
     def refl_type_of(self, v: Val, what: str, nonnull: bool = False) -> list[RLeaf]:
         return reflection_refl_type_of(self, v, what, nonnull)
 
-    def refl_class_of(self, v: Val, nonnull: bool = False) -> Val:
-        return reflection_refl_class_of(self, v, nonnull)
+    def refl_class_of(self, v: Val, nonnull: bool = False, t: str = "%ptr") -> Val:
+        return reflection_refl_class_of(self, v, nonnull, t)
 
     def refl_type_attr(self, x: Node, what: str) -> Val:
         return reflection_refl_type_attr(self, x, what)
@@ -2888,6 +2893,9 @@ class Gen:
     def verify_memory(self, fn: IFn, b: Blk, i: Ins, slots: bool) -> None:
         return memory_ir_verify_memory(self, fn, b, i, slots)
 
+    def erase_casts(self, fn: IFn) -> None:
+        return machine_ir_erase_casts(self, fn)
+
     def machine_ir(self, fn: IFn) -> None:
         return machine_ir_machine_ir(self, fn)
 
@@ -2932,6 +2940,12 @@ class Gen:
 
     def select(self, c: str, x: Val, y: Val) -> str:
         return emission_select(self, c, x, y)
+
+    def cast(self, v: Val, t: str, kind: str) -> Val:
+        return emission_cast(self, v, t, kind)
+
+    def number_casts(self) -> None:
+        return emission_number_casts(self)
 
     def rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
         return emission_rt(self, name, ret, args, x)
@@ -3007,6 +3021,9 @@ class Gen:
 
     def from_slot(self, s: str, t: str) -> Val:
         return conversions_from_slot(self, s, t)
+
+    def slot_word(self, v: Val) -> Val:
+        return conversions_slot_word(self, v)
 
     def from_word(self, s: str, t: str) -> Val:
         return conversions_from_word(self, s, t)
@@ -3997,8 +4014,8 @@ class Gen:
     def usplits(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], v: str, seen: dict[str, bool], optional: bool = False) -> bool:
         return optimizations_usplits(self, fn, defs, uses, v, seen, optional)
 
-    def uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
-        return optimizations_uparts(self, fn, defs, v, t, parts, before, after, heads)
+    def uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]], words: dict[str, str]) -> list[str]:
+        return optimizations_uparts(self, fn, defs, v, t, parts, before, after, heads, words)
 
     def uleaves(self, fn: IFn, uses: dict[str, list[list[int]]], i: Ins, split: dict[str, Ins]) -> bool:
         return optimizations_uleaves(self, fn, uses, i, split)
@@ -5939,8 +5956,8 @@ class Gen:
     def utag(self, t: str) -> int:
         return unions_utag(self, t)
 
-    def ubox(self, v: Val, m: str) -> str:
-        return unions_ubox(self, v, m)
+    def ubox(self, v: Val, m: str, u: str) -> str:
+        return unions_ubox(self, v, m, u)
 
     def uget(self, u: Val, m: str) -> Val:
         return unions_uget(self, u, m)

@@ -2,7 +2,7 @@
 from __future__ import annotations
 import os
 from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_lists, int_program
-from src.pystachy_compiler.ir import Blk, IFn, Ins, Lookup, Loop, Val, Values, tmpname, one_num
+from src.pystachy_compiler.ir import Blk, IFn, Ins, Lookup, Loop, Val, Values, cast_number, real_n, real_ops, tmpname, one_num
 from src.pystachy_compiler.ircheck import EffectSummaries
 from src.pystachy_compiler.specs import CANON_DEPTH, FXALL, FXBIT, LOOKUPS, NONEVAR, RAWW, REACH
 from src.pystachy_compiler.utils import is_list, is_opt, is_tuple, is_union, umembers
@@ -415,14 +415,14 @@ def ascii_char_test(code: list[Ins], x: int, counts: dict[str, int], literals: l
 def gen_charslots(self, fn: IFn) -> int:
     # Try one private slot whose sole store immediately follows text.get. Bound
     # the work per function and skip suspendable frames and exception regions.
-    if self.rtmode or fn.coro or fn.f.cmpops or fn.tries or fn.n > 512 or len(fn.blocks) > 128:
+    if self.rtmode or fn.coro or fn.f.cmpops or fn.tries or real_n(fn) > 512 or len(fn.blocks) > 128:
         return 0
     slots = {f"%{s.s or 'h'}.{s.r[0]}": s for s in fn.slots if s.k == 0 and s.t == "str"}
     if not slots:
         return 0
     size = 0
     for block in fn.blocks:
-        size += len(block.code)
+        size += real_ops(block.code)
         if size > 1024:
             return 0
     addr = ""
@@ -768,7 +768,7 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
         return None
     region: dict[str, bool] = {lp.head: True}
     pending = [lp.body]
-    ops = len(fn.blocks[at[lp.head]].code)
+    ops = real_ops(fn.blocks[at[lp.head]].code)
     while len(pending) > 0:
         l = pending.pop()
         if l in region or l == lp.exit:
@@ -777,7 +777,7 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
             return None
         region[l] = True
         b = fn.blocks[at[l]]
-        ops += len(b.code)
+        ops += real_ops(b.code)
         if ops > GUARD_OPS or b.handler != "":
             return None
         for s in b.code[len(b.code) - 1].b:
@@ -814,7 +814,7 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
                 if callee.coro or callee.f.export or callee.f.pyexport:
                     continue
                 for cb in callee.blocks:
-                    ops += len(cb.code)
+                    ops += real_ops(cb.code)
                 if ops > GUARD_OPS:
                     return None
                 plan.inline.append(i)
@@ -1008,6 +1008,8 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
                     numbers[r] = fn.n
                     if tmpname(r) in fn.fa:
                         fn.fa[tmpname(fn.n)] = True
+                    if i.op == "cast":
+                        fn.casts.append(fn.n)  # (a copy of a cast is a cast: erase_casts)
     fn.n += 1
     test = Blk(f"L{fn.n}")
     # each base's register: a slot base's is the test's load of the slot, which the copy reads in
@@ -1511,6 +1513,9 @@ def gen_unionslots(self, fn: IFn) -> int:
     repl: dict[str, list[Ins]] = {}  # "j:x" -> the ops that replace it
     heads: dict[int, list[Ins]] = {}  # block j -> phis to put after its phis
     ren: dict[str, str] = {}  # a value -> the value that replaces it
+    packed: list[Val] = []  # (the operands of the casts of payloads' bits, named once ren has renamed their readers)
+    packs: list[str] = []
+    words: dict[str, str] = {}  # a payload's opaque bits -> the cast that reads them as an int (payload_int)
     for addr in split:
         for u in uses[addr]:
             i = fn.blocks[u[0]].code[u[1]]
@@ -1542,6 +1547,17 @@ def gen_unionslots(self, fn: IFn) -> int:
                     p.a = [Val(parts[v][1], "int")]
                     p.r = one_num(o.r[1])
                     repl[f"{w[0]}:{w[1]}"] = [p]
+                    if o.op == "union.payload":
+                        # (its bits, read as the packed member that its tag proved by a bits cast,
+                        # which the payload's readers read)
+                        c = Ins("cast", o.t, "bits")
+                        c.line = o.line
+                        c.a = [Val("", "%slot")]
+                        c.r = one_num(cast_number(fn))
+                        ren[tmpname(o.r[1])] = tmpname(c.r[0])
+                        packed.append(c.a[0])
+                        packs.append(tmpname(o.r[1]))
+                        repl[f"{w[0]}:{w[1]}"] = [p, c]
             if self.uleaves(fn, uses, i, split):  # (a copy to a slot that splits stores the parts)
                 # (the box that leaves, as the value it replaces)
                 box = Ins("rt", "%ptr", "ubox")
@@ -1555,7 +1571,7 @@ def gen_unionslots(self, fn: IFn) -> int:
             i = fn.blocks[u[0]].code[u[1]]
             if i.op != "mem.store":
                 continue
-            q = self.uparts(fn, defs, i.a[1].v, split[addr].t, parts, before, after, heads)
+            q = self.uparts(fn, defs, i.a[1].v, split[addr].t, parts, before, after, heads, words)
             ops = []
             for k in range(2):
                 st = Ins("mem.store", "", "")
@@ -1584,6 +1600,8 @@ def gen_unionslots(self, fn: IFn) -> int:
             for a in i.a:
                 if a.v in ren:
                     a.v = ren[a.v]
+    for j in range(len(packed)):
+        packed[j].v = packs[j]
     fn.slots = [s for s in fn.slots if s.k != 0 or f"%{s.s or 'h'}.{s.r[0]}" not in split]  # (its flag stays)
     gone = 1
     while gone > 0:
@@ -1597,7 +1615,7 @@ def gen_unionslots(self, fn: IFn) -> int:
         for b in fn.blocks:
             code = []
             for i in b.code:
-                pure = (i.op == "rt" and (i.s == "ubox" or i.s == "box")) or i.op == "slot.pack" or (i.op == "slot.unpack" and is_opt(i.t)) or i.op == "union.tag" or i.op == "union.payload" or i.op == "union.raw" or (i.op == "phi" and (is_union(i.t) or is_opt(i.t) or i.t == "int"))
+                pure = (i.op == "rt" and (i.s == "ubox" or i.s == "box")) or i.op == "slot.pack" or (i.op == "slot.unpack" and is_opt(i.t)) or i.op == "union.tag" or i.op == "union.payload" or i.op == "union.raw" or (i.op == "phi" and (is_union(i.t) or is_opt(i.t) or i.t == "int")) or i.op == "cast"
                 if pure and len([r for r in i.r if tmpname(r) in used]) == 0:
                     gone += 1
                 else:
@@ -1656,11 +1674,34 @@ def gen_usplits(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[
         return (i.op == "rt" and i.s == "box") or optional_dict_source(fn, defs, uses, v) is not None
     return True
 
-def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
-    # the tag and the payload's bits of value v of union t (unionslots): a ubox's operands; a
-    # phi's as two phis, put after the phis of its block, of its incoming values' parts; else
-    # what union.tag and union.raw read of the box, put where v is made (a parameter: as the
-    # function begins), so that they are there wherever v is
+def payload_int(fn: IFn, defs: dict[str, list[int]], v: str, after: dict[str, list[Ins]], words: dict[str, str]) -> str:
+    # payload v of a value that unionslots splits, as the int that its payload slot holds: v, or
+    # where an op other than an rt op makes v as opaque bits (%slot: a box's payload that
+    # to_slot packs), a bits cast that reads them so, put after it (words: those made so far)
+    if v in words:
+        return words[v]
+    if v not in defs:
+        return v
+    d = defs[v]
+    i = fn.blocks[d[0]].code[d[1]]
+    if i.t != "%slot" or i.op == "rt":
+        return v
+    c = Ins("cast", "int", "bits")
+    c.line = i.line
+    c.a = [Val(v, "%slot")]
+    c.r = one_num(cast_number(fn))
+    key = f"{d[0]}:{d[1]}"
+    if key not in after:
+        after[key] = []
+    after[key].append(c)
+    words[v] = tmpname(c.r[0])
+    return words[v]
+
+def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]], words: dict[str, str]) -> list[str]:
+    # the tag and the payload's bits of value v of union t (unionslots), as the ints its slots
+    # hold (payload_int): a ubox's operands; a phi's as two phis, put after the phis of its
+    # block, of its incoming values' parts; else what union.tag and union.raw read of the box,
+    # put where v is made (a parameter: as the function begins), so that they are there wherever v is
     if v in parts:
         return parts[v]
     if is_opt(t) and v == "null":
@@ -1705,10 +1746,10 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
         after[key].extend(ops)
         return parts[v]
     if is_opt(t) and i.op == "rt" and i.s == "box":
-        parts[v] = ["1", i.a[0].v]
+        parts[v] = ["1", payload_int(fn, defs, i.a[0].v, after, words)]
         return parts[v]
     if i.op == "rt" and i.s == "ubox":
-        parts[v] = [i.a[0].v, i.a[1].v]
+        parts[v] = [i.a[0].v, payload_int(fn, defs, i.a[1].v, after, words)]
         return parts[v]
     if i.op == "phi":
         ph: list[Ins] = []
@@ -1722,7 +1763,7 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
             ph.append(p)
         parts[v] = [tmpname(ph[0].r[0]), tmpname(ph[1].r[0])]  # (first: a loop's phi meets itself)
         for k in range(len(i.a)):
-            q = self.uparts(fn, defs, i.a[k].v, t, parts, before, after, heads)
+            q = self.uparts(fn, defs, i.a[k].v, t, parts, before, after, heads, words)
             for h in range(2):
                 ph[h].a.append(Val(q[h], "int"))
                 ph[h].b.append(i.b[k])
@@ -1740,12 +1781,16 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
     pl.a = [Val(v, t)]
     pl.r = [fn.n + 1, fn.n + 2]
     fn.n += 2
-    parts[v] = [tmpname(tg.r[0]), tmpname(pl.r[1])]
+    c = Ins("cast", "int", "bits")  # (its bits, as the int that the payload slot holds)
+    c.line = i.line
+    c.a = [Val(tmpname(pl.r[1]), "%slot")]
+    c.r = one_num(cast_number(fn))
+    parts[v] = [tmpname(tg.r[0]), tmpname(c.r[0])]
     key = f"{d[0]}:{d[1]}" if d[1] >= 0 else "0:0"
     at = after if d[1] >= 0 else before
     if key not in at:
         at[key] = []
-    at[key].extend([tg, pl])
+    at[key].extend([tg, pl, c])
     return parts[v]
 
 def gen_uleaves(self, fn: IFn, uses: dict[str, list[list[int]]], i: Ins, split: dict[str, Ins]) -> bool:
@@ -1825,6 +1870,12 @@ def gen_canon(self, vs: Values, v: str) -> str:
     # overflow the native compiler's stack)
     if v in vs.cn:
         return vs.cn[v]
+    if v in vs.casts:
+        # (a cast's value is the value it reads, which its uses read once lowering erases it: it
+        # takes no call of its own toward CANON_DEPTH)
+        r = self.canon(vs, vs.casts[v])
+        vs.cn[v] = r
+        return r
     if vs.depth >= CANON_DEPTH:
         vs.cn[v] = v
         return v

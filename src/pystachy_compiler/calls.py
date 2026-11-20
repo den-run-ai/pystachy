@@ -716,9 +716,9 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
         vals.append(value)
     o = self.unwrap(o, "TypeError: 'NoneType' object is not callable")
     code = self.mload('%ptr', o.v)
-    env = self.mload('%ptr', self.maddr('%ptr', f'{o.v}', '1', True))
+    env = self.mload('env', self.maddr('%ptr', f'{o.v}', '1', True))
     c = Ins("icall", ts[0], "")
-    c.a = [Val(code, "env"), Val(env, "env")] + vals
+    c.a = [Val(code, "%ptr"), Val(env, "env")] + vals  # (its code: a machine pointer, as lowering calls it)
     idresult = ""
     if dynamic_program():
         # (the whole program's ABI: code that does not track identity passes no objects, Gen.idhere)

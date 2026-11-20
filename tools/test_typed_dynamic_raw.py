@@ -34,12 +34,16 @@ class DynamicRawTests(unittest.TestCase):
     def test_builder_has_no_member_claim_or_effects(self):
         g = Gen()
         value = g.dyn_raw(Val("%a0", "dyn"))
-        ins, = g.fn.blocks[0].code
+        ins, cast = g.fn.blocks[0].code
         self.assertEqual((ins.op, ins.t, ins.s, ins.x, ins.k, ins.b),
                          ("dyn.raw", "%slot", "", "", 0, []))
-        self.assertEqual((value.v, value.t), ("%t" + str(ins.r[1]), "int"))
         self.assertEqual(g.nums(ins), 2)
         self.assertEqual(g.opfx(ins, {}), 0)
+        # (its bits, read as an int by a bits cast, which claims no Python type either)
+        self.assertEqual((cast.op, cast.t, cast.s, [(a.v, a.t) for a in cast.a]),
+                         ("cast", "int", "bits", [("%t" + str(ins.r[1]), "%slot")]))
+        self.assertEqual((value.v, value.t), ("%t" + str(cast.r[0]), "int"))
+        self.assertEqual(g.opfx(cast, {}), 0)
 
     def test_lowering_preserves_the_existing_two_load_instructions(self):
         c, _ = raw_case()
@@ -68,7 +72,8 @@ class DynamicRawTests(unittest.TestCase):
             for swap in (False, True):
                 with self.subTest(predicate=pred, swap=swap):
                     c, bits = raw_case()
-                    args = [(bits, "int"), ("0", "int")]
+                    word = c.op("cast", "int", "bits", a=[(bits, "%slot")])
+                    args = [(word, "int"), ("0", "int")]
                     c.op("num.cmp", "bool", pred, a=args[::-1] if swap else args)
                     c.ret()
                     c.g.verify(c.fn, False)
@@ -111,6 +116,26 @@ class DynamicRawTests(unittest.TestCase):
                     c.op("num.cmp", "bool", "<", a=[(bits, "int"), ("0", "int")])
                 else:
                     c.op("num.cmp", "bool", "==", a=[(bits, "float"), ("0.0", "float")])
+                c.ret()
+                self.assert_bad(c, "dyn.raw bits require")
+
+    def test_the_cast_word_is_only_compared_for_equality(self):
+        for operation in ("arithmetic", "store", "phi", "ordering", "other cast"):
+            with self.subTest(operation=operation):
+                c, bits = raw_case()
+                word = c.op("cast", "int", "bits", a=[(bits, "%slot")])
+                if operation == "arithmetic":
+                    c.op("scalar.bin", "int", "add", a=[(word, "int"), ("1", "int")])
+                elif operation == "store":
+                    c.op("mem.store", a=[("@output", "&int"), (word, "int")])
+                elif operation == "phi":
+                    c.op("br", b=["join"])
+                    c.block("join")
+                    c.op("phi", "int", a=[(word, "int")], b=["entry"])
+                elif operation == "ordering":
+                    c.op("num.cmp", "bool", "<", a=[(word, "int"), ("0", "int")])
+                else:
+                    c.op("cast", "*float", "bits", a=[(bits, "%slot")])
                 c.ret()
                 self.assert_bad(c, "dyn.raw bits require")
 

@@ -343,6 +343,10 @@ class IFn:
         # the last number its builder gave (%tN, LN, %name.N), once it is complete: a pass that
         # adds values or blocks numbers them after it (the IR check checks that none is above it)
         self.n = 0
+        # the numbers given to its casts (Gen.number_casts, cast_number), which lowering takes
+        # out with them (Gen.erase_casts); n less these counts what it would have numbered had it
+        # made no cast (real_n)
+        self.casts: list[int] = []
         self.fa: dict[str, bool] = {}  # the values that are addresses of an object's field or flag (Gen.fgep)
         # a generator function's (FnInfo.gen): a presplitcoroutine, whose gen.start op ends its entry
         # block. With exceptions on (Gen.eh): gpad, the landing block around its body (it finishes
@@ -358,6 +362,29 @@ class IFn:
         # resumer's), and of its own where it suspended in an except clause or a finally block
         self.gouter = ""
         self.ghand = ""
+
+
+def cast_number(fn: IFn) -> int:
+    # the number of a cast that a pass adds to fn, after its other numbers (IFn.casts)
+    fn.n += 1
+    fn.casts.append(fn.n)
+    return fn.n
+
+
+def real_n(fn: IFn) -> int:
+    # how many numbers fn would have had had no cast been made (IFn.casts): what a pass's limit on
+    # a function's size reads, which no cast may change
+    return fn.n - len(fn.casts)
+
+
+def real_ops(code: list[Ins]) -> int:
+    # how many of the ops of code lowering prints: no cast (Gen.erase_casts), which a pass's limit
+    # on a loop's or a function's size does not count
+    n = len(code)
+    for i in code:
+        if i.op == "cast":
+            n -= 1
+    return n
 
 
 class Lookup:
@@ -392,10 +419,13 @@ class Values:
         self.fieldtype: dict[str, str] = {}  # canonical field address -> declared class
         self.fieldindex: dict[str, int] = {}  # canonical field address -> member index
         self.depth = 0  # how many calls of Gen.canon are under way (at most CANON_DEPTH)
+        self.casts: dict[str, str] = {}  # a cast's value -> the value it reads, which Gen.canon makes it
         for j in range(len(fn.blocks)):
             code = fn.blocks[j].code
             for x in range(len(code)):
                 i = code[x]
+                if i.op == "cast" and len(i.r) == 1:
+                    self.casts[tmpname(i.r[0])] = i.a[0].v
                 how = VALUE_AT.get(i.op, 0)
                 if how == 1 and len(i.r) == 1:
                     self.at[i.r[0]] = j * self.stride + x

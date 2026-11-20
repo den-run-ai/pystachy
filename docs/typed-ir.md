@@ -170,9 +170,9 @@ holds an `A` have every effect, as an `O` does.
 
 Identity comparisons use a separate pure `dyn.raw` operation: its empty `s` claims no
 Python type, and its `%slot` result is only opaque payload bits. With
-`PYSTACHY_IRCHECK=1`, those bits may appear only as a direct integer `==` or `!=`
-operand; no arithmetic, pointer conversion, store, call, phi or select may consume
-them, and the operation's internal address cannot escape. This distinguishes a
+`PYSTACHY_IRCHECK=1`, those bits may appear only as a `bits` [cast](#casts) to an `int`, which
+only a direct integer `==` or `!=` may read; no arithmetic, pointer conversion, store, call,
+phi or select may consume them, and the operation's internal address cannot escape. This distinguishes a
 float's or reference's identity bits from a typed integer extraction while keeping
 the same LLVM loads. A live, non-null box remains a frontend obligation. The result
 does not establish that its source has any particular dynamic type.
@@ -264,6 +264,7 @@ specialized classes are supplied by the frontend; the IR does not turn them into
 | Fixed tuple slots | `tuple.load`, `tuple.store` |
 | Object layout addresses | `field.addr` |
 | Container payload conversions | `slot.pack`, `slot.unpack` |
+| A value read at another type of its LLVM type, which lowering erases | `cast` |
 | Fresh empty result layout | `empty.kind` (typed dict/set key kind, or a deferred result hole) |
 | Closed union reads | `union.tag`, `union.payload`, `union.raw` |
 | Dynamic box reads | `dyn.type`, `dyn.payload`, `dyn.raw` |
@@ -302,9 +303,10 @@ An operand's type is how its instruction reads the value. In MLIR a value has on
 every use shares, and an op converts it. With `PYSTACHY_IRCHECK=1`, after each operation's own
 checks, the verifier requires an operand that names a result, a parameter or a slot's register
 to read it at the type its definition gives, or by one of the views of the third table
-(`TYPE_VIEWS`): readings of the same bits that no op writes yet, such as a `%slot` result read
-as `int` or a runtime call's `list[T]` read as `list[int]`. Any other difference is an error:
-an `int` read as a `float`, a `list[int]` as a `list[str]`, a class as an unrelated class.
+(`TYPE_VIEWS`): readings of the same bits that no op writes yet, such as a runtime call's
+`%slot` result read as `int` or its `list[T]` read as `list[int]`. Any other difference is an
+error: an `int` read as a `float`, a `list[int]` as a `list[str]`, a class as an unrelated
+class, another op's `%ptr` as a `str`. A [cast](#casts) makes the reading explicit instead.
 An address has a type of its own, `&T`, and a packed slot (an eight-byte word that holds a
 `T`) the type `*T`, so no view reads one as the other: a slot's register, `field.addr` and the
 identity result's `%idret` define addresses, which memory ops, compiled calls and phis read.
@@ -313,9 +315,10 @@ An op that makes a packed slot gives it its type: `slot.pack`, a list read, a tu
 type: a box's payload bits, a raw identity word, a word that a runtime call returns as an
 `int`, which `slot.unpack` then reads through `%slot`. A value whose definition gives only a
 machine type, a runtime type variable or a placeholder is read at related types by every
-operand that names its own. The views that narrow (`bits`, `opt[U]` read as `U`, a derived
-class, other union members) take the frontend's word for a test before them: they are the
-casts that MLIR would write as ops.
+operand that names its own. The views that narrow (`bits` of a runtime call's word, `opt[U]`
+read as `U`, a derived class, other union members) take the frontend's word for a test before
+them: they are the casts that MLIR would write as ops, and the fourth table's kinds of `cast`
+write some of them so.
 
 Some result numbers only name an intermediate LLVM value of their operation's lowering:
 `ovf`'s `{i64, i1}` pair, the three addresses of `list.load`, the address of a `tuple.load`.
@@ -357,6 +360,7 @@ one, whatever block defines it.
 | `field.addr` | none | 1 | 1 | 0 | `t`, `k` | first | `class -> &$F` |
 | `slot.pack` | none | 1 | 1 | 0 | `t` | first | `native -> packed` |
 | `slot.unpack` | none | 1 | 1 | 0 | `t` | first | `packed -> native` |
+| `cast` | none | 1 | 1 | 0 | `t`, `s` | none | `any -> any` |
 | `scalar.bin` | none | 1 to 2 | 1 | 0 | `t`, `s`, `x` | first | `$T:arith, $T -> $T` |
 | `scalar.cast` | none | 1 | 1 | 0 | `t`, `s` | first | `bits -> bits` |
 | `scalar.cmp` | none | 2 | 1 | 0 | `t`, `s` | first | `$T:bits, $T -> bool` |
@@ -409,7 +413,7 @@ one, whatever block defines it.
 | Type view | An operand of type U reads a value of definition type D where |
 |---|---|
 | `machine` | U is D's machine type: %ptr for a reference, an address &T or None (null), %slot for a packed slot *T or an int, %addr for a slot's address |
-| `bits` | D is %ptr, read as a reference or an address &T; or D is %slot, read as an int, a packed slot *T or an rt op's bool |
+| `bits` | D is %ptr, read as a reference or an address &T, or %slot, read as an int, a packed slot *T or an rt op's bool, where an rt op defines it (its RUNTIME result type) or an rt op's operand of a runtime type variable (*T, S) reads it; another op's word is read through a bits cast |
 | `instance` | D or U holds an empty container's placeholder (list[?], or opt[None] for a local first assigned None) or a runtime type variable (T K V S), in an rt op's result or operand or where no class has its name: each stands for one type |
 | `alias` | one object by two types: a str and a bytes, an exc and its exctype, a recursive alias rec[A] and A's definition, a set, a frozenset and an AbstractSet, a fixed tuple and a keyword record (kw[...]), a generator with and without its return type; inside brackets an int and an int+, and inside a tuple's a bool read as an int |
 | `int slot` | an int read as a packed slot *int, which holds its value, and back |
@@ -417,13 +421,50 @@ one, whatever block defines it.
 | `class` | a class read as a class derived from it, as one of its bases or as a class derived from a base that has a common derived class with it; a closed union read as one with a common member |
 | `runtime bool` | an rt op's bool result, which the runtime ABI passes as an int, read as an int; an int read as an rt op's bool operand |
 | `method` | a bound method fn[m:C.f] or fn[d:f:C] read as its receiver C, and back; a closure fn[c:...] read as its env |
-| `opaque` | in lib/_pystachy_copy.py, whose private primitives keep any reference in the deep-copy memo as a str: a reference read as a str, and back |
+
+| Cast kind | Reads |
+|---|---|
+| `bits` | a machine word as a typed value: %ptr as a reference or an address &T, %slot as an int or a packed slot *T |
+| `object` | %ptr as a closed union of classes: the object that a box of the union holds (Gen.cmp_object), which only a ptr.cmp, a mach.load of its class word and member casts read |
+| `member` | an object cast's value as one of its union's classes or a class derived from one, which a test of the object's class proves |
+| `opaque` | a reference as a str, and back, in lib/_pystachy_copy.py, whose deep-copy memo keeps any reference as a str |
 
 <!-- typed-ir-ops: end -->
 
 "Per instruction" effects are a call's (its runtime entry's or its callee's summary) or a
 memory operation's (its address's): see [effects](#effects). An invoke is a call that an
 exception edge has made end its block.
+
+### Casts
+
+A `cast` reads its operand's value at another type of the same LLVM type (`utils.lt`), as
+`%t9 = cast bits (%ptr %t8) : &int` reads a closure environment's word as the address of the
+variable's cell. Its text is its kind (the fourth table, `CAST_KINDS`), and with
+`PYSTACHY_IRCHECK=1` the verifier holds it to its kind's rule (`ircheck.cast_error`): a `bits`
+cast reads a machine word as a typed value, an `object` cast reads the object that a box of a
+closed union of classes holds as that union, and only identity tests, a load of its class word
+and `member` casts, which read it as one of the union's classes once a test of its class tag
+has passed, may read that value; an `opaque` cast reads a reference as a `str` and back in the
+deep-copy memo of `lib/_pystachy_copy.py`. Like the views that narrow, a cast takes the
+frontend's word for what it reads; unlike them it is an op, which the verifier checks and the
+passes see. The frontend makes them where an operand used to read another op's machine word as a
+typed value: a closure's cells, numeric identity boxes' addresses, dynamic identity words, a
+tuple's `Mpz` words, the payload bits that `unionslots` keeps in an `int` slot, and the
+comparison of a union of classes' objects ([#1603](https://github.com/den-run-ai/pystachy/issues/1603)).
+Where an op can state a word's type, it does instead: a `mach.load` of an exception, a
+generator's name or a frozenset constant, a `select` that boxes an object as a union, a `phi`
+of class objects.
+
+A cast has no effect, and LLVM lowering erases it (`Gen.erase_casts`, its first step): an operand
+that reads a cast reads what it casts, at the operand's own type. Its value's number would
+shift every later LLVM name, so `Gen.cast` numbers it below zero while its function is built
+and `Gen.number_casts` numbers the function's casts after its last value once it is complete;
+`IFn.casts` keeps those numbers and a pass's casts, which `cast_number` numbers as the pass's
+other values. Lowering then takes the casts' numbers out, every number above one one less for
+each below it, so that the LLVM text is the one the program would have without casts. Values
+(`Gen.canon`), the union proofs and the passes' size limits (`real_n`, `real_ops`) take a cast
+for its operand, and the Lean adapters read a snapshot's functions without their casts
+(`check_lean_boundary.erase_casts`); the shape checker reads them as they are.
 
 The operation registry is closed: unknown operations, including `raw`, are rejected.
 Operations carry typed operands and finite operators, predicates, flags and metadata;
@@ -472,7 +513,8 @@ element representations, operand agreement, result count and allocation declarat
 
 `tuple.load` and `tuple.store` retain a fixed tuple's type, constant item index and
 declared item type while transferring the item's packed slot `*T` (a promoting int's
-64-bit `*int`; a word past the items, its Mpz pointer, is the untyped `%slot`). The verifier
+64-bit `*int`; a word past the items, its Mpz pointer, is the untyped `%slot`, which a `bits`
+cast reads as an `int`). The verifier
 checks that the index selects that member and that load results and store operands are
 its packed slot or `%slot`. Native
 packing and unpacking remain separate typed operations. These instructions replace raw
@@ -532,8 +574,8 @@ provably disjoint fresh storage retain facts across unrelated writes.
 Standalone tag reads and box construction also require these proofs. An integer
 machine load whose defined source is a union is checked as a tag read, including its
 nonnull requirement; one from a `tuple[T, ...] | None` reads its length word, no tag. A
-machine-pointer `select` between `None` and boxes built in the function (an object that may
-be `None` is boxed this way) has those boxes' members and `None`, whatever is known of its
+`select` of the union's type between `None` and a box built in the function (an object that
+may be `None` is boxed this way) has that box's members and `None`, whatever is known of its
 condition: a later read still needs its own None test. Simple guards of immutable,
 nonnullable union parameters can be proved by a bounded predecessor walk without allocating
 dataflow states. Mutable slots, nullable sources, raw payload transport and unsupported
@@ -970,7 +1012,8 @@ see [architecture](internals.md#errors-and-cleanup) for the runtime overview.
 
 ## Machine lowering
 
-`Gen.lower` begins with `Gen.machine_ir`, the last typed-IR stage. Until then a read of a
+`Gen.lower` begins with `Gen.erase_casts` (see [casts](#casts)) and `Gen.machine_ir`, the last
+typed-IR stage. Until then a read of a
 runtime layout keeps its meaning: `list.len`, `union.tag`, `union.payload`, `union.raw`,
 `dyn.type`, `dyn.payload` and `dyn.raw` carry their receiver's type, effects and guard proofs
 through the passes, the verifier and the inspection snapshots. The stage rewrites each into the
@@ -1077,8 +1120,8 @@ value number that an operand reads. It proves no dominance, typing or lowering p
 Typed instruction coverage is complete for the LLVM backend. Further backend neutrality
 needs shared compiler/runtime layout definitions and a clearer separation of frontend
 elaboration from machine contracts. Operands still read values through the views of
-`TYPE_VIEWS`: precise result types for runtime calls and empty containers, and
-conversion ops for the views that narrow would leave each value one type, as MLIR's are. WebAssembly GC, more general check elimination and a
+`TYPE_VIEWS`: precise result types for runtime calls and empty containers, and casts for the
+other views that narrow would leave each value one type, as MLIR's are. WebAssembly GC, more general check elimination and a
 Python-object representation backend are design possibilities, not supported modes.
 
 CPython extension modules **are supported** through `pystachy ext` and boundary wrappers.

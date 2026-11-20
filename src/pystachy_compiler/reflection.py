@@ -373,22 +373,22 @@ def gen_refl_type_of(self, v: Val, what: str, nonnull: bool = False) -> list[RLe
     return [RLeaf(c, "", Val("", c)) for c in cs]
 
 
-def gen_refl_class_of(self, v: Val, nonnull: bool = False) -> Val:
-    # the reflection record of v's exact type (CPython's type(v)), as a machine pointer: one
-    # record where its static type decides, else a phi over the dispatch's leaves (LLVM makes a
-    # switch, or a lookup table, of the chain)
+def gen_refl_class_of(self, v: Val, nonnull: bool = False, t: str = "%ptr") -> Val:
+    # the reflection record of v's exact type (CPython's type(v)), as a machine pointer or as the
+    # class object of type t (type[C]), which it is: one record where its static type decides,
+    # else a phi over the dispatch's leaves (LLVM makes a switch, or a lookup table, of the chain)
     cs = self.refl_type_of(v, "__name__", nonnull)
     if len(cs) == 1:
-        return Val(self.refl_record(cs[0].c), "%ptr")
+        return Val(self.refl_record(cs[0].c), t)
     leaves = self.refl_split(v, nonnull)
     end = self.label()
-    ph = Ins("phi", "%ptr", "")
+    ph = Ins("phi", t, "")
     for lf in leaves:
         self.place(lf.label)
         self.incoming(ph, self.refl_record(lf.c), self.cur)
         self.br(end)
     self.place(end)
-    return Val(self.phi(ph), "%ptr")
+    return Val(self.phi(ph), t)
 
 
 def gen_refl_type_attr(self, x: Node, what: str) -> Val:
@@ -2925,11 +2925,13 @@ def gen_copy_prim(self, name: str, args: list[Node]) -> Val:
                 o = unopt(self.expr(args[1], "").t)
                 if t != o and not (t in self.classes and o in self.classes and self.derives(t, o)):
                     self.err(f"internal error: the memo's copy of a {typestr(o)} would be a {typestr(t)}")
-            return Val(x.v, "str")
+            # (the reference, read as the str that the memo's list keeps: an opaque cast)
+            return x if x.t == "str" else self.cast(x, "str", "opaque")
         like = self.expr(args[1], "")
         if like.t == "dyn":
             return Val(self.rt("pys_dyn_copy_restore", "ptr", [f"ptr {x.v}", f"ptr {like.v}"]), "dyn")
-        return Val(x.v, unopt(like.t))
+        # (the str that the memo's list kept, read back as the type of the original: an opaque cast)
+        return x if unopt(like.t) == x.t else self.cast(x, unopt(like.t), "opaque")
     if name == "__pys_deepcopy_list":
         if t == "dyn":
             return Val(self.rt("pys_dyn_copy_list", "ptr", [f"ptr {x.v}"]), "dyn")

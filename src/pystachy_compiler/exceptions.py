@@ -208,7 +208,7 @@ def gen_try_(self, n: Node) -> None:
             fx.conts.append(self.label())
             self.br(fx.entry)
             self.place(fx.conts[-1])
-            self.throw(Val(self.mload('%ptr', sl), "exc"))
+            self.throw(Val(self.mload('exc', sl), "exc"))
         else:
             self.exits.append(Exit("handler", old, outer))  # (a break or return in F drops the exception)
             self.excs.append(e)
@@ -550,7 +550,7 @@ def gen_landing(self, l: str, slot: str, mark: Val) -> Val:
     self.put(i, 2)
     self.term = True
     self.place(j)
-    x = self.mload('%ptr', slot)
+    x = self.mload('exc', slot)
     if not self.rtmode:
         active = self.mload("int", self.fn.gdepth) if self.fn.gdepth != "" else self.fn.rdepth
         self.fn.landed = self.fn.landed or self.fn.gdepth == ""
@@ -908,7 +908,7 @@ def gen_exc_str_args(self, msg: str) -> str:
     if msg.startswith("@s."):
         return self.sconst("''") if self.strvals[int(msg[3:])] == "" else "null"
     empty = self.num_cmp('==', Val(self.mload('int', msg), "int"), Val("0", "int"))  # (its length in bytes)
-    return self.select(empty.v, Val(self.sconst("''"), "%ptr"), Val("null", "%ptr"))
+    return self.select(empty.v, Val(self.sconst("''"), "str"), Val("null", "str"))
 
 def gen_exc_value(self, name: str, vals: list[Val]) -> Val:
     # the exception name(*vals) of a builtin class name (pys_exc_new): str(e), and what repr(e)
@@ -1807,7 +1807,7 @@ def gen_exc_call(self, c: Val, args: list[Node], how: int = 0) -> Val:
     self.cbr(self.scalar_cmp('eq', Val(fp, '%ptr'), Val('null', '%ptr')), l2, l1)
     self.place(l1)
     i = Ins("icall", "exc", "")
-    i.a = [Val(fp, "env")] + [v for v in vals if v.t != "None"]  # (an argument that is None is not passed)
+    i.a = [Val(fp, "%ptr")] + [v for v in vals if v.t != "None"]  # (its code; an argument that is None is not passed)
     if dynamic_program():
         if not self.idhere() and any(numeric_identity(v.t) for v in vals):
             self.identity_event("call of an exception class value")  # (it may be one of tracking code: dynamic.py)
