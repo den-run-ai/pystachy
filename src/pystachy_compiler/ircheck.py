@@ -621,7 +621,8 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
     # passes of eh_ir have run, eh): a landing op is alone in its block, which only the unwind
     # edges of invokes reach, and every invoke's unwind edge goes to one; in a block that a
     # try statement covers, no call that may raise is left a call, nor a raise or throw. In a
-    # function the compiler built (IFn.located), every op, a slot too, has its source line
+    # function the compiler built (IFn.located), every op, a slot too, has its source line, but
+    # in a raise block that checks on several lines share, line 0 with line tables (#1562)
     at: dict[str, int] = {}
     union_types: dict[str, list[str]] = {}
     union_proofs = False
@@ -632,6 +633,11 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
     temps: dict[str, str] = {}  # (each lowering temporary that an op defines, OP_TEMPS: its op)
     objects: dict[str, bool] = {}  # (the values of object casts, which few ops may read: cast_error)
     casts = False
+    # (the raise block that the checks of one message share: with line tables, line 0 where those
+    # checks are on several lines, as LLVM numbers code merged from several lines, #1562)
+    shared: dict[str, bool] = {}
+    for key in fn.cold:
+        shared[fn.cold[key]] = True
     for b in fn.blocks:
         if len(b.code) > 0 and b.code[0].op == "landing":
             lands[b.label] = True
@@ -683,7 +689,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 shape = op_type_error(types, i)
             if shape != "":
                 self.bad_ir(fn, b, shape)
-            if i.line == 0 and fn.located:
+            if i.line == 0 and fn.located and b.label not in shared:
                 self.bad_ir(fn, b, f"{i.op} {i.s} has no source line" if i.s != "" else f"{i.op} has no source line")
             inv = len(i.b) == 2 and (i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume")
             if ("T" in IROPS[i.op] or inv) != (j == len(b.code) - 1):

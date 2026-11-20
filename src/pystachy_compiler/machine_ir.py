@@ -73,11 +73,14 @@ def gen_verify_machine(self, fn: IFn) -> None:
     # for the backend, and every machine memory op, the frontend's and this stage's, has the
     # shape Gen.verify asks of one. A machine load may now give a payload's opaque %slot. Every
     # op still has its source line, as Gen.verify asks of a function the compiler built
+    shared: dict[str, bool] = {}  # (raise blocks that checks of several lines share: line 0, Gen.verify)
+    for key in fn.cold:
+        shared[fn.cold[key]] = True
     for b in fn.blocks:
         for i in b.code:
             if i.op in WORD_READS:
                 self.bad_ir(fn, b, f"{i.op} left after machine lowering")
-            if i.line == 0 and fn.located:
+            if i.line == 0 and fn.located and b.label not in shared:
                 self.bad_ir(fn, b, f"{i.op} has no source line after machine lowering")
             if i.op == "mach.load" or i.op == "mach.store" or i.op == "mach.addr":
                 self.verify_memory(fn, b, i, True)
