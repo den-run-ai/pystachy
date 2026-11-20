@@ -18,7 +18,7 @@ the program's classes, functions the compiler writes once every class that is bo
 from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
 from src.pystachy_compiler.bigints import held
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, dynamic_file, dynamic_program, int_lists, int_program
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, dynamic_file, dynamic_program, int_lists, int_program, static_file
 from src.pystachy_compiler.frames import Reduce
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
@@ -67,6 +67,19 @@ def dyn_builtin_type(t: str) -> str:
 def gen_dyn_policy(self, line: int) -> bool:
     # does the module of source line line compile Any as dyn
     return dynamic_file(line // LINES)
+
+
+STATICMOD = "this module is marked '# pystachy: static', which holds no Any value"
+
+
+def gen_static_value(self, v: Val) -> Val:
+    # v, an expression's value, where the module being compiled is static (STATICFILES): an Any
+    # value, or a container or Callable of them, is an error there, at the line that makes it.
+    # Speculative typing (dry) reports nothing, and the compiler's own dispatchers, which other
+    # modules' operations ask for, are no module's code
+    if self.drying == 0 and not self.curfn.synthetic and static_file(self.line // LINES) and holds_dyn(v.t):
+        self.err(f"{STATICMOD}: this expression is one ({typestr(v.t)}). Give it a concrete type, or narrow it with isinstance() in a module without the marker")
+    return v
 
 
 def gen_identity_modules(self, mods: list[Mod]) -> None:
@@ -1464,6 +1477,8 @@ def gen_dyn_xbody(self, c: str) -> None:
 def gen_dyn_box(self, v: Val) -> Val:
     # v as a dyn value (dyn_boxable says which values can be)
     t = self.rec_type(v.t)
+    if t != DYN and self.drying == 0 and not self.curfn.synthetic and static_file(self.line // LINES):
+        self.err(f"{STATICMOD}: a value of type {typestr(v.t)} would be boxed as one here (what takes it is annotated Any, in a module that opts in to dynamic Any)")
     if t == BIG:
         return box_big(self, v)
     if t == DYN:

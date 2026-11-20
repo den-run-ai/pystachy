@@ -1,6 +1,7 @@
 """Gen component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
+from src.pystachy_compiler.diagnostics import STATICFILES
 from src.pystachy_compiler.source_lines import SourceLines
 from src.pystachy_compiler.lowering import gen_lower_scalar as scalar_ir_lower_scalar
 from src.pystachy_compiler.scalar_ir import (
@@ -195,6 +196,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_payload as dynamic_dyn_payload,
     gen_dyn_raw as dynamic_dyn_raw,
     gen_dyn_policy as dynamic_dyn_policy,
+    gen_static_value as dynamic_static_value,
     gen_class_identity as dynamic_class_identity,
     gen_fn_home as dynamic_fn_home,
     gen_fn_identity as dynamic_fn_identity,
@@ -4734,6 +4736,8 @@ class Gen:
         return expressions_truth(self, v)
 
     def expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
+        if len(STATICFILES) > 0:
+            return dynamic_static_value(self, expressions_expr(self, n, want, returnctx, resultsoft))  # (a static module's: dynamic.py)
         return expressions_expr(self, n, want, returnctx, resultsoft)
 
     def scalar_read_index(self, n: Node) -> bool:

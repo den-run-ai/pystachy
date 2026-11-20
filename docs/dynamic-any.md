@@ -26,6 +26,7 @@ The example's typed and dynamic views share the same list; see the
 | To… | Read |
 | --- | --- |
 | Decide whether a boundary needs dynamic storage | [Admission and containment](#admission-and-containment) and the [library inventory](dynamic-any-boundaries.md) |
+| Assert that a module holds no dynamic value | [Static modules](#static-modules) |
 | Choose annotations and container layouts | [Selecting dynamic storage](#selecting-dynamic-storage) |
 | Pass values between typed and dynamic code | [The typed/dynamic contract](#the-typeddynamic-contract) |
 | Use classes, reducers and runtime argument packs | [Class values and type-keyed registries](#class-values-and-type-keyed-registries) |
@@ -68,6 +69,39 @@ requests and retained memory. Check CPython parity, GC stress, ordinary typed
 controls and a negative control that restores the old footprint. Preserve the
 existing [checked identity fallback](#identity-scope) until a narrower proof covers
 the same observable behavior. Promoting-int policy remains independent.
+
+## Static modules
+
+A module that must hold no `Any` value can say so. Put this comment before any code:
+
+```python
+# pystachy: static
+import json
+
+doc = json.loads('{"rows": [1, 2]}')  # typed JSONValue: accepted
+print(doc["rows"][1])
+```
+
+In that module, an expression that is an `Any` value, or a container or `Callable` of
+them, is a compile error at its line, and so is a typed value that would be boxed
+because what takes it is annotated `Any` in an opt-in module. The comment only
+rejects: a module that compiles with it compiles to the same code without it.
+`typing.Any` keeps its [inference meaning](language/typing.md#supported-types) there,
+and [closed unions](language/typing.md#operations-on-closed-unions) hold mixed values.
+
+| In a static module | Result |
+| --- | --- |
+| `tomllib.loads(text)` | Rejected: the document is a `dict` of `Any` values |
+| `logging.warning("%d items", n)` | Rejected: the arguments would be boxed |
+| `json.loads(text)`, an `int \| str` union, a template's `Any` parameter | Accepted: no dynamic value |
+| `# pystachy: dynamic-any` in the same file | Rejected: the two comments contradict |
+
+The check is strict on purpose: it has no rule yet for a value that is narrowed with
+`isinstance()` as soon as it arrives, so code that reads an opt-in library's `Any`
+results belongs in a module without the comment. It also does not see numeric identity
+boxes, which a module inside an opt-in module's [import closure](#identity-scope)
+still allocates. Fixtures: `tests/programs/inference/static_module.py` and
+`tests/errors/inference/static_*.py`.
 
 ## Promoting integers
 

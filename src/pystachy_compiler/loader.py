@@ -56,7 +56,7 @@ from src.pystachy_compiler.analysis import (
 )
 from src.pystachy_compiler.argparse_schema import lower_argparse, parser_import
 from src.pystachy_compiler.ctypes_schema import ctypes_import, lower_ctypes
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, NeedHandlers, dynamic_pragma, fail, int_pragma, leading_pragma
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, STATICBOTH, STATICFILES, STATICPRAGMA, NeedHandlers, dynamic_pragma, fail, int_pragma, leading_pragma
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer, host_text
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, ORDERED, owner, short
@@ -1634,6 +1634,7 @@ class Loader:
         ORDERED.clear()
         DYNFILES.clear()
         IDINERT.clear()
+        STATICFILES.clear()
         INTFILES.clear()
         INTSPANS.clear()
         m = Mod("", path, "")
@@ -2086,6 +2087,10 @@ class Loader:
             IDINERT[k] = True
         if dynamic_pragma(src):
             DYNFILES[k] = True
+        if leading_pragma(src, STATICPRAGMA):
+            if dynamic_pragma(src):
+                fail(STATICBOTH, line)
+            STATICFILES[k] = True
         if int_pragma(src):
             INTFILES[k] = True
 
