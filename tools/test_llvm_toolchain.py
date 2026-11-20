@@ -502,6 +502,31 @@ class PublishTests(unittest.TestCase):
         for pinned in (tag, name, pystachy_toolchain.MINIMAL_SHA256):
             self.assertIn(f"`{pinned}`", document)
 
+    def test_pinned_revision_takes_no_other_archive(self):
+        releases = Releases()
+        pinned = (self.NAME, "3", "0" * 64)
+        publish = llvm_toolchain_release.publish
+        with self.assertRaisesRegex(ValueError, f"pins SHA-256 {'0' * 64} for {self.TAG}.*next revision, then pin that"):
+            publish("owner/repo", self.COMMIT, "3", self.archive, run=releases, pinned=pinned)
+        self.assertEqual((releases.commands, releases.releases), ([], {}))
+        # The pinned bytes pass, and so does another revision or another archive's name.
+        digest = hashlib.sha256(b"an archive").hexdigest()
+        publish("owner/repo", self.COMMIT, "3", self.archive, run=releases, pinned=(self.NAME, "3", digest))
+        publish("owner/repo", self.COMMIT, "4", self.archive, run=releases, pinned=pinned)
+        publish("owner/repo", self.COMMIT, "5", self.archive, run=releases, pinned=("other.tar.xz", "5", "0" * 64))
+        self.assertEqual(sorted(releases.releases), [f"llvm-toolchain-18.1.8-{revision}" for revision in "345"])
+
+    def test_command_line_passes_the_pin_of_pystachy_toolchain(self):
+        self.archive = self.archive.with_name(pystachy_toolchain.MINIMAL_ARCHIVE + ".tar.xz")
+        self.NAME = self.archive.name
+        self.write(b"not the pinned archive")
+        arguments = ["--repository", "owner/repo", "--commit", self.COMMIT, "--revision",
+                     pystachy_toolchain.MINIMAL_REVISION, str(self.archive)]
+        result = subprocess.run([sys.executable, llvm_toolchain_release.__file__, *arguments],
+                                capture_output=True, text=True, timeout=60, env={**os.environ, "PATH": ""})
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(f"pins SHA-256 {pystachy_toolchain.MINIMAL_SHA256}", result.stderr)
+
     def test_archive_name_is_the_recipe_s(self):
         name = run("name").stdout.strip() + ".tar.xz"
         self.assertEqual(llvm_toolchain_release.ARCHIVE.fullmatch(name)[1], setting("VERSION"))

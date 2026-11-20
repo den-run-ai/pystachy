@@ -173,6 +173,10 @@ The download is checked against the pinned hash before anything is extracted, in
 [`PYSTACHY_LLVM_CACHE`](install.md#install-from-github-with-pip-or-uv), and each tool must
 report 18.1.8 before the directory is used.
 
+The pinned revision takes no other bytes: [publishing](#publish) a build with another hash
+under it is refused, since every download of it would fail its check. After a change to the
+recipe, publish the next revision first, then pin its address and hash here.
+
 ## Measured
 
 These are measurements of 19 and 20 November 2026, built in the image above on a shared

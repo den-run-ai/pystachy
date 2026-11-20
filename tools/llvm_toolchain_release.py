@@ -15,6 +15,10 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+import pystachy_toolchain
+
 ARCHIVE = re.compile(r"pystachy-llvm-([0-9]+\.[0-9]+\.[0-9]+)-linux-(?:x86_64|aarch64)\.tar\.xz")
 NOTES = """\
 The minimal LLVM {release} toolchain for Pystachy on Linux: `clang`, `opt`, `lli`, `llc`, `llvm-link` \
@@ -38,8 +42,12 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def publish(repository: str, commit: str, revision: str, archive: Path, run=gh) -> str:
-    """Publish the archive and return what was done; run stands in for gh in tests."""
+def publish(repository: str, commit: str, revision: str, archive: Path, run=gh, pinned=None) -> str:
+    """Publish the archive and return what was done; run stands in for gh in tests.
+
+    pinned is the (archive name, revision, SHA-256) that pystachy_toolchain.py downloads: that
+    revision may hold no other bytes, or every download of it would fail its check.
+    """
     named = ARCHIVE.fullmatch(archive.name)
     if not named:
         raise ValueError(f"{archive.name} is not a toolchain archive")
@@ -50,6 +58,9 @@ def publish(repository: str, commit: str, revision: str, archive: Path, run=gh) 
     checksum = archive.with_name(archive.name + ".sha256")
     if checksum.read_text().split() != [digest, archive.name]:
         raise ValueError(f"{checksum.name} is not the checksum of {archive.name}")
+    if pinned and pinned[:2] == (archive.name, revision) and pinned[2] != digest:
+        raise ValueError(f"pystachy_toolchain.py pins SHA-256 {pinned[2]} for {tag}, and this build has {digest}: "
+                         "publish it under the next revision, then pin that")
 
     def release(action: str, *arguments: str) -> str:
         result = run("release", action, *arguments, "--repo", repository)
@@ -101,7 +112,9 @@ def main() -> int:
     if not re.fullmatch(r"[0-9a-f]{40}", args.commit):
         parser.error("the commit must be a full hash")
     try:
-        print(publish(args.repository, args.commit, args.revision, args.archive))
+        pinned = (pystachy_toolchain.MINIMAL_ARCHIVE + ".tar.xz", pystachy_toolchain.MINIMAL_REVISION,
+                  pystachy_toolchain.MINIMAL_SHA256)
+        print(publish(args.repository, args.commit, args.revision, args.archive, pinned=pinned))
     except (OSError, ValueError, RuntimeError, KeyError, subprocess.TimeoutExpired) as error:
         parser.exit(1, f"llvm_toolchain_release.py: {error}\n")
     return 0
