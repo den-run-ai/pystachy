@@ -175,13 +175,21 @@ CALLS: dict[str, str] = {
 # find_sub(h, n, st, en) is the first index of n in h[st:en], or -1 (memmem, linear in glibc).
 # fail(kind, msg) raises builtin exception kind (a str literal) with message msg, as pys_raise
 # does: for those a raise statement cannot give a message to (UnicodeDecodeError's constructor
-# takes the parts of its message).
+# takes the parts of its message). mul_hi(a, b) is the high 64 bits of the 128-bit product of two
+# 64-bit patterns as unsigned ints (wrap_mul gives the low ones), and urem_wide(hi, lo, d) the
+# remainder of the 128-bit hi:lo by d: the two of (a * b) % d where the product passes 64 bits.
+# float_bits(x) and bits_float(i) give a float's IEEE 754 bits as an int and the float of such
+# bits; fma(x, y, z) is x * y + z rounded once and sqrt(x) the square root with no domain check
+# (a NaN below zero): LLVM's llvm.fma.f64 and llvm.sqrt.f64. fdiv(x, y) is x / y as IEEE 754
+# divides, an inf or a NaN for a zero y: the subset's / raises ZeroDivisionError there.
 RTL: dict[str, str] = {
     "byte": "str,int:int", "str_new": "int:str", "str_put": "str,int,int:None", "str_done": "str:str",
     "copy": "str,int,str,int,int:None", "wrap_add": "int,int:int", "wrap_sub": "int,int:int",
     "wrap_mul": "int,int:int", "shl": "int,int:int", "lshr": "int,int:int", "null": "str:bool",
     "same": "str,int,str,int,int:bool", "find_byte": "str,int,int,int:int", "udiv": "int,int:int",
     "urem": "int,int:int", "mul_ovf": "int,int:bool", "find_sub": "str,str,int,int:int", "fail": "str,str:None",
+    "mul_hi": "int,int:int", "urem_wide": "int,int,int:int", "float_bits": "float:int", "bits_float": "int:float",
+    "fma": "float,float,float:float", "sqrt": "float:float", "fdiv": "float,float:float",
 }
 STR_HEADER_SIZE = 24  # offsetof(Str, s), checked against runtime.c and both CPython glues by rt-abi
 TBAA_LEN = 3
@@ -883,7 +891,7 @@ for _j in range(len(FX)):
 # bool without a default)
 NARROWED: list[str] = [
     "dict.bkey_get", "dict.bkey_pop", "dict.bkey_pop_default", "dict.bkey_setdefault", "dict.get", "dict.items", "dict.pop",
-    "dict.pop_default", "dict.setdefault", "m.floats", "m.prod_int", "sum.int_float",
+    "dict.pop_default", "dict.setdefault", "m.floats", "m.prod_int", "sum.int", "sum.int_float",
 ]
 RUNTIME: dict[str, str] = {
     # Explicit arbitrary-precision integers. Handles are immutable atomic objects;
@@ -1100,6 +1108,7 @@ RUNTIME: dict[str, str] = {
     "f2i": "int:float|R|", "round": "int:float|R|", "round_n": "float:float,int|R|", "round_int": "int:int,int|R|", "floor": "int:float|R|",
     "ceil": "int:float|R|", "int.str": "int:str,int|R A|", "float.str": "float:str|R A|", "float.hex": "str:float|A|",
     "float.is_integer": "bool:float||", "int.bit_length": "int:int||", "int.bit_count": "int:int||", "fabs": "float:float||fabs",
+    "fma": "float:float,float,float||llvm.fma.f64", "sqrt": "float:float||llvm.sqrt.f64",
     "ovf.sadd": "%ovf:int,int||llvm.sadd.with.overflow.i64", "ovf.ssub": "%ovf:int,int||llvm.ssub.with.overflow.i64",
     "ovf.smul": "%ovf:int,int||llvm.smul.with.overflow.i64",
     "m.sqrt": "float:float|R|", "m.sin": "float:float|R|", "m.cos": "float:float|R|", "m.tan": "float:float|R|",

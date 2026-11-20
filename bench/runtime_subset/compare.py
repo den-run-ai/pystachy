@@ -15,18 +15,23 @@ import time
 SOURCE = Path(__file__).with_name("workload.py").resolve()
 INT_TEXT = Path(__file__).with_name("int_text.py").resolve()
 REDUCTIONS = Path(__file__).with_name("reductions.py").resolve()
+NUMERIC = Path(__file__).with_name("numeric.py").resolve()
 # Keep the small arithmetic kernels long enough to measure without launch time.
 COUNTS = {"scalar": 120000000, "range": 60000000, "power": 60000000,
           "sum-float": 5000, "sum-int": 5000, "reduction": 5000, "ascii": 5000, "unicode": 5000,
           "str-int": 20000000, "str-int-short": 20000000, "int-str": 20000000, "int-str-short": 20000000,
           "int-str-hex": 20000000, "int-str-padded": 20000000,
           "ints-any-all": 400000, "ints-any-all-short": 200000000, "ints-sum-float": 400000,
-          "join": 800000, "join-bytes": 400000, "join-slice": 1200000, "path-join": 60000000}
+          "join": 800000, "join-bytes": 400000, "join-slice": 1200000, "path-join": 60000000,
+          "hypot": 60000000, "hypot-3": 30000000, "dist-3": 40000000, "dist-64": 4000000, "fma": 150000000,
+          "powmod": 3000000, "powmod-31": 3500000, "round-int": 70000000, "ints-sum": 900000}
 # The cases of a later migration have a source of their own, so that workload.py keeps the hash
 # that the first recorded report names.
 INT_TEXT_CASES = ("str-int", "str-int-short", "int-str", "int-str-short", "int-str-hex", "int-str-padded")
 REDUCTION_CASES = ("ints-any-all", "ints-any-all-short", "ints-sum-float", "join", "join-bytes", "join-slice", "path-join")
-SOURCES = {case: INT_TEXT if case in INT_TEXT_CASES else REDUCTIONS if case in REDUCTION_CASES else SOURCE for case in COUNTS}
+NUMERIC_CASES = ("hypot", "hypot-3", "dist-3", "dist-64", "fma", "powmod", "powmod-31", "round-int", "ints-sum")
+SOURCES = {case: INT_TEXT if case in INT_TEXT_CASES else REDUCTIONS if case in REDUCTION_CASES else NUMERIC if case in NUMERIC_CASES else SOURCE
+           for case in COUNTS}
 
 
 def run(command, cwd, env):

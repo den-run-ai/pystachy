@@ -116,6 +116,8 @@ def lt(t: str) -> str:
         return "i8"
     if t == "%i32":
         return "i32"
+    if t == "%i128":
+        return "i128"  # (the wide products and dividends of runtime.py's mul_hi and urem_wide)
     if t == "None":
         return "void"
     if t == "%slot":

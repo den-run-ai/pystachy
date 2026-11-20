@@ -74,6 +74,76 @@ def pys_pow(a: int, b: int) -> int:
         x *= x
 
 
+def mulmod(a: int, b: int, n: int) -> int:
+    # a * b % n of 64-bit patterns as unsigned ints: the product has 128 bits
+    return _rt.urem_wide(_rt.mul_hi(a, b), _rt.wrap_mul(a, b), n)
+
+
+def pys_powmod(a: int, b: int, m: int) -> int:
+    # pow(a, b, m) as CPython's long_pow: the result has the sign of m. The modulus is taken as
+    # an unsigned int, which holds the 2**63 of -2**63, and so are the values below it
+    if m == 0:
+        raise ValueError("pow() 3rd argument cannot be 0")
+    n = _rt.wrap_sub(0, m) if m < 0 else m
+    if n == 1:
+        return 0
+    x = _rt.urem(a, n)
+    if a < 0:
+        x = _rt.urem(_rt.wrap_sub(0, a), n)
+        if x != 0:
+            x = _rt.wrap_sub(n, x)
+    e = b
+    if b < 0:
+        # a negative exponent: the power of x's inverse modulo n (long_invmod), by Euclid's
+        # algorithm. s and t are the coefficients of x in p and q, below n in magnitude; the
+        # last t alone, which nothing reads, may be n itself and wrap
+        p = x
+        q = n
+        s = 1
+        t = 0
+        while q != 0:
+            d = _rt.udiv(p, q)
+            u = _rt.wrap_sub(p, _rt.wrap_mul(d, q))
+            w = _rt.wrap_sub(s, _rt.wrap_mul(d, t))
+            p = q
+            q = u
+            s = t
+            t = w
+        if p != 1:
+            raise ValueError("base is not invertible for the given modulus")
+        x = _rt.wrap_add(s, n) if s < 0 else s
+        e = _rt.wrap_sub(0, b)
+    r = 1
+    while e != 0:
+        if e & 1:
+            r = mulmod(r, x, n)
+        x = mulmod(x, x, n)
+        e = _rt.lshr(e, 1)
+    return _rt.wrap_sub(r, n) if m < 0 and r != 0 else r
+
+
+def pys_round_int(x: int, n: int) -> int:
+    # round(x, n) of an int: x, or for n < 0 the nearest multiple of m = 10**-n, ties to the even
+    # multiple. 10**19 is past 2**63 and 10**20 past 2**64: there x rounds to 0, or to 10**19 or
+    # its negative, which no 64-bit int holds
+    if n >= 0:
+        return x
+    if n < -19:
+        return 0
+    if n == -19:
+        if x > 5000000000000000000 or x < -5000000000000000000:
+            raise OverflowError("integer result does not fit in 64 bits")
+        return 0
+    m = 1
+    for _ in range(-n):
+        m *= 10
+    q = x // m
+    r = x % m  # x = q * m + r, 0 <= r < m (q * m itself may be below -2**63)
+    if 2 * r > m or (2 * r == m and q & 1 != 0):
+        q += 1
+    return q * m
+
+
 def pys_range_len(a: int, b: int, s: int) -> int:
     if s == 0:
         raise ValueError("range() arg 3 must not be zero")
@@ -193,10 +263,11 @@ def pys_m_perm(n: int, k: int) -> int:
     return r
 
 
-# ---------- any, all and a float sum of ints ----------
-# A list of ints or bools holds each item in an 8-byte slot. From a float start, sum() adds each
-# int as a float, without compensation. (The int sum stays in runtime.c, which first refuses a
-# list that holds an int past 64 bits.)
+# ---------- any, all and the sums of ints ----------
+# A list of ints or bools holds each item in an 8-byte slot. From an int start, sum() adds them
+# with the checked arithmetic; from a float start, each as a float, without compensation. (For
+# the sums and the product of a list that may hold an int past 64 bits, the compiler first calls
+# pys_list_narrow, which refuses one: NARROWED.)
 
 
 def pys_any(xs: list[int]) -> int:
@@ -211,6 +282,12 @@ def pys_all(xs: list[int]) -> int:
         if x == 0:
             return 0
     return 1
+
+
+def pys_sum_int(xs: list[int], s: int) -> int:
+    for x in xs:
+        s += x
+    return s
 
 
 def pys_sum_int_float(xs: list[int], s: float) -> float:
@@ -339,6 +416,181 @@ def pys_m_prod_float(xs: list[float], start: float) -> float:
 
 def pys_m_floats(xs: list[int]) -> list[float]:
     return [float(x) for x in xs]
+
+
+# ---------- math.hypot, math.dist and math.fma ----------
+# hypot and dist are CPython's vector_norm, not libm's hypot, so that the last bit agrees: the
+# coordinates are scaled by a power of two so that the largest is in [0.5, 1), which loses
+# nothing; each square is exact as a float and what fma() shows the float left out; the squares
+# are summed from 1.0, which keeps every sum exact but for what the two frac sums gather; and the
+# square root gets one correction from the difference of its square. It never raises: the result
+# is inf where a coordinate is, else nan where one is. The largest coordinate is found in a
+# first pass over the list, so that no copy of the coordinates is needed.
+# Derived from CPython's Modules/mathmodule.c, vector_norm.
+# Copyright (c) 2001-2024 Python Software Foundation; All Rights Reserved.
+# Used under the PSF License Agreement; see THIRD_PARTY_NOTICES.
+
+
+def norm_tiny(max: float) -> bool:
+    # max > 0 is below 2**-1024: frexp()'s exponent e of it is below -1023, and no float is
+    # 2**-e. Such coordinates are first divided by 2**-1022, the smallest normal float, exactly
+    return _rt.float_bits(max) < 1125899906842624  # (2**50)
+
+
+def norm_scale(max: float) -> float:
+    # ldexp(1.0, -e) for the e of frexp(max), 2**-1024 <= max < 2**1024: max * scale is in [0.5, 1)
+    b = _rt.float_bits(max)
+    be = _rt.lshr(b, 52)  # (the exponent's bits: max > 0)
+    if be >= 2045:
+        return _rt.bits_float(_rt.shl(1, 2096 - be))  # 2**-1023 and 2**-1024, which are subnormal
+    if be == 0:
+        return _rt.bits_float(_rt.shl(2046 if b < 2251799813685248 else 2045, 52))  # (max is; 2**51)
+    return _rt.bits_float(_rt.shl(2045 - be, 52))
+
+
+def norm_done(csum: float, frac1: float, frac2: float, scale: float) -> float:
+    h = _rt.sqrt(csum - 1.0 + (frac1 + frac2))
+    hi = -h * h
+    frac1 += _rt.fma(-h, h, -hi)
+    t = csum + hi
+    frac2 += (csum - t) + hi
+    x = t - 1.0 + (frac1 + frac2)
+    h += _rt.fdiv(x, 2.0 * h)  # (h and scale are above zero: nothing to check)
+    return _rt.fdiv(h, scale)
+
+
+def norm_small(p: list[float], q: list[float], paired: bool, max: float) -> float:
+    # the norm of p, or of p - q, where the largest coordinate is below 2**-1024 (norm_tiny): each
+    # is divided by 2**-1022 first, exactly, and the result multiplied by it. It has a loop of
+    # its own, so that the others do no more for each coordinate than scale it
+    scale = norm_scale(max / 2.2250738585072014e-308)
+    csum = 1.0
+    frac1 = 0.0
+    frac2 = 0.0
+    for i in range(len(p)):
+        c = p[i] - q[i] if paired else p[i]
+        v = abs(c) / 2.2250738585072014e-308 * scale
+        hi = v * v
+        frac1 += _rt.fma(v, v, -hi)
+        t = csum + hi
+        frac2 += (csum - t) + hi
+        csum = t
+    return 2.2250738585072014e-308 * norm_done(csum, frac1, frac2, scale)
+
+
+def norm_pair(a: float, b: float, max: float) -> float:
+    # the norm of two coordinates, a and b >= 0, whose largest is max >= 2**-1024
+    scale = norm_scale(max)
+    csum = 1.0
+    frac1 = 0.0
+    frac2 = 0.0
+    v = a * scale
+    hi = v * v
+    frac1 += _rt.fma(v, v, -hi)
+    t = csum + hi
+    frac2 += (csum - t) + hi
+    csum = t
+    v = b * scale
+    hi = v * v
+    frac1 += _rt.fma(v, v, -hi)
+    t = csum + hi
+    frac2 += (csum - t) + hi
+    return norm_done(t, frac1, frac2, scale)
+
+
+def pys_m_hypot(x: float, y: float) -> float:
+    a = abs(x)
+    b = abs(y)
+    max = 0.0
+    if a > max:
+        max = a
+    if b > max:  # (a nan is never the max)
+        max = b
+    if math.isinf(max):
+        return max
+    if math.isnan(x) or math.isnan(y):
+        return _rt.bits_float(9221120237041090560)  # (a quiet nan, 0x7ff8 << 48)
+    if max == 0.0:
+        return max
+    if norm_tiny(max):
+        d = 2.2250738585072014e-308
+        return d * norm_pair(a / d, b / d, max / d)
+    return norm_pair(a, b, max)
+
+
+def pys_m_hypot_list(p: list[float]) -> float:
+    max = 0.0
+    nan = False
+    for c in p:
+        v = abs(c)
+        if v != v:
+            nan = True
+        if v > max:
+            max = v
+    if math.isinf(max):
+        return max
+    if nan:
+        return _rt.bits_float(9221120237041090560)
+    if max == 0.0 or len(p) <= 1:
+        return max
+    if norm_tiny(max):
+        return norm_small(p, p, False, max)
+    scale = norm_scale(max)
+    csum = 1.0
+    frac1 = 0.0
+    frac2 = 0.0
+    for c in p:
+        v = abs(c) * scale
+        hi = v * v
+        frac1 += _rt.fma(v, v, -hi)
+        t = csum + hi
+        frac2 += (csum - t) + hi
+        csum = t
+    return norm_done(csum, frac1, frac2, scale)
+
+
+def pys_m_dist(p: list[float], q: list[float]) -> float:
+    n = len(p)
+    if n != len(q):
+        raise ValueError("both points must have the same number of dimensions")
+    max = 0.0
+    nan = False
+    for i in range(n):
+        v = abs(p[i] - q[i])
+        if v != v:
+            nan = True
+        if v > max:
+            max = v
+    if math.isinf(max):
+        return max
+    if nan:
+        return _rt.bits_float(9221120237041090560)
+    if max == 0.0 or n <= 1:
+        return max
+    if norm_tiny(max):
+        return norm_small(p, q, True, max)
+    scale = norm_scale(max)
+    csum = 1.0
+    frac1 = 0.0
+    frac2 = 0.0
+    for i in range(n):
+        v = abs(p[i] - q[i]) * scale
+        hi = v * v
+        frac1 += _rt.fma(v, v, -hi)
+        t = csum + hi
+        frac2 += (csum - t) + hi
+        csum = t
+    return norm_done(csum, frac1, frac2, scale)
+
+
+def pys_m_fma(x: float, y: float, z: float) -> float:
+    # x * y + z, rounded once
+    r = _rt.fma(x, y, z)
+    if math.isnan(r) and not math.isnan(x) and not math.isnan(y) and not math.isnan(z):
+        raise ValueError("invalid operation in fma")
+    if math.isinf(r) and math.isfinite(x) and math.isfinite(y) and math.isfinite(z):
+        raise OverflowError("overflow in fma")
+    return r
 
 
 # ---------- str methods ----------

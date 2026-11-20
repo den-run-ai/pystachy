@@ -516,6 +516,12 @@ operators/conversions and extra metadata. These operations are pure; frontend gu
 retain responsibility for bounds, overflow and division checks. `select` also checks
 its boolean condition and matching result/value types.
 
+Runtime mode's wide primitives (`_rt.mul_hi`, `_rt.urem_wide`) compute in `%i128`.
+`scalar.bin` and `scalar.cmp` accept that type, and `scalar.cast` only extends an `int`
+to it (`zext`) and truncates it back (`trunc`); no value of it is stored, selected or
+passed. `_rt.float_bits` and `_rt.bits_float` are the `bitcast` conversions between
+`float` and `int`.
+
 A masked expression that fits in 32 bits is computed in `%i32` operations and zero-extended
 (`gen_low32`): `x & y` with a constant from 0 to 2**32 - 1 on a side, a literal or a module's
 int constant, and on the other only int literals, such constants and the reads that cannot

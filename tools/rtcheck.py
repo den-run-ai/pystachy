@@ -13,6 +13,7 @@ without a type or precision) from CPython's own float formatting, which it repro
 
 usage: python3 tools/rtcheck.py [N] [SEED]   (N rounds of cases, default 5000)
 """
+import itertools
 import math
 import os
 import posixpath
@@ -330,6 +331,56 @@ def fuzz_math():
         want = outcome(lambda: math.prod(ns, start=st))
         if fits(want):
             same("prod", outcome(rt.pys_m_prod_int, ns, st), want, (ns, st))
+
+
+def wide():
+    # an int for pow() and round(): the ends of the 64-bit range, small ones, anything between
+    k = R.randrange(6)
+    if k == 0:
+        return R.choice([0, 1, -1, 2, -2, MAXI, -MAXI - 1, MAXI - 1, -MAXI, 1 << 62, -(1 << 62), 10**18, -(10**18),
+                         5 * 10**18, -5 * 10**18, 5 * 10**18 + 1, -5 * 10**18 - 1])
+    if k == 1:
+        return R.randrange(-100, 101)
+    if k == 2:
+        return R.randrange(-MAXI - 1, MAXI + 1)
+    return R.randrange(-(1 << R.randrange(1, 64)), 1 << R.randrange(1, 64))
+
+
+def coords(n):
+    # coordinates for hypot and dist: around one exponent, among the subnormals, or anything
+    k = R.randrange(6)
+    if k == 0:
+        e = R.randrange(-1074, 1021)
+        return [math.ldexp(R.random() - 0.5, e + R.randrange(-3, 4)) for _ in range(n)]
+    if k == 1:
+        return [math.ldexp(R.random() - 0.5, R.randrange(-1074, -1015)) for _ in range(n)]
+    return [real() for _ in range(n)]
+
+
+def fuzz_numeric():
+    # hypot, dist and fma by their bits; pow(a, b, m), round(x, n) and the int sum where CPython's
+    # result is a 64-bit int (past it the compiled code raises OverflowError)
+    for _ in range(N):
+        x, y, z = real(), real(), real()
+        same("hypot", bits(outcome(rt.pys_m_hypot, x, y)), bits(outcome(math.hypot, x, y)), (x, y))
+        n = R.randrange(9)
+        p = coords(n)
+        q = coords(n if R.randrange(10) else R.randrange(9))
+        same("hypot-list", bits(outcome(rt.pys_m_hypot_list, p)), bits(outcome(math.hypot, *p)), (p,))
+        same("dist", bits(outcome(rt.pys_m_dist, p, q)), bits(outcome(math.dist, p, q)), (p, q))
+        if hasattr(math, "fma"):  # (Python 3.13)
+            same("fma", bits(outcome(rt.pys_m_fma, x, y, z)), bits(outcome(math.fma, x, y, z)), (x, y, z))
+        a, e, m = wide(), wide(), wide()
+        if R.randrange(3) == 0:
+            e = R.randrange(-5, 6)
+        same("powmod", outcome(rt.pys_powmod, a, e, m), outcome(pow, a, e, m), (a, e, m))
+        places = R.randrange(-22, 3)
+        want = outcome(round, a, places)
+        if fits(want):
+            same("round-int", outcome(rt.pys_round_int, a, places), want, (a, places))
+        ns = [wide() for _ in range(R.randrange(6))]
+        if all(-MAXI - 1 <= t <= MAXI for t in itertools.accumulate(ns, initial=e)):
+            same("sum-int", outcome(rt.pys_sum_int, ns, e), outcome(sum, ns, e), (ns, e))
 
 
 def real():
@@ -758,6 +809,7 @@ fuzz_replace()
 fuzz_bytes()
 fuzz_search()
 fuzz_math()
+fuzz_numeric()
 fuzz_hash()
 fuzz_format()
 fuzz_malformed()

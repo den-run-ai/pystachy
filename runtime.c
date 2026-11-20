@@ -1593,24 +1593,7 @@ I pys_mod(I a, I b) {
   I r = a % b; return (r && (r < 0) != (b < 0)) ? r + b : r;
 }
 I pys_pow(I a, I b);
-I pys_powmod(I a, I b, I m) {                 /* pow(a, b, m) as CPython's long_pow, in 128 bits: products cannot overflow */
-  if (!m) pys_fail("ValueError: pow() 3rd argument cannot be 0");
-  __int128 n = m < 0 ? -(__int128)m : m, x = a, r = 1;
-  if (n == 1) return 0;
-  if (b < 0) {                                 /* a negative exponent: the power of a's inverse modulo |m| */
-    __int128 p = x, q = n, s = 1, t = 0;       /* long_invmod: Euclid with floor division */
-    while (q) {
-      __int128 d = p / q - (p % q && (p < 0) != (q < 0)), u = p - d * q, w = s - d * t;
-      p = q; q = u; s = t; t = w;
-    }
-    if (p != 1) pys_fail("ValueError: base is not invertible for the given modulus");
-    x = s;
-  }
-  x %= n;
-  if (x < 0) x += n;
-  for (unsigned __int128 e = b < 0 ? -(__int128)b : b; e; e >>= 1) { if (e & 1) r = r * x % n; x = x * x % n; }
-  return (I)(m < 0 && r ? r - n : r);          /* the result has the sign of m */
-}
+I pys_powmod(I a, I b, I m);                 /* pow(a, b, m): runtime.py's, with its products in 128 bits */
 I pys_shl(I a, I b) {
   if (b < 0) pys_fail("ValueError: negative shift count");
   if (!a) return 0;
@@ -2041,12 +2024,6 @@ void **pys_m_modf(double x) {         /* (fractional part, integral part); an in
 }
 double pys_m_nextafter(double x, double y) { return nextafter(x, y); }
 double pys_m_remainder(double x, double y) { return mchk(remainder(x, y), x, y, 0); }
-double pys_m_fma(double x, double y, double z) {   /* x * y + z, rounded once */
-  double r = fma(x, y, z);
-  if (isnan(r) && !isnan(x) && !isnan(y) && !isnan(z)) pys_fail("ValueError: invalid operation in fma");
-  if (isinf(r) && isfinite(x) && isfinite(y) && isfinite(z)) pys_fail("OverflowError: overflow in fma");
-  return r;
-}
 double pys_m_ulp(double x) {          /* the distance from |x| to the next float away from zero (or below the largest) */
   if (isnan(x) || isinf(x)) return fabs(x);
   double a = fabs(x), b = nextafter(a, INFINITY);
@@ -2069,37 +2046,11 @@ __attribute__((no_builtin("fmod"))) double pys_m_fmod(double x, double y) {
   return fmod(x, y);
 }
 double pys_m_atan2(double y, double x) { return atan2(y, x); }
-/* math.hypot is CPython's vector_norm, not libm's hypot, so its last bit agrees: lossless scaling
-   by a power of two, exact squares (fma), compensated summation and a differential correction of
-   the square root; it never raises (inf on overflow) */
-typedef struct { double hi, lo; } DL;
-static DL dl_fast_sum(double a, double b) { double x = a + b; return (DL){x, (a - x) + b}; }
-static DL dl_mul(double x, double y) { double z = x * y; return (DL){z, fma(x, y, -z)}; }
-static double vnorm(double *v, I n, double max) {
-#pragma clang fp contract(off)
-  double csum = 1.0, frac1 = 0.0, frac2 = 0.0, x, h, scale; DL pr, sm; int e;
-  if (max == 0.0 || n <= 1) return max;
-  frexp(max, &e);
-  if (e < -1023) { for (I i = 0; i < n; i++) v[i] /= 0x1p-1022; return 0x1p-1022 * vnorm(v, n, max / 0x1p-1022); }
-  scale = ldexp(1.0, -e);
-  for (I i = 0; i < n; i++) {
-    x = v[i] * scale; pr = dl_mul(x, x); sm = dl_fast_sum(csum, pr.hi);
-    csum = sm.hi; frac1 += pr.lo; frac2 += sm.lo;
-  }
-  h = sqrt(csum - 1.0 + (frac1 + frac2));
-  pr = dl_mul(-h, h); sm = dl_fast_sum(csum, pr.hi);
-  csum = sm.hi; frac1 += pr.lo; frac2 += sm.lo;
-  x = csum - 1.0 + (frac1 + frac2);
-  h += x / (2.0 * h);
-  return h / scale;
-}
-double pys_m_hypot(double x, double y) {
-  double v[2] = {fabs(x), fabs(y)}, max = 0.0;
-  for (int i = 0; i < 2; i++) if (v[i] > max) max = v[i];   /* a NaN is never the max */
-  if (isinf(max)) return max;
-  if (isnan(x) || isnan(y)) return NAN;
-  return vnorm(v, 2, max);
-}
+/* math.hypot, math.dist and math.fma are runtime.py's: CPython's vector_norm, not libm's hypot */
+double pys_m_hypot(double x, double y);
+double pys_m_hypot_list(List *p);
+double pys_m_dist(List *p, List *q);
+double pys_m_fma(double x, double y, double z);
 double pys_m_copysign(double x, double y) { return copysign(x, y); }
 /* complex numbers (lib/_pystachy_complex.py): CPython 3.13's Objects/complexobject.c, its division
    (_Py_c_quot), power (complex_pow) and absolute value (_Py_c_abs) with their errors, through libm
@@ -2594,18 +2545,7 @@ I pys_round(double d) {                      /* round(d): half to even, nearbyin
   if (fabs(d) < 0x1p52) { double big = copysign(0x1p52, d), r = d + big; return (I)(r - big); }
   return round_far(d);
 }
-I pys_round_int(I x, I n) {                  /* round(x, n) of an int: x, or for n < 0 the nearest multiple of
-                                                10**-n, ties to the even multiple */
-  if (n >= 0) return x;
-  __int128 m = 1, q, r;
-  for (I i = 0; i < -n && i < 20; i++) m *= 10;   /* (10**20 > 2 * |x|: a farther n gives 0 too) */
-  q = x / m; r = x % m;
-  if (r < 0) { r += m; q--; }                     /* x = q * m + r, 0 <= r < m */
-  if (2 * r > m || (2 * r == m && (q & 1))) q++;
-  q *= m;
-  if (q > INT64_MAX || q < INT64_MIN) pys_fail(OVF);
-  return (I)q;
-}
+I pys_round_int(I x, I n);                  /* round(x, n) of an int: runtime.py's */
 double pys_round_n(double x, I n) {           /* round(x, n): half-even on the exact decimal value */
   static char b[1500], o[1500];
   if (!isfinite(x) || n > 400) return x;
@@ -4329,32 +4269,14 @@ Dyn *pys_list_minmax_identity(List *l, Str *d, I max, I kind) {
   }
   return (Dyn *)l->ids[at + 1];
 }
-/* any(), all() and the float sums of a list are runtime.py's */
+/* any(), all() and the sums of a list are runtime.py's (the compiler narrows the list of an int sum
+   first, in a program whose lists may hold an int past 64 bits: NARROWED) */
 I pys_any(List *l);
 I pys_all(List *l);
-I pys_sum_int(List *l, I s) { list_narrow(l); for (I i = 0; i < l->len; i++) if (__builtin_add_overflow(s, l->a[i], &s)) pys_fail(OVF); return s; }
+I pys_sum_int(List *l, I s);
 double pys_sum_float(List *l, double s);
 double pys_sum_float_int(List *l, I s);
 double pys_sum_int_float(List *l, double s);
-double pys_m_dist(List *p, List *q) {   /* math.dist: hypot's vnorm of the differences of two lists of floats */
-  if (p->len != q->len) pys_fail("ValueError: both points must have the same number of dimensions");
-  double b[16], *v = p->len > 16 ? pys_alloc_atomic(p->len * 8) : b, max = 0.0; int nan = 0;
-  for (I i = 0; i < p->len; i++) {
-    v[i] = fabs(dbl(p->a[i]) - dbl(q->a[i])); nan |= isnan(v[i]);
-    if (v[i] > max) max = v[i];   /* a NaN is never the max */
-  }
-  if (isinf(max)) return max;
-  return nan ? NAN : vnorm(v, p->len, max);
-}
-double pys_m_hypot_list(List *p) {   /* math.hypot of other than two coordinates (math_hypot): vnorm of a list of floats */
-  double b[16], *v = p->len > 16 ? pys_alloc_atomic(p->len * 8) : b, max = 0.0; int nan = 0;
-  for (I i = 0; i < p->len; i++) {
-    v[i] = fabs(dbl(p->a[i])); nan |= isnan(v[i]);
-    if (v[i] > max) max = v[i];
-  }
-  if (isinf(max)) return max;
-  return nan ? NAN : vnorm(v, p->len, max);
-}
 I pys_range_len(I a, I b, I s);
 I pys_range_has(I x, I a, I b, I s);
 List *pys_range_list(I a, I b, I s) {   /* list(range(a, b, s)): allocated once at its length, as CPython does */

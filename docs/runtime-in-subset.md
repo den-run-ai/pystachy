@@ -15,7 +15,7 @@ used by `runtime.py`. Ordinary programs cannot use that interface.
 
 | Part | Responsibilities |
 |---|---|
-| `runtime.py` | String methods and ASCII escaping, `os.path`'s string functions, `str(int)` and `int(str, base)`, scalar and integer `math`, `any`/`all`, float `sum`/`fsum`/`prod`, checked integer power, range arithmetic, dict hashing and format-spec parsing. |
+| `runtime.py` | String methods and ASCII escaping, `os.path`'s string functions, `str(int)` and `int(str, base)`, scalar and integer `math`, `math.hypot`/`dist`/`fma`, `any`/`all`, `sum`/`fsum`/`prod`, checked integer power and `pow(a, b, m)`, `round(int, n)`, range arithmetic, dict hashing and format-spec parsing. |
 | `runtime.c` | Collector, object and container memory layouts, I/O, signals, native library calls and float conversion. |
 | [The compiler](../src/README.md) | Runtime compilation, checked primitives, runtime signatures and linking. |
 
@@ -33,8 +33,8 @@ nonzero correction only after traversal.
 ASCII escaping measures the output before allocating one string, then copies
 ASCII spans and writes escapes. It reuses the runtime's UTF-8 decoder, including
 its malformed-byte and surrogate behavior. The result remains a fresh string,
-including for empty or already-ASCII input. Raw storage, the collector, and the
-small stack scratch arrays used by `hypot` and `dist` remain in `runtime.c`.
+including for empty or already-ASCII input. Raw storage and the collector remain
+in `runtime.c`.
 
 `str(int)` counts the digits of the magnitude, allocates one string and writes it from
 the last digit. Its arithmetic wraps where it cannot overflow, so it raises nothing but
@@ -45,6 +45,18 @@ the ASCII form of a string that has other characters, from the table of decimal 
 and `pys_int_badlit` raises the error for a string that is no integer, whose message
 holds the string's `repr()`. `float(str)` and the arbitrary-precision parser in
 `mpz/mpz.c` use the same two steps.
+
+`math.hypot` and `math.dist` are CPython's `vector_norm`. A first pass over the
+coordinates finds the largest and a second sums their scaled squares, so that no copy
+of them is kept and nothing is allocated. The scale, a power of two, is built from the
+largest coordinate's bits (`_rt.float_bits`, `_rt.bits_float`); what each square's
+float leaves out comes from `_rt.fma`, and the root from `_rt.sqrt`. `pow(a, b, m)`
+works on unsigned values below `|m|`, whose products take 128 bits (`_rt.mul_hi`,
+`_rt.urem_wide`), and finds a negative exponent's inverse by Euclid's algorithm in
+wrapping arithmetic. `round(x, n)` of an int needs 64 bits alone: `10**19` is past
+them, so a comparison decides that case. The int `sum` adds with the checked
+arithmetic; where a program's lists may hold ints past 64 bits, the compiler narrows
+the list before the call, as for `math.prod` (`NARROWED`).
 
 ## Writing runtime code
 
@@ -159,8 +171,8 @@ main's loops and with CPython.
 ## Private primitives
 
 `import _rt` is available only in runtime mode. Its implementations operate on
-subset `str` and `int` values and emit LLVM instructions or calls recorded in the
-runtime table.
+subset `str`, `int` and `float` values and emit LLVM instructions or calls recorded
+in the runtime table.
 
 | Primitive | Contract |
 |---|---|
@@ -177,6 +189,10 @@ runtime table.
 | `shl(a, n)`, `lshr(a, n)` | Shift by `n % 64`; the right shift is logical. |
 | `udiv(a, b)`, `urem(a, b)` | Unsigned division/remainder of 64-bit patterns; check zero. |
 | `mul_ovf(a, b)` | Test whether signed multiplication would overflow. |
+| `mul_hi(a, b)` | High 64 bits of the 128-bit product of two 64-bit patterns as unsigned ints; `wrap_mul` gives the low ones. |
+| `urem_wide(hi, lo, d)` | Remainder of the 128-bit `hi:lo` by `d`, unsigned; check zero. |
+| `float_bits(x)`, `bits_float(i)` | A float's IEEE 754 bits as an int, and the float of such bits. |
+| `fma(x, y, z)`, `sqrt(x)`, `fdiv(x, y)` | `x * y + z` rounded once, the square root and the quotient as IEEE 754 defines them: an inf or a NaN, never an error. |
 
 Two lifetime rules are manual:
 

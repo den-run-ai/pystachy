@@ -495,6 +495,26 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
         return Val(self.scalar(name, [Val(a[0], 'int'), Val(a[1], 'int')]), "int")
     if name == "mul_ovf":
         return Val(self.checked("*", a[0], a[1])[1], "bool")
+    if name == "mul_hi":
+        # the product in 128 bits, where it cannot wrap; LLVM makes it one widening multiply
+        p = self.scalar('mul', [Val(self.scalar_cast('zext', Val(a[0], 'int'), '%i128'), '%i128'), Val(self.scalar_cast('zext', Val(a[1], 'int'), '%i128'), '%i128')])
+        return Val(self.scalar_cast('trunc', Val(self.scalar('lshr', [Val(p, '%i128'), Val('64', '%i128')]), '%i128'), 'int'), "int")
+    if name == "urem_wide":
+        # urem_wide(hi, lo, d): (hi * 2**64 + lo) % d, which is below d and so fits
+        self.guard(self.num_cmp('==', Val(a[2], "int"), Val('0', "int")).v, "ZeroDivisionError: integer division or modulo by zero")
+        hi = self.scalar('shl', [Val(self.scalar_cast('zext', Val(a[0], 'int'), '%i128'), '%i128'), Val('64', '%i128')])
+        n = self.scalar('or', [Val(hi, '%i128'), Val(self.scalar_cast('zext', Val(a[1], 'int'), '%i128'), '%i128')])
+        return Val(self.scalar_cast('trunc', Val(self.scalar('urem', [Val(n, '%i128'), Val(self.scalar_cast('zext', Val(a[2], 'int'), '%i128'), '%i128')]), '%i128'), 'int'), "int")
+    if name == "float_bits":
+        return Val(self.scalar_cast('bitcast', Val(a[0], 'float'), 'int'), "int")
+    if name == "bits_float":
+        return Val(self.scalar_cast('bitcast', Val(a[0], 'int'), 'float'), "float")
+    if name == "fma":
+        return Val(self.rt("llvm.fma.f64", "double", [f"double {a[0]}", f"double {a[1]}", f"double {a[2]}"]), "float")
+    if name == "sqrt":
+        return Val(self.rt("llvm.sqrt.f64", "double", [f"double {a[0]}"]), "float")
+    if name == "fdiv":
+        return Val(self.scalar('fdiv', [Val(a[0], 'float'), Val(a[1], 'float')]), "float")
     if name == "shl" or name == "lshr":
         # by n mod 64, as the hardware shifts (LLVM would make a larger shift poison)
         return Val(self.scalar(name, [Val(a[0], 'int'), Val(self.scalar('and', [Val(a[1], 'int'), Val('63', 'int')]), 'int')]), "int")

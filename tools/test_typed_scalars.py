@@ -37,7 +37,7 @@ class TypedScalarTests(unittest.TestCase):
 
     def test_arithmetic_bitwise_and_overflow_flags_lower_exactly(self):
         for op in ("add", "sub", "mul", "udiv", "urem", "shl", "lshr", "ashr", "and", "or", "xor"):
-            for t, llvm in (("int", "i64"), ("bool", "i1"), ("%byte", "i8"), ("%i32", "i32")):
+            for t, llvm in (("int", "i64"), ("bool", "i1"), ("%byte", "i8"), ("%i32", "i32"), ("%i128", "i128")):
                 g = Gen()
                 g.scalar(op, [Val("%a0", t), Val("1", t)])
                 self.assertEqual(self.finish(g), [f"  %t1 = {op} {llvm} %a0, 1"])
@@ -51,17 +51,56 @@ class TypedScalarTests(unittest.TestCase):
             self.assertEqual(self.finish(g), [f"  %t1 = {op} double %a0" + ("" if op == "fneg" else ", 0.0")])
 
     def test_cast_and_comparison_lowering_is_finite_and_typed(self):
-        ll = {"int": "i64", "bool": "i1", "%byte": "i8", "%i32": "i32", "float": "double", "%ptr": "ptr"}
+        ll = {"int": "i64", "bool": "i1", "%byte": "i8", "%i32": "i32", "%i128": "i128", "float": "double", "%ptr": "ptr"}
         for signature in SCALAR_CASTS:
             op, source, target = signature.split(":")
             g = Gen()
             g.scalar_cast(op, Val("%a0", source), target)
             self.assertEqual(self.finish(g), [f"  %t1 = {op} {ll[source]} %a0 to {ll[target]}"])
-        for t, preds in (("int", SCALAR_ICMP), ("%i32", SCALAR_ICMP), ("bool", SCALAR_ICMP), ("float", SCALAR_FCMP), ("%ptr", ["eq", "ne"])):
+        for t, preds in (("int", SCALAR_ICMP), ("%i32", SCALAR_ICMP), ("%i128", SCALAR_ICMP), ("bool", SCALAR_ICMP), ("float", SCALAR_FCMP), ("%ptr", ["eq", "ne"])):
             for pred in preds:
                 g = Gen()
                 g.scalar_cmp(pred, Val("%a0", t), Val("%a1", t))
                 self.assertEqual(self.finish(g), [f"  %t1 = {'fcmp' if t == 'float' else 'icmp'} {pred} {ll[t]} %a0, %a1"])
+
+    def test_runtime_wide_and_float_primitives_lower_to_machine_scalars(self):
+        a, b, c = Val("%a0", "int"), Val("%a1", "int"), Val("%a2", "int")
+        x, y, z = Val("%a0", "float"), Val("%a1", "float"), Val("%a2", "float")
+        for name, vals, result, lines in (
+                ("mul_hi", [a, b], "int", ["  %t1 = zext i64 %a0 to i128", "  %t2 = zext i64 %a1 to i128", "  %t3 = mul i128 %t1, %t2",
+                                           "  %t4 = lshr i128 %t3, 64", "  %t5 = trunc i128 %t4 to i64"]),
+                ("float_bits", [x], "int", ["  %t1 = bitcast double %a0 to i64"]),
+                ("bits_float", [a], "float", ["  %t1 = bitcast i64 %a0 to double"]),
+                ("fdiv", [x, y], "float", ["  %t1 = fdiv double %a0, %a1"]),
+                ("fma", [x, y, z], "float", ["  %t1 = call double @llvm.fma.f64(double %a0, double %a1, double %a2)"]),
+                ("sqrt", [x], "float", ["  %t1 = call double @llvm.sqrt.f64(double %a0)"])):
+            with self.subTest(primitive=name):
+                g = Gen()
+                g.rtmode = True
+                value = g.primitive(name, vals)
+                self.assertEqual((value.v, value.t), (f"%t{len(lines)}", result))
+                self.assertEqual(self.finish(g), lines)
+        # the remainder of a 128-bit dividend: the divisor is checked first, then all is unsigned
+        g = Gen()
+        g.rtmode = True
+        value = g.primitive("urem_wide", [a, b, c])
+        self.assertEqual(list(g.fn.cold), ["ZeroDivisionError: integer division or modulo by zero"])
+        self.assertEqual([(i.op, i.s) for i in g.fn.blocks[0].code], [("num.cmp", "=="), ("check", "ZeroDivisionError: integer division or modulo by zero")])
+        body = g.fn.blocks[-1].code
+        self.assertEqual([(i.op, i.s, i.t) for i in body],
+                         [("scalar.cast", "zext", "%i128"), ("scalar.bin", "shl", "%i128"), ("scalar.cast", "zext", "%i128"),
+                          ("scalar.bin", "or", "%i128"), ("scalar.cast", "zext", "%i128"), ("scalar.bin", "urem", "%i128"),
+                          ("scalar.cast", "trunc", "int")])
+        self.assertEqual(value.t, "int")
+        for i in body:
+            self.assertEqual(g.opfx(i, {}), 0)
+            g.lower_ins(g.fn, i)
+        self.assertEqual(g.out[-2:], ["  %t9 = urem i128 %t7, %t8", "  %t10 = trunc i128 %t9 to i64"])
+        # a wide value is no storage, select or float-cast type
+        for op, source, target in (("zext", "%i32", "%i128"), ("trunc", "%i128", "%i32"), ("sitofp", "%i128", "float"), ("bitcast", "float", "%i128"), ("bitcast", "int", "%ptr")):
+            def cast(g, op=op, source=source, target=target):
+                return g.scalar_cast(op, Val("%a0", source), target)
+            self.bad(cast, "k", 0)
 
     def test_verifier_rejects_mismatches_unknown_operators_and_extra_metadata(self):
         def binary(g):

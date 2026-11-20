@@ -3,12 +3,13 @@ from __future__ import annotations
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, tmpname
 
 
-SCALAR_INTS = ["bool", "%byte", "%i32", "int"]
+SCALAR_INTS = ["bool", "%byte", "%i32", "int", "%i128"]
 SCALAR_BIN = ["add", "sub", "mul", "udiv", "urem", "shl", "lshr", "ashr", "and", "or", "xor"]
 SCALAR_FLOAT = ["fadd", "fsub", "fmul", "fdiv", "fneg"]
 SCALAR_ICMP = ["eq", "ne", "slt", "sle", "sgt", "sge", "ult", "ule", "ugt", "uge"]
 SCALAR_FCMP = ["oeq", "one", "olt", "ole", "ogt", "oge", "ueq", "une", "ult", "ule", "ugt", "uge", "ord", "uno"]
-SCALAR_CASTS = ["zext:bool:int", "zext:%byte:int", "trunc:int:bool", "trunc:int:%byte", "trunc:int:%i32", "zext:%i32:int", "sitofp:int:float", "fptosi:float:int", "ptrtoint:%ptr:int", "inttoptr:int:%ptr"]
+SCALAR_CASTS = ["zext:bool:int", "zext:%byte:int", "trunc:int:bool", "trunc:int:%byte", "trunc:int:%i32", "zext:%i32:int", "sitofp:int:float", "fptosi:float:int", "ptrtoint:%ptr:int", "inttoptr:int:%ptr",
+                "zext:int:%i128", "trunc:%i128:int", "bitcast:float:int", "bitcast:int:float"]
 
 
 def gen_scalar(self, op: str, args: list[Val], flags: str = "") -> str:
