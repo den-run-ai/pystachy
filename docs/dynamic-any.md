@@ -384,7 +384,10 @@ A tuple test narrows to a tuple unless the program holds a NamedTuple's object
 in an `Any` value: that object passes the test with its class's layout, so the
 value then stays `Any`. A `None` item in the tuple of types is no type: the test
 raises CPython's `TypeError` where CPython reaches it
-(`tests/programs/inference/dynany_isinstance_none_item.py`).
+(`tests/programs/inference/dynany_isinstance_none_item.py`). `type(None)` names
+`NoneType` where `type` is the builtin or a local that holds it, such as a parameter
+`type=type`; a test through another local `type` is rejected
+(`tests/errors/inference/dynany_isinstance_type_shadowed.py`).
 `isinstance(x, int)` retains the box because a bool also passes that test, but
 proves an int or bool payload for arithmetic and comparisons. Bool `&`, `|` and
 `^` with another bool, and `**`, stay dynamic because their result rules differ

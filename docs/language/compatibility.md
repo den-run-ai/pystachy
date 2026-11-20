@@ -350,9 +350,6 @@ boxed lists stay unrestricted, and `isinstance(value, list)` does not prove thei
 item layout. See the [native-list deviation](../../tests/deviations/dynany_native_int_list_store.py).
 Unsupported selected comparison bodies also raise
 `TypeError`; they do not silently fall back to identity or a lower-priority method.
-`isinstance()` of an `Any` value answers `False` for a `NamedTuple` object tested against
-`tuple`, and `True` for a class tuple holding `None`, where CPython raises `TypeError`
-([#1581](https://github.com/den-run-ai/pystachy/issues/1581)).
 
 Runtime argument packs support fixed user callables and prepared constructors.
 Variadic targets, erased callable signatures, custom mappings, builtin methods,

@@ -2590,7 +2590,9 @@ def gen_dyn_isinst_types(self, c: Node) -> list[str]:
             if NOTYPE in ts:
                 return out
         return out
-    if c.kind == "call" and len(c.kids) == 2 and c.kids[0].kind == "name" and c.kids[0].s == "type" and c.kids[1].kind == "None" and not self.bound("type"):
+    if c.kind == "call" and len(c.kids) == 2 and c.kids[0].kind == "name" and c.kids[0].s == "type" and c.kids[1].kind == "None" and (not self.bound("type") or self.ltype.get("type", "") == "fn[b:type]"):
+        # (a local named type names the builtin where its type says it holds it, as a parameter
+        # that defaults to it does; any other is called, and its result is no type this decides)
         return ["None"]
     if c.kind != "name":
         return [""]
