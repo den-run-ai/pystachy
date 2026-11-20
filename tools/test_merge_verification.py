@@ -240,7 +240,7 @@ def report(group, steps):
         if name.startswith("tests-opt-off"):
             step.update(PYSTACHY_OPT=["-all"])
         if name == "gc-self":
-            step.update(compiler_interval=5000, ir_identical=True)
+            step.update(compiler_interval=7000, ir_identical=True)
         if name == "dynany-fuzz":
             step.update(programs=3, cases=540, parity_cases=90, modes=["jit", "aot", "jit-gc", "aot-gc"],
                         program_gc_interval=1, mismatches=0)

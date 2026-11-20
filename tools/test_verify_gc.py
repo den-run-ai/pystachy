@@ -97,7 +97,7 @@ class GCVerificationTests(unittest.TestCase):
         compiler = self.root / "bin/compiler"
         compiler.write_text(f"#!{sys.executable}\n" + '''import os
 import signal
-if os.environ.get("VERIFY_MOCK_MODE") == "timeout-kill" and os.environ.get("PYSTACHY_GC_STRESS") == "5000":
+if os.environ.get("VERIFY_MOCK_MODE") == "timeout-kill" and os.environ.get("PYSTACHY_GC_STRESS") == "7000":
     signal.signal(signal.SIGTERM, signal.SIG_IGN)   # before the other imports: TERM must find it ignored
 from pathlib import Path
 import shutil
@@ -148,7 +148,7 @@ if args[0] == "build":
 else:
     text = "fixed point\\n"
     if stress:
-        assert stress == "5000", stress
+        assert stress == "7000", stress
         assert os.environ["PYSTACHY_GC"] == "stats"
         Path("gc-child.pid").write_text(str(os.getpid()))
         if mode in ("timeout", "timeout-kill", "signal"):
@@ -302,7 +302,7 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
         self.assertEqual([step["name"] for step in report["steps"]], ["bootstrap", "gc-self"])
         step = report["steps"][-1]
         self.assertTrue(step["ir_identical"])
-        self.assertEqual(step["compiler_interval"], 5000)
+        self.assertEqual(step["compiler_interval"], 7000)
         self.assertNotIn("expected", step)
         for text in ("gc-self: started", "limit 10m", "gc-self: finished after", "gc statistics"):
             self.assertIn(text, logs["gc-self"])
@@ -369,7 +369,7 @@ print((97 if name == "native" else 99), "passed, 0 failed")
                 result, report, logs = self.run_group("gc-self", mode)
                 self.assertEqual([step["name"] for step in report["steps"]], ["bootstrap", "gc-self"])
                 gc_step = report["steps"][1]
-                self.assertEqual(gc_step["compiler_interval"], 5000)
+                self.assertEqual(gc_step["compiler_interval"], 7000)
                 self.assertEqual(gc_step["ir_identical"], mode == "pass")
                 self.assertEqual((result.returncode, report["result"], gc_step["result"]),
                                  (0, "pass", "pass") if mode == "pass" else (1, "fail", "fail"))

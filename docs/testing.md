@@ -783,9 +783,10 @@ potentially different units. Identity now has its own jobs; do not reserve JIT w
 when refreshing its weights. Check identity balance and each independent job's time
 before adopting the refresh.
 
-GC self-compilation collects every 5,000 allocations and has a separate ten-minute bound.
-At the former interval of 1,000, it spent 23 minutes on 15,543 full-heap collections;
-the wider interval still exercises thousands of collections without dominating CI.
+GC self-compilation collects every 7,000 allocations and has a separate ten-minute bound.
+At 1,000 it spent 23 minutes on 15,543 full-heap collections, and at 5,000 the compiler of
+v0.7.0-alpha.1 spent 590 seconds on 7,734, against the bound: collection is nearly all of its
+time. The wider interval still exercises thousands of collections without dominating CI.
 The compiler collecting every 1,000 allocations is checked by identity, once a run: `gc-ir-0`,
 `gc-ir-1` and `gc-ir-2` run independently of JIT and compile the cases of three disjoint thirds of
 the corpus (`gc_shard_cases`, balanced as above) with it and with stage 2 unstressed, through

@@ -34,7 +34,7 @@
 #   runtime-table  tools/check_runtime.py: the compiler's RUNTIME table agrees with runtime.c and
 #                  runtime.py (types, coverage, and the effects their call graphs show), and no
 #                  function of runtime.py reaches itself through runtime.c
-#   gc-self        the native compiler collecting every 5000 allocations reproduces the IR
+#   gc-self        the native compiler collecting every 7000 allocations reproduces the IR
 #   gc-ir-0/-1/-2  the stage-2 compiler collecting every 1000 allocations compiles each case of one of
 #                  three disjoint thirds of the corpus (gc_shard_cases), and runtime.py, exactly as stage 2
 #                  does unstressed (tools/irsame.sh: the same IR, messages and exit status, byte for
@@ -473,8 +473,9 @@ cancel_gc() {
 trap cancel_gc INT TERM
 start_gc_self() {
 if want gc-self && [ -x "$V/pystachy2" ]; then
-  # At 1000, self-compilation spent 23 minutes in 15,543 full-heap collections.
-  # 5000 still exercises thousands of collections; the test suite keeps its stronger intervals.
+  # At 1000, self-compilation spent 23 minutes in 15,543 full-heap collections, and at 5000 the
+  # compiler of v0.7.0-alpha.1 took 7,734 of them, 590 s, against the 10-minute limit. 7000
+  # still exercises thousands of collections; the test suite keeps its stronger intervals.
   echo 'gc-self: starting (10-minute limit; build/verify/gc-self.log)'
   timeout --verbose --kill-after=10s 10m sh -c '
     started=$(date +%s)
@@ -488,7 +489,7 @@ if want gc-self && [ -x "$V/pystachy2" ]; then
     if [ "$status" -gt 128 ]; then wait "$child"; status=$?; fi
     echo "gc-self: finished after $(($(date +%s) - started))s, exit $status"
     exit "$status"
-  ' gc-self env PYSTACHY_GC=stats PYSTACHY_GC_STRESS=5000 \
+  ' gc-self env PYSTACHY_GC=stats PYSTACHY_GC_STRESS=7000 \
     "$V/pystachy2" ir pystachy.py -o "$V/stage-gc.ll" > "$V/gc-self.log" 2>&1 &
   gcpid=$!
 fi
@@ -763,10 +764,10 @@ L=$V/gc-self-check.log; s=$(now); r=fail
   cat "$V/gc-self.log"
   echo "gc-self: exit $self_status"
   [ "$self_ok" = 1 ] &&
-    cmp "$V/stage1.ll" "$V/stage-gc.ll" && echo "the compiler collecting every 5000 allocations emits the stage1 IR" &&
+    cmp "$V/stage1.ll" "$V/stage-gc.ll" && echo "the compiler collecting every 7000 allocations emits the stage1 IR" &&
     r=pass
 } > "$L" 2>&1
-step gc-self $r "$s" "$L" ", \"compiler_interval\": 5000, \"ir_identical\": $(same "$V/stage1.ll" "$V/stage-gc.ll")"
+step gc-self $r "$s" "$L" ", \"compiler_interval\": 7000, \"ir_identical\": $(same "$V/stage1.ll" "$V/stage-gc.ll")"
 fi
 
 # ---- GC stress: the stressed compiler's output, then the corpus in both modes, on independent CI runners

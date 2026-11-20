@@ -306,7 +306,7 @@ def validate_report(report, group, expected, profile="full", selection=None):
             raise ValueError(f"{label}: nonempty failures")
         if step["name"] == "gc-self":
             if (step.get("ir_identical") is not True or
-                    integer(step.get("compiler_interval"), f"{label}.compiler_interval", 1) != 5000):
+                    integer(step.get("compiler_interval"), f"{label}.compiler_interval", 1) != 7000):
                 raise ValueError(f"{label}: missing GC-stressed IR identity or wrong interval")
         if step["name"] == "dynany-fuzz":
             if (integer(step.get("programs"), f"{label}.programs") != 3 or
