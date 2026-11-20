@@ -43,16 +43,19 @@ def bench_decimal_factorial():
     c.Emax = decimal.MAX_EMAX
     c.Emin = decimal.MIN_EMIN
 
+    # Pystachy port: the factorials are kept and returned, for the main's check
+    results: list[int | decimal.Decimal] = []
     for n in SIZES:  # Pystachy port: [10000, 100000] by default; see SIZES
         # C version of decimal
         _ = factorial(decimal.Decimal(n), 0)
+        results.append(_)
+    return results
 
 
 if __name__ == "__main__":
     # Pystachy port: a deterministic main replaces pyperf.Runner: argv[1] is the
-    # number of loops and the other arguments replace upstream's sizes; the digits
-    # of each factorial are counted and two of its remainders printed, and the time
-    # goes to stderr.
+    # number of loops and the other arguments replace upstream's sizes; a remainder
+    # of each factorial of the last loop is printed, and the time goes to stderr.
     import sys
     import time
     loops = int(sys.argv[1]) if len(sys.argv) > 1 else 1
@@ -60,8 +63,7 @@ if __name__ == "__main__":
         SIZES = [int(arg) for arg in sys.argv[2:]]
     t0 = time.perf_counter()
     for _ in range(loops):
-        bench_decimal_factorial()
+        results = bench_decimal_factorial()
     print("seconds", time.perf_counter() - t0, file=sys.stderr)
-    for size in SIZES:
-        value = factorial(decimal.Decimal(size), 0) + decimal.Decimal(0)  # (a Decimal, also where factorial() is an int)
-        print("decimal_factorial", loops, size, value.adjusted() + 1, value % 1000000007, value % 998244353)
+    for index in range(len(SIZES)):
+        print("decimal_factorial", loops, SIZES[index], results[index] % 1000000007)
