@@ -786,6 +786,7 @@ from src.pystachy_compiler.emission import (
     gen_ret_ as emission_ret_,
     gen_returned_none as emission_returned_none,
     gen_rt as emission_rt,
+    gen_instantiate as emission_instantiate,
     gen_list_get as emission_list_get,
     gen_list_len as emission_list_len,
     gen_list_write as emission_list_write,
@@ -2933,8 +2934,11 @@ class Gen:
     def select(self, c: str, x: Val, y: Val) -> str:
         return emission_select(self, c, x, y)
 
-    def rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
-        return emission_rt(self, name, ret, args, x)
+    def rt(self, name: str, ret: str, args: list[str], x: str = "", t: str = "") -> str:
+        return emission_rt(self, name, ret, args, x, t)
+
+    def instantiate(self, fn: IFn) -> None:
+        emission_instantiate(self, fn)
 
     def list_len(self, o: Val) -> str:
         return emission_list_len(self, o)
@@ -5939,8 +5943,8 @@ class Gen:
     def utag(self, t: str) -> int:
         return unions_utag(self, t)
 
-    def ubox(self, v: Val, m: str) -> str:
-        return unions_ubox(self, v, m)
+    def ubox(self, v: Val, m: str, u: str) -> str:
+        return unions_ubox(self, v, m, u)
 
     def uget(self, u: Val, m: str) -> Val:
         return unions_uget(self, u, m)

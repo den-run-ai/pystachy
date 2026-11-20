@@ -4,7 +4,7 @@ import os
 from src.pystachy_compiler.utils import clsof, is_union, umembers
 from src.pystachy_compiler.diagnostics import int_lists
 from src.pystachy_compiler.frames import IterArg, Reduce
-from src.pystachy_compiler.ir import Data, Ins, Loop, Val
+from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.lexer import Lexer, codepoint, utf8len
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.parser import Parser
@@ -1145,7 +1145,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             return Val(fbits("0.0"), "float")
         if len(vals) == 1:
             return Val(self.rt("fabs", "double", [f"double {self.as_float(vals[0]).v}"]), "float")
-        xs = self.rt("pys_list_new", "ptr", [f"i64 {len(vals)}"])
+        xs = self.rt("pys_list_new", "ptr", [f"i64 {len(vals)}"], t="list[float]")
         for v in vals:
             self.list_write("list.append", [Val(xs, "list[float]"), Val(self.to_slot(self.as_float(v)), "*float")])
         return Val(self.rt("pys_m_hypot_list", "double", [f"ptr {xs}"]), "float")
@@ -1632,6 +1632,7 @@ def gen_keys_of(self, xs: Val, key: Val) -> Val:
     # [key(x) for x in xs]: the keys of a sort, computed in order, as CPython computes them
     # before it sorts; xs is a list that no other code sees (a copy, or the items a list gave up)
     ks = self.rt("pys_list_new", "ptr", [f"i64 {self.mload('int', xs.v)}"])
+    made = self.blk.code[len(self.blk.code) - 1]  # (its rt op, typed below once the keys' type is known)
     ctr = self.alloca("int", "")
     self.mstore('int', '0', ctr)
     lc = self.label()
@@ -1660,6 +1661,8 @@ def gen_keys_of(self, xs: Val, key: Val) -> Val:
     self.mstore('int', f"{self.scalar('add', [Val(i, 'int'), Val('1', 'int')])}", ctr)
     self.br(lc)
     self.place(le)
+    if made.op == "rt" and len(made.r) == 1 and tmpname(made.r[0]) == ks:
+        made.t = self.ctype("list", [k.t])  # (an instance of list.new's list[T]: Gen.instantiate)
     return Val(ks, self.ctype("list", [k.t]))
 
 def gen_key_sort(self, xs: Val, key: Val, rev: str, taken: bool) -> None:
@@ -1747,7 +1750,7 @@ def gen_key_none_join(self, r: Val, lnone: str, xs: Val, vals: list[Val], name: 
     self.br(lend)
     self.place(lnone)
     if len(vals) > 0:
-        xs = Val(self.rt("pys_list_new", "ptr", [f"i64 {len(vals)}"]), self.ctype("list", [r.t]))
+        xs = Val(self.rt("pys_list_new", "ptr", [f"i64 {len(vals)}"], t=self.ctype("list", [r.t])), self.ctype("list", [r.t]))
         for v in vals:
             self.list_store(xs, self.list_hold(v, r.t), "append")
     if is_list(xs.t):
@@ -2367,7 +2370,7 @@ def gen_as_list(self, v: Val, name: str) -> Val:
         # (a dynamic value's items, as list() takes them: a fresh list of their boxes, or of the
         # strs they must be for str.join(): dynamic.py)
         fn = "pys_dyn_strs" if name == "join" else "pys_dyn_list"
-        return Val(self.rt(fn, "ptr", [f"ptr {v.v}"]), "list[str]" if name == "join" else "list[dyn]")
+        return Val(self.rt(fn, "ptr", [f"ptr {v.v}"], t="list[str]" if name == "join" else "list[dyn]"), "list[str]" if name == "join" else "list[dyn]")
     if v.t in self.nts:
         self.notnone(v, "TypeError: must assign iterable to extended slice" if name == "slice" else "TypeError: 'NoneType' object is not iterable")
         v = self.ntup(v, True)
@@ -2424,7 +2427,7 @@ def gen_as_list(self, v: Val, name: str) -> Val:
     if is_set(v.t):
         return Val(self.rt("pys_set_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [selem(v.t)]))
     if is_vtuple(v.t):
-        return Val(self.rt("pys_vtuple_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]]))
+        return Val(self.rt("pys_vtuple_list", "ptr", [f"ptr {v.v}"], t=self.ctype("list", [targs(v.t)[0]])), self.ctype("list", [targs(v.t)[0]]))
     if is_tuple(v.t):
         ts = [narrow_type(x) for x in targs(v.t)]  # (a list holds 64-bit ints: bigints.py)
         et = ts[0] if len(ts) > 0 else "str" if name == "join" else "int"  # (the empty tuple: no item to type)
@@ -2438,7 +2441,7 @@ def gen_as_list(self, v: Val, name: str) -> Val:
         # (the empty tuple's list is scanned: no item proves its array pointer-free, and its callers
         # type it as the list they want, list(()) where a list[str] goes: an atomic array would hide
         # that list's strs from the collector)
-        r = self.rt("pys_list_new_atomic" if len(ts) > 0 and atomic_list(self.ctype("list", [et])) else "pys_list_new", "ptr", [f"i64 {len(ts)}"])
+        r = self.rt("pys_list_new_atomic" if len(ts) > 0 and atomic_list(self.ctype("list", [et])) else "pys_list_new", "ptr", [f"i64 {len(ts)}"], t=self.ctype("list", [et]) if len(ts) > 0 else "list[?]")
         for i in range(len(ts)):
             item = self.tget(v, i)
             if self.ctype("list", [et]) == "list[dyn]":
@@ -3578,7 +3581,7 @@ def gen_dict_pairs(self, v: Val, want: str, found: str = "") -> Val:
         if not is_dict(t) or "?" in t:
             t = self.ctype("dict", ["int", "int"])
             self.guessed[self.curfn.ll] = f"dict() at line {self.line} of tuples of {len(targs(et))} items makes only an empty dict, taken as {typestr(t)}: give it a type first, as in d: dict[K, V] = dict(...)"
-        return Val(self.rt("pys_dict_new_atomic" if atomic_dict(t) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(targs(t)[0], True)}", "i64 0"]), t)
+        return Val(self.rt("pys_dict_new_atomic" if atomic_dict(t) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(targs(t)[0], True)}", "i64 0"], t=t), t)
     kv = targs(et)
     if self.key_problem(kv[0]) != "":
         self.err(self.key_problem(kv[0]))
@@ -3587,7 +3590,7 @@ def gen_dict_pairs(self, v: Val, want: str, found: str = "") -> Val:
         item = made_var("__item", self.line)
         v = self.listcomp(mk("listcomp", "", self.line, [mk("name", "__item", self.line, []), item, self.vnode(v)]), "list[tuple[dyn,dyn]]")
         kv = ["dyn", "dyn"]
-    d = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", "i64 0"])
+    d = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", "i64 0"], t=self.ctype("dict", kv))
     self.update_pairs(d, v, kv)  # (their promoting ints: bigints.py)
     return Val(d, self.ctype("dict", kv))
 

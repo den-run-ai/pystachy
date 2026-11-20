@@ -1733,7 +1733,7 @@ def gen_refl_dir(self, x: Node) -> Val:
     for lf in self.refl_split(o, known):
         self.place(lf.label)
         names = self.refl_dir_names(lf.c)
-        r = self.rt("pys_list_new", "ptr", [f"i64 {len(names)}"])
+        r = self.rt("pys_list_new", "ptr", [f"i64 {len(names)}"], t="list[str]")
         for nk in names:
             if lf.c in self.classes and not self.refl_listed(lf.c, nk):
                 yes = self.label()
