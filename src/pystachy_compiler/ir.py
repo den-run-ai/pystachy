@@ -192,7 +192,16 @@ def one_nums_intact() -> bool:
 class Ins:
     # one instruction: op decides which fields mean something
     def __init__(self, op: str, t: str, s: str):
-        self.line = 0  # encoded source position; zero for synthesized operations
+        # its source location, as an MLIR operation's loc: the line of the statement it
+        # implements, numbered as diagnostics.LINES numbers lines (a file's index * LINES + its
+        # line). The frontend gives every op it builds, a slot too, the line it is compiling
+        # (Gen.add): a function's prologue (its entry depth, parameter stores, cells) compiles
+        # at its def's line, and module code's at its block's, line 1, which is numbered in the
+        # main program's file whatever the module (as LLVM line tables place module code). A
+        # pass gives an op it makes the line of the op it derives from, as an MLIR rewriter
+        # gives the replaced op's location. 0 is an unknown location, which no op of the
+        # compiler's has (IFn.located). Only LLVM line tables (PYSTACHY_DEBUG_LINES=1) read it
+        self.line = 0
         self.op = op  # a key of IROPS
         self.t = t  # its result type ("" if it defines no value; an rt op's as RUNTIME spells it), a slot's type
         # slot.pack/unpack keep the native type in the operand/result and use %slot for
@@ -357,6 +366,11 @@ class IFn:
         # resumer's), and of its own where it suspended in an except clause or a finally block
         self.gouter = ""
         self.ghand = ""
+        # whether each of its ops records its source line (Ins.line), which the verifier then
+        # requires: true of every function the compiler builds (Gen.enter, callback versions).
+        # IR written by hand (tools/typed_ir_text.py) may leave lines unknown, as MLIR's
+        # verifier accepts an unknown location
+        self.located = False
 
 
 class Lookup:

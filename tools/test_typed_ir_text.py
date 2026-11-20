@@ -236,6 +236,8 @@ class CompilerTests(unittest.TestCase):
                 with self.subTest(case=case, symbol=record["symbol"]):
                     self.assertEqual(text.roundtrip_errors(record), [])
                     self.assertEqual(text.from_ifn(text.to_ifn(record)), record)
+                    # (each op the compiler built has its source line, which the round trips keep)
+                    self.assertNotIn(0, [i["line"] for i in record["slots"] + [i for b in record["blocks"] for i in b["operations"]]])
                 count += 1
                 ops.update(i["op"] for b in record["blocks"] for i in b["operations"])
         self.assertGreater(count, 100)

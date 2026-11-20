@@ -28,6 +28,7 @@ from src.pystachy_compiler.utils import (
 def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     # the code generator's state at the start of function f, whose statements are body
     self.fn = IFn(f)
+    self.fn.located = True  # (each op it adds takes the line being compiled: Gen.add)
     self.blk = self.fn.blocks[0]
     self.ltype = {}
     self.lreg = {}
