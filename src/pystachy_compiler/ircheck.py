@@ -2,13 +2,13 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_lists, int_program
 from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
-from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, operand_kind, slot_register, tmpname
+from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, operand_kind, tmpname, value_definitions
 from src.pystachy_compiler.scalar_ir import SCALAR_INTS
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import BIG, EMPTYFS, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME, TYPE_CLASSES
 from src.pystachy_compiler.specs import OPS, OP_ENTRY, OP_FIELDS, OP_INVOKE, OP_K, OP_LABELS, OP_MAX, OP_MIN, OP_OPERAND_TYPES, OP_PER_OPERAND, OP_RESULT_TYPE, OP_S, OP_T, OP_TEMPS, OP_X, RESULT_NUMBERS
-from src.pystachy_compiler.utils import gelem, generator_identity, is_dict, is_gen, is_opt, is_set, is_tuple, is_union, list_read_error, list_receiver_error, list_write_error, lt, packed_item, same_kind, targs, tslots, umembers, unopt
+from src.pystachy_compiler.utils import RT_VARS, gelem, generator_identity, is_dict, is_gen, is_opt, is_set, is_tuple, is_union, list_read_error, list_receiver_error, list_write_error, lt, packed_item, rt_generic, rt_instance_error, same_kind, targs, tslots, umembers, unopt
 
 class EffectSummaries:
     # One compilation's completed function contexts. FnInfo retains each context's parameter
@@ -149,7 +149,7 @@ VTUPLE_ELEMS: list[str] = ["int", "float", "bool", "str", "dyn", "opt[int]", "op
 def native_type(t: str, classes: dict[str, ClassInfo]) -> bool:
     # a Python value's native type (specs.TYPE_CLASSES): no machine type (%), address (&), packed
     # slot (*) or descriptor (#), and a runtime type variable only where a class has its name
-    return t != "" and not t.startswith("%") and not t.startswith("&") and not t.startswith("*") and t != "#" and ((t != "T" and t != "K" and t != "V" and t != "S") or t in classes)
+    return t != "" and not t.startswith("%") and not t.startswith("&") and not t.startswith("*") and t != "#" and (t not in RT_VARS or t in classes)
 
 
 def fixed_tuple(t: str) -> bool:
@@ -351,23 +351,6 @@ def op_type_error(check: OpTypes, i: Ins) -> str:
     return ""
 
 
-# the type variables of RUNTIME's signatures, which an rt op's operand and result types may hold
-RT_VARS: list[str] = ["T", "K", "V", "S"]
-
-
-def rt_generic(t: str) -> bool:
-    # does type t name a runtime type variable (RT_VARS)
-    if "T" not in t and "K" not in t and "V" not in t and "S" not in t:
-        return False
-    start = 0
-    for j in range(len(t) + 1):
-        if j == len(t) or t[j] == "[" or t[j] == "]" or t[j] == "," or t[j] == "*" or t[j] == "&" or t[j] == ":":
-            if t[start:j] in RT_VARS:
-                return True
-            start = j + 1
-    return False
-
-
 def ref_type(t: str) -> bool:
     # is t a type whose value is a pointer: no machine type, address, packed slot or None
     return t != "" and not t.startswith("%") and not t.startswith("&") and not t.startswith("*") and lt(t) == "ptr"
@@ -509,33 +492,12 @@ def related_reads(self, a: str, b: str) -> bool:
 
 
 def value_types(self, fn: IFn) -> None:
-    # Each operand reads its value at the type the value's definition gives it, or by a view of
-    # specs.TYPE_VIEWS, as an MLIR operand has its value's one type. A value is a result of an op
-    # (but its lowering's temporaries; ovf's second is its bool flag), a parameter (its identity
-    # companion a dyn, and the identity result's address a &dyn), or a slot's register (the
-    # address &T of its slot of T; a stack tuple's register is its value). An address has a type
-    # &T and a packed slot a type *T, and no view reads one as the other. Symbols and constants
-    # have no definition here.
+    # Each operand reads its value at the type the value's definition gives it (ir.value_definitions),
+    # or by a view of specs.TYPE_VIEWS, as an MLIR operand has its value's one type. An address
+    # has a type &T and a packed slot a type *T, and no view reads one as the other.
     types: dict[str, str] = {}
     makers: dict[str, str] = {}
-    for i in fn.slots:
-        reg = slot_register(i)
-        types[reg] = i.t if i.k == 2 else "&" + i.t
-        makers[reg] = "slot"
-    for j in range(len(fn.f.ptypes)):
-        types["%a" + str(j)] = fn.f.ptypes[j]
-        types["%aid" + str(j)] = "dyn"
-    types["%idret"] = "&dyn"
-    for b in fn.blocks:
-        for i in b.code:
-            k = 0
-            for j in range(len(i.r)):
-                if i.op in OP_TEMPS and j in OP_TEMPS[i.op]:
-                    continue
-                name = tmpname(i.r[j])
-                types[name] = "bool" if i.op == "ovf" and k == 1 else i.t
-                makers[name] = i.op
-                k += 1
+    value_definitions(fn, types, makers)
     # (the values whose definition gives them only a machine type, a runtime type variable or a
     # placeholder; the first type an operand of an op but rt reads each at, and where; and the
     # views decided so far, as many operands read alike)
@@ -695,6 +657,11 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     union_proofs = True
                 if i.s not in self.rtfns:
                     self.bad_ir(fn, b, f"no RUNTIME entry for {i.s}" if i.s not in RUNTIME else f"{i.s}, which runtime() did not declare")
+                # (its types instantiate its runtime function's signature, Gen.instantiate; a
+                # native list read's or write's own contract below is stricter)
+                error = rt_instance_error(i, self.rtfns[i.s].sig) if i.s not in LIST_READS and i.s not in LIST_WRITES else ""
+                if error != "":
+                    self.bad_ir(fn, b, error)
                 if i.s in LIST_WRITES:
                     error = list_write_error(i, int_lists(), self.rtfns[i.s].sig)
                     if error != "":

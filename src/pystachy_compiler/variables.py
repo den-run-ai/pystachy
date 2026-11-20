@@ -2106,7 +2106,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
     elif k == "tuple" and is_opt(v.t):
         self.assign(t, self.unwrap(v, "TypeError: cannot unpack non-iterable NoneType object"))
     elif k == "tuple" and is_vtuple(v.t):
-        self.assign(t, self.list_identity(Val(self.rt("pys_vtuple_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]]))))  # (its items, as a list's)
+        self.assign(t, self.list_identity(Val(self.rt("pys_vtuple_list", "ptr", [f"ptr {v.v}"], t=self.ctype("list", [targs(v.t)[0]])), self.ctype("list", [targs(v.t)[0]]))))  # (its items, as a list's)
     elif k == "tuple" and (is_list(v.t) or v.t == "str"):
         # a, b = xs: the length is checked when it runs, as CPython does. CPython takes every
         # item before it stores the first, so where a store may change the list (xs[1], xs[0] =
@@ -2245,7 +2245,7 @@ def gen_slice_store(self, o: Val, bnd: list[str], v: Val) -> None:
     elif v.t == "bytes":
         v = Val(self.rt("pys_bytes_list", "ptr", [f"ptr {v.v}"]), "list[int]")
     elif v.t == "tuple[]":
-        v = Val(self.rt("pys_list_new", "ptr", ["i64 0"]), o.t)  # (() and [] have no item to type)
+        v = Val(self.rt("pys_list_new", "ptr", ["i64 0"], t=o.t if is_list(o.t) else ""), o.t)  # (() and [] have no item to type)
     elif not is_list(v.t):
         v = self.as_list(v, "slice")
     if not is_list(v.t):

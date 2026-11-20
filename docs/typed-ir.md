@@ -303,16 +303,16 @@ type class from the second table, or holds a variable such as `$T`. A variable i
 type wherever its row names it, alone or inside a type (`&$T`, `list[$E]`), and its class
 follows one of its names (`$T:native`); `select` is `bool, $T:scalar, $T -> $T`. The last
 operand's entry holds for any further operands the count admits, so `switch` is `int, int`.
-A runtime call's types are its `RUNTIME` signature's and a compiled call's its callee's, and
-both are checked where the call is built. The column constrains each instruction's own
-operand types.
+A runtime call's types are an instance of its `RUNTIME` signature (see
+[runtime calls](#runtime-calls)) and a compiled call's its callee's. The column constrains
+each instruction's own operand types.
 
 An operand's type is how its instruction reads the value. In MLIR a value has one type, which
 every use shares, and an op converts it. With `PYSTACHY_IRCHECK=1`, after each operation's own
 checks, the verifier requires an operand that names a result, a parameter or a slot's register
 to read it at the type its definition gives, or by one of the views of the third table
 (`TYPE_VIEWS`): readings of the same bits that no op writes yet, such as a `%slot` result read
-as `int` or a runtime call's `list[T]` read as `list[int]`. Any other difference is an error:
+as `int` or an empty list's `list[?]` read as `list[int]`. Any other difference is an error:
 an `int` read as a `float`, a `list[int]` as a `list[str]`, a class as an unrelated class.
 An address has a type of its own, `&T`, and a packed slot (an eight-byte word that holds a
 `T`) the type `*T`, so no view reads one as the other: a slot's register, `field.addr` and the
@@ -419,7 +419,7 @@ one, whatever block defines it.
 |---|---|
 | `machine` | U is D's machine type: %ptr for a reference, an address &T or None (null), %slot for a packed slot *T or an int, %addr for a slot's address |
 | `bits` | D is %ptr, read as a reference or an address &T; or D is %slot, read as an int, a packed slot *T or an rt op's bool |
-| `instance` | D or U holds an empty container's placeholder (list[?], or opt[None] for a local first assigned None) or a runtime type variable (T K V S), in an rt op's result or operand or where no class has its name: each stands for one type |
+| `instance` | D or U holds an empty container's placeholder (list[?], or opt[None] for a local first assigned None) or a runtime type variable (T K V S U R) that no binding replaced (Gen.instantiate), in an rt op's result or operand or where no class has its name: each stands for one type |
 | `alias` | one object by two types: a str and a bytes, an exc and its exctype, a recursive alias rec[A] and A's definition, a set, a frozenset and an AbstractSet, a fixed tuple and a keyword record (kw[...]), a generator with and without its return type; inside brackets an int and an int+, and inside a tuple's a bool read as an int |
 | `int slot` | an int read as a packed slot *int, which holds its value, and back |
 | `optional` | D read as opt[D] of a reference D, None as any reference or opt[...], or opt[U] as U |
@@ -433,6 +433,36 @@ one, whatever block defines it.
 "Per instruction" effects are a call's (its runtime entry's or its callee's summary) or a
 memory operation's (its address's): see [effects](#effects). An invoke is a call that an
 exception edge has made end its block.
+
+### Runtime calls
+
+A runtime function's `RUNTIME` signature may name type variables (see [effects](#effects)):
+`dict.getitem` is `*V:S,*K`, a dict and a packed key to a packed value. An `rt` instruction
+holds an instance of it, as every MLIR operand and result has a concrete type. Once a function
+is built, `Gen.instantiate` binds each variable to the type of the value that the first operand
+naming it reads, then `S`, the receiver, to the receiver's type and with it `T`, `K` and `V`,
+where nothing bound them, to what that holds, and writes the signature's types with the
+variables replaced:
+
+    %t9 = rt dict.getitem (dict[str,int] %t4, *str %t8) : *int
+
+An operand's own type comes first because it may differ from the receiver's items: a search
+compares a value of another type with them. A result type that the call's builder gives
+(`gen_rt`'s `t`) binds before them, so that no operand overrides it: a new list's items, a
+union's box (`R`), the items of a concatenation or of a set's union, intersection or symmetric
+difference, which may be either operand's (`R`), and `d.get(k)`'s value or None. An operand
+that reads a value that claims no type (`%slot`, `%ptr`) reads it at that type. With
+`PYSTACHY_IRCHECK=1` the verifier binds the operands in the same order and the result last, so
+that what they bind checks it, and requires one type for each variable and the signature's LLVM
+types (`rt_instance_error`); each operand then reads its value at its type or by a view. The
+receiver binds only what the other operands leave, so an item or a container that a call writes
+into it is checked against its items only for lists (`list_write_error`). A comparison's
+operands are `*T` and `*U`, and another container than the receiver is `U`, as they need not
+share a type. A variable still stands for any type where nothing binds it and in the rt ops that
+a pass adds later (`unionslots`' boxes, `dictfuse`'s lookups), and an empty container keeps its
+placeholder (`list[?]`) until the use that types it. A runtime function that may return what its
+type excludes keeps `%ptr`: iteration's `dyn.next` returns null at the end, and `exc.id` a user
+exception's object.
 
 The operation registry is closed: unknown operations, including `raw`, are rejected.
 Operations carry typed operands and finite operators, predicates, flags and metadata;
@@ -691,9 +721,10 @@ Allocation-triggered collection can close unreachable files; that unspecified cl
 is represented by `A`, rather than adding file or I/O effects to every allocation.
 
 Each `RUNTIME` entry has the form `result:params|effects|symbol`. Its type variables are `S`
-(receiver), `T` (element), `K` (key) and `V` (value); `*X` means an eight-byte container slot,
-`#` a static type descriptor, and `%X` a physical LLVM type. An empty symbol means
-`pys_<key>` with dots replaced by underscores. Calls are checked against the entries;
+(receiver), `T` (element), `K` (key), `V` (value), `U` (a second value's type) and `R` (a result
+whose type the call gives), which each call instantiates ([runtime calls](#runtime-calls));
+`*X` means an eight-byte container slot, `#` a static type descriptor, and `%X` a physical LLVM
+type. An empty symbol means `pys_<key>` with dots replaced by underscores. Calls are checked against the entries;
 `tools/check_runtime.py` checks them against the C and subset runtime implementations.
 
 ### Shared native-list storage contracts
@@ -1153,8 +1184,9 @@ value number that an operand reads. It proves no dominance, typing or lowering p
 Typed instruction coverage is complete for the LLVM backend. Further backend neutrality
 needs shared compiler/runtime layout definitions and a clearer separation of frontend
 elaboration from machine contracts. Operands still read values through the views of
-`TYPE_VIEWS`: precise result types for runtime calls and empty containers, and
-conversion ops for the views that narrow would leave each value one type, as MLIR's are. WebAssembly GC, more general check elimination and a
+`TYPE_VIEWS`: precise result types for empty containers and for runtime calls that return
+untyped memory (`alloc`), and conversion ops for the views that narrow would leave each value
+one type, as MLIR's are. WebAssembly GC, more general check elimination and a
 Python-object representation backend are design possibilities, not supported modes.
 
 CPython extension modules **are supported** through `pystachy ext` and boundary wrappers.

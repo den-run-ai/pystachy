@@ -216,9 +216,9 @@ def gen_utag(self, t: str) -> int:
         self.utags[t] = len(self.utags) + 1
     return self.utags[t]
 
-def gen_ubox(self, v: Val, m: str) -> str:
-    # v, of member type m, as a union's box (a class's object that may be None: null)
-    b = self.rt("pys_ubox", "ptr", [f"i64 {self.utag(m)}", "i64 " + self.to_slot(Val(v.v, m), False, True)])
+def gen_ubox(self, v: Val, m: str, u: str) -> str:
+    # v, of member type m, as a box of union u (a class's object that may be None: null)
+    b = self.rt("pys_ubox", "ptr", [f"i64 {self.utag(m)}", "i64 " + self.to_slot(Val(v.v, m), False, True)], t=u)
     if m not in self.classes or v.v in self.nn:
         return b
     return self.select(self.ptr_cmp('==', v, Val('null', 'None')).v, Val('null', '%ptr'), Val(b, '%ptr'))
@@ -293,7 +293,7 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
             # None holds no box for: Pystachy's TypeError, where CPython stores the None)
             self.notnone(v, f"TypeError: a value used as {typestr(t)} is None; annotate it {typestr(t)} | None")
             self.nn[v.v] = True
-        return Val(self.ubox(v, src), t).identity(v)
+        return Val(self.ubox(v, src, t), t).identity(v)
     if not none_ok:
         if self.join_hint(t, v.t):
             return Val("undef", t)  # (see join_hint)
@@ -358,11 +358,11 @@ def gen_class_union(self, v: Val, nt: str) -> Val:
             no = self.label()
             self.cbr(hit, yes, no)
             self.place(yes)
-            self.incoming(ph, self.ubox(Val(v.v, m), m), self.cur)
+            self.incoming(ph, self.ubox(Val(v.v, m), m, nt), self.cur)
             self.br(end)
             self.place(no)
         else:
-            self.incoming(ph, self.ubox(Val(v.v, m), m), self.cur)
+            self.incoming(ph, self.ubox(Val(v.v, m), m, nt), self.cur)
             self.br(end)
     self.place(end)
     return Val(self.phi(ph), nt).identity(v)

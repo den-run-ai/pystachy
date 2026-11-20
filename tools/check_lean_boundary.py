@@ -207,10 +207,15 @@ def check_payload_consumers(blocks):
                     # The runtime ABI names an uninterpreted i64 slot *T. These
                     # two constructors copy that word unchanged into a fresh
                     # optional/union box; they do not dereference it as a pointer.
+                    # (Gen.instantiate types the slot argument as the value it reads, *int, and
+                    # the box as the optional or union it makes, where the signature says *T and
+                    # its result)
                     boxed = op["op"] == "rt" and op["text"] in {"box", "ubox"}
-                    if boxed and operand["type"] == "*T":
+                    if boxed and operand["type"] in ("*T", "*int", "%slot"):
                         index = 1 if op["text"] == "ubox" else 0
-                        shape(op, index + 1, 1, typ="%ptr", texts=(op["text"],))
+                        shape(op, index + 1, 1, texts=(op["text"],))
+                        require(op["type"] == "%ptr" or op["type"].startswith(("opt[", "union[")),
+                                f"invalid {op['op']} shape")
                         require(position == index and (index == 0 or op["operands"][0]["type"] == "int"),
                                 "dyn.payload int boxing requires the runtime slot argument")
                     else:

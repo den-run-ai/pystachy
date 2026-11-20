@@ -16,6 +16,7 @@ import sys
 
 import check_lean_boundary as bridge
 import check_lean_int as arithmetic
+from src.pystachy_compiler.specs import LIST_WRITES
 from src.pystachy_compiler.utils import is_kw, is_opt, is_tuple, kw_types, targs, tslots, unopt
 
 DEFAULT_CHECKER = bridge.DEFAULT_CHECKER
@@ -896,7 +897,11 @@ class Normalize:
                     for operand in reversed(op["operands"]):
                         if is_tuple(unopt(operand["type"])) and k not in {"slot.pack", "ptr.cmp"}:
                             nxt = self.boundary(operand["value"], operand["type"], nxt)
-                        if k == "rt" and operand["type"].startswith("*tuple["):
+                        # (a list write's item, which a list of a promoting program holds as its
+                        # big view; another runtime call's packed tuple, such as a search's or
+                        # repr's operand, has its own type's representation, which its descriptor
+                        # gives: Gen.instantiate types such operands as their values)
+                        if k == "rt" and op["text"] in LIST_WRITES and operand["type"].startswith("*tuple["):
                             target = operand["type"][1:]
                             if self.fn["representation_metadata"]["int_containers"]:
                                 from src.pystachy_compiler.bigints import big_view

@@ -1407,7 +1407,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             constant = self.list_const(n, items, lty)
             if constant.v != "":
                 return constant
-        r = self.rt("pys_list_new_atomic" if atomic_list(lty) else "pys_list_new", "ptr", [f"i64 {len(items)}"])
+        r = self.rt("pys_list_new_atomic" if atomic_list(lty) else "pys_list_new", "ptr", [f"i64 {len(items)}"], t=lty)
         for v in items:
             self.list_store(Val(r, lty), v, "append")
         return Val(r, lty)
@@ -1498,7 +1498,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 self.making.pop()
         if self.key_problem(kv[0]) != "":
             self.err(self.key_problem(kv[0]))
-        r = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", f"i64 {len(ks)}"])
+        r = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", f"i64 {len(ks)}"], t=self.ctype("dict", kv))
         for i in range(len(ks)):
             self.dict_put(Val(r, self.ctype("dict", kv)), ks[i], self.key_slot(ks[i]), vs[i], kv)
         return Val(r, self.ctype("dict", kv))
@@ -2810,7 +2810,7 @@ def gen_dict_merge(self, n: Node, want: str) -> Val:
             v = self.unwrap(v, "TypeError: 'NoneType' object is not a mapping")
             if r.t == "":
                 kv = targs(v.t)
-                r = Val(self.rt("pys_dict_new_atomic" if atomic_dict(v.t) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", "i64 0"]), v.t)
+                r = Val(self.rt("pys_dict_new_atomic" if atomic_dict(v.t) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", "i64 0"], t=v.t), v.t)
                 for j in range(0, len(pairs), 2):
                     ks = self.to_slot(self.store_key(pairs[j], kv[0]))
                     self.dict_store(r.v, ks, self.list_hold(pairs[j + 1], kv[1]), kv)
@@ -2858,7 +2858,7 @@ def gen_list_const(self, n: Node, vals: list[Val], t: str) -> Val:
         d.items = [Val(v.v, v.t) for v in vals]
         self.consts.append(d)
         self.lconsts[key] = d.name
-    return Val(self.rt("pys_list_from_const", "ptr", [f"ptr {self.lconsts[key]}", f"i64 {len(vals)}"]), t)
+    return Val(self.rt("pys_list_from_const", "ptr", [f"ptr {self.lconsts[key]}", f"i64 {len(vals)}"], t=t), t)
 
 def gen_vtuple_make(self, vals: list[Val], t: str) -> Val:
     # Already evaluated and coerced homogeneous items. Keep their native types,
@@ -5379,10 +5379,10 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
             return Val(self.rt(FRT[op], "double", [f"double {x.v}", f"double {y.v}"]), "float")
     seq = a.t == "str" or a.t == "bytes" or is_list(a.t)
     if op == "+" and seq and a.t == b.t:
-        return Val(self.rt("pys_str_add" if a.t == "str" else "pys_bytes_add" if a.t == "bytes" else "pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"]), a.t)
+        return Val(self.rt("pys_str_add" if a.t == "str" else "pys_bytes_add" if a.t == "bytes" else "pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"], t=a.t if is_list(a.t) else ""), a.t)
     lw = self.wider(a.t, b.t) if op == "+" and is_list(a.t) and is_list(b.t) else ""
     if lw != "" and self.widens_items(a.t, lw) and self.widens_items(b.t, lw):
-        return Val(self.rt("pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"]), lw)  # (a new list of the items of both)
+        return Val(self.rt("pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"], t=lw), lw)  # (a new list of the items of both)
     if op == "*" and seq and b.t == "int":
         return Val(self.rt("pys_str_mul" if a.t == "str" else "pys_bytes_mul" if a.t == "bytes" else "pys_list_mul", "ptr", [f"ptr {a.v}", f"i64 {b.v}"]), a.t)
     if op == "*" and seq and b.t in self.classes and "__index__" in self.classes[b.t].methods:

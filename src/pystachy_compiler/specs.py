@@ -789,7 +789,7 @@ TYPE_CLASSES: dict[str, str] = {
 TYPE_VIEWS: dict[str, str] = {
     "machine": "U is D's machine type: %ptr for a reference, an address &T or None (null), %slot for a packed slot *T or an int, %addr for a slot's address",
     "bits": "D is %ptr, read as a reference or an address &T; or D is %slot, read as an int, a packed slot *T or an rt op's bool",
-    "instance": "D or U holds an empty container's placeholder (list[?], or opt[None] for a local first assigned None) or a runtime type variable (T K V S), in an rt op's result or operand or where no class has its name: each stands for one type",
+    "instance": "D or U holds an empty container's placeholder (list[?], or opt[None] for a local first assigned None) or a runtime type variable (T K V S U R) that no binding replaced (Gen.instantiate), in an rt op's result or operand or where no class has its name: each stands for one type",
     "alias": "one object by two types: a str and a bytes, an exc and its exctype, a recursive alias rec[A] and A's definition, a set, a frozenset and an AbstractSet, a fixed tuple and a keyword record (kw[...]), a generator with and without its return type; inside brackets an int and an int+, and inside a tuple's a bool read as an int",
     "int slot": "an int read as a packed slot *int, which holds its value, and back",
     "optional": "D read as opt[D] of a reference D, None as any reference or opt[...], or opt[U] as U",
@@ -983,9 +983,11 @@ FXBIT: dict[str, int] = {}
 for _j in range(len(FX)):
     FXBIT[FX[_j]] = 1 << _j
 # the runtime functions the compiler declares: "result:params|effects|symbol", with types as the
-# compiler spells them and S the receiver, T K V its element, key and value types, *X a value
-# in an 8-byte slot (i64 in the LLVM binding), # the descriptor of the static type the operation
-# works on (Ins.x), %X an LLVM type X that has no spelling (%ovf: {i64, i1}). "" as symbol means
+# compiler spells them and S the receiver, T K V its element, key and value types, U a second
+# value's (another container's too) and R a result's that its caller gives (variables that each
+# call binds: Gen.instantiate), *X a value in an 8-byte slot (i64 in the LLVM binding), # the descriptor of
+# the static type the operation works on (Ins.x), %X an LLVM type X that has no spelling (%ovf:
+# {i64, i1}). "" as symbol means
 # pys_<key, with . as _>. rt() checks each call against its entry, tools/check_runtime.py checks
 # the entries against runtime.c and runtime.py (their LLVM types, and the effects their call
 # graphs show). A function of runtime.py has R where it may raise in the linked runtime: a raise
@@ -1017,8 +1019,8 @@ RUNTIME: dict[str, str] = {
     "big.from_str": "int+:str,int|R A|", "big.from_float": "int+:float|R A|", "big.hash": "int:int,%ptr||",
     "big.float": "float:int,%ptr|R|", "big.truediv": "float:int,%ptr,int,%ptr|R A|",
     "big.bit_length": "int:int,%ptr||", "big.bit_count": "int:int,%ptr||", "big.format": "str:int,%ptr,str|R A|",
-    "big.powmod": "int+:int,%ptr,int,%ptr,int,%ptr|R A|", "big.sum": "int+:list[int],int,%ptr|R A rL|",
-    "big.box": "%ptr:int,%ptr|A|",
+    "big.powmod": "int+:int,%ptr,int,%ptr,int,%ptr|R A|", "big.sum": "int+:list[T],int,%ptr|R A rL|",
+    "big.box": "opt[int+]:int,%ptr|A|",
     # a list of ints whose items may be promoting ints past 64 bits (runtime.c's BIGIDS: -2**63 in
     # the item's slot, its Mpz in the list's companion), in a program where int_lists() holds
     "list.set_big": "None:S,int,%ptr|R A rL wL|", "list.append_big": "None:S,%ptr|R A rL wL|",
@@ -1029,34 +1031,34 @@ RUNTIME: dict[str, str] = {
     # any type, so that an operation on one may run the program's code (an object's __repr__,
     # __eq__, __lt__ or __hash__: U) and raise; boxing a number allocates (A), but the boxes of
     # -5..256 are constants
-    "dyn.int": "%ptr:int|A|", "dyn.float": "%ptr:float|A|", "dyn.ref": "%ptr:%ptr,%ptr|A rL wL|",
-    "dyn.int_box": "%ptr:int,%ptr|A|", "dyn.float_box": "%ptr:float,%ptr|A|",
-    "dyn.big": "%ptr:int,%ptr|A|", "dyn.big_box": "%ptr:int,%ptr,%ptr|A|",
+    "dyn.int": "dyn:int|A|", "dyn.float": "dyn:float|A|", "dyn.ref": "dyn:%ptr,%ptr|A rL wL|",
+    "dyn.int_box": "dyn:int,%ptr|A|", "dyn.float_box": "dyn:float,%ptr|A|",
+    "dyn.big": "dyn:int,%ptr|A|", "dyn.big_box": "dyn:int,%ptr,%ptr|A|",
     "dyn.big_unbox": "int+:%ptr|R|", "dyn.big_of": "int+:%ptr|R A|",
-    "dyn.int_box_of": "%ptr:%ptr|R A|",
+    "dyn.int_box_of": "dyn:%ptr|R A|",
     "dyn.index_bound": "int:%ptr,int|R|",
-    "dyn.copy_ref": "%ptr:%ptr,%ptr|R|", "dyn.copy_restore": "%ptr:%ptr,%ptr|R A rL wL|",
-    "dyn.copy_list": "%ptr:%ptr|R A rL wL|",
+    "dyn.copy_ref": "%ptr:%ptr,%ptr|R|", "dyn.copy_restore": "dyn:%ptr,%ptr|R A rL wL|",
+    "dyn.copy_list": "dyn:%ptr|R A rL wL|",
     "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.role_isa": "bool:%ptr,%ptr||", "dyn.copy_is_own": "bool:%ptr,int||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
     "dyn.repr": "str:%ptr|R A I U|", "dyn.str": "str:%ptr|R A I U|",
     "dyn.eq": "bool:%ptr,%ptr|R A I U|", "dyn.ne": "bool:%ptr,%ptr|R A I U|", "dyn.cmp": "bool:%ptr,%ptr,int|R A I U|", "dyn.hash": "int:%ptr|R A I U|",
-    "dyn.binop": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.inplace": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.unary": "%ptr:%ptr,int|R A|",
-    "dyn.binop_promote": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.inplace_promote": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.unary_promote": "%ptr:%ptr,int|R A|",
-    "dyn.len": "int:%ptr|R rL rD|", "dyn.getitem": "%ptr:%ptr,%ptr|R A I U|", "dyn.setitem": "None:%ptr,%ptr,%ptr|R A I U|",
+    "dyn.binop": "dyn:%ptr,%ptr,int|R A I U|", "dyn.inplace": "dyn:%ptr,%ptr,int|R A I U|", "dyn.unary": "dyn:%ptr,int|R A|",
+    "dyn.binop_promote": "dyn:%ptr,%ptr,int|R A I U|", "dyn.inplace_promote": "dyn:%ptr,%ptr,int|R A I U|", "dyn.unary_promote": "dyn:%ptr,int|R A|",
+    "dyn.len": "int:%ptr|R rL rD|", "dyn.getitem": "dyn:%ptr,%ptr|R A I U|", "dyn.setitem": "None:%ptr,%ptr,%ptr|R A I U|",
     "dyn.delitem": "None:%ptr,%ptr|R A I U|", "dyn.contains": "bool:%ptr,%ptr|R A I U|",
-    "dyn.list_method": "%ptr:%ptr,int,%ptr,%ptr,%ptr|R A I U rL wL|",
+    "dyn.list_method": "dyn:%ptr,int,%ptr,%ptr,%ptr|R A I U rL wL|",
     "dyn.list_check": "None:%ptr,int|R|",
     "dyn.list_descriptor": "None:%ptr,str|R|",
-    "dyn.list_slice": "%ptr:%ptr,int,int,int|R A rL wL|",
-    "dyn.slice_source": "%ptr:%ptr|R A I U rL rD|",
+    "dyn.list_slice": "dyn:%ptr,int,int,int|R A rL wL|",
+    "dyn.slice_source": "dyn:%ptr|R A I U rL rD|",
     "dyn.list_set_slice": "None:%ptr,int,int,int,%ptr|R A I U rL wL|",
     "dyn.list_del_slice": "None:%ptr,int,int,int|R rL wL|",
     "dyn.iter": "%ptr:%ptr|R A I U rL rD|", "dyn.next": "%ptr:%ptr|R A I U rL rD|",
-    "dyn.iter_box": "%ptr:%ptr|R A I U rL rD|", "dyn.next_box": "%ptr:%ptr|R A I U rL rD|", "dyn.iter_check": "%ptr:%ptr|R|",
-    "dyn.reversed": "%ptr:%ptr|R A rL rD|", "dyn.range_iter": "%ptr:int,int,int,int|R A|",
+    "dyn.iter_box": "dyn:%ptr|R A I U rL rD|", "dyn.next_box": "%ptr:%ptr|R A I U rL rD|", "dyn.iter_check": "dyn:%ptr|R|",
+    "dyn.reversed": "dyn:%ptr|R A rL rD|", "dyn.range_iter": "dyn:int,int,int,int|R A|",
     "dyn.int_of": "int:%ptr|R A|", "dyn.float_of": "float:%ptr|R A|", "dyn.unpack": "%ptr:%ptr,int|R A I U rL rD|",
-    "dyn.slice": "%ptr:%ptr,%ptr,%ptr,%ptr|R A I U|", "dyn.update": "None:%ptr,%ptr|R A I U|",
-    "dyn.list_of": "%ptr:%ptr,%ptr|R A rL wL|", "dyn.list": "list[T]:%ptr|R A I U rL rD|", "dyn.strs": "list[str]:%ptr|R A I U rL rD|", "dyn.id": "int:%ptr||",
+    "dyn.slice": "dyn:%ptr,%ptr,%ptr,%ptr|R A I U|", "dyn.update": "None:%ptr,%ptr|R A I U|",
+    "dyn.list_of": "list[dyn]:%ptr,%ptr|R A rL wL|", "dyn.list": "list[T]:%ptr|R A I U rL rD|", "dyn.strs": "list[str]:%ptr|R A I U rL rD|", "dyn.id": "int:%ptr||",
     "dyn.star_extend": "None:list[dyn],%ptr,%ptr,%ptr|R A I U rL wL rD|",
     "dyn.kw_merge": "None:dict[dyn,dyn],%ptr,%ptr,%ptr,%ptr|R A I U rD wD|",
     "dyn.bind": "list[dyn]:list[dyn],dict[dyn,dyn],str,str,str,int,int,int,int|R A I U rL rD|",
@@ -1064,7 +1066,7 @@ RUNTIME: dict[str, str] = {
     # the queue of the fire functions of references whose referents a collection found dead
     "weakref.new": "%ptr:%ptr,%ptr|A I|", "weakref.get": "%ptr:%ptr|I|", "weakref.fired": "%ptr:|I|",
     # homogeneous runtime-length tuples (immutable copied slots)
-    "vtuple.new": "%ptr:list[T]|R A rL wL|", "vtuple.from": "%ptr:%ptr,int|R A|",
+    "vtuple.new": "vtuple[T]:list[T]|R A rL wL|", "vtuple.from": "%ptr:%ptr,int|R A|",
     "vtuple.get_identity": "dyn:%ptr,int,int|R A rO wO|", "vtuple.set_identity": "None:%ptr,int,dyn,int|A rO wO|",
     "vtuple.get": "int:%ptr,int|R|", "vtuple.list": "list[T]:%ptr|R A rO wO|", "vtuple.box": "%ptr:%ptr|R A rO wO|",
     "vtuple.slice": "%ptr:%ptr,int,int,int|R A rO wO|", "vtuple.concat": "%ptr:%ptr,%ptr|R A rO wO|",
@@ -1073,10 +1075,10 @@ RUNTIME: dict[str, str] = {
     "list.new": "list[T]:int|A|", "list.new_atomic": "list[T]:int|A|", "list.get": "*T:S,int|R rL|", "list.set": "None:S,int,*T|R rL wL|",
     "list.from_const": "list[T]:%ptr,int|A|",
     "list.append": "None:S,*T|A rL wL|", "list.pop": "*T:S,int|R rL wL|", "list.del": "None:S,int|R rL wL|",
-    "list.insert": "None:S,int,*T|A rL wL|", "list.extend": "None:S,S|A rL wL|", "list.slice": "S:S,int,int|A rL wL|",
-    "list.slice_step": "S:S,int,int,int|R A rL wL|", "list.set_slice": "None:S,int,int,int,S|R A rL wL|",
+    "list.insert": "None:S,int,*T|A rL wL|", "list.extend": "None:S,U|A rL wL|", "list.slice": "S:S,int,int|A rL wL|",
+    "list.slice_step": "S:S,int,int,int|R A rL wL|", "list.set_slice": "None:S,int,int,int,U|R A rL wL|",
     "list.del_slice": "None:S,int,int,int|R rL wL|",
-    "list.copy": "S:S|A rL wL|", "list.clear": "None:S|rL wL|", "list.add": "S:S,S|A rL wL|", "list.mul": "S:S,int|R A rL wL|",
+    "list.copy": "S:S|A rL wL|", "list.clear": "None:S|rL wL|", "list.add": "R:S,U|A rL wL|", "list.mul": "S:S,int|R A rL wL|",
     "list.imul": "None:S,int|R A rL wL|", "list.reverse": "None:S|rL wL|", "list.find": "int:S,*T,#|R? rL rD U?|",
     "list.find_pair": "int:S,*T,%ptr,%ptr|rL rD U|",
     "list.index": "int:S,*T,#,int,int|R A I rL rD U?|", "list.index_as": "int:S,*T,#,int,int,bool,int,%ptr|R A I rL rD U?|", "list.count": "int:S,*T,#|R? rL rD U?|", "list.remove": "None:S,*T,#|R rL wL rD U?|",
@@ -1104,12 +1106,12 @@ RUNTIME: dict[str, str] = {
     "dict.get": "*V:S,*K,*V|R? rD U?|", "dict.set": "None:S,*K,*V|R? A rD wD U?|", "dict.pop": "*V:S,*K|R A I rD wD U?|",
     "dict.del": "*V:S,*K|R A I rD wD U?|", "dict.pop_default": "*V:S,*K,*V|R A I rD wD U?|", "dict.popitem": "tuple[K,V]:S|R A rD wD|",
     "dict.setdefault": "*V:S,*K,*V|R? A rD wD U?|", "dict.clear": "None:S|wD|",
-    "dict.getbox": "*V:S,*K,*V|R? A rD U?|", "dict.popbox": "*V:S,*K,*V|R A I rD wD U?|",
+    "dict.getbox": "*opt[V]:S,*K,*opt[V]|R? A rD U?|", "dict.popbox": "*opt[V]:S,*K,*opt[V]|R A I rD wD U?|",
     "dict.copy": "S:S|R A rD U?|", "dict.from": "S:S|R A rD U?|", "dict.keys": "list[K]:S|A rD|", "dict.values": "list[V]:S|A rD|",
     "dict.items": "list[tuple[K,V]]:S|R A rD|", "dict.end": "int:S|rD|", "dict.next": "int:S,int,int,int|R rD|",
     "dict.eq_next": "int:S,int|rD|",
-    "dict.eq_find": "int:S,S,int|R? rD U?|",
-    "dict.eq_pair_find": "int:S,S,int,%ptr|R A I rD wD U|",
+    "dict.eq_find": "int:S,U,int|R? rD U?|",
+    "dict.eq_pair_find": "int:S,U,int,%ptr|R A I rD wD U|",
     "dict.prev": "int:S,int,int,int|R rD|", "dict.key": "*K:S,int|rD|", "dict.val": "*V:S,int|rD|",
     "dict.val_or_zero": "*V:S,int|rD|",
     "dict.find": "int:S,*K|R? rD U?|", "dict.entry": "int:S,*K|R A I rD U?|", "dict.entry_set": "None:S,int,*V|rD wD|",
@@ -1131,30 +1133,30 @@ RUNTIME: dict[str, str] = {
     "dict.update_pairs_big": "None:S,list[T],bool,bool|R? A rL rD wD U?|",
     # get(), pop(), setdefault() and their boxes by such a key, as get, getbox, pop, pop_default,
     # popbox, setdefault, big_pop and big_setdefault by a 64-bit key (bigints.py's BKEY)
-    "dict.bkey_get": "*V:S,int,%ptr,*V|R? rD U?|", "dict.bkey_getbox": "*V:S,int,%ptr,*V|R? A rD U?|",
+    "dict.bkey_get": "*V:S,int,%ptr,*V|R? rD U?|", "dict.bkey_getbox": "*opt[V]:S,int,%ptr,*opt[V]|R? A rD U?|",
     "dict.bkey_pop": "*V:S,int,%ptr|R A I rD wD U?|", "dict.bkey_pop_default": "*V:S,int,%ptr,*V|R A I rD wD U?|",
-    "dict.bkey_popbox": "*V:S,int,%ptr,*V|R A I rD wD U?|", "dict.bkey_setdefault": "*V:S,int,%ptr,*V|R? A rD wD U?|",
+    "dict.bkey_popbox": "*opt[V]:S,int,%ptr,*opt[V]|R A I rD wD U?|", "dict.bkey_setdefault": "*V:S,int,%ptr,*V|R? A rD wD U?|",
     "dict.bkey_big_pop": "int+:S,int,%ptr,bool,int,%ptr|R A I rD wD U?|",
     "dict.bkey_big_setdefault": "int+:S,int,%ptr,int,%ptr|R? A rD wD U?|",
     "dict.find_int_nobox": "int:S,int|rD|",
     "dict.int_find_any": "int:S,%ptr|R A I rD wD U|", "dict.entry_del": "None:S,int|rD wD|",
-    "dict.update": "None:S,S|R A rD wD U?|", "dict.update_pairs": "None:S,list[T]|R? A rL rD wD U?|",
-    "dict.fromkeys": "dict[K,V]:int,list[T],*V|R? A rL U?|", "dict.fromkeys_dict": "dict[K,V]:S,*V|R? A rD U?|",
+    "dict.update": "None:S,U|R A rD wD U?|", "dict.update_pairs": "None:S,list[T]|R? A rL rD wD U?|",
+    "dict.fromkeys": "dict[K,V]:int,list[T],*V|R? A rL U?|", "dict.fromkeys_dict": "dict[K,V]:dict[K,T],*V|R? A rD U?|",
     # sets and frozensets (CPython's tables; Set.kind as Dict.kind): their elements are a dict's
     # keys, which hash, compare and print without user code but an object's (U?, as a dict's). A
     # set's memory counts as a dict's (rD wD: what changes a set may change a dict); what an
     # operation makes, it alone has seen
     "set.new": "set[T]:int|A|", "set.add": "None:S,*T|R? A rD wD U?|", "set.has": "bool:S,*T|R? rD U?|", "set.discard": "None:S,*T|R? rD wD U?|",
-    "set.remove": "None:S,*T|R A I rD wD U?|", "set.pop": "*T:S|R rD wD|", "set.clear": "None:S|A wD|", "set.copy": "S:S|A rD|", "set.unbox": "set[T]:S,%ptr,int|R A rD|",
+    "set.remove": "None:S,*T|R A I rD wD U?|", "set.pop": "*T:S|R rD wD|", "set.clear": "None:S|A wD|", "set.copy": "S:S|A rD|", "set.unbox": "set[T]:frozenset[dyn],%ptr,int|R A rD|",
     "set.int_find_any": "int:S,%ptr|R A I rD wD U|", "set.slot_del": "None:S,int|rD wD|",
-    "set.update": "None:S,S|R? A rD wD U?|", "set.update_list": "None:S,list[T]|R? A rL rD wD U?|", "set.update_dict": "None:S,dict[T,V]|R? A rD wD U?|",
-    "set.union_more": "None:S,S,S|R? A rD wD U?|", "set.or": "S:S,S|R? A rD U?|", "set.and": "S:S,S|R? A rD U?|", "set.and_list": "S:S,list[T]|R? A rL rD U?|",
-    "set.assign": "None:S,S|rD wD|", "set.isub": "None:S,S|R? A rD wD U?|", "set.isub_list": "None:S,list[T]|R? A rL rD wD U?|",
-    "set.sub": "S:S,S|R? A rD U?|", "set.sub_list": "S:S,list[T]|R? A rL rD U?|", "set.sub_dict": "S:S,dict[T,V]|R? A rD U?|",
-    "set.xor": "S:S,S|R? A rD U?|", "set.xor_list": "S:S,list[T]|R? A rL rD U?|", "set.xor_dict": "S:S,dict[T,V]|R? A rD U?|",
-    "set.ixor": "None:S,S|R? A rD wD U?|", "set.ixor_list": "None:S,list[T]|R? A rL rD wD U?|", "set.ixor_dict": "None:S,dict[T,V]|R? A rD wD U?|",
-    "set.cmp": "int:S,S,int|R? rD U?|", "set.le_list": "bool:S,list[T]|R? A rL rD U?|", "set.ge_list": "bool:S,list[T]|R? rL rD U?|",
-    "set.isdisjoint": "bool:S,S|R? rD U?|", "set.isdisjoint_list": "bool:S,list[T]|R? rL rD U?|", "set.next": "int:S,int,int|R rD|",
+    "set.update": "None:S,U|R? A rD wD U?|", "set.update_list": "None:S,list[T]|R? A rL rD wD U?|", "set.update_dict": "None:S,dict[T,V]|R? A rD wD U?|",
+    "set.union_more": "None:S,S,U|R? A rD wD U?|", "set.or": "R:S,U|R? A rD U?|", "set.and": "R:S,U|R? A rD U?|", "set.and_list": "S:S,list[T]|R? A rL rD U?|",
+    "set.assign": "None:S,U|rD wD|", "set.isub": "None:S,U|R? A rD wD U?|", "set.isub_list": "None:S,list[T]|R? A rL rD wD U?|",
+    "set.sub": "S:S,U|R? A rD U?|", "set.sub_list": "S:S,list[T]|R? A rL rD U?|", "set.sub_dict": "S:S,dict[T,V]|R? A rD U?|",
+    "set.xor": "R:S,U|R? A rD U?|", "set.xor_list": "S:S,list[T]|R? A rL rD U?|", "set.xor_dict": "S:S,dict[T,V]|R? A rD U?|",
+    "set.ixor": "None:S,U|R? A rD wD U?|", "set.ixor_list": "None:S,list[T]|R? A rL rD wD U?|", "set.ixor_dict": "None:S,dict[T,V]|R? A rD wD U?|",
+    "set.cmp": "int:S,U,int|R? rD U?|", "set.le_list": "bool:S,list[T]|R? A rL rD U?|", "set.ge_list": "bool:S,list[T]|R? rL rD U?|",
+    "set.isdisjoint": "bool:S,U|R? rD U?|", "set.isdisjoint_list": "bool:S,list[T]|R? rL rD U?|", "set.next": "int:S,int,int|R rD|",
     "set.key": "*T:S,int|rD|", "set.list": "list[T]:S|A rD|",
     # a set of ints whose elements may be past 64 bits (bigints.py, runtime.c's sbig)
     "set.big_add": "None:S,int,%ptr|R? A rD wD U?|", "set.big_has": "bool:S,int,%ptr|R? rD U?|",
@@ -1240,13 +1242,13 @@ RUNTIME: dict[str, str] = {
     "m.dist": "float:list[float],list[float]|R A rL|", "m.hypot_list": "float:list[float]|A rL|",
     "m.isclose": "bool:float,float,float,float|R|", "m.gamma": "float:float|R|", "m.lgamma": "float:float|R|",
     # any type, by its descriptor
-    "eq": "bool:*T,*T,#|R? rL rD U?|", "cmpop": "int:*T,*T,#,int|R rL rD U?|", "repr": "str:*T,#|R? A I rL rD U?|",
-    "eq.pair": "bool:*T,*T,%ptr,%ptr|rL rD U|",  # conservative: dict lookup's call graph reaches user equality
+    "eq": "bool:*T,*U,#|R? rL rD U?|", "cmpop": "int:*T,*U,#,int|R rL rD U?|", "repr": "str:*T,#|R? A I rL rD U?|",
+    "eq.pair": "bool:*T,*U,%ptr,%ptr|rL rD U|",  # conservative: dict lookup's call graph reaches user equality
     "hash": "int:*T,#|U?|", "hash.id": "int:%ptr||",
     "format": "str:*T,#,str|R A I rL rD U?|", "default_repr": "str:str,%ptr|A|", "repr_enter": "bool:%ptr|I|",
     # reflection records (reflection.py): a name's index in a record's name table, and repr(vars(o))
     "refl.find": "int:%ptr,str||", "refl.vars": "str:%ptr,%ptr|A I rO rL rD U|",
-    "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "new": "%ptr:int|A|", "gc_slow": "%ptr:int,int|A|", "on_stack": "int:%ptr|I|", "box": "%ptr:*T|A|", "ubox": "%ptr:int,*T|A|", "ubox_opt": "%ptr:int,%ptr,int|A|", "unpack_check": "None:int,int|R|", "unpack_ex_check": "None:int,int|R|",
+    "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "new": "%ptr:int|A|", "gc_slow": "%ptr:int,int|A|", "on_stack": "int:%ptr|I|", "box": "opt[T]:*T|A|", "ubox": "R:int,*T|A|", "ubox_opt": "%ptr:int,%ptr,int|A|", "unpack_check": "None:int,int|R|", "unpack_ex_check": "None:int,int|R|",
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|", "warnoptions": "list[str]:|A I|",
     "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "getcwd": "str:|R A I|", "uname": "str:int|R A I|", "exists": "bool:str|I|",
@@ -1286,7 +1288,7 @@ RUNTIME: dict[str, str] = {
     "eh_on": "None:|I|", "try_mark": "int:|I|", "exc.handled": "exc:|I|", "exc.restore": "None:exc|I|",
     "exc.begin": "exc:exc,int|R I wL rF wF|", "exc.in": "int:exc,str||", "exc.str": "str:exc|U|", "exc.repr": "str:exc|A U|",
     "exc.new": "exc:str,str,str|A|", "exc.exit": "exc:int,str,str|A|", "exc.detail": "exc:exc,str||", "throw": "None:exc|R N|",
-    "exc.user": "exc:%ptr|A|", "exc.obj": "%ptr:exc||", "exc.id": "%ptr:exc||", "exc.ostr": "str:%ptr|U|", "exc.orepr": "str:%ptr|U|",
+    "exc.user": "exc:%ptr|A|", "exc.obj": "R:exc||", "exc.id": "%ptr:exc||", "exc.ostr": "str:%ptr|U|", "exc.orepr": "str:%ptr|U|",
     "exc.brepr": "str:%ptr,str|A|", "exc.cls": "str:%ptr|A|", "exc.name": "str:exc|A|", "exc.type": "str:exc|A|",
     "exc.setcause": "None:exc,exc|wO|", "exc.cause": "exc:exc|rO|", "exc.errcls": "str:int|A|",
     # exception classes as values: class objects (runtime.c's exceptions)

@@ -1,6 +1,6 @@
 """Typed IR records of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.specs import FXALL, VALUE_AT
+from src.pystachy_compiler.specs import FXALL, OP_TEMPS, VALUE_AT
 from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.syntax import Node
 
@@ -375,6 +375,35 @@ class IFn:
         # IR written by hand (tools/typed_ir_text.py) may leave lines unknown, as MLIR's
         # verifier accepts an unknown location
         self.located = False
+
+
+def value_definitions(fn: IFn, types: dict[str, str], makers: dict[str, str]) -> None:
+    # The type that each value of fn has where it is defined (types) and what defines it (makers:
+    # its op, "slot" or "param"): a result of an op (but its lowering's temporaries, OP_TEMPS;
+    # ovf's second is its bool flag), a parameter (its identity companion a dyn, and the identity
+    # result's address a &dyn), or a slot's register (the address &T of its slot of T; a stack
+    # tuple's register is its value). Symbols and constants have no definition here.
+    for i in fn.slots:
+        reg = slot_register(i)
+        types[reg] = i.t if i.k == 2 else "&" + i.t
+        makers[reg] = "slot"
+    for j in range(len(fn.f.ptypes)):
+        types["%a" + str(j)] = fn.f.ptypes[j]
+        types["%aid" + str(j)] = "dyn"
+        makers["%a" + str(j)] = "param"
+        makers["%aid" + str(j)] = "param"
+    types["%idret"] = "&dyn"
+    makers["%idret"] = "param"
+    for b in fn.blocks:
+        for i in b.code:
+            k = 0
+            for j in range(len(i.r)):
+                if i.op in OP_TEMPS and j in OP_TEMPS[i.op]:
+                    continue
+                name = tmpname(i.r[j])
+                types[name] = "bool" if i.op == "ovf" and k == 1 else i.t
+                makers[name] = i.op
+                k += 1
 
 
 class Lookup:

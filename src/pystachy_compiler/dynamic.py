@@ -4292,7 +4292,7 @@ def builtin_arity(bt: str, m: str, n: int) -> str:
 def boxed_list_items(self, sources: list[Val]) -> Val:
     # A fresh outer list holds boxes of the original items. Read native
     # layouts with their identity/wide companions, even in a checked caller.
-    result = Val(self.rt("pys_list_new", "ptr", ["i64 0"]), "list[dyn]")
+    result = Val(self.rt("pys_list_new", "ptr", ["i64 0"], t="list[dyn]"), "list[dyn]")
     for source in sources:
         ctr = self.alloca("int", "")
         self.mstore("int", "0", ctr)
@@ -5311,7 +5311,7 @@ def gen_dyn_star_call(self, o: Val, args: list[Node], method: str = "", found: V
         ismethod = self.ptr_cmp("==", found, Val("null", DYN)).v
         who = Val(self.select(ismethod, o, found), DYN)
         namefn = self.select(ismethod, Val(methodname.ll, "%ptr"), Val(name.ll, "%ptr"))
-    pos = Val(self.rt("pys_list_new", "ptr", ["i64 0"]), "list[dyn]")
+    pos = Val(self.rt("pys_list_new", "ptr", ["i64 0"], t="list[dyn]"), "list[dyn]")
     kws = self.expr(mk("dict", "", self.line, []), "dict[dyn,dyn]")
     positional = [a for a in args if a.kind not in ["kw", "dstar"]]
     sole = len(positional) == 1 and positional[0].kind == "starred"

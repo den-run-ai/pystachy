@@ -5,7 +5,7 @@ from src.pystachy_compiler.bigints import narrows
 from src.pystachy_compiler.diagnostics import ClassBoxes, Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.frames import Frame
-from src.pystachy_compiler.ir import Blk, Data, Ins, Val, tmpname, one_num
+from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, tmpname, one_num, value_definitions
 from src.pystachy_compiler.specs import BIGOPT, CHECKED, EMPTYFS, LIST_READS, LIST_WRITES, NARROWED, PATH_OPS, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS
 from src.pystachy_compiler.utils import (
     RtFn,
@@ -21,6 +21,10 @@ from src.pystachy_compiler.utils import (
     numeric_identity,
     optnames,
     runtime_decl,
+    rt_bind,
+    rt_generic,
+    rt_operand_order,
+    rt_subst,
     rtsym,
     selem,
     targs,
@@ -329,12 +333,14 @@ def gen_select(self, c: str, x: Val, y: Val) -> str:
     self.put(i, 1)
     return tmpname(i.r[0])
 
-def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
+def gen_rt(self, name: str, ret: str, args: list[str], x: str = "", t: str = "") -> str:
     # an rt op: a call of runtime function name (its LLVM symbol), whose LLVM result type is
     # ret, with args "<LLVM type> <value>", which must be what its RUNTIME entry says. (In
     # runtime mode, a function that runtime.py defines is called the same way: it is defined,
     # not declared, with RUNTIME's types, which Gen.function checks.) x: the descriptor of the
-    # keys a dict or set op hashes (key_fx), for its U?
+    # keys a dict or set op hashes (key_fx), for its U?; t: its result's type, where that holds a
+    # type variable that no operand binds (a new list's items): an instance of its signature's.
+    # Its operands have the signature's types until Gen.instantiate gives them their values'.
     if not self.rtmode:
         if name == "pys_chr":
             name = "pys_text_chr"
@@ -356,7 +362,9 @@ def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
             elif ts[j + 1] == "S" and k.startswith("dict."):
                 self.rt("pys_dict_narrow", "void", [args[j]])
     ok = ret == ll[0] and len(args) == len(ll) - 1
-    i = Ins("rt", ts[0], k)
+    if t != "" and not rt_bind(ts[0], t, {}, True):
+        fail(f"internal error: {name} given the result type {t}, which is no instance of {ts[0]}", 0)
+    i = Ins("rt", ts[0] if t == "" else t, k)
     i.a = []
     i.x = x
     for j in range(len(args) if ok else 0):
@@ -385,6 +393,100 @@ def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
     if self.list_id_kind(ts[0]) != 0:
         self.list_identity(Val(result, ts[0]))
     return result
+
+
+def gen_instantiate(self, fn: IFn) -> None:
+    # Type the runtime calls of fn, once it is built, by what they work on, as a call of a generic
+    # function instantiates its signature (docs/typed-ir.md#runtime-calls): the type variables of
+    # each rt op's signature (RT_VARS: S its receiver, T, K and V what that holds, U a second
+    # value's, R a result's) bind to the result type its builder gave it (gen_rt's t) and to the
+    # types of the values its operands read, the receiver's last (instantiate_op). The verifier
+    # checks that each op is then an instance of its signature (rt_instance_error). A variable is
+    # told from a class of its name (class T) by where it is: the signature's type that the
+    # builder left. An op may read a result that a later op defines (where a loop brings it
+    # back): another round types it once a round typed that result. Each round costs a pass over
+    # fn, so three bound the work; an operand still pending keeps its variables (instance view).
+    types: dict[str, str] = {}
+    makers: dict[str, str] = {}
+    pending: dict[str, bool] = {}  # (results whose type is their signature's, which names a variable)
+    found = False
+    again = True
+    rounds = 0
+    while again and rounds < 3:
+        again = False
+        lates: list[str] = []  # (the pending values that this round's ops read)
+        rounds += 1
+        for b in fn.blocks:
+            for i in b.code:
+                if i.op != "rt" or i.s not in self.rtfns or not self.rtfns[i.s].generic:
+                    continue
+                if not found:
+                    value_definitions(fn, types, makers)
+                    for c in fn.blocks:
+                        for x in c.code:
+                            if x.op == "rt" and len(x.r) > 0 and x.s in self.rtfns and x.t == self.rtfns[x.s].sig[0] and rt_generic(x.t):
+                                pending[tmpname(x.r[0])] = True
+                    found = True
+                if instantiate_op(i, self.rtfns[i.s].sig, types, pending, lates) and len(i.r) > 0:
+                    name = tmpname(i.r[0])
+                    types[name] = i.t
+                    if name in pending:
+                        pending.pop(name)
+        for v in lates:
+            if v not in pending:
+                again = True  # (a value an op read too late has its type now)
+
+
+def instantiate_op(i: Ins, sig: list[str], types: dict[str, str], pending: dict[str, bool], lates: list[str]) -> bool:
+    # Gen.instantiate of rt op i, whose runtime function's signature is sig, in a function whose
+    # values have types, but those that pending holds, whose types are still their signatures':
+    # its type variables bind to its result's type where its builder gave one (not the
+    # signature's), then to its operands' (rt_bind): the others', then the receiver's, as the
+    # verifier binds them (rt_instance_error). An operand's type is the one its builder gave it
+    # where that is not the signature's (a list op's), else its value's, as a receiver's that of
+    # the value an optional holds (a runtime function's receiver is never None). Each operand
+    # and the result whose builder left them the signature's types get them with the variables
+    # replaced (rt_subst), but an operand that reads a value that claims no type (%slot, %ptr)
+    # has that type. The builder's result type binds first, so that no operand overrides it (the
+    # verifier binds the result last, to check it). Returns whether it retyped the result; the
+    # pending values its operands read go to lates.
+    bound: dict[str, str] = {}
+    n = min(len(i.a), len(sig) - 1)
+    if i.t != sig[0]:
+        rt_bind(sig[0], i.t, bound, False)
+    found: list[str] = []
+    for j in range(n):
+        s = sig[j + 1]
+        a = i.a[j]
+        t = ""
+        if rt_generic(s):
+            if a.t != s:
+                t = a.t
+            elif a.v in pending:
+                lates.append(a.v)
+            elif a.v in types:
+                t = unopt(types[a.v]) if s == "S" else types[a.v]
+        found.append(t)
+    for j in rt_operand_order(sig):
+        if j <= n and found[j - 1] != "":
+            rt_bind(sig[j], found[j - 1], bound, False)
+    for j in range(n):
+        s = sig[j + 1]
+        a = i.a[j]
+        if a.t != s or not rt_generic(s):
+            continue
+        t = rt_subst(s, bound)
+        d = found[j]
+        if (d == "%slot" and s.startswith("*")) or (d == "%ptr" and not s.startswith("*")):
+            t = d
+        if t != a.t:
+            i.a[j] = Val(a.v, t)
+    if i.t == sig[0] and rt_generic(sig[0]):
+        t = rt_subst(sig[0], bound)
+        if t != i.t:
+            i.t = t
+            return True
+    return False
 
 
 def gen_list_len(self, o: Val) -> str:

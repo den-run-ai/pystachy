@@ -787,6 +787,7 @@ from src.pystachy_compiler.emission import (
     gen_ret_ as emission_ret_,
     gen_returned_none as emission_returned_none,
     gen_rt as emission_rt,
+    gen_instantiate as emission_instantiate,
     gen_list_get as emission_list_get,
     gen_list_len as emission_list_len,
     gen_list_write as emission_list_write,
@@ -2950,8 +2951,11 @@ class Gen:
     def select(self, c: str, x: Val, y: Val) -> str:
         return emission_select(self, c, x, y)
 
-    def rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
-        return emission_rt(self, name, ret, args, x)
+    def rt(self, name: str, ret: str, args: list[str], x: str = "", t: str = "") -> str:
+        return emission_rt(self, name, ret, args, x, t)
+
+    def instantiate(self, fn: IFn) -> None:
+        emission_instantiate(self, fn)
 
     def list_len(self, o: Val) -> str:
         return emission_list_len(self, o)
@@ -5887,8 +5891,8 @@ class Gen:
     def store_elem(self, k: Val, et: str) -> Val:
         return containers_store_elem(self, k, et)
 
-    def nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str) -> str:
-        return containers_nonekey(self, k, none, fn, av, x, kt)
+    def nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str, t: str = "") -> str:
+        return containers_nonekey(self, k, none, fn, av, x, kt, t)
 
     def none_dkey(self, k: Val, kt: str) -> Val:
         return containers_none_dkey(self, k, kt)
@@ -5959,8 +5963,8 @@ class Gen:
     def utag(self, t: str) -> int:
         return unions_utag(self, t)
 
-    def ubox(self, v: Val, m: str) -> str:
-        return unions_ubox(self, v, m)
+    def ubox(self, v: Val, m: str, u: str) -> str:
+        return unions_ubox(self, v, m, u)
 
     def uget(self, u: Val, m: str) -> Val:
         return unions_uget(self, u, m)

@@ -587,7 +587,8 @@ L1:
                         r"operand \d+ needs a ", r"operand \d+ needs .* \(\$\w+ is ", r"needs &\$T, \$T ",
                         r"result needs ", r"the function's return type", r"reads %\S+ as \S+, but it is ",
                         r"reads the address %\S+ as a packed slot", r"a packed slot, as an address",
-                        r"reads %\S+ as \S+, where .* reads it as "):
+                        r"reads %\S+ as \S+, where .* reads it as ", r"rt \S+ operand \d+ needs ", r"rt \S+ result needs \*",
+                        r"needs the LLVM type "):
             with self.subTest(pattern=pattern):
                 self.assertTrue(any(re.search(pattern, m) for m in expected), pattern)
         self.assertEqual(len(text.parse_functions(source)), len(text.expectations(source)))

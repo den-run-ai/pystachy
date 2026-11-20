@@ -285,6 +285,21 @@ class Observer:
             return wrapped
         return decorate
 
+    def instantiate_wrapper(self, original):
+        def wrapped(gen, fn, *args, **kwargs):
+            # Gen.instantiate types a function's runtime calls by what they read, once it is
+            # built: the same producers, so an origin observed on one stays, at its new types
+            before = {ins: self.representation_signature(ins) for block in fn.blocks for ins in block.code
+                      if ins in self.representation_origins}
+            result = original(gen, fn, *args, **kwargs)
+            for ins, signature in before.items():
+                observed = self.representation_origins[ins]
+                if observed["signature"] == signature:
+                    observed["signature"] = self.representation_signature(ins)
+                    observed["definition_type"] = ins.t
+            return result
+        return wrapped
+
     def big_popitem_wrapper(self, original):
         def wrapped(gen, *args, **kwargs):
             value = original(gen, *args, **kwargs)
@@ -826,6 +841,7 @@ class Observer:
         for name in ("held_value", "held_read", "held_pair"):
             self.wrap(Gen, name, self.held_representation_wrapper(name))
         self.wrap(Gen, "big_popitem", self.big_popitem_wrapper)
+        self.wrap(Gen, "instantiate", self.instantiate_wrapper)
         self.wrap(Gen, "search_hold", self.search_hold_wrapper)
         self.wrap(optimizations, "clone_instruction", self.clone_instruction_wrapper)
         self.wrap(Gen, "effects", self.effects_wrapper)

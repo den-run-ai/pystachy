@@ -648,7 +648,7 @@ PRESENT = "present"  # (an opt[None] split's tag 1: the member is its payload's,
 SCALAR_MEMBERS = frozenset({"member:bool", "member:float", "member:int"})
 OPTIONAL_SCALARS = frozenset({"opt[bool]", "opt[float]", "opt[int]"})
 # Operand types that carry a payload word without saying which member's bits it holds.
-GENERIC_WORDS = frozenset({"%slot", "%ptr", "*T", "*K", "*V", "S", "*dyn", "dyn"})
+GENERIC_WORDS = frozenset({"%slot", "%ptr", "*T", "*K", "*V", "*U", "S", "*dyn", "dyn"})
 
 
 def split_layout(fn, slots, tag_names):
@@ -1193,13 +1193,17 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
         elif op is not None and op["op"] in {"tuple.load", "dyn.payload"} and value == f"%t{op['results'][-1]}":
             typ = op["text"]
         elif op is not None and op["type"].startswith("*") and value == f"%t{op['results'][0]}" and (
-                op["op"] == "list.load" or (op["op"] == "rt" and op["text"] in {"list.get", "list.pop"})):
-            # (a list's item, encoded *element: typed-ir.md's list reads; a generic *T one is
-            # the receiver's item, as union payload provenance takes it there)
+                op["op"] == "list.load" or op["op"] == "rt"):
+            # (a list's item, encoded *element: typed-ir.md's list reads; a runtime call's packed
+            # result, the item of the type Gen.instantiate gave it; a generic *T one is the
+            # receiver's item, as union payload provenance takes it there, and another variable
+            # no member)
             typ = op["type"][1:]
             receiver = types.get(op["operands"][0]["value"], "") if op["operands"] else ""
-            if typ == "T" and receiver.startswith("list[") and receiver.endswith("]"):
+            if typ == "T" and op["text"] in {"", "list.get", "list.pop"} and receiver.startswith("list[") and receiver.endswith("]"):
                 typ = targs(receiver)[0]
+            elif typ in {"T", "K", "V", "U", "R", "S"}:
+                typ = None
         else:
             typ = types.get(value) if op is not None or value.startswith("%a") else None
         if typ is None or typ in GENERIC_WORDS or value in words:

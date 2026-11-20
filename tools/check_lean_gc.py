@@ -32,7 +32,8 @@ from pathlib import Path
 import subprocess
 
 import check_lean_boundary as boundary
-from check_lean_effects import targs
+from check_lean_effects import RUNTIME, targs
+from src.pystachy_compiler.specs import LIST_READS, LIST_WRITES  # (check_lean_effects puts the checkout on sys.path)
 from check_lean_guards import argument_parameters, direct_access, memory_key
 
 NONE = "none"  # (a null value has no array: every use allows it)
@@ -41,7 +42,7 @@ EITHER = sorted([ATOMIC, SCANNED, NONE])
 POINTERS = sorted([SCANNED, NONE])  # (what an array a pointer may be written into is)
 NUMERIC = frozenset({"int", "float", "bool"})
 INT_KEYS = frozenset({"int", "bool"})  # (keymem: a key kind 0, or a descriptor of an int or a bool)
-PLACEHOLDERS = frozenset({"T", "K", "V", "S", "?", "*T", "*K", "*V"})
+PLACEHOLDERS = frozenset({"T", "K", "V", "S", "?", "*T", "*K", "*V"})  # (a type the IR leaves open: an op's own)
 KEYS = "#keys"  # (a dict's key array's location: the value's own is its value array's)
 # The boundary validator's bounds here: a function's work is linear in its blocks, so the regex
 # engine's sre_match (about 1,300 blocks and 4,500 instructions) is checked; its graph keeps
@@ -49,7 +50,7 @@ KEYS = "#keys"  # (a dict's key array's location: the value's own is its value a
 MAX_BLOCKS, MAX_INSTRUCTIONS = 4096, 16384
 
 
-SPEC_VARIABLES = frozenset({"T", "K", "V", "S"})  # (specs.py's type variables of runtime functions)
+SPEC_VARIABLES = frozenset({"T", "K", "V", "S", "U", "R"})  # (specs.py's type variables of runtime functions)
 LIMITATIONS = (
     "Proves, per function in the finite-tag model, that no list, dict or set whose item, value or key "
     "array may be atomic (unscanned) reaches a use whose type lets that array hold pointers, and that "
@@ -81,6 +82,35 @@ def family(typ):
 
 def open_part(part):
     return part in PLACEHOLDERS or "?" in part
+
+
+def spec_types(name):
+    """A runtime function's result and parameter types as RUNTIME spells them (specs.py)."""
+    if name not in RUNTIME:
+        return []
+    result, _, parameters = RUNTIME[name].split("|")[0].partition(":")
+    return [result] + (targs("f[" + parameters + "]") if parameters else [])
+
+
+def spec_view(typ):
+    """A runtime signature's type with each type variable as an open part ("?S", "list[?T]"), so
+    that a program's class of a variable's name (class R) is not taken for one."""
+    return re.sub(r"[A-Za-z_][A-Za-z0-9_]*", lambda m: "?" + m.group(0) if m.group(0) in SPEC_VARIABLES else m.group(0), typ)
+
+
+def operand_view(op, position):
+    """The view an operand takes: its own type, but an rt op's where the runtime signature names a
+    variable there (spec_view), whose instance (Gen.instantiate) is the type of the value the call
+    reads and constrains nothing that the runtime function does (WRITES, FILLS and READS say
+    that). A list read's or write's operand keeps its type, which its builder gave and its
+    contract checks."""
+    typ = op["operands"][position]["type"]
+    if op["op"] != "rt" or op["text"] in LIST_READS or op["text"] in LIST_WRITES:
+        return typ
+    spec = spec_types(op["text"])
+    if position + 1 < len(spec) and SPEC_VARIABLES & set(re.split(r"[\[\],*&]", spec[position + 1])):
+        return spec_view(spec[position + 1])
+    return typ
 
 
 def arrays(typ):
@@ -357,7 +387,7 @@ def normalize(snapshot, fn, memory=None, declared=None):
         for block in fn["blocks"]:
             for op in block["operations"]:
                 if op["op"] == "rt" and op["text"] in COPIES:
-                    members = [a["value"] for a in op["operands"] if a["type"] == "S" and a["value"].startswith("%")]
+                    members = [a["value"] for j, a in enumerate(op["operands"]) if operand_view(op, j) == "?S" and a["value"].startswith("%")]
                     members += [f"%t{n}" for n in op["results"]]
                     known = {kinds[m] for m in members if m in kinds}
                     if len(known) == 1:
@@ -396,7 +426,7 @@ def normalize(snapshot, fn, memory=None, declared=None):
         for op in block["operations"]:
             args = op["operands"]
             for position, a in enumerate(args):
-                note(a["value"], a["type"])
+                note(a["value"], operand_view(op, position))
                 if op["op"] == "call" and op["text"] in declared and position < len(declared[op["text"]][0]):
                     note(a["value"], declared[op["text"]][0][position])
                 if op["op"] in ("mem.store", "mach.store") and position == 1 and args[0]["type"].startswith("&"):
@@ -413,7 +443,7 @@ def normalize(snapshot, fn, memory=None, declared=None):
         for block in fn["blocks"]:
             for op in block["operations"]:
                 if op["op"] == "rt" and op["text"] in COPIES:
-                    members = [a["value"] for a in op["operands"] if a["type"] == "S" and a["value"].startswith("%")]
+                    members = [a["value"] for j, a in enumerate(op["operands"]) if operand_view(op, j) == "?S" and a["value"].startswith("%")]
                     members += [f"%t{n}" for n in op["results"]]
                     shared = set().union(*(static.get(m, set()) for m in members))
                     for member in members:
@@ -421,7 +451,7 @@ def normalize(snapshot, fn, memory=None, declared=None):
                             static.setdefault(member, set()).update(shared)
                             changed = True
                 if op["op"] == "rt" and op["text"] == "vtuple.new" and op["operands"] and op["results"]:
-                    # (a vtuple of a list's items: vtuple[T] of its list[T], beside the result's %ptr)
+                    # (a vtuple of a list's items: vtuple[T] of each list[T] its operand may be)
                     made = {f"vtuple[{targs(typ)[0]}]" for typ in static.get(op["operands"][0]["value"], ()) if family(typ) == "list"}
                     result = f"%t{op['results'][0]}"
                     if not made <= static.get(result, set()):
@@ -453,12 +483,13 @@ def normalize(snapshot, fn, memory=None, declared=None):
             for a in op["operands"]:
                 uses[a["value"]] = uses.get(a["value"], 0) + 1
 
-    def item_types(operand, seen):
-        """The static types the word an item operand passes may have: its *T view's, else those of
-        what made it: a slot.pack's operand, a tuple.load's item type (its text), a container read's
-        part of the container's static types (or a default it returns), a phi's or select's operands'
-        or the value's own type; a constant of no global is a number or null. "?" where unknown."""
-        value, typ = operand["value"], operand["type"]
+    def item_types(operand, seen, view=None):
+        """The static types the word an item operand passes may have: its *T view's (view, else its
+        type), else those of what made it: a slot.pack's operand, a tuple.load's item type (its
+        text), a container read's part of the container's static types (or a default it returns), a
+        phi's or select's operands' or the value's own type; a constant of no global is a number or
+        null. "?" where unknown."""
+        value, typ = operand["value"], operand["type"] if view is None else view
         if typ.startswith("*") and not open_part(typ[1:]):
             return {typ[1:]}
         if not value.startswith("%"):
@@ -482,7 +513,7 @@ def normalize(snapshot, fn, memory=None, declared=None):
             found = {targs(typ)[part] if len(targs(typ)) > part else "?"
                      for typ in static.get(args[position]["value"] if position < len(args) else "", ())} or {"?"}
             for extra in defaults:
-                found |= item_types(args[extra], seen) if extra < len(args) else {"?"}
+                found |= item_types(args[extra], seen, operand_view(producer, extra)) if extra < len(args) else {"?"}
             return found
         own = slot_types.get(value) or types.get(value) or "?"
         return {own[1:] if own.startswith("*") and not open_part(own[1:]) else own}  # (list.load's word)
@@ -517,7 +548,7 @@ def normalize(snapshot, fn, memory=None, declared=None):
             return True
         operand = op["operands"][position]
         if how == "item":
-            found = item_types(operand, set())
+            found = item_types(operand, set(), operand_view(op, position))
             return not found or any(holds_pointer(typ) is not False for typ in found)
         if not operand["value"].startswith("%"):
             return "@" in operand["value"]  # (null has no words)
@@ -719,8 +750,9 @@ def normalize(snapshot, fn, memory=None, declared=None):
                     if not operand["value"].startswith("%") or operand["value"] in slots:
                         continue
                     # (its own view; a callee's parameter, the function's result and a store's
-                    # memory are declared types too)
-                    views, required = [operand["type"]], {}
+                    # memory are declared types too; a suspension's word is the one it yields, of
+                    # its own type, not the op's operand at that position)
+                    views, required = [operand_view(op, position) if kind != "gen.yield" else operand["type"]], {}
                     if kind == "call" and op["text"] in declared and position < len(declared[op["text"]][0]):
                         views.append(declared[op["text"]][0][position])
                     if kind == "ret":
