@@ -65,7 +65,7 @@ magnitude as an unsigned bit pattern, including the magnitude of `-2**63`.
 For true division, integers up to `2**53` in magnitude convert exactly to double.
 Larger inputs use an integer quotient with extra rounding bits. A nonzero
 remainder sets its low bit before conversion, preserving a single rounding to
-binary64. A zero dividend takes the floating-point path to preserve signed zero.
+binary64. A zero dividend retains the sign of the quotient.
 
 ## Writing runtime code
 

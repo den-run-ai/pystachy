@@ -71,15 +71,17 @@ def pys_mod(a: int, b: int) -> int:
         return 0
     r = _rt.srem(a, b)
     # The machine remainder has the dividend's sign; Python's has the divisor's.
-    if r != 0 and (r ^ b) < 0:
-        return _rt.wrap_add(r, b)
-    return r
+    if r == 0 or (r ^ b) >= 0:
+        return r
+    return _rt.wrap_add(r, b)
 
 
 def pys_int_bit_length(a: int) -> int:
     # Count bits of the magnitude, including 2**63 for the most negative int.
     x = _rt.wrap_sub(0, a) if a < 0 else a
-    return _rt.wrap_sub(64, _rt.ctlz(x))
+    # Setting bit 0 preserves the highest set bit and gives zero an index of 0.
+    highest = _rt.wrap_sub(63, _rt.ctlz(x | 1))
+    return _rt.wrap_add(highest, int(a != 0))
 
 
 def pys_int_bit_count(a: int) -> int:
@@ -110,32 +112,30 @@ def pys_pow(a: int, b: int) -> int:
 def pys_idiv(a: int, b: int) -> float:
     if b == 0:
         raise ZeroDivisionError("division by zero")
-    if a == 0 or (-9007199254740992 <= a <= 9007199254740992 and -9007199254740992 <= b <= 9007199254740992):
-        # Both inputs convert exactly through 2**53. A zero dividend also preserves the sign of 0 / b.
+    # Bias the exactly representable interval [-2**53, 2**53) to [0, 2**54).
+    if _rt.lshr(_rt.wrap_add(a, 9007199254740992) | _rt.wrap_add(b, 9007199254740992), 54) == 0:
         return _rt.fdiv(float(a), float(b))
     x = _rt.wrap_sub(0, a) if a < 0 else a
     y = _rt.wrap_sub(0, b) if b < 0 else b
-    # Keep at least 55 bits of the quotient: the 53 significand bits, a rounding bit and a sticky bit.
-    shift = 55 + b.bit_length() - a.bit_length()
-    if shift <= 0:
-        shift = 0
-        lo = x
-        q = _rt.udiv(x, y)
+    # For a nonzero dividend, keep at least 55 quotient bits: 53 significand bits plus round and sticky.
+    shift = max(0, 55 + _rt.ctlz(x) - _rt.ctlz(y))
+    part = _rt.shl(x, shift)  # _rt.shl shifts a word by shift modulo 64
+    if shift < 64:
+        # Two right shifts give zero at shift == 0, where a shift by 64 would wrap.
+        hi = _rt.lshr(_rt.lshr(x, 1), 63 - shift)
+        lo = part
     else:
-        # x << shift fits in 119 bits even for the largest divisor.
-        if shift < 64:
-            hi = _rt.lshr(x, 64 - shift)
-            lo = _rt.shl(x, shift)
-        else:
-            hi = _rt.shl(x, shift - 64)
-            lo = 0
-        q = _rt.udiv_wide(hi, lo, y)
+        # The first 64 shifts move x into the high word; part applies the remaining shifts.
+        hi = part
+        lo = 0
+    q = _rt.udiv_wide(hi, lo, y)
     # The remainder is smaller than 2**64, so its low word alone tells us whether it is nonzero.
     if _rt.wrap_mul(q, y) != lo:
         q |= 1
-    # q may be 2**63. Its negation always fits a signed word, whose conversion rounds to nearest even.
-    negative = float(_rt.wrap_sub(0, q)) * _rt.bits_float(_rt.shl(1023 - shift, 52))
-    return negative if (a < 0) != (b < 0) else -negative
+    # Only a quotient of 2**63 has its sign bit set; its signed float conversion is exactly -2**63.
+    # Give the power-of-two scale the result sign, including for a zero dividend.
+    scale_bits = _rt.shl(1023 - shift, 52) | ((a ^ b) & (-9223372036854775807 - 1))
+    return abs(float(q)) * _rt.bits_float(scale_bits)
 
 
 def mulmod(a: int, b: int, n: int) -> int:
