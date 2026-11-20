@@ -1,0 +1,24 @@
+diff --git a/src/pystachy_compiler/driver.py b/src/pystachy_compiler/driver.py
+index f70e0fa25..8b0007b69 100644
+--- a/src/pystachy_compiler/driver.py
++++ b/src/pystachy_compiler/driver.py
+@@ -1422,7 +1422,7 @@ def main() -> None:
+         if code == 0:
+             # (the profile flag goes to the one step that runs LLVM's passes over the module)
+             cc = f"{llvm}clang -O{aotopt} -c -Xclang -disable-llvm-passes {q(lbc)}" if newalloc else f"{llvm}clang -O{aotopt} -c {q(bc)}{aotprofile[0]}"
+-            code = timed_sh("program.codegen" if newalloc else "program.optimize_codegen", cc + f" -o {q(obj)} -Wno-unused-command-line-argument{ccflags}")
++            code = timed_sh("program.codegen" if newalloc else "program.optimize_codegen", cc + os.getenv("PYSTACHY_X_AOTFLAGS", "") + f" -o {q(obj)} -Wno-unused-command-line-argument{ccflags}")
+         if code == 0:
+             rt = "" if aotrt[0] == "" else f" {q(aotrt[0])}" + (" -Wl,-dead_strip" if PLATFORM == "darwin" else " -Wl,--gc-sections")
+             code = timed_sh("program.link", f"{llvm}clang {q(obj)}{rt} -o {q(out)}{libs} -lm{cflags}{aotprofile[1]}")
+@@ -1537,7 +1537,9 @@ def main() -> None:
+                 # The ordinary JIT cleanup above already ran. Disable further
+                 # LLVM IR passes: using the whole-program AOT pipeline here can
+                 # change floating-point results and allocation behavior.
+-                cachecode = sh(f"{{ {llvm}clang -O2 -Xclang -disable-llvm-passes -mllvm -profile-guided-section-prefix=false -fPIC -c {q(bc)} -o {q(obj)}"
++                xcc = os.getenv("PYSTACHY_X_PCCOMPILE", "")
++                xcc = xcc.replace("{bc}", q(bc)).replace("{obj}", q(obj)) if xcc != "" else f"{llvm}clang -O2 -Xclang -disable-llvm-passes -mllvm -profile-guided-section-prefix=false -fPIC -c {q(bc)} -o {q(obj)}"
++                cachecode = sh(f"{{ {xcc}"
+                                + f" && {llvm}clang --ld-path=/usr/bin/ld {q(obj)} {q(useo)} -o {q(pcout)} -lm -ldl -Wl,-t > {q(pclink)}; }} 2> {q(pcerror)}")
+                 if cachecode == 0 and pub and cached_run.link_inputs(pclink, obj, useo):
+                     # The first link discovers inputs; snapshot them before the

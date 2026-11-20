@@ -1,0 +1,122 @@
+{
+ "exes": {
+  "c-clang": "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/cgap/pc/tree/clang/umap/program-v2/a10d8eeade678197-b89c38cebc2bad05.exe",
+  "c-nobypass": "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/cgap/pc/tree/nobypass/umap/program-v2/a10d8eeade678197-9a016c49aadf3762.exe",
+  "c-llc": "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/cgap/pc/tree/llc/umap/program-v2/a10d8eeade678197-3d609f65f556578c.exe",
+  "h-clang": "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/tune.MQy1/knn-v0.exe",
+  "h-nobypass": "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/tune.MQy1/knn-v1.exe"
+ },
+ "rounds": 5,
+ "runs": {
+  "c-clang": [
+   {
+    "knn": 1.222,
+    "layout": 4.236
+   },
+   {
+    "knn": 1.348,
+    "layout": 4.138
+   },
+   {
+    "knn": 1.225,
+    "layout": 4.187
+   },
+   {
+    "knn": 1.32,
+    "layout": 4.27
+   },
+   {
+    "knn": 1.339,
+    "layout": 4.125
+   }
+  ],
+  "c-nobypass": [
+   {
+    "knn": 1.293,
+    "layout": 4.05
+   },
+   {
+    "knn": 1.267,
+    "layout": 4.049
+   },
+   {
+    "knn": 1.178,
+    "layout": 4.087
+   },
+   {
+    "knn": 1.156,
+    "layout": 4.112
+   },
+   {
+    "knn": 1.297,
+    "layout": 4.064
+   }
+  ],
+  "c-llc": [
+   {
+    "knn": 1.2,
+    "layout": 4.094
+   },
+   {
+    "knn": 1.19,
+    "layout": 4.036
+   },
+   {
+    "knn": 1.252,
+    "layout": 4.085
+   },
+   {
+    "knn": 1.228,
+    "layout": 4.107
+   },
+   {
+    "knn": 1.059,
+    "layout": 3.423
+   }
+  ],
+  "h-clang": [
+   {
+    "knn": 1.13,
+    "layout": 4.243
+   },
+   {
+    "knn": 1.113,
+    "layout": 4.416
+   },
+   {
+    "knn": 1.12,
+    "layout": 4.279
+   },
+   {
+    "knn": 1.232,
+    "layout": 4.099
+   },
+   {
+    "knn": 1.017,
+    "layout": 3.77
+   }
+  ],
+  "h-nobypass": [
+   {
+    "knn": 1.017,
+    "layout": 4.145
+   },
+   {
+    "knn": 0.977,
+    "layout": 4.054
+   },
+   {
+    "knn": 1.052,
+    "layout": 4.268
+   },
+   {
+    "knn": 0.967,
+    "layout": 4.032
+   },
+   {
+    "knn": 1.056,
+    "layout": 4.033
+   }
+  ]
+ }
+}

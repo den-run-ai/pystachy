@@ -1,0 +1,4 @@
+One cached executable (all drafts, generic CPU, today's clang flags), 12 consecutive runs on CPU 1,
+alternating ASLR on and off (setarch -R); kNN stage seconds:
+aslr:   0.944 1.082 1.089 1.190 1.244 1.253
+noaslr: 1.122 1.137 1.234 1.272 1.286 1.354

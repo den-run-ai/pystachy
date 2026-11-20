@@ -219,7 +219,10 @@ conflicts took both sides. Built to a fixed point; every run printed the recorde
 - **An older gap this exposed.** The program cache's executables, which clang compiles with x86-64's
   generic tuning, run kNN in 1.32 to 1.34 s against the runner's 0.95 to 0.97 s on the same IR
   (`cache-umap.json`, generic CPU): the cached path, the native CLI's default, is the slower one.
-  Not addressed.
+  Explained on 20 November (`../../cache-codegen-2026-11-20/`): not the tuning as a whole but its
+  64-bit division bypass, which every named Intel tuning enables and the runner lacks (it moves `dim`
+  out of a register in kNN, and speeds division-heavy loops 1.6 times), plus the distance loop's
+  placement across a 64-byte line. #1575's `-default-tuning` works through the same switch.
 - **CI's cache-gc after the refresh.** #1442: runtime-cache 272 s, gc-self 447 s, passed (12.4 min).
   #1468 and #1477: runtime-cache 380 s and 367 s, then cancelled at the 15-minute job limit during
   gc-self (over 502 s and 520 s). #1575: passed in 11.8 min. Locally, `make test-cache` took 580 s on
