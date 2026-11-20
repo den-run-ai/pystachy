@@ -37,6 +37,8 @@ counts stay checked. With an exact, nonnegative opposite operand,
 raises only after the whole expression is evaluated
 ([deviation](../../tests/deviations/int_masked_overflow.py)).
 
+<a id="bytearray"></a>
+
 **bytearray:** a class of the subset (`lib/_pystachy_bytearray.py`) whose buffer no other code
 holds: `bytes(b)`, a slice and a method's result are copies, and two names of one bytearray share
 its changes. It has CPython's constructor forms, items, slices (read, assigned and deleted, with
