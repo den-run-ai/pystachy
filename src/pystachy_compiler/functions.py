@@ -427,14 +427,28 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
                 self.term = False
         else:
             self.raise_("RuntimeError", self.sconst(f"{short(f.name)}() ended without returning a value"))
+    # One raise block serves every check of its message (guard). With line tables, it is the line
+    # of those checks where they share one, else line 0, as LLVM numbers code merged from several
+    # lines; never the line of the statement the function happens to end with
+    checklines: dict[str, int] = {}
+    if self.source_lines.enabled:
+        for cb in self.fn.blocks:
+            for chk in cb.code:
+                if chk.op == "check":
+                    ck = chk.x if chk.x != "" else chk.s
+                    checklines[ck] = chk.line if ck not in checklines or checklines[ck] == chk.line else 0
+    ended = self.line
     for key in self.fn.cold:
         self.place(self.fn.cold[key])
+        if self.source_lines.enabled:
+            self.line = checklines[key] if key in checklines else 0
         msg = key
         if key in self.fn.coldh:
             self.blk.handler = self.fn.coldh[key]
             msg = key[len(self.fn.coldh[key]) + 1 :]
         i = msg.find(": ")
         self.raise_(msg[:i], self.sconst(msg[i + 2 :]))
+    self.line = ended
     if f.export:
         # the runtime's ABI: what runtime.c's prototype says, and what programs call: RUNTIME's
         # types, for an operation the compiler lowers to it

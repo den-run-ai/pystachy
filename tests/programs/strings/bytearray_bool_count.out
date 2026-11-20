@@ -1,0 +1,4 @@
+bytearray(b'\x00') bytearray(b'') 1 0
+bytearray(b'\x07A')
+bytearray(b'\x00') bytearray(b'') bytearray(b'\x00\x00\x00')
+[exit 0]

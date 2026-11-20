@@ -421,6 +421,14 @@ Coverage in `tests/programs/inference/`: `dynany_generator_context.py`,
 class. A list test keeps the layout-aware dynamic reference described above.
 A boxed range passes `isinstance(x, range)`, alone or in a tuple or union of types,
 and narrows to a range (`tests/programs/inference/dynany_isinstance_range.py`).
+A tuple test narrows to a tuple unless the program holds a NamedTuple's object
+in an `Any` value: that object passes the test with its class's layout, so the
+value then stays `Any`. A `None` item in the tuple of types is no type: the test
+raises CPython's `TypeError` where CPython reaches it
+(`tests/programs/inference/dynany_isinstance_none_item.py`). `type(None)` names
+`NoneType` where `type` is the builtin or a local that holds it, such as a parameter
+`type=type`; a test through another local `type` is rejected
+(`tests/errors/inference/dynany_isinstance_type_shadowed.py`).
 `isinstance(x, int)` retains the box because a bool also passes that test, but
 proves an int or bool payload for arithmetic and comparisons. Bool `&`, `|` and
 `^` with another bool, and `**`, stay dynamic because their result rules differ
@@ -1089,9 +1097,10 @@ can still need an explicit `list[Any]` destination.
   slice object, which Pystachy does not have (typed code rejects the slice at compile time).
 
 - A NamedTuple's object compares and hashes as the tuple of its fields through `Any` values
-  (`tests/programs/inference/dynany_namedtuple.py`), but it is no sequence there: `len()`, indexing and
-  iteration raise `TypeError`, and an object of another NamedTuple class compares with it by
-  identity (an ordering raises `TypeError`), where CPython compares their fields.
+  (`tests/programs/inference/dynany_namedtuple.py`), and `isinstance(x, tuple)` is true for it
+  (`tests/programs/inference/dynany_isinstance_namedtuple.py`), but it is no sequence there: `len()`,
+  indexing and iteration raise `TypeError`, and an object of another NamedTuple class compares
+  with it by identity (an ordering raises `TypeError`), where CPython compares their fields.
 
 - A static or class method read through an object held in `Any` without a call raises `AttributeError`
   (typed code rejects a static method as a value at compile time), and so does a call of a

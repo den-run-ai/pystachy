@@ -18,7 +18,7 @@ the program's classes, functions the compiler writes once every class that is bo
 from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
 from src.pystachy_compiler.bigints import held
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, dynamic_file, dynamic_program, int_lists, int_program, static_file
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, TupleBoxes, dynamic_file, dynamic_program, int_lists, int_program, static_file
 from src.pystachy_compiler.frames import Reduce
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
@@ -32,6 +32,12 @@ DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
 # which arithmetic reads as an int (dyn_proven_int); everything else reads it as dyn
 DYNINT = "dyn[int]"
+# Two entries of dyn_isinst_types' lists that name no static type. NTBOX: the objects of the
+# program's NamedTuple classes, which isinstance(x, tuple) accepts beside a tuple's box. NOTYPE,
+# always last: a tuple's item that is None, which is no type; CPython raises its TypeError when it
+# reaches that item, so the test passes for the types before it and raises otherwise (#1581)
+NTBOX = "%namedtuple"
+NOTYPE = "%notatype"
 # runtime.c's DynType kinds (DK_*) and the flags of a class's (DF_*)
 DK_OBJ = 8
 DK_FUNC = 9
@@ -346,10 +352,14 @@ def gen_dyn_boxable(self, t: str) -> str:
         # Match dyn_box here so a tentative comparison can choose its concrete
         # adapter before a later attribute dispatcher encounters this layout.
         return f"a {typestr(t)} as an Any value is not supported yet"
-    if is_list(t) or is_dict(t) or is_set(t):
+    if is_set(t):
+        # (no box holds a set or frozenset yet, #775; a list comprehension of its items, for an Any
+        # target, builds a list[Any], which one does, #1591)
+        return f"a {typestr(t)} cannot become an Any value: Any values hold no sets yet (a list comprehension of its items can become one)"
+    if is_list(t) or is_dict(t):
         # (an alias of a typed container would read its slots with another layout, or store a
         # box where its typed code reads a number: copying it would break its identity)
-        which = "list[Any]" if is_list(t) else "dict[Any, Any]" if is_dict(t) else "set[Any]"
+        which = "list[Any]" if is_list(t) else "dict[Any, Any]"
         return f"a {typestr(t)} cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a {which} from the start, or copy it)"
     if t.startswith("fn[b:") or t.startswith("fn[d:") or t.startswith("fn[u:"):
         return f"a builtin function or method as an Any value is not supported yet ({typestr(t)})"
@@ -395,6 +405,8 @@ def gen_dyn_class_type(self, c: str) -> str:
     # is unhashable: hcls). Each class that gets one is a case of the dispatchers (dyn_dispatchers)
     if c in self.dyntypes:
         return self.dyntypes[c]
+    if c in self.nts and self.nttests and not self.ntboxes:
+        raise TupleBoxes()  # (its objects pass isinstance(x, tuple), which this pass tested as a tuple's box)
     ci = self.classes[c]
     name = f"@dt.{c}"
     self.dyntypes[c] = name
@@ -2532,6 +2544,12 @@ def gen_dyn_test(self, v: Val, ts: list[str]) -> str:
     t = Val(self.dyn_typeof(v), "dyntype")
     r = ""
     for m in ts:
+        if m == NTBOX:
+            # an object of a NamedTuple class: one predicate, whose cases are the classes boxed
+            # when the dispatchers reach their fixed point, also those boxed after this test
+            x = self.dyn_call(self.dyn_dispatcher("isnamedtuple", [DYN], "bool", ""), [v]).v
+            r = x if r == "" else self.scalar("or", [Val(r, "bool"), Val(x, "bool")])
+            continue
         if m in self.tmpl:
             # Python class identity does not select a template's physical layout.
             # Share one predicate per origin and let the existing dispatcher fixed
@@ -2579,12 +2597,21 @@ def gen_dyn_isinst_types(self, c: Node) -> list[str]:
     if c.kind == "tuple" or (c.kind == "binop" and c.s == "|"):
         out: list[str] = []
         for x in c.kids:
+            if x.kind == "None" and c.kind == "tuple":
+                # (int, None): None is no type, though int | None names NoneType. The items
+                # after it are never reached, as CPython's test stops at its TypeError
+                out.append(NOTYPE)
+                return out
             ts = ["None"] if x.kind == "None" else self.dyn_isinst_types(x)
             if "" in ts:
                 return [""]
             out.extend(ts)
+            if NOTYPE in ts:
+                return out
         return out
-    if c.kind == "call" and len(c.kids) == 2 and c.kids[0].kind == "name" and c.kids[0].s == "type" and c.kids[1].kind == "None":
+    if c.kind == "call" and len(c.kids) == 2 and c.kids[0].kind == "name" and c.kids[0].s == "type" and c.kids[1].kind == "None" and (not self.bound("type") or self.ltype.get("type", "") == "fn[b:type]"):
+        # (a local named type names the builtin where its type says it holds it, as a parameter
+        # that defaults to it does; any other is called, and its result is no type this decides)
         return ["None"]
     if c.kind != "name":
         return [""]
@@ -2600,6 +2627,16 @@ def gen_dyn_isinst_types(self, c: Node) -> list[str]:
     if c.s == "range" and RANGEC in self.classes:
         self.dyn_class_type(RANGEC)  # (the class of range objects, lib/_pystachy_range.py: boxed as its objects)
         return [RANGEC]
+    if c.s == "tuple" and len(self.nts) > 0:
+        # A NamedTuple's object is a tuple. While none is boxed the test is of the tuple's box
+        # alone, as in a program without such a class, and may narrow x to its payload; once a
+        # NamedTuple class has a DynType the program starts again (TupleBoxes) with the test
+        # that accepts those objects too, which leaves x an Any value (dyn_narrow_type)
+        if self.ntboxes:
+            return ["vtuple[dyn]", NTBOX]
+        if len([k for k in self.dynclasses if k in self.nts]) > 0:
+            raise TupleBoxes()
+        self.nttests = True
     m = {"int": ["int", "bool"], "bool": ["bool"], "float": ["float"], "str": ["str"], "list": ["list[dyn]", "list[int]"], "dict": ["dict[dyn,dyn]"],
          "tuple": ["vtuple[dyn]"], "object": ["*"], "type": ["%class:type"]}
     if c.s in m:
@@ -2614,6 +2651,12 @@ def gen_dyn_isinst(self, v: Val, c: Node) -> Val:
     ts = self.dyn_isinst_types(c)
     if "" in ts:
         self.err("isinstance() of an Any value is only supported with builtin types, classes, None and tuples of them")
+    if len(ts) > 0 and ts[-1] == NOTYPE:
+        # (the types before the None item, in CPython's order: object among them is true first)
+        ts = ts[:-1]
+        if "*" not in ts:
+            self.guard(self.scalar("xor", [Val(self.dyn_test(v, ts), "bool"), Val("true", "bool")]), "TypeError: isinstance() arg 2 must be a type, a tuple of types, or a union")
+        return Val("true", "bool")
     if "*" in ts:
         return Val("true", "bool")
     return Val(self.dyn_test(v, ts), "bool")
@@ -2625,6 +2668,8 @@ def gen_dyn_narrow_type(self, c: Node, truth: bool) -> str:
     if not truth:
         return ""
     ts = self.dyn_isinst_types(c)
+    if len(ts) > 0 and ts[-1] == NOTYPE:
+        ts = ts[:-1]  # (where the test is true one of the types before the None item matched)
     if len(ts) == 2 and ts[0] == "int" and ts[1] == "bool":
         return DYNINT
     # Python class identity does not establish a list's or template's storage
@@ -3311,11 +3356,12 @@ def gen_dyn_body(self, key: str) -> None:
             self.place(next_origin)
         self.ret_(Val("false", "bool"))
         return
-    if key.startswith("isinstance."):
+    if key.startswith("isinstance.") or key == "isnamedtuple":
         # A template's specializations share its Python class but not its payload
         # layout. Only inspect immutable descriptor metadata here. In particular,
         # do not ask typevalue() about unrelated values with unsupported reflection.
-        classes = [c for c in self.dynclasses if self.tmpl_of(c) == dunder]
+        # isnamedtuple: the NamedTuple classes boxed, namedtuple()'s specializations too
+        classes = [c for c in self.dynclasses if (c in self.nts if key == "isnamedtuple" else self.tmpl_of(c) == dunder)]
         if len(classes) == 0:
             self.ret_(Val("false", "bool"))
             return
@@ -4231,7 +4277,7 @@ def dyn_prepare_factory(self, c: str) -> None:
         # including a first inference-only retry before a later body error.
         self.newhints = hints
         self.newx = declined
-        if not isinstance(retry, NeedSliceEH) and self.idevent == "":
+        if not isinstance(retry, NeedSliceEH) and not isinstance(retry, TupleBoxes) and self.idevent == "":
             self.newx[attempt] = True
         raise
     self.xtry = previous
@@ -4437,7 +4483,7 @@ def dyn_class_arm(self, f: FnInfo, key: str, c: str, name: str, kind: str, args:
         self.newhints = hints
         failed = attempt in self.newx
         self.newx = declined
-        if not isinstance(retry, NeedSliceEH) and self.idevent == "":
+        if not isinstance(retry, NeedSliceEH) and not isinstance(retry, TupleBoxes) and self.idevent == "":
             if len(nested) > 0 and not failed:
                 for k in nested:
                     self.newx[k] = True
@@ -5353,7 +5399,7 @@ def dyn_packed_invoke(self, f: FnInfo, fm: FnInfo, pre: list[Val], pos: Val, kws
         self.newhints = hints
         failed = attempt in self.newx
         self.newx = declined
-        if not isinstance(retry, NeedSliceEH) and self.idevent == "":
+        if not isinstance(retry, NeedSliceEH) and not isinstance(retry, TupleBoxes) and self.idevent == "":
             if len(nested) > 0 and not failed:
                 # A nested protocol may install its own unsupported arm and
                 # leave this otherwise usable adapter intact on the next pass.
