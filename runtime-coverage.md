@@ -1,20 +1,20 @@
 ## Native runtime coverage
 
-Commit `299d12ad5b2a4446088a5c0565fa25eb258c5a94`: lines **94.5%** (8032 of 8496) and branches **84.0%** (8576 of 10210) of `runtime.c` (with the `ryu/` and `mpz/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 96.0%, regions 90.9%. `pys_init` ran 6327 times: the program runs whose profiles were written.
+Commit `817c9cd9e8a638232a65adb916af39735e503282`: lines **94.5%** (8032 of 8496) and branches **84.0%** (8576 of 10210) of `runtime.c` (with the `ryu/` and `mpz/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 96.0%, regions 90.9%. `pys_init` ran 6327 times: the program runs whose profiles were written.
 Programs built by the native compiler against an instrumented runtime; `runtime.py`, compiled by Pystachy, is not measured, nor are the C probes. The compiler's own coverage is the [hosted compiler coverage](https://github.com/den-run-ai/pystachy/blob/badges/coverage.md).
 
 | Suite | Runs | Checks | Time |
 |---|---|---|---:|
-| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 8794 passed, 0 failed | 2196 s |
-| ffi | `tests/ffi/run.sh`, AOT and extension modules | 148 passed, 0 failed | 116 s |
+| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 8794 passed, 0 failed | 2105 s |
+| ffi | `tests/ffi/run.sh`, AOT and extension modules | 148 passed, 0 failed | 111 s |
 
-### Changed since d35417c967f25ac699bb713f4c796dfaf2c57fac (merge base `d35417c967f2`)
+### Changed since d58034c1ca588c90363b8deb3b3c633b1cc90c47 (merge base `d58034c1ca58`)
 
-Changed lines of code: 11 of 11 run (100.0%); their branches: 11 of 12 taken (91.7%).
+Changed lines of code: 356 of 420 run (84.8%); their branches: 332 of 512 taken (64.8%).
 
 | File | Lines not run | Branches not taken |
 |---|---|---|
-| `runtime.c` | - | 4560 (1 of 2) |
+| `runtime.c` | 7794-7797, 7802-7827, 7834-7835, 7837-7839, 7841-7859, 7891-7892, 7901-7905, 7965-7967 | 3073 (3 of 14), 4460 (1 of 6), 4461 (1 of 2), 4560 (1 of 2), 5147 (1 of 2), 6591 (1 of 2), 7731 (2 of 4), 7773 (1 of 2), 7775 (2 of 4), 7776 (1 of 2), 7777 (1 of 2), 7783 (1 of 2), 7790 (3 of 4), 7791 (1 of 2), 7796 (4 of 4), 7804 (2 of 2), 7807 (2 of 2), 7809 (8 of 8), 7810 (2 of 2), 7822 (6 of 6), 7823 (2 of 2), 7825 (6 of 6), 7826 (4 of 4), 7837 (6 of 6), 7838 (4 of 4), 7839 (4 of 4), 7841 (8 of 8), 7842 (8 of 8), 7843 (8 of 8), 7844 (4 of 4), 7845 (2 of 2), 7846 (4 of 4), 7848 (2 of 2), 7850 (2 of 2), 7851 (2 of 2), 7852 (6 of 6), 7854 (2 of 2), 7857 (4 of 4), 7874 (1 of 2), 7875 (3 of 10), 7876 (1 of 2), 7880 (1 of 4), 7882 (1 of 2), 7884 (1 of 2), 7889 (2 of 6), 7890 (1 of 2), 7900 (1 of 2), 7901 (2 of 2), 7903 (2 of 2), 7909 (1 of 2), 7914 (5 of 8), 7919 (3 of 4), 7930 (3 of 6), 7931 (3 of 4), 7936 (1 of 2), 7937 (1 of 2), 7938 (1 of 2), 7942 (4 of 6), 7943 (1 of 2), 7947 (2 of 4), 7950 (1 of 4), 7954 (1 of 2), 7963 (1 of 2), 7964 (1 of 2), 7965 (2 of 2), 7966 (4 of 4), 7996 (1 of 2), 7997 (1 of 2), 8064 (1 of 2), 9266 (1 of 4), 10858 (1 of 4), 10871 (1 of 2), 10935 (1 of 2) |
 
 | File | Lines | Missed | Lines % | Branches | Missed | Branches % | Functions % | Regions % |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
