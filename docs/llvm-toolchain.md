@@ -67,8 +67,8 @@ compiling among jobs. It runs on manual dispatch and when the recipe changes on 
    it. Finding none, it runs `tools/llvm_toolchain.sh generators OUT`, which compiles LLVM's
    three table generators into `OUT/objects`: nearly every other object file includes a header
    that one of them writes, so each of the next jobs needs them first.
-2. Eight `compile` jobs start with those objects and each run
-   `tools/llvm_toolchain.sh compile OUT I 8`, which compiles every eighth object file of the
+2. Six `compile` jobs start with those objects and each run
+   `tools/llvm_toolchain.sh compile OUT I 6`, which compiles every sixth object file of the
    distribution into `OUT/objects`. With cached objects these jobs are skipped.
 3. `package` restores the cached objects, or downloads the jobs' sets into one directory, and
    runs `build` with `LLVM_TOOLCHAIN_OBJECTS` naming it. `build` finds each object compiled,
@@ -167,9 +167,10 @@ slowest of the twelve jobs and a quick one each spent a minute fetching the imag
 sources and configuring, and two to three minutes on the generators: 46% of the job. With the
 generators' objects, a slice reached its own 16 to 21 seconds into the build. Eight such
 slices brought the archive 1.1 minutes sooner than six, for 13% more runner time; that is
-within the spread of the runners, on which equal slices of one run took 7.3 to 9.3 minutes.
-By these times one runner would need about 45 minutes for the whole build, an estimate: no
-job may run that long.
+within the spread of the runners, on which equal slices of one run took 7.3 to 9.3 minutes,
+so the workflow compiles six. The six-slice run was before the cache: six slices and the
+cache have not run together. By these times one runner would need about 45 minutes for the
+whole build, an estimate: no job may run that long.
 
 `package` found 2,360 objects compiled and assembled the other four. The first two runs, and
 eight slices built in the same image on the host above, gave one archive, byte for byte:

@@ -1,6 +1,6 @@
 # Build the minimal LLVM toolchain (docs/llvm-toolchain.md) from LLVM's pinned release sources.
 # Compiling LLVM and clang takes about two CPU-hours, so one job compiles the table generators that
-# every other object file waits for, eight jobs each compile one slice of the object files, and
+# every other object file waits for, six jobs each compile one slice of the object files, and
 # another finds them all compiled and links, checks and packs the archive. The objects are cached
 # under a hash of every compile command: a run with the same hash compiles nothing.
 name: LLVM toolchain
@@ -74,14 +74,14 @@ jobs:
           overwrite: true
 
   compile:
-    name: compile (slice ${{ matrix.slice }} of 8)
+    name: compile (slice ${{ matrix.slice }} of 6)
     needs: generators
     if: needs.generators.outputs.cached != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       matrix:
-        slice: ["0", "1", "2", "3", "4", "5", "6", "7"]
+        slice: ["0", "1", "2", "3", "4", "5"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -99,7 +99,7 @@ jobs:
           SLICE: ${{ matrix.slice }}
         run: |
           docker run --rm -v "$PWD:/src" -w /src "$IMAGE" \
-            sh -c "pipx install '$NINJA' && tools/llvm_toolchain.sh compile '$OUT' '$SLICE' 8"
+            sh -c "pipx install '$NINJA' && tools/llvm_toolchain.sh compile '$OUT' '$SLICE' 6"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
