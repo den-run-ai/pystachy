@@ -1161,12 +1161,9 @@ Typed instruction coverage is complete for the LLVM backend. Further backend neu
 needs shared compiler/runtime layout definitions and a clearer separation of frontend
 elaboration from machine contracts. Operands still read values through the views of
 `TYPE_VIEWS`: precise result types for empty containers and for runtime calls that return
-untyped memory (`alloc`), and casts for the runtime results that the `bits` view still reads
-would leave each value one type, as MLIR's are. WebAssembly GC, more general check elimination and a
-=====
-`TYPE_VIEWS`: precise result types for empty containers and for runtime calls that return
-untyped memory (`alloc`), and conversion ops for the views that narrow would leave each value
-one type, as MLIR's are. WebAssembly GC, more general check elimination and a
+untyped memory (`alloc`), and casts for the views that still narrow (a runtime call's word
+read through `bits`, `opt[U]` read as `U`, a derived class) would leave each value one type,
+as MLIR's are. WebAssembly GC, more general check elimination and a
 Python-object representation backend are design possibilities, not supported modes.
 
 CPython extension modules **are supported** through `pystachy ext` and boundary wrappers.
