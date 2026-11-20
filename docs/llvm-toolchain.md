@@ -4,10 +4,12 @@
 the part of LLVM that Pystachy's driver runs: `clang`, `opt`, `lli`, `llc`, `llvm-link` and
 `llvm-as` over one shared `libLLVM` that holds the host's target alone, with clang's C headers
 for that architecture. Built in the `manylinux_2_28` image, the x86-64 archive is 25.5 MiB
-(101.1 MiB unpacked) and its tools run on Linux with glibc 2.28 or later.
+(101.1 MiB unpacked) and the ARM64 one 23.0 MiB, and their tools run on Linux with glibc 2.28
+or later.
 
 A [pip or uv installation](install.md#install-from-github-with-pip-or-uv) [downloads](#download)
-the published archive at its first compile, on x86-64 Linux that has no LLVM of its own.
+the published archive at its first compile, on x86-64 or ARM64 Linux that has no LLVM of its
+own.
 Anywhere else, select a toolchain with `PYSTACHY_LLVM`:
 
 ```sh
@@ -60,8 +62,8 @@ Compiling the 2,364 object files takes about two CPU-hours, 40% of it for clang'
 minutes on four cores, against a 15-minute limit on workflow jobs
 ([PR budget](testing.md#pr-budget)). The
 [LLVM toolchain workflow](../.github/workflows/llvm-toolchain.yml) therefore shares the
-compiling among jobs. Only a person starts it, since an uncached run takes an hour of runner
-time:
+compiling among jobs, for x86-64 and for ARM64, each on its own runners. Only a person starts
+it, since an uncached run takes two hours of runner time. For each architecture:
 
 1. `generators` runs `tools/llvm_toolchain.sh fingerprint OUT`, a hash of the source archive,
    the compilers' versions and every compile command, and looks for a cache of objects under
@@ -70,7 +72,9 @@ time:
    that one of them writes, so each of the next jobs needs them first.
 2. Six `compile` jobs start with those objects and each run
    `tools/llvm_toolchain.sh compile OUT I 6`, which compiles every sixth object file of the
-   distribution into `OUT/objects`. With cached objects these jobs are skipped.
+   distribution into `OUT/objects`. With both architectures' objects cached these jobs are
+   skipped; with one's, its six start and skip their steps, since a job's condition cannot
+   name its architecture.
 3. `package` restores the cached objects, or downloads the jobs' sets into one directory, and
    runs `build` with `LLVM_TOOLCHAIN_OBJECTS` naming it. `build` finds each object compiled,
    links, runs the check below and packs the archive, which the job uploads with its
@@ -81,7 +85,9 @@ time:
 An object is kept under a hash of its compile command, the compilers' versions and the source
 archive's hash, and is reused only under that key, so every job mounts the checkout at `/src`.
 A job compiles what its directory lacks: a slice without the generators' objects, or `build`
-after a wrong slice, costs time, not the result.
+after a wrong slice, costs time, not the result. The key does not name the machine that
+compiled: the workflow keeps each architecture's objects apart, by the names of its artifacts
+and by the fingerprint, which differs with the target's sources.
 
 The cache serves a run whose fingerprint an earlier run had: a change to the recipe's check or
 packing, or to the workflow, compiles nothing. A new LLVM release, compiler or compile flag
@@ -93,7 +99,7 @@ On one machine `build` does all of it. Build in the pinned image, from the repos
 ```sh
 docker run --rm -v "$PWD:/src" -w /src \
   -e LLVM_TOOLCHAIN_GLIBC=2.28 -e LLVM_TOOLCHAIN_GLIBCXX=3.4.25 \
-  quay.io/pypa/manylinux_2_28_x86_64@sha256:d086f64cddcace250ef0f0073583c51b8298159303290a730c9f59bd91edfd2c \
+  quay.io/pypa/manylinux_2_28@sha256:834a11a02642a46e580b62f25f5b04588355092c8677eaf0393e3ea1997001a3 \
   tools/llvm_toolchain.sh build build/llvm-toolchain
 ```
 
@@ -109,8 +115,8 @@ bytes.
 
 The archive needs C and C++ libraries at least as new as the build host's; the two
 `LLVM_TOOLCHAIN_GLIB*` settings make the build fail if it needs newer ones than
-`manylinux_2_28` promises. The script's header lists the other settings. On AArch64, use
-the `manylinux_2_28_aarch64` image; that build is untested.
+`manylinux_2_28` promises. The script's header lists the other settings. The image is an index
+of each architecture's `manylinux_2_28` image, so the same command builds on ARM64.
 
 ## Check
 
@@ -131,35 +137,35 @@ checks the recipe's pins and the check's refusals.
 
 Run the workflow on `main` with a revision, such as `1`. Once `bootstrap` has passed, the
 `publish` job runs [`tools/llvm_toolchain_release.py`](../tools/llvm_toolchain_release.py), which
-attaches the archive and its `.sha256` to the GitHub release `llvm-toolchain-18.1.8-1`. No other
-job can write to the repository, and a run given a revision on another branch stops before it
-compiles.
+attaches both archives and their `.sha256` files to the GitHub release
+`llvm-toolchain-18.1.8-1`. No other job can write to the repository, and a run given a revision
+on another branch stops before it compiles.
 
-The release is a draft until the archive has been downloaded from it and compared. It is not
+The release is a draft until each archive has been downloaded from it and compared. It is not
 a Pystachy version: its tag starts no release workflow, and it is published as neither a
 prerelease nor the repository's latest release, which the tool checks afterwards. A published
-release is not changed. Publishing the same archive under its revision again passes, and
-another archive needs the next revision; any change to `tools/llvm_toolchain.sh` gives
-another archive, because `share/BUILD.txt` records the recipe's hash.
+release is not changed. Publishing the same archives under their revision again passes, and
+others need the next revision; any change to `tools/llvm_toolchain.sh` gives other archives,
+because `share/BUILD.txt` records the recipe's hash.
 
 ## Download
 
-`pystachy_toolchain.py` pins one published archive by its address and SHA-256:
+`pystachy_toolchain.py` pins the archives of the release `llvm-toolchain-18.1.8-1` by their
+addresses and SHA-256:
 
-| | |
-|---|---|
-| Release | `llvm-toolchain-18.1.8-1` |
-| Archive | `pystachy-llvm-18.1.8-linux-x86_64.tar.xz` |
-| SHA-256 | `aa7aeba224afd47728c7733cd13fe6a3bd32a38cee42d8fc30dca23f86e18d85` |
+| Machine | Archive | SHA-256 |
+|---|---|---|
+| x86-64 | `pystachy-llvm-18.1.8-linux-x86_64.tar.xz` | `aa7aeba224afd47728c7733cd13fe6a3bd32a38cee42d8fc30dca23f86e18d85` |
+| ARM64 | `pystachy-llvm-18.1.8-linux-aarch64.tar.xz` | `bf002c93b86956543ccd4b69dff0e7959769c104772772c4d8e5195bdc6fd087` |
 
 A `build` in the pinned image gives these bytes while `tools/llvm_toolchain.sh` has SHA-256
 `35cba691…8e78ff2f`, which the archive's `share/BUILD.txt` records: the pin can be checked
 without trusting the release.
 
-A pip or uv installation downloads the archive at its first `run`, `build` or `ext` when all
-of these hold:
+A pip or uv installation downloads its machine's archive at its first `run`, `build` or `ext`
+when all of these hold:
 
-- The host is x86-64 Linux with glibc 2.34 or later, other than Ubuntu 24.04.
+- The host is x86-64 or ARM64 Linux with glibc 2.34 or later, other than Ubuntu 24.04.
 - `PYSTACHY_LLVM` is not set.
 - The driver would find no complete LLVM: none of its versioned directories holds the five
   tools it looks for, and they are not all on `PATH`.
@@ -167,11 +173,16 @@ of these hold:
 A host with an LLVM of its own keeps using it, so no working installation changes or starts
 to need the network. Ubuntu 24.04 keeps its pinned packages, which include compiler-rt. Before
 glibc 2.34 the runtime does not link without `-pthread`, so an older host is left to
-`PYSTACHY_LLVM`. Linux ARM64 has no archive.
+`PYSTACHY_LLVM`.
 
 The download is checked against the pinned hash before anything is extracted, into
 [`PYSTACHY_LLVM_CACHE`](install.md#install-from-github-with-pip-or-uv), and each tool must
 report 18.1.8 before the directory is used.
+
+The pinned revision takes both archives and no other bytes: [publishing](#publish) a build
+with another hash under it, or one architecture alone, is refused, since downloads of it would
+fail. After a change to the
+recipe, publish the next revision first, then pin its address and hash here.
 
 ## Measured
 
@@ -193,7 +204,7 @@ comes from one `build` of the recipe at commit `7fde2da2`; the `MinSizeRel` one
 each figure is the median of three interleaved rounds. The bootstrap and corpus times are
 single runs with four workers on Ubuntu 24.04.
 
-The workflow ran five times on GitHub's `ubuntu-24.04` runners on 20 November 2026; the fifth
+The workflow ran six times on GitHub's `ubuntu-24.04` runners on 20 November 2026; the fifth
 was a second attempt of the fourth, at the same commit. Those runners compile 1.4 to 2 times
 slower than the host above. In the first two runs there was no `generators` job, and every
 slice compiled the table generators itself:
@@ -205,6 +216,7 @@ slice compiled the table generators itself:
 | `generators`, 6 slices, `package` | 7.3 to 9.3 min | 53.7 min | 14.6 min | 20.4 min |
 | `generators`, 8 slices, `package` | 5.8 to 8.0 min | 60.6 min | 13.5 min | 19.4 min |
 | `generators`, `package`: objects cached | skipped | 3.5 min | 3.6 min | 10.0 min |
+| `generators`, 6 slices, `package`: cache written | 7.1 to 8.2 min, and one of 10.7 | 55.0 min | 16.9 min | 22.5 min |
 
 A whole run adds `bootstrap`, 5.8 to 6.3 minutes, and the wait for runners while the pull
 request's own checks ran: up to 3.6 minutes in the first run. `generators` took 2.8 minutes,
@@ -218,15 +230,25 @@ sources and configuring, and two to three minutes on the generators: 46% of the 
 generators' objects, a slice reached its own 16 to 21 seconds into the build. Eight such
 slices brought the archive 1.1 minutes sooner than six, for 13% more runner time; that is
 within the spread of the runners, on which equal slices of one run took 7.3 to 9.3 minutes,
-so the workflow compiles six. The six-slice run was before the cache: six slices and the
-cache have not run together. By these times one runner would need about 45 minutes for the
-whole build, an estimate: no job may run that long.
+so the workflow compiles six. The sixth run was the workflow as it is, six slices that end by
+writing the cache, on a branch that held none; one slow slice set its 16.9 minutes. By these
+times one runner would need about 45 minutes for the whole build, an estimate: no job may run
+that long.
 
 `package` found 2,360 objects compiled and assembled the other four. The first two runs, and
 eight slices built in the same image on the host above, gave one archive, byte for byte:
 SHA-256 `364462a2…94aafc98`. The third run and six slices on that host gave another,
 `8c964bce…799ca32c`, and the fifth run and those six slices a third, `9d71e217…528b61c1`. The
-files of all three are equal except `share/BUILD.txt`, which records the recipe's hash.
+files of all three are equal except `share/BUILD.txt`, which records the recipe's hash. The
+recipe then added `share/licenses/LLVM-THIRD-PARTY.TXT`: the sixth run, which compiled every
+object again, and that host's objects of before gave a fourth archive, `aa7aeba2…86e18d85`,
+whose other files are the third's.
+
+The sixth run's jobs also ran once on `ubuntu-24.04-arm` runners in the
+`manylinux_2_28_aarch64` image, with the recipe unchanged. The slices took 7.0 to 9.7 minutes,
+and the AArch64 archive, 23.0 MiB with SHA-256 `bf002c93…dc6fd087`, was ready after 15.3
+minutes. It passed the check, and with it `make` reached both fixed points and two corpus
+areas passed in JIT and AOT. That is one build: nothing has reproduced its bytes.
 
 With each of the first three archives selected by `PYSTACHY_LLVM` on Ubuntu 24.04, `make`
 reached the compiler's and the runtime's fixed points and `make test` passed all 5,395 cases

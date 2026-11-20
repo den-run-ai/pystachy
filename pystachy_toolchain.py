@@ -44,16 +44,19 @@ UBUNTU_PACKAGES = (
      "1ad04ff658929491f8bf30fcf6454e07b1815a2b04164f1894156e92c91ef895",
      "b2c829cec030a9bab4fd27b92303eb8491140ad91edf62d55d5b1f8f3d6ef100"),
 )
-# The archive that tools/llvm_toolchain.sh builds and the LLVM toolchain workflow publishes
-# (docs/llvm-toolchain.md): the tools the driver runs, needing only the C and C++ libraries.
+# The archives that tools/llvm_toolchain.sh builds and the LLVM toolchain workflow publishes
+# (docs/llvm-toolchain.md), one for each machine: the tools the driver runs, needing only the C
+# and C++ libraries.
 MINIMAL_VERSION = "18.1.8"
 MINIMAL_REVISION = "1"
-MINIMAL_ARCHIVE = f"pystachy-llvm-{MINIMAL_VERSION}-linux-x86_64"
 MINIMAL_RELEASE = (
     "https://github.com/den-run-ai/pystachy/releases/download"
-    f"/llvm-toolchain-{MINIMAL_VERSION}-{MINIMAL_REVISION}/{MINIMAL_ARCHIVE}.tar.xz"
+    f"/llvm-toolchain-{MINIMAL_VERSION}-{MINIMAL_REVISION}"
 )
-MINIMAL_SHA256 = "aa7aeba224afd47728c7733cd13fe6a3bd32a38cee42d8fc30dca23f86e18d85"
+MINIMAL_SHA256 = {
+    "x86_64": "aa7aeba224afd47728c7733cd13fe6a3bd32a38cee42d8fc30dca23f86e18d85",
+    "aarch64": "bf002c93b86956543ccd4b69dff0e7959769c104772772c4d8e5195bdc6fd087",
+}
 # Before glibc 2.34 the runtime does not link without -pthread.
 MINIMAL_GLIBC = (2, 34)
 # Where the driver looks for LLVM before PATH: llvm_dir in src/pystachy_compiler/driver.py.
@@ -157,13 +160,17 @@ def unpack_macos(staging: Path, payload: Path) -> Path:
     return tool_dir
 
 
-def unpack_minimal(staging: Path, payload: Path) -> Path:
+def minimal_archive(machine: str) -> str:
+    return f"pystachy-llvm-{MINIMAL_VERSION}-linux-{machine}"
+
+
+def unpack_minimal(staging: Path, payload: Path, machine: str) -> Path:
     archive = staging / "llvm.tar.xz"
-    download(MINIMAL_RELEASE, MINIMAL_SHA256, archive)
+    download(f"{MINIMAL_RELEASE}/{minimal_archive(machine)}.tar.xz", MINIMAL_SHA256[machine], archive)
     extract_options = {"filter": "data"} if hasattr(tarfile, "data_filter") else {}
     with tarfile.open(archive, "r:xz") as source:
         source.extractall(payload, **extract_options)
-    return payload / MINIMAL_ARCHIVE / "bin"
+    return payload / minimal_archive(machine) / "bin"
 
 
 def glibc() -> tuple[int, ...]:
@@ -202,8 +209,8 @@ def ensure_toolchain() -> Path | None:
             key = f"ubuntu-{UBUNTU_REVISION}-{arch}"
             version = "18.1.3"
         # Elsewhere a host's own LLVM keeps serving; without one, no compile could succeed.
-        elif machine == "x86_64" and glibc() >= MINIMAL_GLIBC and not host_llvm():
-            key = f"minimal-{MINIMAL_VERSION}-{MINIMAL_REVISION}-x86_64"
+        elif glibc() >= MINIMAL_GLIBC and not host_llvm():
+            key = f"minimal-{MINIMAL_VERSION}-{MINIMAL_REVISION}-{machine}"
             version = MINIMAL_VERSION
         else:
             return None
@@ -232,7 +239,7 @@ def ensure_toolchain() -> Path | None:
             if arch is not None:
                 tool_dir = unpack_ubuntu(staging, payload, arch)
             elif sys.platform == "linux":
-                tool_dir = unpack_minimal(staging, payload)
+                tool_dir = unpack_minimal(staging, payload, machine)
             else:
                 tool_dir = unpack_macos(staging, payload)
             if not available(tool_dir, version):

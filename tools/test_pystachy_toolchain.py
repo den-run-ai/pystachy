@@ -458,10 +458,11 @@ class MinimalToolchainTests(unittest.TestCase):
         self.root = Path(temporary.name)
         self.cache = self.root / "cache"
 
-    def archive(self, tools=toolchain.TOOLS, release=toolchain.MINIMAL_VERSION) -> Path:
+    def archive(self, tools=toolchain.TOOLS, release=toolchain.MINIMAL_VERSION, machine="x86_64") -> Path:
         """Laid out as the published archive: tools that print their release, and clang's headers."""
         directory = Path(tempfile.mkdtemp(dir=self.root))
-        tree = directory / toolchain.MINIMAL_ARCHIVE
+        root = toolchain.minimal_archive(machine)
+        tree = directory / root
         for name in tools:
             path = tree / "bin" / name
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -470,9 +471,9 @@ class MinimalToolchainTests(unittest.TestCase):
         header = tree / "lib/clang/18/include/stddef.h"
         header.parent.mkdir(parents=True)
         header.touch()
-        archive = directory / "llvm.tar.xz"
+        archive = directory / f"{root}.tar.xz"
         with tarfile.open(archive, "w:xz") as packed:
-            packed.add(tree, arcname=toolchain.MINIMAL_ARCHIVE)
+            packed.add(tree, arcname=root)
         return archive
 
     def host(self, stack: ExitStack, *, machine="x86_64", distro=DEBIAN, glibc=(2, 36), llvm=False, archive=None):
@@ -485,30 +486,32 @@ class MinimalToolchainTests(unittest.TestCase):
                    patch.object(toolchain, "glibc", return_value=glibc),
                    patch.object(toolchain, "host_llvm", return_value=llvm)]
         if archive is not None:
-            patches += [patch.object(toolchain, "MINIMAL_RELEASE", archive.as_uri()),
-                        patch.object(toolchain, "MINIMAL_SHA256", hashlib.sha256(archive.read_bytes()).hexdigest())]
+            patches += [patch.object(toolchain, "MINIMAL_RELEASE", archive.parent.as_uri()),
+                        patch.dict(toolchain.MINIMAL_SHA256, {machine: hashlib.sha256(archive.read_bytes()).hexdigest()})]
         for each in patches:
             stack.enter_context(each)
 
-    def test_first_use_downloads_the_archive_and_later_uses_do_not(self):
-        archive = self.archive()
-        with ExitStack() as stack:
-            self.host(stack, archive=archive)
-            bin_dir = toolchain.ensure_toolchain()
-            key = f"minimal-{toolchain.MINIMAL_VERSION}-{toolchain.MINIMAL_REVISION}-x86_64"
-            self.assertEqual(bin_dir, self.cache.resolve() / key / "bin")
-            for name in toolchain.TOOLS:
-                self.assertEqual(subprocess.check_output([str(bin_dir / name), "--version"], text=True),
-                                 f"{name} version {toolchain.MINIMAL_VERSION}\n")
-            self.assertTrue((bin_dir.resolve().parent / "lib/clang/18/include/stddef.h").is_file())
-            archive.unlink()
-            self.assertEqual(toolchain.ensure_toolchain(), bin_dir)
+    def test_first_use_downloads_the_machine_s_archive_and_later_uses_do_not(self):
+        for machine in ("x86_64", "aarch64"):
+            archive = self.archive(machine=machine)
+            with self.subTest(machine=machine), ExitStack() as stack:
+                self.host(stack, machine=machine, archive=archive)
+                bin_dir = toolchain.ensure_toolchain()
+                key = f"minimal-{toolchain.MINIMAL_VERSION}-{toolchain.MINIMAL_REVISION}-{machine}"
+                self.assertEqual(bin_dir, self.cache.resolve() / key / "bin")
+                self.assertEqual(bin_dir.resolve().parent.name, f"pystachy-llvm-{toolchain.MINIMAL_VERSION}-linux-{machine}")
+                for name in toolchain.TOOLS:
+                    self.assertEqual(subprocess.check_output([str(bin_dir / name), "--version"], text=True),
+                                     f"{name} version {toolchain.MINIMAL_VERSION}\n")
+                self.assertTrue((bin_dir.resolve().parent / "lib/clang/18/include/stddef.h").is_file())
+                archive.unlink()
+                self.assertEqual(toolchain.ensure_toolchain(), bin_dir)
 
     def test_archive_with_another_digest_is_not_extracted(self):
         archive = self.archive()
         with ExitStack() as stack:
             self.host(stack, archive=archive)
-            stack.enter_context(patch.object(toolchain, "MINIMAL_SHA256", "0" * 64))
+            stack.enter_context(patch.dict(toolchain.MINIMAL_SHA256, {"x86_64": "0" * 64}))
             extract = stack.enter_context(patch.object(toolchain.tarfile, "open"))
             with self.assertRaisesRegex(ValueError, "checksum mismatch"):
                 toolchain.ensure_toolchain()
@@ -524,7 +527,7 @@ class MinimalToolchainTests(unittest.TestCase):
                     toolchain.ensure_toolchain()
                 self.assertEqual(list(self.cache.glob("*/bin")), [])
 
-    def test_only_glibc_x86_64_without_a_host_llvm_selects_it(self):
+    def test_only_glibc_linux_without_a_host_llvm_selects_it(self):
         ubuntu_22 = {"ID": "ubuntu", "VERSION_ID": "22.04"}
         hosts = (
             ({}, True),
@@ -534,7 +537,9 @@ class MinimalToolchainTests(unittest.TestCase):
             ({"glibc": (2, 33)}, False),  # the runtime does not link there
             ({"glibc": ()}, False),  # musl
             ({"llvm": True}, False),  # the host's LLVM keeps serving
-            ({"machine": "aarch64"}, False),  # no archive is published
+            ({"machine": "aarch64"}, True),
+            ({"machine": "aarch64", "glibc": (2, 33)}, False),
+            ({"machine": "riscv64"}, False),  # no archive is published
         )
         for host, selected in hosts:
             with self.subTest(host=host), ExitStack() as stack:
@@ -549,9 +554,9 @@ class MinimalToolchainTests(unittest.TestCase):
 
     def test_ubuntu_24_04_keeps_its_packages(self):
         ubuntu = {"ID": "ubuntu", "VERSION_ID": "24.04"}
-        for llvm in (False, True):
-            with self.subTest(llvm=llvm), ExitStack() as stack:
-                self.host(stack, distro=ubuntu, glibc=(2, 39), llvm=llvm)
+        for llvm, machine in ((False, "x86_64"), (True, "x86_64"), (False, "aarch64")):
+            with self.subTest(llvm=llvm, machine=machine), ExitStack() as stack:
+                self.host(stack, machine=machine, distro=ubuntu, glibc=(2, 39), llvm=llvm)
                 minimal = stack.enter_context(patch.object(toolchain, "unpack_minimal"))
                 stack.enter_context(patch.object(toolchain, "unpack_ubuntu", side_effect=ValueError("packages")))
                 with self.assertRaisesRegex(ValueError, "packages"):
