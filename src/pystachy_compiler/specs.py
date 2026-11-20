@@ -834,6 +834,7 @@ TYPE_VIEWS: dict[str, str] = {
     "class": "a class read as a class derived from it, as one of its bases or as a class derived from a base that has a common derived class with it; a closed union read as one with a common member",
     "runtime bool": "an rt op's bool result, which the runtime ABI passes as an int, read as an int; an int read as an rt op's bool operand",
     "method": "a bound method fn[m:C.f] or fn[d:f:C] read as its receiver C, and back; a closure fn[c:...] read as its env",
+    "builtin base": "an object of a class deriving from list or dict read as that container, list[T] or dict[K, V] as Gen.bview reads it, and back",
 }
 
 

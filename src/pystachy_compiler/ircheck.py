@@ -8,7 +8,7 @@ from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import BIG, CAST_KINDS, EMPTYFS, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME, TYPE_CLASSES
 from src.pystachy_compiler.specs import OPS, OP_ENTRY, OP_FIELDS, OP_INVOKE, OP_K, OP_LABELS, OP_MAX, OP_MIN, OP_OPERAND_TYPES, OP_PER_OPERAND, OP_RESULT_TYPE, OP_S, OP_T, OP_TEMPS, OP_X, RESULT_NUMBERS
-from src.pystachy_compiler.utils import RT_VARS, gelem, generator_identity, is_dict, is_gen, is_opt, is_set, is_tuple, is_union, list_read_error, list_receiver_error, list_write_error, lt, packed_item, rt_generic, rt_instance_error, same_kind, targs, tslots, umembers, unopt
+from src.pystachy_compiler.utils import RT_VARS, gelem, generator_identity, is_dict, is_gen, is_list, is_opt, is_set, is_tuple, is_union, list_read_error, list_receiver_error, list_write_error, lt, packed_item, rt_generic, rt_instance_error, same_kind, targs, tslots, umembers, unopt
 
 class EffectSummaries:
     # One compilation's completed function contexts. FnInfo retains each context's parameter
@@ -392,6 +392,8 @@ def type_view(self, a: str, b: str, generic: bool, parent: str) -> str:
         return "optional"
     if is_opt(a) and not is_opt(b) and ref_type(b) and type_view(self, unopt(a), b, generic, parent) != "":
         return "optional"
+    if builtin_view(self, a, b, generic, parent) or builtin_view(self, b, a, generic, parent):
+        return "builtin base"
     if related(self, a, b):
         return "class"
     if is_union(a) and is_union(b):
@@ -429,6 +431,18 @@ def type_view(self, a: str, b: str, generic: bool, parent: str) -> str:
     return view
 
 
+def builtin_view(self, c: str, t: str, generic: bool, parent: str) -> bool:
+    # is c a class deriving from a builtin container (builtin_bases.py) and t that container's type,
+    # list[T] or dict[K, V], as Gen.bview reads its objects: by its items' types too, once the
+    # frontend has decided them (Gen.bbase)
+    k = self.bkind(c)
+    if not ((k == "list" and is_list(t)) or (k == "dict" and is_dict(t))):
+        return False
+    o = self.classes[c].origin if self.classes[c].origin != "" else c
+    b = self.bsub[o] if o in self.bsub else ""
+    return b == "" or "?" in b or type_view(self, b, t, generic, parent) != ""
+
+
 def related(self, x: str, y: str) -> bool:
     # is one of classes x and y derived from the other or from a class that has a common derived
     # class with the other (ClassInfo.overlaps: dispatch on an object of x that isinstance() found
@@ -452,7 +466,7 @@ def receiver(f: str) -> str:
     # the receiver type of a bound method's type f (fn[m:C.name], fn[d:name:C]), env for a
     # closure's (fn[c:...]), else ""
     if f.startswith("fn[m:") and "." in f:
-        return f[5 : f.find(".")]
+        return f[5 : f.rfind(".")]  # (a nested class's name holds dots, a method's none: fn[m:Outer.Inner.f])
     if f.startswith("fn[d:") and f.endswith("]"):
         return f[f.rfind(":") + 1 : -1]
     return "env" if f.startswith("fn[c:") else ""
