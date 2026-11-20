@@ -218,8 +218,10 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
             # others are compiled where they are called, as templates are)
             # An annotation can create this class before module globals and flow
             # information are declared. The program's later method pass compiles
-            # these early specializations after their declarations are ready.
-            if self.compiling and not f.generic and f.bad == "" and f.ll not in self.compiled:
+            # these early specializations after their declarations are ready, and
+            # those of a class whose bare builtin base no fill has typed yet, which
+            # the code that makes its objects may store first (builtin_bases.py).
+            if self.compiling and not f.generic and f.bad == "" and f.ll not in self.compiled and "?" not in self.bbase(s.name):
                 fr = self.save()
                 self.modlevel = False
                 self.lenient = False

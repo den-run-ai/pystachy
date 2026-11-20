@@ -342,6 +342,10 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         hint = f" (a member of {short(v.t)} is no promoting int: use its .value)"
     if hint == "" and self.curfn.ll in self.guessed:
         hint = f" (perhaps because {self.guessed[self.curfn.ll]})"
+    if self.bkind(unopt(v.t)) != "" and unopt(t).startswith(self.bkind(unopt(v.t)) + "["):
+        # (builtin_bases.py: a list knows no class, so the object's would be lost there)
+        kind = self.bkind(unopt(v.t))
+        hint = f": an object of a class that derives from {kind} is not stored or passed as a {kind} yet, where it would lose its class (declare {short(unopt(v.t))} there, leave a parameter unannotated, or copy the items with {kind}(...))"
     self.err(f"expected {typestr(t)}, got {typestr(v.t)}{hint}")
     return v
 

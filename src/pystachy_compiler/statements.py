@@ -1,5 +1,6 @@
 """Statements component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BREV, BSTORE
 from src.pystachy_compiler.utils import identity_abi, identity_default, is_union
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
 from src.pystachy_compiler.diagnostics import shown
@@ -1065,7 +1066,7 @@ def gen_stmt_main(self, n: Node) -> None:
                 name = self.coerce(self.expr(dt.kids[1], "str"), "str", "the name in del os.environ[...]")
                 self.rt("pys_environ_del", "void", [f"ptr {name.v}"])
                 continue
-            o = self.expr(dt.kids[0], "") if dt.kind == "index" else Val("", "")
+            o = self.bdecay(self.expr(dt.kids[0], ""), BDEL) if dt.kind == "index" else Val("", "")  # (builtin_bases.py)
             nodel = "TypeError: 'NoneType' object does not support item deletion"
             if o.t == "dyn":
                 self.dyn_delitem(o, self.expr(dt.kids[1], "dyn"))  # (by its box's type: dynamic.py)
@@ -1469,6 +1470,15 @@ def gen_augassign(self, n: Node) -> None:
     elif t.kind == "index":
         o = self.expr(t.kids[0], "")
         sub = "TypeError: 'NoneType' object is not subscriptable"
+        if self.bkind(o.t) == "dict" and "__missing__" in self.classes[o.t].methods and self.bdecays(o.t, BITEM + BSTORE):
+            # o[k] op= v where o's class derives from dict and defines __missing__: o[k] as
+            # bmissing reads it, k evaluated once, then dict's own store of k (builtin_bases.py)
+            kn = self.vnode(self.expr(t.kids[1], targs(unopt(self.bview(o).t))[0]))
+            cur = self.bmissing(o, kn)
+            self.assign(mk("index", "", t.line, [self.vnode(o), kn]), self.inplace(op, cur, n.kids[1]))
+            return
+        if self.bdecays(o.t, BITEM + BSTORE):
+            o = self.bview(o)  # (o[k] op= v of the builtin container its class derives from: builtin_bases.py)
         if o.t == "dyn":
             k = self.dyn_box(self.expr(t.kids[1], "dyn"))  # (o[k] op= v, k evaluated once: dynamic.py)
             self.dyn_setitem(o, k, self.inplace(op, self.dyn_getitem(o, k), n.kids[1]))
@@ -1594,6 +1604,18 @@ def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
     # use __iadd__ & co when they define them, anything else is cur op rhs
     if cur.t == "dyn":
         return self.dyn_arith(op, cur, self.expr(rhs, "dyn"), True)  # (in place where its box's type is: dynamic.py)
+    if is_list(self.bbase(cur.t)) and ((op == "+" and "__iadd__" not in self.classes[cur.t].methods) or (op == "*" and "__imul__" not in self.classes[cur.t].methods)):
+        # o += xs, o *= n of a class deriving from list: list's own, in place, and o stays the
+        # object it is (builtin_bases.py)
+        if op == "+":
+            self.bfill(cur.t, "extend", [rhs])
+        gen_inplace(self, op, self.bview(cur), rhs)
+        return cur
+    if is_dict(self.bbase(cur.t)) and op == "|" and "__ior__" not in self.classes[cur.t].methods:
+        # o |= m of a class deriving from dict: dict's own update, and o stays the object it is
+        self.bfill(cur.t, "update", [rhs])
+        gen_inplace(self, op, self.bview(cur), rhs)
+        return cur
     if is_list(unopt(cur.t)) and op == "+":
         b = self.expr(rhs, cur.t)
         if is_opt(cur.t) or is_opt(b.t):
@@ -1853,7 +1875,7 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
             ownk: list[int] = []  # (whether the loop owns each argument's generator: owned_gen)
             for a in args:
                 self.gencall = ""
-                v = self.expr(a, "")
+                v = self.bdecay(self.expr(a, ""), BREV if fn == "reversed" else BITER)  # (builtin_bases.py)
                 ownk.append(self.owned_gen(v, a))
                 if fn == "reversed" and v.t == "dyn":
                     rev = self.dyn_call(self.dyn_dispatcher("reversed", ["dyn"], "dyn", "__reversed__"), [v])
@@ -1901,7 +1923,7 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
             return
         if fn == "enumerate" and len(args) == 2 and (args[1].kind != "kw" or args[1].s == "start"):
             self.gencall = ""
-            seq = self.expr(args[0], "")
+            seq = self.bdecay(self.expr(args[0], ""), BITER)  # (builtin_bases.py)
             seq = seq if is_opt(seq.t) or seq.t in self.classes else self.iterable(seq)
             own = self.owned_gen(seq, args[0])
             obj = is_opt(seq.t) or seq.t in self.classes
@@ -1991,7 +2013,7 @@ def gen_iterable(self, v: Val, msg: str = "TypeError: 'NoneType' object is not i
     # value the runtime's iterator over it (dyniter: dynamic.py)
     if v.t == "dyn":
         return Val(self.rt("pys_dyn_iter", "ptr", [f"ptr {v.v}"]), "dyniter")
-    v = self.unwrap(v, msg)
+    v = self.unwrap(self.bdecay(v, BITER), msg)  # (builtin_bases.py)
     if is_kw(v.t):
         return self.kw_list(v)  # (iterating **kwargs gives the names)
     if v.t in self.nts:

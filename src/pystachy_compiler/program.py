@@ -1,6 +1,7 @@
 """Program component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
+from src.pystachy_compiler.builtin_bases import builtin_base
 from src.pystachy_compiler.analysis import all_imports, chk_names, collect, constant_writes, defines, module_anns, module_ints, module_reads, module_strs, module_values, name_nodes, needs_eh, none_assigns, reads_builtin
 from src.pystachy_compiler.diagnostics import NeedHierarchy, Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
@@ -174,6 +175,8 @@ def gen_subclass_problem(self, st: Node) -> str:
             return why
         primary = st.kids[1].s
         secondaries = [b.s for b in st.kids[2:]]
+        if primary in self.bsubn or len([b for b in secondaries if b in self.bsubn]) > 0:
+            return "multiple inheritance with a class that derives from a builtin container is not supported"
         if primary not in self.classes or self.abc_class(primary) or self.classes[primary].exc != "" or self.is_dc(primary) or len(st.kids[0].kids) != 1:
             return why
         shadow: dict[str, bool] = {}  # (the methods of the secondary bases' own classes: super_calls)
@@ -256,6 +259,8 @@ def gen_subclass_problem(self, st: Node) -> str:
     if st.kids[1].kind == "name" and st.kids[1].s in self.classes and self.classes[st.kids[1].s].exc == "":
         base_ci = self.classes[st.kids[1].s]
         dc = len(st.kids[0].kids) == 2 and self.imported(st.kids[0].kids[1].s) == "dataclasses.dataclass"
+        if base_ci.name in self.bsubn:
+            return f"inheritance from {shown(base_ci.name)}, which derives from {builtin_base(self.bsubn[base_ci.name])}, is not supported: only a class that names the builtin type as its one base"
         if base_ci.name in self.nts:
             return "inheritance from a NamedTuple is not supported"
         if self.is_dc(base_ci.name) and not dc:
@@ -268,6 +273,11 @@ def gen_subclass_problem(self, st: Node) -> str:
             return "a class with inheritance and a decorator is not supported"
         return ""
     b = self.exc_base(st.kids[1])
+    if b == "" and len(st.kids) == 2 and builtin_base(st.kids[1]) != "" and not self.bound(builtin_base(st.kids[1])):
+        # class C(list), class C(list[T]): its objects begin as the builtin's do (builtin_bases.py)
+        if len(st.kids[0].kids) > 1:
+            return f"a class that derives from {builtin_base(st.kids[1])} with a decorator is not supported"
+        return ""
     if b == "" and len(st.kids) == 2 and st.kids[1].kind == "name" and short(st.kids[1].s) == "object":
         return UNSUPPORTED["subclass"] + " (the module may have rebound the name 'object' before this statement)"
     if b == "":
@@ -1969,7 +1979,9 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
                 ci.mod = m.name
                 ci.base = st.kids[1].s if st.kids[1].kind == "name" and st.kids[1].s in self.classes else self.exc_base(st.kids[1])
                 ci.exc = self.classes[ci.base].exc if ci.base in self.classes else ci.base
-                if ci.exc == "":
+                if ci.base == "" and len(st.kids) == 2 and builtin_base(st.kids[1]) != "":
+                    self.bsubn[st.s] = st.kids[1]  # (an ordinary class but for its objects' header: builtin_bases.py)
+                elif ci.exc == "":
                     # (its base's secondary bases, then its own: subclass_problem)
                     ci.roles = list(self.classes[ci.base].roles)
                     for b in st.kids[2:]:

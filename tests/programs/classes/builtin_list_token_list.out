@@ -1,0 +1,11 @@
+ hello  |
+TokenList([fws(' '), atext('hello'), ptext(''), fws('  ')])
+ hello  
+ hello  |TokenList([fws(' '), atext('hello'), ptext(''), fws('  ')])| hello  |
+ hello  | ['ptext: empty'] [] token-list True
+True 4
+3 ['trailing whitespace', 'ptext: empty']
+ hello! [' ', 'hello', '', '!'] [TokenList([fws(' '), atext('hello'), ptext(''), atext('!')])]
+['a', 'list', 'subclass'] 13 3 a list subclass True
+[[], ['a', 'list', 'subclass']] [0, 3] 13
+[exit 0]

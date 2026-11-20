@@ -311,6 +311,10 @@ def gen_dyn_boxable(self, t: str) -> str:
         return ""
     if is_clsval(t):
         return ""  # (an ordinary class's class object: its class box, class_values.py)
+    if self.bkind(t) != "":
+        # (an Any value's operations are its box's class's: the builtin container's own, which
+        # the class leaves to it, would not be found there: builtin_bases.py)
+        return f"an object of {short(t)}, a class that derives from {self.bkind(t)}, as an Any value is not supported yet: its class would be lost"
     if t in self.classes and t not in self.tmpl:
         if self.classes[t].exc != "":
             return f"an exception object ({typestr(t)}) as Any is not supported yet"

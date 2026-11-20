@@ -1628,11 +1628,12 @@ A class may also take identity decorators, which CPython applies to it unchanged
 undecorated; reading their names still raises `NameError` where their imports have not run,
 and `__final__` is not set (reading it is a compile-time error).
 
-Builtin subclasses, NamedTuple inheritance, inheritance between a
-dataclass and a class that is not one, other decorated subclasses, field/method name
-collisions, and overriding a method with another kind of method are unsupported. Inherited
-class methods using `cls` retain restrictions on default values, imports and calls through a
-base-typed object. Exception classes follow the [exception rules](semantics.md#user-exception-classes).
+Subclasses of builtin types other than [`list` and `dict`](#subclasses-of-list-and-dict),
+NamedTuple inheritance, inheritance between a dataclass and a class that is not one, other
+decorated subclasses, field/method name collisions, and overriding a method with another kind
+of method are unsupported. Inherited class methods using `cls` retain restrictions on default
+values, imports and calls through a base-typed object. Exception classes follow the [exception
+rules](semantics.md#user-exception-classes).
 
 ### Method-only secondary bases
 
@@ -1719,3 +1720,59 @@ trait's class method that overrides one of that chain's may not use `cls`. A met
 and the primary chain define apart, which their shared class does not, gives bound methods that
 compare equal through either base but cannot become a `Callable`. `__slots__` in such a
 hierarchy needs every trait to declare `__slots__ = ()`.
+
+### Subclasses of list and dict
+
+A class may name `list`, `list[T]`, `dict` or `dict[K, V]` as its one base, as
+`traceback.StackSummary`, `functools._HashedSeq`, the `email` package's `TokenList`,
+`urllib.parse._Quoter` and pytest's `_bestrelpath_cache` do. Its objects are lists or dicts to
+every operation the class does not define: indexing, slices, item stores and deletion,
+`len()`, truth, iteration and the builtins that iterate, `in`, `repr()` and `str()`, the
+comparisons, the operators (`+`, `*`, `+=`, `|`, `|=`) and the builtin's methods. An object
+begins with the builtin's header, followed by the class's own fields, so such an operation is
+the builtin's own code on the same pointer: the same runtime calls and inline paths, with no
+class test (an object that may be `None` is tested for it first, as a `list[T] | None` is, and
+raises CPython's error). The class keeps its methods, fields set in `__init__`, class
+attributes, properties, `__slots__`, `__hash__` and any special method it defines;
+`type(x).__name__` is its name, and `isinstance(x, list)` or `isinstance(x, dict)` is true.
+
+The class's `__init__` may call `super().__init__()` or `super().__init__(items)`, and its
+methods reach the builtin's own methods, and its `__getitem__`, `__setitem__`, `__delitem__`
+and `__contains__`, through `super().m(...)`, `list.m(self, ...)` or `dict.m(self, ...)`, as
+an `OrderedDict` or a case-insensitive dict that overrides item access does; the class's own
+`__setitem__` and the others then serve `o[k] = v`, `o[k]`, `del o[k]` and `k in o`. A class
+without `__init__` is made by `C()` or `C(items)` (and, for a dict, keyword arguments), as
+`list()` and `dict()` make one. The builtin's own operations call none of the class's methods,
+as in CPython: `C(items)`, `+=`, `extend()` and `update()` fill the object as the builtin does
+where the class defines `append()`, `extend()` or `__setitem__`. Each comparison operator is
+the builtin's unless the class defines that operator's method, so a class that defines
+`__eq__` alone still compares `!=` as the builtin does, and a right operand whose class
+defines the reflected method is asked first. A slice, `+`, `*`, `|` or `copy()` makes a plain
+list or dict, as in CPython. Without `__eq__` and `__hash__` the objects are unhashable, as
+lists and dicts are.
+
+A dict subclass's `__missing__` is called by `d[key]` and `d[key] op= value` where `key` is not
+there, as CPython's `dict.__getitem__` calls it, and by nothing else (`get()`, `in`,
+`setdefault()` and `pop()` never call it); `__missing__` may store the key and may leave its
+parameter unannotated. The key must have the dict's key type: a `bool` looked up among `int`
+keys is rejected there.
+
+A bare base takes its item types from the first item stored into one of its objects, as an empty
+list or dict does: an item that `C(items)`, `super().__init__(items)`, `append()`, `insert()`,
+`extend()`, `update()`, `setdefault()`, `+=`, `|=`, an item or slice assignment or a `d[key]`
+read whose `__missing__` returns a value stores or gives, in any function. Name the types in the
+base (`class C(list[str])`, `class D(dict[str, int])`) where nothing stores an item or where
+items of different types are stored; all objects of the class, and of its specializations, hold
+one item type.
+
+An object keeps its class only in storage of its class: variables, fields, unannotated
+parameters (which specialize the function, as for any class) and containers such as `list[C]`.
+Storing it where a `list[T]` or `dict[K, V]` is expected (an annotated parameter, return or
+variable, or an item of `list[list[T]]`), as a dynamic `Any` value, or copying it with
+`copy.copy()` or `copy.deepcopy()` is rejected rather than losing its class; `list(x)` and
+`dict(x)` copy the items. Other builtin bases (`set`, `str`, `int`, `tuple`, ...), a class
+deriving from such a class, such a class in multiple inheritance or with a decorator, a
+`TypeVar` item type, `__new__`, `C.fromkeys()`, special methods called through `super()` other
+than `__init__`, `__getitem__`, `__setitem__`, `__delitem__`, `__contains__`, `__len__`,
+`__repr__` and `__str__` (`__iter__`, `__eq__`, ...), slices of an object whose class defines
+`__getitem__`, and sequence patterns in `match` on such an object are unsupported.
