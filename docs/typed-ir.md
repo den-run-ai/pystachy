@@ -291,9 +291,11 @@ the tables below from the rows, and `--check` fails when they are out of date.
 
 A row names each of `s`, `k` and `x` for what it means to the operation, as MLIR's operations
 name their attributes: `num.cmp`'s `s` is its `operator`, `rt`'s are its `entry`, `hole` and
-`descriptor`, `field.addr`'s `k` its member `index`; the comment above `OPS` says what each
-name means. An `operator` selects an arithmetic, conversion or comparison operation's
-computation: `ovf`'s `+`, `scalar.bin`'s `fmul`, `num.cmp`'s `<`.
+`descriptor`, `field.addr`'s `k` its member `index`. The [text form](#text-form) writes each
+field by that name, and the comment above `OPS` says what each name means. An `operator`
+selects an arithmetic, conversion or comparison operation's computation (`ovf`'s `+`,
+`scalar.bin`'s `fmul`, `num.cmp`'s `<`), and the text writes it bare, as LLVM and MLIR write a
+comparison's predicate.
 
 The types column reads `OPERAND, ... -> RESULT`. Each entry is a type (`bool`, `%slot`), a
 type class from the second table, or holds a variable such as `$T`. A variable is the same
@@ -1014,8 +1016,8 @@ self-compile timings in the design log are not current test totals or performanc
 ## Text form
 
 `tools/typed_ir_text.py` prints a module's or a function's IR as text and parses it back. One
-instruction is one line: its results, the operation, its text (`Ins.s`), its other fields, its
-typed operands, its labels and its result type.
+instruction is one line: its results, the operation, its fields, its typed operands, its labels
+and its result type.
 
 ```text
 L7:
@@ -1029,12 +1031,17 @@ L13:
 ```
 
 A result is written as operands name it: `%tN`, or a slot's register (`%samples.2 = slot
-samples : list[float]`, `%h.5` for an unnamed one). A `~` marks a temporary of the
+name=samples : list[float]`, `%h.5` for an unnamed one). A `~` marks a temporary of the
 operation's lowering, which no operand names: in `~%t6 %t7 %t8 = ovf + (int %t4, int %t5)`,
 `%t6` is the `{i64, i1}` pair that the sum `%t7` and the overflow flag `%t8` are read from.
-The text follows the operation's name: an operator (`num.cmp <`, `scalar.bin fmul`), an `rt`
-op's runtime entry, a callee, a check's error, a slot's variable. It is quoted where it holds
-a space or would read as a field.
+
+The fields follow the operation's name, each as `NAME=VALUE` by the name its
+[row](#operation-reference) gives it: `rt entry=repr descriptor=Li`, `field.addr index=1`,
+`tuple.load item=int index=1`, `check message="KeyError: 'k'"`. An operator is written bare,
+first: `num.cmp <`, `scalar.bin fmul`, `ovf +`. A field that holds its default (`""` or 0) is
+omitted, and one that its operation's row does not name is written by its letter (`s=`, `k=`,
+`x=`), so that a record the verifier rejects still prints. A value is quoted where it holds a
+space or would read as a field.
 
 Types are the compiler's canonical strings. Most are Python's (`int`, `list[float]`,
 `opt[int]`); `*X` is an eight-byte slot that holds an `X`, so `mem.load(*int %s.3)` reads the

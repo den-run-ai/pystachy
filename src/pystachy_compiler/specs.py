@@ -679,7 +679,7 @@ SETMETHODS: list[str] = FSETMETHODS + "add clear difference_update discard inter
 #             switch's default and cases)
 #   fields    which of Ins.t (result type), Ins.s (text), Ins.k (integer) and Ins.x (descriptor)
 #             it may set, in that order; the others stay "" or 0. Each of s, k and x is given as
-#             s:NAME, its name for the op:
+#             s:NAME, its name for the op, which the text form writes it by (typed_ir_text.py):
 #             name and kind, a slot's variable and kind (slot_register); entry, hole and
 #             descriptor, an rt op's RUNTIME key, its empty container's type hole (Gen.holes, as
 #             empty.kind's) and the descriptor of the static type it works on; callee and hint, the
@@ -692,7 +692,8 @@ SETMETHODS: list[str] = FSETMETHODS + "add clear difference_update discard inter
 #             member and type, the union member or dynamic payload type a payload read takes;
 #             cleanup, whether closing a generator at its gen.yield runs code (GENCLEAN). An
 #             operator selects an arithmetic, conversion or comparison op's computation (ovf's +
-#             - *, scalar.bin's opcode, num.cmp's comparison)
+#             - *, scalar.bin's opcode, num.cmp's comparison); the text writes it bare after the
+#             op, as LLVM and MLIR write a comparison's predicate
 #   value     which number names the value Values places: 0 none, 1 the first, 2 the second
 #             (after an address), 3 each
 #   types     its operands' types, then its result's (Ins.t): "OPERAND, ... -> RESULT", without

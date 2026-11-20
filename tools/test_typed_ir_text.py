@@ -24,16 +24,16 @@ ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = ROOT / "tools/fixtures/typed_ir"
 EXAMPLE = ROOT / "tools/inspection_examples/score_samples.py"
 WRITTEN = """function @written(left: int, names: dict[str,int]) -> None coroutine effects="R A" {
-  %left.1 = slot left : int
-  %left.def.1 = slot left k=1 : bool
-  %stk.2 = slot k=2 : tuple[int,str]
+  %left.1 = slot name=left : int
+  %left.def.1 = slot name=left kind=1 : bool
+  %stk.2 = slot kind=2 : tuple[int,str]
 entry:
-  %t3 = rt dict.find x=!s (dict[str,int] %a1, str @s.4, int "ptrtoint (ptr @s.4 to i64)") : int
+  %t3 = rt entry=dict.find descriptor=!s (dict[str,int] %a1, str @s.4, int "ptrtoint (ptr @s.4 to i64)") : int
   %t4 = num.cmp < (int %t3, int -1) : bool
-  check "KeyError: 'k'" x="Kind: text" (bool %t4) -> L5
+  check message="KeyError: 'k'" key="Kind: text" (bool %t4) -> L5
 L5: handler=L9
-  ~%t6 %t7 = tuple.load int k=1 (tuple[int,str] %stk.2) : %slot
-  call @f.other x=inline (%slot %t7, float "bitcast (i64 9218868437227405312 to double)") -> L8, L9 : None
+  ~%t6 %t7 = tuple.load item=int index=1 (tuple[int,str] %stk.2) : %slot
+  call callee=@f.other hint=inline (%slot %t7, float "bitcast (i64 9218868437227405312 to double)") -> L8, L9 : None
 L8:
   ret.none
 L9:
@@ -100,7 +100,7 @@ class AtomTests(unittest.TestCase):
         for value in ("<", "==", "+", "dict.find", "@f.add", "OverflowError", "k", "-"):
             with self.subTest(value=value):
                 self.assertEqual(text.text_atom(value), value)
-        for value in ("->", ":", "k=1", "x=y", "a b", ""):
+        for value in ("->", ":", "k=1", "x=y", "index=3", "entry=a b", "a b", ""):
             with self.subTest(value=value):
                 self.assertEqual(json.loads(text.text_atom(value)), value)
                 self.assertNotEqual(text.text_atom(value), value)
@@ -154,18 +154,32 @@ class TextTests(unittest.TestCase):
                 ("  ret.none\n", "  Ret\n", "line 13: expected an operation name"),
                 ("  ret.none\n", "  ret.none k=0\n", "line 13: k= needs a nonzero integer"),
                 ("  ret.none\n", "  ret.none k=01\n", "line 13: k= needs a nonzero integer"),
-                ("  ret.none\n", '  ret.none ""\n', "line 13: an empty text is omitted"),
+                ("  %t4 = num.cmp <", '  %t4 = num.cmp ""', "line 7: an empty operator is omitted"),
                 ("  ret.none\n", "  ret.none()\n", "line 13: expected an atom"),
                 ("  ret.none\n", "  ret.none(int)\n", "line 13: expected ' '"),
                 ("  ret.none\n", "  ret.none(int %t1,int %t2)\n", "line 13: expected ', '"),
                 ("  ret.none\n", '  ret.none(int "unterminated)\n', "line 13: invalid quoted atom"),
                 ("  ret.none\n", "  ret.none(list[int %t1)\n", "line 13: expected an atom"),
-                ("  ret.none\n", "  ret.none <(int %t1)\n", "line 13: unexpected text"),
-                ("  %left.1 = slot left : int\n", "  %t1 = br -> L5\n", "line 2: an instruction before the first block must be a slot"),
-                ("  %left.1 = slot left", "  %x.1 = slot left", "line 2: results must be written %left.1"),
-                ("  %stk.2 = slot k=2", "  %h.2 = slot k=2", "line 4: results must be written %stk.2"),
-                ("  %t3 = rt dict.find", "  %3 = rt dict.find", "line 6: invalid result '%3'"),
-                ("  %t3 = rt dict.find", '  %t3 = rt "dict.find"', "line 6: text 'dict.find' must be written dict.find"),
+                ("  ret.none\n", "  ret.none <(int %t1)\n", "line 13: ret.none has no operator to write bare: its row names none"),
+                ("  %left.1 = slot name=left : int\n", "  %t1 = br -> L5\n", "line 2: an instruction before the first block must be a slot"),
+                ("  %left.1 = slot name=left", "  %x.1 = slot name=left", "line 2: results must be written %left.1"),
+                ("  %stk.2 = slot kind=2", "  %h.2 = slot kind=2", "line 4: results must be written %stk.2"),
+                ("  %t3 = rt entry=dict.find", "  %3 = rt entry=dict.find", "line 6: invalid result '%3'"),
+                # (fields by the names the operation table gives them: an operator bare, first; a
+                # field the op's row names by that name and no other; any other field by its letter)
+                ("rt entry=dict.find", 'rt entry="dict.find"', "line 6: atom 'dict.find' must be written bare"),
+                ("rt entry=dict.find", "rt dict.find", "line 6: rt has no operator to write bare: its row names entry (s), hole (k), descriptor (x)"),
+                ("rt entry=dict.find", "rt s=dict.find", "line 6: rt names its s entry: write entry="),
+                ("rt entry=dict.find", "rt entry=dict.find index=2", "line 6: rt has no field index: its row names entry (s), hole (k), descriptor (x)"),
+                ("rt entry=dict.find descriptor=!s", "rt descriptor=!s entry=dict.find", "line 6: rt field entry must come before descriptor"),
+                ("rt entry=dict.find", "rt entry=dict.find entry=x", "line 6: rt field entry is repeated"),
+                ("rt entry=dict.find", "rt entry=dict.find hole=0", "line 6: hole= needs a nonzero integer"),
+                ("rt entry=dict.find", 'rt entry=""', "line 6: an empty entry is omitted"),
+                ("num.cmp <", "num.cmp operator=<", "line 7: num.cmp writes its operator bare, before its other fields"),
+                ("num.cmp <", "num.cmp s=<", "line 7: num.cmp names its s operator: write it bare"),
+                ("num.cmp <", 'num.cmp "<"', "line 7: operator '<' must be written <"),
+                ("num.cmp <", "num.cmp k=1 <", "line 7: unexpected text"),
+                ("tuple.load item=int index=1", "tuple.load item=int k=1", "line 10: tuple.load names its k index: write index="),
                 ("  ~%t6 %t7 = tuple.load", "  %t6 %t7 = tuple.load", "line 10: results must be written ~%t6 %t7"),
                 ("  ~%t6 %t7 = tuple.load", "  ~%t6 ~%t7 = tuple.load", "line 10: results must be written ~%t6 %t7"),
                 ("L8:\n", "L8\n", "line 12: expected ':'"),
@@ -198,6 +212,25 @@ class TextTests(unittest.TestCase):
                 broken = json.loads(json.dumps(record))
                 change(broken)
                 self.assertTrue(any(expected in error for error in text.roundtrip_errors(broken)))
+
+    def test_each_ops_fields_print_by_the_names_its_row_gives_them(self):
+        specs = text.compiler()[1]
+        for op in specs.OPS:
+            names = text.named_fields(op)
+            ins = {"op": op, "type": "", "text": "", "immediate": 0, "descriptor": "", "results": [],
+                   "operands": [{"value": "%a0", "type": "int"}], "targets": []}
+            for field, key in text.FIELD_KEYS:
+                ins[key] = (3 if field == "k" else "v." + field) if field in names else ins[key]
+            with self.subTest(op=op):
+                line = text.instruction_text(ins)
+                self.assertEqual(text.read_instruction(line), ins)
+                words = [w.split("=")[0] for w in line[: line.index("(")].split()[1:]]
+                self.assertEqual(words, [n if n != text.OPERATOR else "v.s" for f, n in names.items()])
+        # (a field outside its op's row, which the verifier rejects, by its letter, and an op the
+        # table lacks: such records still print)
+        for line in ("%t1 = num.cmp < k=1 x=y (int %a0, int 1) : bool", "ret.none s=text k=-2", "nop s=a k=1 x=b"):
+            with self.subTest(line=line):
+                self.assertEqual(text.instruction_text(text.read_instruction(line)), line)
 
 
 class ModuleTests(unittest.TestCase):

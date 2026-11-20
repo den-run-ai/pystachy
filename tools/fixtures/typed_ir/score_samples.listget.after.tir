@@ -1,8 +1,8 @@
 function @f.score_samples(samples: list[float]) -> float effects="R rL" {
-  %samples.2 = slot samples : list[float]
-  %score.3 = slot score : float
+  %samples.2 = slot name=samples : list[float]
+  %score.3 = slot name=score : float
   %h.5 = slot : int
-  %sample.16 = slot sample : float
+  %sample.16 = slot name=sample : float
 entry:
   mem.store(*list[float] %samples.2, list[float] %a0)
   mem.store(*float %score.3, float 0.0)

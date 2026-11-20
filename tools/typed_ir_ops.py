@@ -27,7 +27,7 @@ COLUMNS = ("effects", "operands", "results", "labels", "fields", "value", "types
 FLAGS = ("T", "E", "*")
 FIELD_BITS = {"t": 1, "s": 2, "k": 4, "x": 8}
 FIELD_NAME = re.compile(r"([skx]):([a-z]+)")
-# the name of a field that selects an op's computation: an s
+# the name of a field that selects an op's computation, which the text form writes bare
 OPERATOR = "operator"
 VARIABLE = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)(?::([A-Za-z_][A-Za-z0-9_]*))?")
 
