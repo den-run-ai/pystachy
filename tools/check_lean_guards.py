@@ -96,7 +96,7 @@ def union_context(snapshot):
     for fn in snapshot["functions"]:
         for block in fn["blocks"]:
             for op in block["operations"]:
-                if (op["op"] == "field.addr" and len(op["operands"]) == 1 and op["type"].startswith("*")
+                if (op["op"] == "field.addr" and len(op["operands"]) == 1 and op["type"].startswith("&")
                         and union_members(op["type"][1:]) is not None):
                     cls = op["operands"][0]["type"]
                     if cls in layouts:
@@ -446,7 +446,7 @@ def memory_keys(snapshot):
                     written.add(("packed", args[0]["type"]))
                 elif kind == "slot.unpack" and union_members(op["type"]) is not None:
                     note(("packed", op["type"]), op["type"])
-                elif kind == "field.addr" and op["type"].startswith("*") and union_members(op["type"][1:]) is not None:
+                elif kind == "field.addr" and op["type"].startswith("&") and union_members(op["type"][1:]) is not None:
                     key = memory_key(context, producers, f"%t{op['results'][0]}")
                     if key is not None:
                         note(key, op["type"][1:])

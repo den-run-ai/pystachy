@@ -730,8 +730,8 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
         c.a.extend([self.dyn_id_arg(v) if self.idhere() else Val("null", "dyn") for v in vals if numeric_identity(v.t)])
         if numeric_identity(ts[0]):
             idresult = self.alloca("dyn", "")
-            self.mem_store(Val(idresult, "*dyn"), Val("null", "dyn"))
-            c.a.append(Val(idresult, "*dyn"))
+            self.mem_store(Val(idresult, "&dyn"), Val("null", "dyn"))
+            c.a.append(Val(idresult, "&dyn"))
     if ts[0] == "None":
         self.add(c)
         return Val("null", "None")
@@ -740,7 +740,7 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
     if idresult != "" and numeric_identity(ts[0]) and self.idhere():
         result.idexact = result.t == "int" or result.t == BIG or result.t == "float"
         result.idslot = idresult
-        result.idheld = self.mem_load(Val(idresult, "*dyn")).v
+        result.idheld = self.mem_load(Val(idresult, "&dyn")).v
         result.idcounter = self.alloca("int", "")
         result.idversion = "0"
     return result
@@ -1387,7 +1387,7 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
             self.incoming(identity, vals[i].idfrom if vals[i].idfrom != "" else "null", edges[i])
         held = self.phi(identity)
         result.idslot = self.alloca("dyn", "")
-        self.mem_store(Val(result.idslot, "*dyn"), Val(held, "dyn"))
+        self.mem_store(Val(result.idslot, "&dyn"), Val(held, "dyn"))
         result.idheld = held
         result.idcounter = self.alloca("int", "")
         result.idversion = "0"
@@ -1726,8 +1726,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         c.a.extend([self.dyn_id_arg(vals[j]) if self.idhere() and self.fn_identity(f) and (not f.scalar_args or f.params[j] in f.idnames) else Val("null", "dyn") for j in range(np) if numeric_identity(f.ptypes[j])])
         if numeric_identity(f.ret):
             idresult = self.alloca("dyn", "")
-            self.mem_store(Val(idresult, "*dyn"), Val("null", "dyn"))
-            c.a.append(Val(idresult, "*dyn"))
+            self.mem_store(Val(idresult, "&dyn"), Val("null", "dyn"))
+            c.a.append(Val(idresult, "&dyn"))
     if len(offs) > 0:
         # a list as ffi.at(xs, k): the stub that takes an index after the arguments for each list
         # (0 for one passed as it is), which it checks as the call starts (cextern)
@@ -1781,7 +1781,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     if idresult != "" and numeric_identity(f.ret) and self.fn_identity(f):  # (code that does not track identity gives none)
         result.idexact = result.t == "int" or result.t == BIG or result.t == "float"
         result.idslot = idresult
-        result.idheld = self.mem_load(Val(idresult, "*dyn")).v
+        result.idheld = self.mem_load(Val(idresult, "&dyn")).v
         result.idcounter = self.alloca("int", "")
         result.idversion = "0"
     return result

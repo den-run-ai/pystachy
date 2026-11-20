@@ -699,7 +699,7 @@ SETMETHODS: list[str] = FSETMETHODS + "add clear difference_update discard inter
 #   types     its operands' types, then its result's (Ins.t): "OPERAND, ... -> RESULT", without
 #             "-> RESULT" where it has no result type. Each is a type (bool, %slot), a type class
 #             (TYPE_CLASSES), or holds a variable, $T: the same type wherever the row names it, alone
-#             or inside a type (*$T, list[$E]), and of the class given after one of its names
+#             or inside a type (&$T, list[$E]), and of the class given after one of its names
 #             ($T:native). The last operand's holds for any further operands the count admits. *
 #             is decided per instruction: an rt op's by its RUNTIME signature, a call's by its callee
 OPS: dict[str, str] = {
@@ -710,10 +710,10 @@ OPS: dict[str, str] = {
     "phi": "|1+|1|a|t|0|$T -> $T", "select": "|3|1|0|t|1|bool, $T:scalar, $T -> $T", "ovf": "|2|.vv|0|t s:operator|0|int, int -> int",
     "list.load": "rL|2|v...|0|t|0|list[$E:item], int -> *$E", "list.store": "rL wL|3|...|0||0|list[$E:item], int, *$E", "list.len": "rL|1|1|0|t|1|list[$E:item] -> int",
     "alloc.fixed": "A|0|1|0|t|0|-> layout", "vtuple.make": "A|0+|1|0|t|0|$E:velem -> vtuple[$E]",
-    "mem.load": "*|1|1|0|t|1|*$T:native -> $T", "mem.store": "*|2|0|0||0|*$T:native, $T",
+    "mem.load": "*|1|1|0|t|1|&$T:native -> $T", "mem.store": "*|2|0|0||0|&$T:native, $T",
     "mach.load": "*|1|1|0|t s:metadata|1|%ptr -> machine", "mach.store": "*|2|0|0|s:metadata|0|%ptr, machine", "mach.addr": "|2|1|0|t s:element k:inbounds|1|%ptr, int -> %ptr",
     "tuple.load": "rL rD rO|1|.v|0|t s:item k:index|3|ftuple -> %slot", "tuple.store": "wL wD wO|2|.|0|s:item k:index|3|ftuple, %slot",
-    "field.addr": "|1|1|0|t k:index|1|class -> *$F",
+    "field.addr": "|1|1|0|t k:index|1|class -> &$F",
     "slot.pack": "|1|1|0|t|1|native -> %slot", "slot.unpack": "|1|1|0|t|1|%slot -> native",
     "scalar.bin": "|1-2|1|0|t s:operator x:flags|1|$T:arith, $T -> $T", "scalar.cast": "|1|1|0|t s:operator|1|bits -> bits", "scalar.cmp": "|2|1|0|t s:operator|1|$T:bits, $T -> bool",
     "num.cast": "|1|1|0|t|1|numeric -> number", "num.cmp": "|2|1|0|t s:operator|1|$N:number, $N -> bool", "int.ucmp": "|2|1|0|t s:operator|1|int, int -> bool", "ptr.cmp": "|2|1|0|t s:operator|1|ref, ref -> bool",
@@ -755,7 +755,7 @@ OP_INVOKE = -2
 # type variable (T K V S) is one only where a class has that name.
 TYPE_CLASSES: dict[str, str] = {
     "any": "any type",
-    "native": "a native value type: no machine type (%), address or packed slot (*) or descriptor (#)",
+    "native": "a native value type: no machine type (%), address (&), packed slot (*) or descriptor (#)",
     "scalar": "a native value type other than None, or a machine scalar (%ptr, %byte, %i32, %slot)",
     "machine": "a native value type other than None, or %ptr, %byte or %i32",
     "ref": "a native reference type or None",
@@ -786,11 +786,11 @@ TYPE_CLASSES: dict[str, str] = {
 # operands name their runtime signature's): by a view between them, or as a closed union of
 # classes and one of its members.
 TYPE_VIEWS: dict[str, str] = {
-    "machine": "U is D's machine type: %ptr for a reference, an address or None (null), %slot for a packed slot or an int, %addr for a slot's address",
-    "bits": "D is %ptr, read as a reference or, where an address is read, as an address; or D is %slot, read as an int, a packed slot or an rt op's bool",
+    "machine": "U is D's machine type: %ptr for a reference, an address &T or None (null), %slot for a packed slot *T or an int, %addr for a slot's address",
+    "bits": "D is %ptr, read as a reference or an address &T; or D is %slot, read as an int, a packed slot *T or an rt op's bool",
     "instance": "D or U holds an empty container's placeholder (list[?], or opt[None] for a local first assigned None) or a runtime type variable (T K V S), in an rt op's result or operand or where no class has its name: each stands for one type",
     "alias": "one object by two types: a str and a bytes, an exc and its exctype, a recursive alias rec[A] and A's definition, a set, a frozenset and an AbstractSet, a fixed tuple and a keyword record (kw[...]), a generator with and without its return type; inside brackets an int and an int+, and inside a tuple's a bool read as an int",
-    "int slot": "an int read as a packed slot of an int, which holds its value, and back",
+    "int slot": "an int read as a packed slot *int, which holds its value, and back",
     "optional": "D read as opt[D] of a reference D, None as any reference or opt[...], or opt[U] as U",
     "class": "a class read as a class derived from it, as one of its bases or as a class derived from a base that has a common derived class with it; a closed union read as one with a common member",
     "runtime bool": "an rt op's bool result, which the runtime ABI passes as an int, read as an int; an int read as an rt op's bool operand",

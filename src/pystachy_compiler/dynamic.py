@@ -1685,9 +1685,9 @@ def gen_dyn_box(self, v: Val) -> Val:
         # exactly this object's box. The result slot is reset before each call;
         # after the call only lazy boxing writes it. Reload for earlier aliases.
         # Selected/narrowed storage and reads across rebinding keep the checks below.
-        b = self.mem_load(Val(v.idslot, "*" + DYN))
+        b = self.mem_load(Val(v.idslot, "&" + DYN))
         box = self.rt("pys_dyn_int_box", "ptr", [f"i64 {v.v}", f"ptr {b.v}"]) if t == "int" else self.rt("pys_dyn_float_box", "ptr", [f"double {v.v}", f"ptr {b.v}"])
-        self.mem_store(Val(v.idslot, "*" + DYN), Val(box, DYN))
+        self.mem_store(Val(v.idslot, "&" + DYN), Val(box, DYN))
         return Val(box, DYN)
     if (t == "int" or t == "float") and v.idslot != "":
         # a variable's value: the box of its object (dyn_id_held), where that holds this value of
@@ -1697,7 +1697,7 @@ def gen_dyn_box(self, v: Val) -> Val:
         kept = self.idstores.get(v.idslot, 0) == v.idgen
         live = "true" if kept else "false"
         if not kept and v.idcounter != "":
-            live = self.num_cmp("==", self.mem_load(Val(v.idcounter, "*int")), Val(v.idversion, "int")).v
+            live = self.num_cmp("==", self.mem_load(Val(v.idcounter, "&int")), Val(v.idversion, "int")).v
         b = self.dyn_id_held(v)
         chk = self.label()
         hit = self.label()
@@ -1723,7 +1723,7 @@ def gen_dyn_box(self, v: Val) -> Val:
             empty = self.ptr_cmp("==", b, Val("null", DYN)).v
             self.cbr(self.scalar("and", [Val(empty, "bool"), Val(live, "bool")]), keep, end)
             self.place(keep)
-            self.mem_store(Val(v.idslot, "*" + DYN), Val(nb, DYN))
+            self.mem_store(Val(v.idslot, "&" + DYN), Val(nb, DYN))
             self.incoming(ph, nb, keep)
         self.br(end)
         self.place(end)
@@ -1842,12 +1842,12 @@ def box_big(self, v: Val) -> Val:
         self.incoming(wp, made, self.cur)
         live = "true" if self.idstores.get(v.idslot, 0) == v.idgen else "false"
         if live == "false" and v.idcounter != "":
-            live = self.num_cmp("==", self.mem_load(Val(v.idcounter, "*int")), Val(v.idversion, "int")).v
+            live = self.num_cmp("==", self.mem_load(Val(v.idcounter, "&int")), Val(v.idversion, "int")).v
         if live != "false":
             keep = self.label()
             self.cbr(live, keep, done)
             self.place(keep)
-            self.mem_store(Val(v.idslot, "*" + DYN), Val(made, DYN))
+            self.mem_store(Val(v.idslot, "&" + DYN), Val(made, DYN))
             self.incoming(wp, made, self.cur)
         self.br(done)
         self.place(done)
@@ -1898,14 +1898,14 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         # Boxing a conditional or alias copy may reveal the destination's own object.
         # Keep its generation so earlier unboxed reads can find that newly made box.
         # Compare objects, not payloads: equal replacements must still retire reads.
-        old = self.mem_load(Val(slot, "*" + DYN))
+        old = self.mem_load(Val(slot, "&" + DYN))
         same = self.ptr_cmp("==", old, Val(b, DYN))
         bound = self.ptr_cmp("!=", old, Val("null", DYN))
         step = self.select(self.scalar("and", [same, bound]), Val("0", "int"), Val("1", "int"))
-    self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
+    self.mem_store(Val(slot, "&" + DYN), Val(b, DYN))
     self.idstores[slot] = self.idstores.get(slot, 0) + 1
     if slot.startswith("%") and ".box." in slot:
-        counter = Val(slot.replace(".box.", ".boxgen."), "*int")
+        counter = Val(slot.replace(".box.", ".boxgen."), "&int")
         # Machine add deliberately wraps, without signed-overflow flags. A local read
         # can survive only the finite stores in its expression, not 2**64 rebindings.
         serial = self.scalar("add", [self.mem_load(counter), Val(step, "int")])
@@ -1940,11 +1940,11 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
         # Ordinary reads still snapshot, and every store still updates its box.
         return
     v.idslot = slot
-    v.idheld = self.mem_load(Val(slot, "*" + DYN)).v
+    v.idheld = self.mem_load(Val(slot, "&" + DYN)).v
     v.idgen = self.idstores.get(slot, 0)
     if local:
         v.idcounter = slot.replace(".box.", ".boxgen.")
-        v.idversion = self.mem_load(Val(v.idcounter, "*int")).v
+        v.idversion = self.mem_load(Val(v.idcounter, "&int")).v
     if slot.startswith("@g.") and slot[3:-4] in self.intglobals:
         # module_ints excludes rebinding/deletion across the whole import graph.
         # Initialization guards precede this read; dyn_id_store made its box ready.
@@ -1965,7 +1965,7 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
                 box = self.rt("pys_dyn_big_box", "ptr", [f"i64 {self.big_lo(v).v}", f"ptr {self.big_hi(v).v}", f"ptr {v.idheld}"])
             else:
                 box = self.rt("pys_dyn_int_box", "ptr", [f"i64 {v.v}", f"ptr {v.idheld}"]) if v.t == "int" else self.rt("pys_dyn_float_box", "ptr", [f"double {v.v}", f"ptr {v.idheld}"])
-            self.mem_store(Val(slot, "*" + DYN), Val(box, DYN))
+            self.mem_store(Val(slot, "&" + DYN), Val(box, DYN))
             v.idfrom = box
             v.idslot = ""
             return
@@ -1977,7 +1977,7 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
         # A cell may hold a joined/optional number too. Box its current member,
         # without consulting the slot again, while the snapshot is still live.
         b = self.dyn_id_box(Val(v.v, v.t)).v
-        self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
+        self.mem_store(Val(slot, "&" + DYN), Val(b, DYN))
         made = self.cur
         self.br(end)
         self.place(end)
@@ -1997,11 +1997,11 @@ def gen_dyn_id_held(self, v: Val) -> Val:
     if self.idstores.get(v.idslot, 0) != v.idgen:
         if v.idcounter == "":
             return b
-        live = self.num_cmp("==", self.mem_load(Val(v.idcounter, "*int")), Val(v.idversion, "int")).v
-        now = self.mem_load(Val(v.idslot, "*" + DYN))
+        live = self.num_cmp("==", self.mem_load(Val(v.idcounter, "&int")), Val(v.idversion, "int")).v
+        now = self.mem_load(Val(v.idslot, "&" + DYN))
         now = Val(self.select(live, now, Val("null", DYN)), DYN)
     else:
-        now = self.mem_load(Val(v.idslot, "*" + DYN))
+        now = self.mem_load(Val(v.idslot, "&" + DYN))
     return Val(self.select(self.ptr_cmp("!=", b, Val("null", DYN)).v, b, now), DYN)
 
 
@@ -2294,7 +2294,7 @@ def gen_lazy_barrier(self, n: Node) -> None:
                 mask = fn.lazymasks[n.line][2 * j]
     for x in [y for y in fn.lazyobj]:
         if (mask & fn.lazybit[x]) == 0:
-            self.mem_store(Val(fn.lazyflag[x], "*bool"), Val("false", "bool"))
+            self.mem_store(Val(fn.lazyflag[x], "&bool"), Val("false", "bool"))
         elif x not in self.idbox or self.ltype.get(x, "") not in ["int", "float"]:
             # (read later, but no store has given it a slot yet: no sharing starts from here)
             del fn.lazyobj[x]
@@ -2312,18 +2312,18 @@ def gen_lazy_resolve(self, x: str) -> None:
     o = fn.lazyobj[x] if x in fn.lazyobj else ""
     if o == "" or o not in self.ltype or self.ltype[o] not in self.classes:
         return
-    flag = Val(fn.lazyflag[x], "*bool")
+    flag = Val(fn.lazyflag[x], "&bool")
     ci = self.classes[self.ltype[o]]
     res = self.label()
     end = self.label()
     self.cbr(self.mem_load(flag).v, res, end)
     self.place(res)
-    slot = Val(self.fgep(self.mem_load(Val(self.lreg[o], "*" + self.ltype[o])), ci.fbox[fn.lazyfield[x]]), "*" + DYN)
+    slot = Val(self.fgep(self.mem_load(Val(self.lreg[o], "&" + self.ltype[o])), ci.fbox[fn.lazyfield[x]]), "&" + DYN)
     held = self.mem_load(slot)
-    v = self.mem_load(Val(self.lreg[x], "*" + t))
+    v = self.mem_load(Val(self.lreg[x], "&" + t))
     box = self.rt("pys_dyn_int_box", "ptr", [f"i64 {v.v}", f"ptr {held.v}"]) if t == "int" else self.rt("pys_dyn_float_box", "ptr", [f"double {v.v}", f"ptr {held.v}"])
     self.mem_store(slot, Val(box, DYN))
-    self.mem_store(Val(self.idbox[x], "*" + DYN), Val(box, DYN))
+    self.mem_store(Val(self.idbox[x], "&" + DYN), Val(box, DYN))
     self.mem_store(flag, Val("false", "bool"))
     self.br(end)
     self.place(end)
@@ -2337,29 +2337,29 @@ def gen_lazy_store(self, o: Val, box: str, name: str) -> bool:
     fn = self.fn
     obj = o
     wb = fn.lazywb if fn.lazywb != "" and fn.lazyfield.get(fn.lazywb, "") == name and fn.lazywb in self.idbox else ""
-    old = self.mem_load(Val(box, "*" + DYN))
+    old = self.mem_load(Val(box, "&" + DYN))
     keep = Val("false", "bool")
     if wb != "":
-        keep = self.mem_load(Val(fn.lazyflag[wb], "*bool"))  # (x already is the field's object)
+        keep = self.mem_load(Val(fn.lazyflag[wb], "&bool"))  # (x already is the field's object)
     for y in fn.lazyflag:
         oy = fn.lazyobj.get(y, "")
         if y == wb or fn.lazyfield.get(y, "") != name or y not in self.idbox or oy == "" or self.ltype.get(oy, "") not in self.classes:
             continue
         if name not in self.classes[self.ltype[oy]].fbox:
             continue
-        flag = Val(fn.lazyflag[y], "*bool")
+        flag = Val(fn.lazyflag[y], "&bool")
         on = self.mem_load(flag)
-        same = self.ptr_cmp("==", self.mem_load(Val(self.lreg[oy], "*" + self.ltype[oy])), Val(obj.v, obj.t))
+        same = self.ptr_cmp("==", self.mem_load(Val(self.lreg[oy], "&" + self.ltype[oy])), Val(obj.v, obj.t))
         cond = Val(self.scalar("and", [on, same]), "bool")
         cond = Val(self.scalar("and", [cond, Val(self.scalar("xor", [keep, Val("true", "bool")]), "bool")]), "bool")
-        own = self.mem_load(Val(self.idbox[y], "*" + DYN))
-        self.mem_store(Val(self.idbox[y], "*" + DYN), Val(self.select(cond.v, old, own), DYN))
+        own = self.mem_load(Val(self.idbox[y], "&" + DYN))
+        self.mem_store(Val(self.idbox[y], "&" + DYN), Val(self.select(cond.v, old, own), DYN))
         self.mem_store(flag, Val(self.select(cond.v, Val("false", "bool"), on), "bool"))
     if wb == "":
         return False
-    mine = self.mem_load(Val(self.idbox[wb], "*" + DYN))
-    self.mem_store(Val(box, "*" + DYN), Val(self.select(keep.v, old, mine), DYN))
-    self.mem_store(Val(fn.lazyflag[wb], "*bool"), Val("true", "bool"))
+    mine = self.mem_load(Val(self.idbox[wb], "&" + DYN))
+    self.mem_store(Val(box, "&" + DYN), Val(self.select(keep.v, old, mine), DYN))
+    self.mem_store(Val(fn.lazyflag[wb], "&bool"), Val("true", "bool"))
     return True
 
 
@@ -2390,7 +2390,7 @@ def gen_lazy_assign(self, n: Node) -> bool:
             self.assign(n.kids[0], v)
         self.joinsrc = src
         if x in self.idbox and self.ltype.get(x, "") == t and not self.term:
-            self.mem_store(Val(fn.lazyflag[x], "*bool"), Val("true", "bool"))
+            self.mem_store(Val(fn.lazyflag[x], "&bool"), Val("true", "bool"))
         return True
     if len([st for st in fn.lazywbs if st is n]) > 0:
         x = n.kids[1].s
@@ -5709,7 +5709,7 @@ def gen_dyn_sum_start(self, r: Reduce, start: Val) -> None:
     # addition. Leaving a phase is permanent, including overflow or a user callback.
     value = self.dyn_box(start)
     self.guard(self.dyn_test(value, ["str"]), "TypeError: sum() can't sum strings [use ''.join(seq) instead]")
-    self.mem_store(Val(r.acc, "*dyn"), value)
+    self.mem_store(Val(r.acc, "&dyn"), value)
     self.mstore("float", fbits("0.0"), r.facc)
     self.mstore("float", fbits("0.0"), r.comp)
     kind = Val(self.dyn_typeof(value), "dyntype")
@@ -5724,7 +5724,7 @@ def gen_dyn_sum_start(self, r: Reduce, start: Val) -> None:
     # CPython unboxes an integer start; a callback must see a new box when that
     # phase ends, even when it is the first item. Preserve other starts' identity.
     n = self.dyn_payload(value, "int")
-    self.mem_store(Val(r.acc, "*dyn"), Val(self.rt("pys_dyn_int", "ptr", [f"i64 {n.v}"]), DYN))
+    self.mem_store(Val(r.acc, "&dyn"), Val(self.rt("pys_dyn_int", "ptr", [f"i64 {n.v}"]), DYN))
     self.br(end)
     self.place(nonint)
     self.cbr(self.ptr_cmp("==", kind, Val(self.dyn_type("float"), "dyntype")).v, floats, end)
@@ -5747,8 +5747,8 @@ def gen_dyn_sum_item(self, r: Reduce, value: Val) -> None:
     end = self.label()
     self.cbr(self.num_cmp("==", phase, Val("1", "int")).v, floats, others)
     self.place(others)
-    total = self.dyn_arith("+", self.mem_load(Val(r.acc, "*dyn")), item)
-    self.mem_store(Val(r.acc, "*dyn"), total)
+    total = self.dyn_arith("+", self.mem_load(Val(r.acc, "&dyn")), item)
+    self.mem_store(Val(r.acc, "&dyn"), total)
     ints = self.label()
     self.cbr(self.num_cmp("==", phase, Val("0", "int")).v, ints, end)
     self.place(ints)
@@ -5783,7 +5783,7 @@ def gen_dyn_sum_item(self, r: Reduce, value: Val) -> None:
     # Flush the compensation before calling user code; never re-enter the float
     # phase even if that callback returns a float. Wide ints also take this path.
     partial = Val(self.comp_end(r.facc, r.comp), "float")
-    self.mem_store(Val(r.acc, "*dyn"), self.dyn_arith("+", partial, item))
+    self.mem_store(Val(r.acc, "&dyn"), self.dyn_arith("+", partial, item))
     self.mstore("int", "2", r.phase)
     self.br(end)
     self.place(end)
@@ -5797,7 +5797,7 @@ def gen_dyn_sum_end(self, r: Reduce) -> Val:
     end = self.label()
     self.cbr(self.num_cmp("==", phase, Val("1", "int")).v, floats, others)
     self.place(floats)
-    self.mem_store(Val(r.acc, "*dyn"), self.dyn_box(Val(self.comp_end(r.facc, r.comp), "float")))
+    self.mem_store(Val(r.acc, "&dyn"), self.dyn_box(Val(self.comp_end(r.facc, r.comp), "float")))
     self.br(end)
     self.place(others)
     self.cbr(self.num_cmp("==", phase, Val("0", "int")).v, ints, end)
@@ -5805,15 +5805,15 @@ def gen_dyn_sum_end(self, r: Reduce) -> Val:
     # Even an empty small-int sum returns a freshly boxed result (subject to the
     # runtime's small-int cache); bool/wide/custom starts retain their identity.
     # The small-int phase keeps an int box, and testing its tag guards the read.
-    acc = self.mem_load(Val(r.acc, "*dyn"))
+    acc = self.mem_load(Val(r.acc, "&dyn"))
     small = self.label()
     self.cbr(self.ptr_cmp("==", Val(self.dyn_typeof(acc), "dyntype"), Val(self.dyn_type("int"), "dyntype")).v, small, end)
     self.place(small)
     n = self.dyn_payload(acc, "int")
-    self.mem_store(Val(r.acc, "*dyn"), Val(self.rt("pys_dyn_int", "ptr", [f"i64 {n.v}"]), DYN))
+    self.mem_store(Val(r.acc, "&dyn"), Val(self.rt("pys_dyn_int", "ptr", [f"i64 {n.v}"]), DYN))
     self.br(end)
     self.place(end)
-    return self.mem_load(Val(r.acc, "*dyn"))
+    return self.mem_load(Val(r.acc, "&dyn"))
 
 
 def gen_dyn_sum(self, xs: Val, start: Val) -> Val:

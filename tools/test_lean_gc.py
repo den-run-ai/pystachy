@@ -94,7 +94,7 @@ class ArrayKindTests(unittest.TestCase):
         main = self.function(snapshot, "@main.init")
         store = next(op for block in main["blocks"] for op in block["operations"]
                      if op["op"] == "mem.store" and op["operands"][0]["value"] == "@g.squares")
-        store["operands"][0]["type"] = "*list[str]"
+        store["operands"][0]["type"] = "&list[str]"
         self.assertEqual(self.status(snapshot, "@main.init"), "rejected")
 
     def test_atomic_argument_for_pointer_list_parameter_is_rejected(self):
@@ -156,7 +156,7 @@ class ArrayKindTests(unittest.TestCase):
     def test_atomic_list_stored_by_an_open_view_is_rejected(self):
         # (queue's store views it as list[?], a later load as list[str]: a store holds for every view)
         snapshot = self.sample()
-        self.assertEqual({op["operands"][0]["type"] for op in self.accesses(snapshot, "@g.queue")}, {"*list[?]", "*list[str]"})
+        self.assertEqual({op["operands"][0]["type"] for op in self.accesses(snapshot, "@g.queue")}, {"&list[?]", "&list[str]"})
         made = self.stored_list(snapshot, "@g.queue")
         self.assertEqual(snapshot["holes"][made["immediate"]], "list[str]")
         snapshot["holes"][made["immediate"]] = "list[int]"
@@ -193,7 +193,7 @@ class ArrayKindTests(unittest.TestCase):
         # its stores are checked to hold)
         snapshot = self.sample()
         for op in self.accesses(snapshot, "@g.spare"):
-            op["operands"][0]["type"] = "*list[?]"
+            op["operands"][0]["type"] = "&list[?]"
             if op["op"] == "mem.load":
                 op["type"] = "list[?]"
         self.assertEqual(self.status(copy.deepcopy(snapshot), "@main.init"), "accepted")

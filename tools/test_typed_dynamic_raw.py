@@ -98,7 +98,7 @@ class DynamicRawTests(unittest.TestCase):
                 elif operation == "arithmetic":
                     c.op("scalar.bin", "int", "add", a=[(bits, "int"), ("1", "int")])
                 elif operation == "store":
-                    c.op("mem.store", a=[("@output", "*int"), (bits, "int")])
+                    c.op("mem.store", a=[("@output", "&int"), (bits, "int")])
                 elif operation == "call":
                     c.op("icall", "None", a=[("%a1", "%ptr"), (bits, "int")])
                 elif operation == "select":
@@ -119,7 +119,7 @@ class DynamicRawTests(unittest.TestCase):
             with self.subTest(forward_reference=forward):
                 c, _ = raw_case()
                 address = "%t" + str(c.b.code[0].r[0])
-                c.op("mem.load", "int", a=[(address, "*int")])
+                c.op("mem.load", "int", a=[(address, "&int")])
                 if forward:
                     c.b.code[0], c.b.code[1] = c.b.code[1], c.b.code[0]
                 c.ret()

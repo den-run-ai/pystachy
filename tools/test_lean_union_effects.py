@@ -91,8 +91,8 @@ class UnionEffectTests(unittest.TestCase):
             "undefined callee": [op("call", "None", "@f.elsewhere")],
             "generator operation on a raw pointer": [op("gen.resume", operands=[("%t3", "%ptr")])],
             "field of an unknown class": [
-                op("field.addr", "*int", results=[900], operands=[("%t3", "Unknown")]),
-                op("mem.store", operands=[("%t900", "*int"), ("1", "int")])],
+                op("field.addr", "&int", results=[900], operands=[("%t3", "Unknown")]),
+                op("mem.store", operands=[("%t900", "&int"), ("1", "int")])],
             "allocation used as a union": [
                 op("rt", "%ptr", "alloc", results=[900], operands=[("16", "int")]),
                 op("scalar.cast", "union[int,str]", "bitcast", [901], [("%t900", "%ptr")]),

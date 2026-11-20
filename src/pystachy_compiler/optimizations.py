@@ -1533,7 +1533,7 @@ def gen_unionslots(self, fn: IFn) -> int:
                 fn.n += 1
                 ld = Ins("mem.load", "int", "")
                 ld.line = i.line
-                ld.a = [Val(half, "*int")]
+                ld.a = [Val(half, "&int")]
                 ld.r = one_num(fn.n)
                 ops.append(ld)
             parts[v] = [tmpname(ops[0].r[0]), tmpname(ops[1].r[0])]
@@ -1572,7 +1572,7 @@ def gen_unionslots(self, fn: IFn) -> int:
             for k in range(2):
                 st = Ins("mem.store", "", "")
                 st.line = i.line
-                st.a = [Val(halves[addr][k], "*int"), Val(q[k], "int")]
+                st.a = [Val(halves[addr][k], "&int"), Val(q[k], "int")]
                 ops.append(st)
             repl[f"{u[0]}:{u[1]}"] = ops
     for j in range(len(fn.blocks)):

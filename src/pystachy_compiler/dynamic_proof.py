@@ -262,7 +262,7 @@ class DynamicProof:
             addr = i.a[0].v
             typ = self.private[addr]
             # A forged operand/result annotation cannot change a slot's contract.
-            if i.t != typ or i.a[0].t != "*" + typ:
+            if i.t != typ or i.a[0].t != "&" + typ:
                 if checking:
                     self.bad.append("dynamic guard proof needs matching private load types")
                     self.badblocks.append(block)
@@ -275,7 +275,7 @@ class DynamicProof:
             typ = self.private[addr]
             s.forget("M:" + addr)
             self.forget_bool(s, addr)
-            if i.a[0].t != "*" + typ or i.a[1].t != typ:
+            if i.a[0].t != "&" + typ or i.a[1].t != typ:
                 if checking:
                     self.bad.append("dynamic guard proof needs matching private store types")
                     self.badblocks.append(block)

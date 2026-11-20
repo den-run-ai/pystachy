@@ -300,7 +300,7 @@ comparison's predicate.
 
 The types column reads `OPERAND, ... -> RESULT`. Each entry is a type (`bool`, `%slot`), a
 type class from the second table, or holds a variable such as `$T`. A variable is the same
-type wherever its row names it, alone or inside a type (`*$T`, `list[$E]`), and its class
+type wherever its row names it, alone or inside a type (`&$T`, `list[$E]`), and its class
 follows one of its names (`$T:native`); `select` is `bool, $T:scalar, $T -> $T`. The last
 operand's entry holds for any further operands the count admits, so `switch` is `int, int`.
 A runtime call's types are its `RUNTIME` signature's and a compiled call's its callee's, and
@@ -314,13 +314,13 @@ to read it at the type its definition gives, or by one of the views of the third
 (`TYPE_VIEWS`): readings of the same bits that no op writes yet, such as a `%slot` result read
 as `int` or a runtime call's `list[T]` read as `list[int]`. Any other difference is an error:
 an `int` read as a `float`, a `list[int]` as a `list[str]`, a class as an unrelated class.
-`*T` names two things, and the verifier keeps them apart: an address where a slot's register,
-`field.addr`, a `*T` parameter or a phi of addresses defines it, which a memory op's address,
-a compiled call or such a phi reads, and a packed slot everywhere else. A value whose
-definition gives only a machine type, a runtime type variable or a placeholder is read at
-related types by every operand that names its own. The views that narrow (`bits`, `opt[U]`
-read as `U`, a derived class, other union members) take the frontend's word for a test before
-them: they are the casts that MLIR would write as ops.
+An address has a type of its own, `&T`, and a packed slot (an eight-byte word that holds a
+`T`) the type `*T`, so no view reads one as the other: a slot's register, `field.addr` and the
+identity result's `%idret` define addresses, which memory ops, compiled calls and phis read. A
+value whose definition gives only a machine type, a runtime type variable or a placeholder is
+read at related types by every operand that names its own. The views that narrow (`bits`,
+`opt[U]` read as `U`, a derived class, other union members) take the frontend's word for a test
+before them: they are the casts that MLIR would write as ops.
 
 Some result numbers only name an intermediate LLVM value of their operation's lowering:
 `ovf`'s `{i64, i1}` pair, the three addresses of `list.load`, the address of a `tuple.load`.
@@ -352,14 +352,14 @@ one, whatever block defines it.
 | `list.len` | `rL` | 1 | 1 | 0 | `t` | first | `list[$E:item] -> int` |
 | `alloc.fixed` | `A` | 0 | 1 | 0 | `t` | none | `-> layout` |
 | `vtuple.make` | `A` | 0 or more | 1 | 0 | `t` | none | `$E:velem -> vtuple[$E]` |
-| `mem.load` | per instruction | 1 | 1 | 0 | `t` | first | `*$T:native -> $T` |
-| `mem.store` | per instruction | 2 | 0 | 0 | none | none | `*$T:native, $T` |
+| `mem.load` | per instruction | 1 | 1 | 0 | `t` | first | `&$T:native -> $T` |
+| `mem.store` | per instruction | 2 | 0 | 0 | none | none | `&$T:native, $T` |
 | `mach.load` | per instruction | 1 | 1 | 0 | `t`, `s:metadata` | first | `%ptr -> machine` |
 | `mach.store` | per instruction | 2 | 0 | 0 | `s:metadata` | none | `%ptr, machine` |
 | `mach.addr` | none | 2 | 1 | 0 | `t`, `s:element`, `k:inbounds` | first | `%ptr, int -> %ptr` |
 | `tuple.load` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t`, `s:item`, `k:index` | each | `ftuple -> %slot` |
 | `tuple.store` | `wL`, `wD`, `wO` | 2 | 1: temporary | 0 | `s:item`, `k:index` | each | `ftuple, %slot` |
-| `field.addr` | none | 1 | 1 | 0 | `t`, `k:index` | first | `class -> *$F` |
+| `field.addr` | none | 1 | 1 | 0 | `t`, `k:index` | first | `class -> &$F` |
 | `slot.pack` | none | 1 | 1 | 0 | `t` | first | `native -> %slot` |
 | `slot.unpack` | none | 1 | 1 | 0 | `t` | first | `%slot -> native` |
 | `scalar.bin` | none | 1 to 2 | 1 | 0 | `t`, `s:operator`, `x:flags` | first | `$T:arith, $T -> $T` |
@@ -392,7 +392,7 @@ one, whatever block defines it.
 | Type class | Admits |
 |---|---|
 | `any` | any type |
-| `native` | a native value type: no machine type (%), address or packed slot (*) or descriptor (#) |
+| `native` | a native value type: no machine type (%), address (&), packed slot (*) or descriptor (#) |
 | `scalar` | a native value type other than None, or a machine scalar (%ptr, %byte, %i32, %slot) |
 | `machine` | a native value type other than None, or %ptr, %byte or %i32 |
 | `ref` | a native reference type or None |
@@ -412,11 +412,11 @@ one, whatever block defines it.
 
 | Type view | An operand of type U reads a value of definition type D where |
 |---|---|
-| `machine` | U is D's machine type: %ptr for a reference, an address or None (null), %slot for a packed slot or an int, %addr for a slot's address |
-| `bits` | D is %ptr, read as a reference or, where an address is read, as an address; or D is %slot, read as an int, a packed slot or an rt op's bool |
+| `machine` | U is D's machine type: %ptr for a reference, an address &T or None (null), %slot for a packed slot *T or an int, %addr for a slot's address |
+| `bits` | D is %ptr, read as a reference or an address &T; or D is %slot, read as an int, a packed slot *T or an rt op's bool |
 | `instance` | D or U holds an empty container's placeholder (list[?], or opt[None] for a local first assigned None) or a runtime type variable (T K V S), in an rt op's result or operand or where no class has its name: each stands for one type |
 | `alias` | one object by two types: a str and a bytes, an exc and its exctype, a recursive alias rec[A] and A's definition, a set, a frozenset and an AbstractSet, a fixed tuple and a keyword record (kw[...]), a generator with and without its return type; inside brackets an int and an int+, and inside a tuple's a bool read as an int |
-| `int slot` | an int read as a packed slot of an int, which holds its value, and back |
+| `int slot` | an int read as a packed slot *int, which holds its value, and back |
 | `optional` | D read as opt[D] of a reference D, None as any reference or opt[...], or opt[U] as U |
 | `class` | a class read as a class derived from it, as one of its bases or as a class derived from a base that has a common derived class with it; a closed union read as one with a common member |
 | `runtime bool` | an rt op's bool result, which the runtime ABI passes as an int, read as an int; an int read as an rt op's bool operand |
@@ -438,7 +438,7 @@ and kind as lowering does (`slot_register`), never by number alone. A stack tupl
 (`k` 2) is a tuple value.
 
 `mem.load` and `mem.store` keep a native value type on both sides of a typed
-address (`*int`, `*Box`, and so on). The verifier checks operand counts, matching
+address (`&int`, `&Box`, and so on). The verifier checks operand counts, matching
 address/value/result types, result numbers and absence of unused metadata; runtime
 pseudo-types and nested address types are rejected. Lowering selects the existing
 native LLVM type (`None` payloads use a null pointer). Variable and parameter slots,
@@ -1046,9 +1046,9 @@ omitted, and one that its operation's row does not name is written by its letter
 space or would read as a field.
 
 Types are the compiler's canonical strings. Most are Python's (`int`, `list[float]`,
-`opt[int]`); `*X` is an eight-byte slot that holds an `X`, so `mem.load(*int %s.3)` reads the
-slot at `%s.3` and `list.load` returns a list item's slot; `%ptr`, `%byte`, `%i32` and `%slot`
-are machine types with no Python meaning.
+`opt[int]`); `&X` is the address of storage that holds an `X`, so `mem.load(&int %s.3)` reads
+the slot at `%s.3`, and `*X` is an eight-byte word that holds an `X`, as `list.load` returns a
+list item; `%ptr`, `%byte`, `%i32` and `%slot` are machine types with no Python meaning.
 
 A text holds functions alone, or a module: its declarations between `module {` and `}`, then
 its functions, each written as it is alone. `print` writes a typed-after snapshot as a module,
@@ -1146,9 +1146,8 @@ value number that an operand reads. It proves no dominance, typing or lowering p
 Typed instruction coverage is complete for the LLVM backend. Further backend neutrality
 needs shared compiler/runtime layout definitions and a clearer separation of frontend
 elaboration from machine contracts. Operands still read values through the views of
-`TYPE_VIEWS`: precise result types for runtime calls and empty containers, separate address
-and packed-slot types, and conversion ops for the views that narrow would leave each value one
-type, as MLIR's are. WebAssembly GC, more general check elimination and a
+`TYPE_VIEWS`: precise result types for runtime calls, packed slots and empty containers, and
+conversion ops for the views that narrow would leave each value one type, as MLIR's are. WebAssembly GC, more general check elimination and a
 Python-object representation backend are design possibilities, not supported modes.
 
 CPython extension modules **are supported** through `pystachy ext` and boundary wrappers.

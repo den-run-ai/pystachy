@@ -740,7 +740,7 @@ def yield_snapshot(self, value: Val, identity: str) -> Val:
     # slot now; its nullable box names exactly this result, as a scalar call's.
     if identity != "":
         value.idslot = self.alloca("dyn", "")
-        self.mem_store(Val(value.idslot, "*dyn"), Val(identity, "dyn"))
+        self.mem_store(Val(value.idslot, "&dyn"), Val(identity, "dyn"))
         value.idheld = identity
         value.idexact = True
         value.idcounter = self.alloca("int", "")

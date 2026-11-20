@@ -946,7 +946,7 @@ def list_receiver_error(t: str) -> str:
             return "native list operation needs a concrete list receiver"
     if depth != 0:
         return "native list operation needs a concrete list receiver"
-    if element == BIG or element.startswith("%") or element.startswith("*") or element == "#":
+    if element == BIG or element.startswith("%") or element.startswith("*") or element.startswith("&") or element == "#":
         return "native list operation needs a semantic item type, not a machine representation"
     return ""
 

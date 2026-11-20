@@ -75,7 +75,7 @@ entry:
 
 function @a_type_around_a_variable(n: int) -> int {
 entry:
-  ; expected-error {{mem.load operand 0 needs *$T, $T a native value type}}
+  ; expected-error {{mem.load operand 0 needs &$T, $T a native value type}}
   %t1 = mem.load(int %a0) : int
   ret(int %t1)
 }
@@ -199,13 +199,13 @@ entry:
 }
 
 ; ---- a value's one type: an operand reads its value at the type its definition gives it, or by
-; a view of specs.TYPE_VIEWS; a *T is an address or a packed slot, as its definition makes it
+; a view of specs.TYPE_VIEWS; an address &T and a packed slot *T are never read as each other
 
 function @a_value_read_at_another_type(n: int) -> None {
   %y.2 = slot name=y : float
 entry:
   ; expected-error {{mem.store operand 1 reads %a0 as float, but it is int}}
-  mem.store(*float %y.2, float %a0)
+  mem.store(&float %y.2, float %a0)
   ret.none
 }
 
@@ -228,7 +228,7 @@ function @a_packed_slot_read_as_an_address(xs: list[int]) -> int {
 entry:
   %t1 ~%t2 ~%t3 ~%t4 = list.load(list[int] %a0, int 0) : *int
   ; expected-error {{mem.load operand 0 reads %t1, a packed slot, as an address}}
-  %t5 = mem.load(*int %t1) : int
+  %t5 = mem.load(&int %t1) : int
   ret(int %t5)
 }
 
@@ -236,7 +236,7 @@ function @machine_bits_read_at_two_types(n: int) -> opt[int] {
   %s.1 = slot name=s : str
 entry:
   %t2 = rt entry=box (*T %a0) : %ptr
-  mem.store(*str %s.1, str %t2)
+  mem.store(&str %s.1, str %t2)
   ; expected-error {{ret operand 0 reads %t2 as opt[int], where mem.store operand 1 reads it as str}}
   ret(opt[int] %t2)
 }
@@ -249,7 +249,7 @@ entry:
   %t4 ~%t5 ~%t6 ~%t7 = list.load(list[int] %a0, int 0) : *int
   %t8 = num.cmp < (int %t4, int 10) : bool
   %t9 = rt entry=list.new (int 3) : list[T]
-  mem.store(*list[int] %ys.3, list[int] %t9)
+  mem.store(&list[int] %ys.3, list[int] %t9)
   %t10 = rt entry=box (*T %t4) : %ptr
   %t11 = ptr.cmp == (opt[int] %t10, None null) : bool
   cbr(bool %t8) -> L12, L13

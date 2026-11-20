@@ -18,7 +18,7 @@ from src.pystachy_compiler.syntax import Node
 
 def memory_op(op, t="int", address="%x.1"):
     i = Ins(op, t if op == "mem.load" else "", "")
-    i.a = [Val(address, "*" + t)]
+    i.a = [Val(address, "&" + t)]
     if op == "mem.store":
         i.a.append(Val("%a0", t))
     i.r = [1] if op == "mem.load" else []
@@ -52,7 +52,7 @@ class TypedStorageTests(unittest.TestCase):
                     self.assertEqual(g.nums(i), 1 if op == "mem.load" else 0)
 
     def test_rejects_untyped_addresses_and_runtime_pseudo_types(self):
-        for t in ("", "int", "*", "**int", "*%slot", "*%ptr", "*#", "*T", "*K", "*V", "*S"):
+        for t in ("", "int", "*int", "&", "&&int", "&%slot", "&%ptr", "&#", "&T", "&K", "&V", "&S"):
             for op in ("mem.load", "mem.store"):
                 with self.subTest(type=t, op=op):
                     i = memory_op(op)
@@ -72,7 +72,7 @@ class TypedStorageTests(unittest.TestCase):
 
     def test_rejects_operand_result_and_metadata_mutations(self):
         for op in ("mem.load", "mem.store"):
-            for operands in ([], [Val("%a0", "*int")] * 3):
+            for operands in ([], [Val("%a0", "&int")] * 3):
                 i = memory_op(op)
                 i.a = operands
                 self.assert_bad(i)
@@ -110,7 +110,7 @@ class TypedStorageTests(unittest.TestCase):
                 for address in ("%x.1", "@g.x", "%a1"):
                     with self.subTest(store=typed_store, load=typed_load, address=address):
                         g = Gen()
-                        a = Val(address, "*int")
+                        a = Val(address, "&int")
                         if typed_store:
                             g.mem_store(a, Val("%a0", "int"))
                         else:
@@ -127,7 +127,7 @@ class TypedStorageTests(unittest.TestCase):
         # Its native call must stop heap-value reuse, as tuple slice/concat do.
         def after_widening(address):
             g = Gen()
-            location = Val(address, "*int")
+            location = Val(address, "&int")
             g.mem_store(location, Val("%a2", "int"))
             g.rt("pys_vtuple_box", "ptr", ["ptr %a0"])
             value = g.mem_load(location).v
@@ -147,12 +147,12 @@ class TypedStorageTests(unittest.TestCase):
             for address, blocked in (("%a2", True), ("%other.2", False), ("@g.other", False)):
                 with self.subTest(typed=typed, address=address):
                     g = Gen()
-                    g.mem_store(Val("%a1", "*int"), Val("%a0", "int"))
+                    g.mem_store(Val("%a1", "&int"), Val("%a0", "int"))
                     if typed:
-                        g.mem_store(Val(address, "*int"), Val("99", "int"))
+                        g.mem_store(Val(address, "&int"), Val("99", "int"))
                     else:
                         g.mstore("int", "99", address)
-                    v = g.mem_load(Val("%a1", "*int"))
+                    v = g.mem_load(Val("%a1", "&int"))
                     g.fn.n = g.n
                     vs = Values(g.fn, {"entry": []})
                     self.assertEqual(g.canon(vs, v.v), v.v if blocked else "%a0")
@@ -160,9 +160,9 @@ class TypedStorageTests(unittest.TestCase):
     def test_calls_invalidate_global_and_heap_reads_but_preserve_local_values(self):
         for address, blocked in (("%x.1", False), ("@g.x", True), ("%a1", True)):
             g = Gen()
-            g.mem_store(Val(address, "*int"), Val("%a0", "int"))
+            g.mem_store(Val(address, "&int"), Val("%a0", "int"))
             g.add(Ins("call", "None", "@unknown"))
-            v = g.mem_load(Val(address, "*int"))
+            v = g.mem_load(Val(address, "&int"))
             g.fn.n = g.n
             self.assertEqual(g.canon(Values(g.fn, {"entry": []}), v.v), v.v if blocked else "%a0")
 

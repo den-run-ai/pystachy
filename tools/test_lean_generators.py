@@ -125,8 +125,8 @@ class GeneratorTests(unittest.TestCase):
         obj = block["operations"][at]["operands"][0]["value"]
         total = snapshot["class_layouts"]["Tally"]["fields"].index("total")
         block["operations"][at + 1:at + 1] = [
-            dict(op("field.addr", "*int", results=[900], operands=[(obj, "Tally")]), immediate=total),
-            op("mem.load", "int", results=[901], operands=[("%t900", "*int")])]
+            dict(op("field.addr", "&int", results=[900], operands=[(obj, "Tally")]), immediate=total),
+            op("mem.load", "int", results=[901], operands=[("%t900", "&int")])]
         result = self.construction(snapshot)
         self.assertEqual(result["status"], "rejected", result)
 

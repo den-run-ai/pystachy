@@ -189,7 +189,7 @@ def memory_types(snapshot):
                 for position, operand in enumerate(op["operands"]):
                     if position == 0 and direct_access(op):
                         key = memory_key(context, producers, operand["value"])
-                        if key is not None and operand["type"].startswith("*") and family(operand["type"][1:]):
+                        if key is not None and operand["type"].startswith("&") and family(operand["type"][1:]):
                             views.setdefault(key, set()).add(container(operand["type"][1:]))
                     elif operand["value"].startswith("@"):
                         escaped.add(("global", operand["value"]))
@@ -377,7 +377,7 @@ def normalize(snapshot, fn, memory=None, declared=None):
         for op in block["operations"]:
             # (a private slot's family by what its accesses view it as)
             if direct_access(op) and op["operands"] and op["operands"][0]["value"] in private \
-                    and op["operands"][0]["type"].startswith("*") and family(op["operands"][0]["type"][1:]) is not None:
+                    and op["operands"][0]["type"].startswith("&") and family(op["operands"][0]["type"][1:]) is not None:
                 kinds.setdefault(op["operands"][0]["value"], family(op["operands"][0]["type"][1:]))
     # (each value's static container types: its own, its uses' views, the memory it is stored in, the
     # parameter it is passed for, the result it is returned as and an empty one's resolved type hole;
@@ -399,7 +399,7 @@ def normalize(snapshot, fn, memory=None, declared=None):
                 note(a["value"], a["type"])
                 if op["op"] == "call" and op["text"] in declared and position < len(declared[op["text"]][0]):
                     note(a["value"], declared[op["text"]][0][position])
-                if op["op"] in ("mem.store", "mach.store") and position == 1 and args[0]["type"].startswith("*"):
+                if op["op"] in ("mem.store", "mach.store") and position == 1 and args[0]["type"].startswith("&"):
                     note(a["value"], args[0]["type"][1:])
                 if op["op"] == "ret":
                     note(a["value"], fn.get("return_representation") or "")
@@ -664,7 +664,7 @@ def normalize(snapshot, fn, memory=None, declared=None):
             for suffix in reversed(suffixes(result)):
                 chain = made(result + suffix, None if held is None else held.get(suffix), chain)
             return chain
-        if kind in ("mem.load", "mach.load") and args and args[0]["type"].startswith("*"):
+        if kind in ("mem.load", "mach.load") and args and args[0]["type"].startswith("&"):
             return typed(args[0]["type"][1:])  # (the memory's type, whatever this load views it as)
         if kind == "call" and op["text"] in declared:
             return typed(declared[op["text"]][1], returned=True)
@@ -726,7 +726,7 @@ def normalize(snapshot, fn, memory=None, declared=None):
                     if kind == "ret":
                         views.append(fn.get("return_representation") or "")
                         required.update(open_results(fn.get("return_representation") or ""))
-                    if kind in ("mem.store", "mach.store") and position == 1 and args[0]["type"].startswith("*"):
+                    if kind in ("mem.store", "mach.store") and position == 1 and args[0]["type"].startswith("&"):
                         views.append(args[0]["type"][1:])
                     key = memory_key(context, producers, args[0]["value"]) if kind in ("mem.store", "mach.store") \
                         and position == 1 and direct_access(op) else None
@@ -902,7 +902,7 @@ def relevant(fn, declared, stored=frozenset()):
                 return True
             if any(restricts(a["type"]) for a in op["operands"]):
                 return True
-            if op["op"] in ("mem.store", "mach.store") and op["operands"] and op["operands"][0]["type"].startswith("*") \
+            if op["op"] in ("mem.store", "mach.store") and op["operands"] and op["operands"][0]["type"].startswith("&") \
                     and restricts(op["operands"][0]["type"][1:]):
                 return True
             if op["op"] == "call" and any(restricts(t) for t in declared.get(op["text"], ())):

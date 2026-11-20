@@ -441,7 +441,7 @@ def resolved_container(declared, used):
     dict[?,?]: a container of that kind) or a local first assigned None (specs.NONEVAR: an
     optional object or optional union: a box pointer or null). Each lowers to a pointer, and
     none is a dyn value."""
-    if not used.startswith("*") or "?" in used:
+    if not used.startswith("&") or "?" in used:
         return False
     resolved = used[1:]
     if declared == "opt[None]":
@@ -465,7 +465,7 @@ def short(typ):
     constant table's tuple type, by a name made from its digest, the same for each use of it."""
     if len(typ) <= 256:
         return typ
-    pointer = "*" if typ.startswith("*") else ""
+    pointer = typ[0] if typ.startswith(("*", "&")) else ""
     return f"{pointer}long.{hashlib.sha256(typ[len(pointer):].encode()).hexdigest()[:24]}"
 
 
@@ -555,7 +555,7 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
     require(isinstance(parameters, list) and len(parameters) <= 128, "invalid parameters")
     # Registers defined on entry: parameters of any representation, the identity boxes that
     # accompany numeric parameters (%aidN) and the identity-return address (%idret).
-    definitions = {"%idret": ("*dyn", None, -1)}
+    definitions = {"%idret": ("&dyn", None, -1)}
     identity_arguments = set()
     for index, parameter in enumerate(parameters):
         require(isinstance(parameter, dict), "invalid parameter")
@@ -715,10 +715,10 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
     def check_operand(operand, label, offset, predecessor=None):
         value = operand["value"]
         if value in slots:
-            require(operand["type"] in {"*" + slots[value], "%ptr", "%addr"}
+            require(operand["type"] in {"&" + slots[value], "%ptr", "%addr"}
                     or resolved_container(slots[value], operand["type"]), "slot address has wrong type")
         elif value == "%idret":
-            require(operand["type"] == "*dyn", "identity-return address has wrong type")
+            require(operand["type"] == "&dyn", "identity-return address has wrong type")
         elif value in identity_arguments:
             require(operand["type"] == "dyn", "identity argument has wrong type")
         elif value.startswith("%"):

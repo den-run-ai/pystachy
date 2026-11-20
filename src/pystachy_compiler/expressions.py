@@ -3665,8 +3665,8 @@ def gen_numeric_phi(self, result: Val, values: list[Val], edges: list[str]) -> V
     if len(values) == 2 and values[0].idslot != "" and values[0].idslot == values[1].idslot and values[0].idgen == values[1].idgen and self.idstores.get(values[0].idslot, 0) == values[0].idgen:
         # x = x if flag else x keeps the binding's slot without a selected pointer.
         result.identity(values[0])
-        result.idheld = self.mem_load(Val(result.idslot, "*dyn")).v
-        result.idversion = self.mem_load(Val(result.idcounter, "*int")).v if result.idcounter != "" else ""
+        result.idheld = self.mem_load(Val(result.idslot, "&dyn")).v
+        result.idversion = self.mem_load(Val(result.idcounter, "&int")).v if result.idcounter != "" else ""
         return result
     selected: list[Val] = []
     here = self.blk
@@ -3690,17 +3690,17 @@ def gen_numeric_phi(self, result: Val, values: list[Val], edges: list[str]) -> V
                 v.idheld = box
                 v.idcounter = self.alloca("int", "")
                 v.idversion = "0"
-                self.mem_store(Val(v.idslot, "*dyn"), Val(box, "dyn"))
-                self.mem_store(Val(v.idcounter, "*int"), Val("0", "int"))
+                self.mem_store(Val(v.idslot, "&dyn"), Val(box, "dyn"))
+                self.mem_store(Val(v.idcounter, "&int"), Val("0", "int"))
                 block.code.append(last)
                 break
         selected.append(v)
     self.blk = here
     self.cur = cur
     self.term = term
-    slot = Ins("phi", "*dyn", "")
+    slot = Ins("phi", "&dyn", "")
     held = Ins("phi", "dyn", "")
-    counter = Ins("phi", "*int", "")
+    counter = Ins("phi", "&int", "")
     version = Ins("phi", "int", "")
     for j in range(len(selected)):
         self.incoming(slot, selected[j].idslot, edges[j])
@@ -4896,14 +4896,14 @@ def gen_concrete_cmp(self, op: str, a: Val, b: Val, stage: int = 0, decl: list[b
             # scalar fields. Reuse exact number or string comparison of the payloads.
             ak = self.enum_builtin(a.t)
             bk = self.enum_builtin(b.t)
-            x = self.mem_load(Val(self.fgep(a, self.classes[a.t].fpos[" enum " + ak]), "*" + ak)) if ak != "" else a
-            y = self.mem_load(Val(self.fgep(b, self.classes[b.t].fpos[" enum " + bk]), "*" + bk)) if bk != "" else b
+            x = self.mem_load(Val(self.fgep(a, self.classes[a.t].fpos[" enum " + ak]), "&" + ak)) if ak != "" else a
+            y = self.mem_load(Val(self.fgep(b, self.classes[b.t].fpos[" enum " + bk]), "&" + bk)) if bk != "" else b
             return self.cmp2(op, x, y)
         if lhs.t == COMPLEXC and self.enum_intlike(rhs.t) and op in ["==", "!="]:
             # An enum's own comparison may decline before complex accepts its int
             # payload. These concrete pairs exclude None before reading that field;
             # the library method cannot use isinstance(enum_member, int) here.
-            value = self.mem_load(Val(self.fgep(rhs, self.classes[rhs.t].fpos[" enum int"]), "*int"))
+            value = self.mem_load(Val(self.fgep(rhs, self.classes[rhs.t].fpos[" enum int"]), "&int"))
             return self.complex_cmp(op, lhs, value)
         if self.cmp_method(lhs.t, m, rhs.t) == "":
             why = f"{m}() of {shown(lhs.t)} cannot compare an operand of type {typestr(rhs.t)}"
@@ -6081,7 +6081,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             ev = b if a.t == COMPLEXC else a
             cx = a if a.t == COMPLEXC else b
             if ev.v in self.nn:
-                return self.complex_cmp(op, cx, self.mem_load(Val(self.fgep(ev, self.classes[o].fpos[" enum int"]), "*int")))
+                return self.complex_cmp(op, cx, self.mem_load(Val(self.fgep(ev, self.classes[o].fpos[" enum int"]), "&int")))
             lnull = self.label()
             lval = self.label()
             lend = self.label()
@@ -6091,7 +6091,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             self.incoming(ph, self.ptr_cmp(op, cx, Val('null', 'None')).v, self.cur)
             self.br(lend)
             self.place(lval)
-            ecr = self.complex_cmp(op, cx, self.mem_load(Val(self.fgep(ev, self.classes[o].fpos[" enum int"]), "*int")))
+            ecr = self.complex_cmp(op, cx, self.mem_load(Val(self.fgep(ev, self.classes[o].fpos[" enum int"]), "&int")))
             self.incoming(ph, ecr.v, self.cur)
             self.br(lend)
             self.place(lend)

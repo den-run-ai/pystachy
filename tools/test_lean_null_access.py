@@ -139,7 +139,7 @@ class NullAccessTests(unittest.TestCase):
         fn, removed, tested = self.field_case()
         address = dict(tested, results=[9001], immediate=tested["immediate"],
                        operands=[{"value": tested["operands"][0]["value"], "type": "Inner"}])
-        removed = self.insert(fn, removed, "L12", 0, [address, op("mem.store", [("%t9001", "*Inner"),
+        removed = self.insert(fn, removed, "L12", 0, [address, op("mem.store", [("%t9001", "&Inner"),
                                                                                 ("null", "Inner")])])
         return fn, removed
 
@@ -187,8 +187,8 @@ class NullAccessTests(unittest.TestCase):
     def test_a_write_of_another_field_of_the_class_keeps_the_proof(self):
         fn, removed, tested = self.field_case()
         other_index = 1 - tested["immediate"]
-        address = dict(tested, results=[9001], type="*int", immediate=other_index)
-        removed = self.insert(fn, removed, "L12", 0, [address, op("mem.store", [("%t9001", "*int"), ("7", "int")])])
+        address = dict(tested, results=[9001], type="&int", immediate=other_index)
+        removed = self.insert(fn, removed, "L12", 0, [address, op("mem.store", [("%t9001", "&int"), ("7", "int")])])
         self.assert_proved(fn, removed)
 
     def test_calls_that_may_write_objects_refute(self):
@@ -202,7 +202,7 @@ class NullAccessTests(unittest.TestCase):
 
     def test_raw_machine_and_unknown_stores_refute(self):
         for store in (op("mach.store", [("%t9000", "%ptr"), ("0", "int")], text=""),
-                      op("mem.store", [("%t9000", "*Inner"), ("null", "Inner")])):
+                      op("mem.store", [("%t9000", "&Inner"), ("null", "Inner")])):
             with self.subTest(store=store["op"]):
                 fn, removed, _ = self.field_case()
                 pointer = op("rt", [("4", "int")], [9000], text="box", typ="%ptr")
@@ -214,8 +214,8 @@ class NullAccessTests(unittest.TestCase):
         # store to it is a store to the function's own stack memory)
         fn, removed, _ = self.field_case()
         fn["slots"].append(op("slot", results=[9010], typ="dyn", text="h"))
-        removed = self.insert(fn, removed, "L12", 0, [op("slot.pack", [("%h.9010", "*dyn")], [9011], typ="%slot"),
-                                                      op("mem.store", [("%h.9010", "*dyn"), ("null", "dyn")])])
+        removed = self.insert(fn, removed, "L12", 0, [op("slot.pack", [("%h.9010", "&dyn")], [9011], typ="%slot"),
+                                                      op("mem.store", [("%h.9010", "&dyn"), ("null", "dyn")])])
         self.assert_proved(fn, removed)
 
     def test_reversing_the_null_test_refutes(self):
@@ -233,7 +233,7 @@ class NullAccessTests(unittest.TestCase):
     def test_an_escaped_parameter_slot_refutes(self):
         fn, removed, _ = self.field_case()
         slot = next(op_["operands"][0]["value"] for op_ in fn["blocks"][0]["operations"] if op_["op"] == "mem.store")
-        removed = self.insert(fn, removed, "L12", 0, [op("call", [(slot, "*Holder")], text="@f.unknown_elsewhere",
+        removed = self.insert(fn, removed, "L12", 0, [op("call", [(slot, "&Holder")], text="@f.unknown_elsewhere",
                                                          typ="None")])
         self.assert_refuted(fn, removed)
 
@@ -243,11 +243,11 @@ class NullAccessTests(unittest.TestCase):
 
     def test_global_writes_between_refute(self):
         writes = (
-            [op("mem.store", [("@g.current", "*Inner"), ("null", "Inner")])],
+            [op("mem.store", [("@g.current", "&Inner"), ("null", "Inner")])],
             [op("init", text="collections")],
             [op("call", text="@f.unknown_elsewhere", typ="None")],
             [op("rt", [("4", "int")], [9000], text="box", typ="%ptr"),
-             op("mem.store", [("%t9000", "*Inner"), ("null", "Inner")])],
+             op("mem.store", [("%t9000", "&Inner"), ("null", "Inner")])],
         )
         for operations in writes:
             with self.subTest(write=operations[-1]["op"]):
@@ -273,7 +273,7 @@ class NullAccessTests(unittest.TestCase):
 
     def test_a_store_to_another_global_keeps_the_proof(self):
         fn, removed = self.global_case()
-        removed = self.insert(fn, removed, "L10", 0, [op("mem.store", [("@g.log", "*list[str]"), ("null", "list[str]")])])
+        removed = self.insert(fn, removed, "L10", 0, [op("mem.store", [("@g.log", "&list[str]"), ("null", "list[str]")])])
         self.assert_proved(fn, removed)
 
     def test_closure_cell_writes_between_reads_refute(self):
@@ -288,7 +288,7 @@ class NullAccessTests(unittest.TestCase):
                 reload = self.block(fn, label)["operations"][0]
                 self.assertEqual(reload["op"], "mem.load")
                 cell = reload["operands"][0]["value"]
-                inserted = {"store": op("mem.store", [(cell, "*Inner"), ("null", "Inner")]),
+                inserted = {"store": op("mem.store", [(cell, "&Inner"), ("null", "Inner")]),
                             "icall": op("icall", typ="None"),
                             "call": op("call", text="@f.unknown_elsewhere", typ="None")}[write]
                 removed = self.insert(fn, removed, label, 0, [inserted])
@@ -308,9 +308,9 @@ class NullAccessTests(unittest.TestCase):
                 fn = copy.deepcopy(record["before"])
                 removed = guards.removed_checks(record)
                 inserted = {
-                    "cell": [op("mem.store", [(f"%t{cell}", "*Holder"), ("null", "Holder")])],
+                    "cell": [op("mem.store", [(f"%t{cell}", "&Holder"), ("null", "Holder")])],
                     "environment": [op("mach.load", [(f"%t{environment_slot}", "%ptr")], [9020], typ="%ptr"),
-                                    op("mem.store", [("%t9020", "*Holder"), ("null", "Holder")])],
+                                    op("mem.store", [("%t9020", "&Holder"), ("null", "Holder")])],
                     "unknown": [op("rt", [("4", "int")], [9020], text="box", typ="%ptr"),
                                 op("mach.store", [("%t9020", "%ptr"), ("0", "int")])],
                     "icall": [op("icall", typ="None")],
@@ -319,8 +319,8 @@ class NullAccessTests(unittest.TestCase):
                 self.assert_refuted(fn, removed)
         fn = copy.deepcopy(record["before"])
         removed = guards.removed_checks(record)
-        address = op("field.addr", [("%a0", "Inner")], [9030], typ="*int", immediate=0)
-        removed = self.insert(fn, removed, "L15", 0, [address, op("mem.store", [("%t9030", "*int"), ("7", "int")])])
+        address = op("field.addr", [("%a0", "Inner")], [9030], typ="&int", immediate=0)
+        removed = self.insert(fn, removed, "L15", 0, [address, op("mem.store", [("%t9030", "&int"), ("7", "int")])])
         self.assert_proved(fn, removed)
 
     @staticmethod
@@ -333,16 +333,16 @@ class NullAccessTests(unittest.TestCase):
         # (@f.null_idret stores null through %idret, the buffer its caller passes last;
         # @f.forward_idret passes its own on. The pass input calls one of them before the reload)
         self.snap["functions"] += [
-            self.function_record("@f.null_idret", [op("mem.store", [("%idret", "*dyn"), ("null", "dyn")])]),
-            self.function_record("@f.forward_idret", [op("call", [("1", "int"), ("%idret", "*dyn")], [900],
+            self.function_record("@f.null_idret", [op("mem.store", [("%idret", "&dyn"), ("null", "dyn")])]),
+            self.function_record("@f.forward_idret", [op("call", [("1", "int"), ("%idret", "&dyn")], [900],
                                                          text="@f.null_idret", typ="int")])]
         if snapshot_call is not None:
             # (a call elsewhere in the snapshot that passes forward_idret something else)
             self.snap["functions"].append(self.function_record("@f.elsewhere", [
-                op("call", [("1", "int"), (snapshot_call, "*dyn")], [901], text="@f.forward_idret", typ="int")]))
+                op("call", [("1", "int"), (snapshot_call, "&dyn")], [901], text="@f.forward_idret", typ="int")]))
         fn, removed, tested = self.field_case()
         fn["slots"].append(op("slot", results=[9040], typ="dyn", text="h"))
-        call = op("call", [("1", "int"), (argument, "*dyn")], [9041], text=callee, typ="int")
+        call = op("call", [("1", "int"), (argument, "&dyn")], [9041], text=callee, typ="int")
         prefix = [dict(tested, results=[9042])] if argument == "%t9042" else []
         removed = self.insert(fn, removed, "L12", 0, prefix + [call])
         self.effects = summaries(self.snap)

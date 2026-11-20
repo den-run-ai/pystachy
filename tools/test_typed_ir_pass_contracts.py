@@ -30,7 +30,7 @@ def empty_function():
 
 def append_global_write(fn):
     op = Ins("mem.store", "", "")
-    op.a = [Val("@probe", "*int"), Val("1", "int")]
+    op.a = [Val("@probe", "&int"), Val("1", "int")]
     fn.blocks[0].code.insert(0, op)
 
 

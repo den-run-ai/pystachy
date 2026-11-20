@@ -306,32 +306,32 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
                 incoming.idfrom = self.rt("pys_dyn_int_box" if t == "int" else "pys_dyn_float_box", "ptr", [f"{'i64' if t == 'int' else 'double'} %a{i}", f"ptr %aid{i}"])
             elif identity_abi(f) and t == BIG:
                 slot = self.alloca("dyn", "")
-                self.mem_store(Val(slot, "*dyn"), Val(f"%aid{i}", "dyn"))
+                self.mem_store(Val(slot, "&dyn"), Val(f"%aid{i}", "dyn"))
                 incoming.idslot = slot
                 incoming.idheld = f"%aid{i}"
                 incoming.idexact = True
             elif identity_abi(f) and numeric_identity(t):
                 incoming.idfrom = f"%aid{i}"
-            self.mem_store(Val(self.alloca("dyn", f.params[i]), "*dyn"), self.dyn_box(incoming))
+            self.mem_store(Val(self.alloca("dyn", f.params[i]), "&dyn"), self.dyn_box(incoming))
         elif f.cmprebind != "" and i == 1:
-            self.mem_store(Val(self.alloca(f.cmprebind, f.params[i]), "*" + f.cmprebind), self.coerce(Val(f"%a{i}", t), f.cmprebind))
+            self.mem_store(Val(self.alloca(f.cmprebind, f.params[i]), "&" + f.cmprebind), self.coerce(Val(f"%a{i}", t), f.cmprebind))
         elif t == NONEVAR:
             # A provisional argument is null-only until its producer's inference restarts.
             # The parameter's later stores can independently reveal its own payload type.
             pt = self.hints.get(f"none:{self.fnkey(f)}|{f.params[i]}", t)
-            self.mem_store(Val(self.alloca(pt, f.params[i]), "*" + pt), self.coerce(Val("null", "None"), pt))
+            self.mem_store(Val(self.alloca(pt, f.params[i]), "&" + pt), self.coerce(Val("null", "None"), pt))
         else:
-            self.mem_store(Val(self.alloca(t, f.params[i]), "*" + t), Val(f"%a{i}", t))
+            self.mem_store(Val(self.alloca(t, f.params[i]), "&" + t), Val(f"%a{i}", t))
         if identity_abi(f) and numeric_identity(t) and f.params[i] in self.idbox:
-            self.mem_store(Val(self.idbox[f.params[i]], "*dyn"), Val(f"%aid{i}", "dyn"))
+            self.mem_store(Val(self.idbox[f.params[i]], "&dyn"), Val(f"%aid{i}", "dyn"))
         if f.params[i] in self.lflag:
-            self.mem_store(Val(self.lflag[f.params[i]], "*bool"), Val("true", "bool"))  # (a parameter that del unbinds)
+            self.mem_store(Val(self.lflag[f.params[i]], "&bool"), Val("true", "bool"))  # (a parameter that del unbinds)
     if f.clo >= 0:
         # a closure: the variables it takes are the cells its env holds
         c = self.closures[f.clo]
         for cv in c.nlw:
             self.nlw[cv] = True
-        env = self.mem_load(Val(self.lreg['.env'], "*env")).v
+        env = self.mem_load(Val(self.lreg['.env'], "&env")).v
         for i in range(len(c.caps)):
             if c.ctypes[i] == "None":
                 self.nonevars[c.caps[i]] = 0  # (a parameter whose argument is None: it reads as None)
@@ -353,11 +353,11 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         self.global_var(done, "bool")
         l1 = self.label()
         l2 = self.label()
-        self.cbr(self.mem_load(Val(done, "*bool")).v, l1, l2)
+        self.cbr(self.mem_load(Val(done, "&bool")).v, l1, l2)
         self.place(l1)
         self.ret_(Val("null", "None"))
         self.place(l2)
-        self.mem_store(Val(done, "*bool"), Val("true", "bool"))
+        self.mem_store(Val(done, "&bool"), Val("true", "bool"))
         # A retry after a failed initialization creates a fresh module in CPython. Its import
         # aliases start unbound too, even if the failed attempt had reached their imports.
         flags: dict[str, bool] = {}
@@ -370,7 +370,7 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             elif n.kind != "def" and n.kind != "lambda":
                 pending.extend(n.kids)
         for imported_name in flags:
-            self.mem_store(Val(self.imp_flag(imported_name, True), "*bool"), Val("false", "bool"))
+            self.mem_store(Val(self.imp_flag(imported_name, True), "&bool"), Val("false", "bool"))
     hm = ""
     mark = Val("", "")
     slot = ""
@@ -411,7 +411,7 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             self.ret_(Val("null", "None"))
         self.handler = ""
         e = self.landing(hm, slot, mark)
-        self.mem_store(Val(f"{f.ll}.done", "*bool"), Val("false", "bool"))
+        self.mem_store(Val(f"{f.ll}.done", "&bool"), Val("false", "bool"))
         self.throw(e)
     if not self.term and f.ret == "dyn":
         self.ret_(Val(self.rtdata("pys_dyn_none_box"), "dyn"))  # (None, as a dynamic value: dynamic.py)

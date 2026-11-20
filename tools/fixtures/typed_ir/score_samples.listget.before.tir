@@ -4,9 +4,9 @@ function @f.score_samples(samples: list[float]) -> float effects="R rL" {
   %h.5 = slot : int
   %sample.16 = slot name=sample : float
 entry:
-  mem.store(*list[float] %samples.2, list[float] %a0)
-  mem.store(*float %score.3, float 0.0)
-  %t4 = mem.load(*list[float] %samples.2) : list[float]
+  mem.store(&list[float] %samples.2, list[float] %a0)
+  mem.store(&float %score.3, float 0.0)
+  %t4 = mem.load(&list[float] %samples.2) : list[float]
   mach.store(%ptr %h.5, int 0)
   %t6 = list.len(list[float] %t4) : int
   br -> L7
@@ -18,16 +18,16 @@ L7:
 L13:
   %t14 = rt entry=list.get (list[float] %t4, int %t10) : *float
   %t15 = slot.unpack(%slot %t14) : float
-  mem.store(*float %sample.16, float %t15)
-  %t17 = mem.load(*float %sample.16) : float
+  mem.store(&float %sample.16, float %t15)
+  %t17 = mem.load(&float %sample.16) : float
   %t18 = num.cmp > (float %t17, float 0.0) : bool
   cbr(bool %t18) -> L19, L20
 L19:
-  %t22 = mem.load(*float %score.3) : float
-  %t23 = mem.load(*float %sample.16) : float
+  %t22 = mem.load(&float %score.3) : float
+  %t23 = mem.load(&float %sample.16) : float
   %t24 = scalar.bin fmul (float %t23, float 0.5) : float
   %t25 = scalar.bin fadd (float %t22, float %t24) : float
-  mem.store(*float %score.3, float %t25)
+  mem.store(&float %score.3, float %t25)
   br -> L21
 L20:
   br -> L21
@@ -38,7 +38,7 @@ L8:
   mach.store(%ptr %h.5, int %t26)
   br -> L7
 L9:
-  %t27 = mem.load(*float %score.3) : float
+  %t27 = mem.load(&float %score.3) : float
   ret(float %t27)
 loop kind=seq mode="" head=L7 body=L13 step=L8 exit=L9 tests=[L13] indices=[%t10] counter=%h.5 stop=("" "") sequences=[(list[float] %t4)] nonnegative=false
 }

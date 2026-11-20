@@ -128,7 +128,7 @@ print(family_read(None), family_read(Box(1)), family_read(Box("text")))
 def store(address, value, typ):
     return {"op": "mem.store", "type": "", "text": "", "immediate": 0, "descriptor": "",
             "results": [], "targets": [],
-            "operands": [{"value": address, "type": "*" + typ}, {"value": value, "type": typ}]}
+            "operands": [{"value": address, "type": "&" + typ}, {"value": value, "type": typ}]}
 
 
 def instruction(op, typ="", text="", results=(), operands=(), targets=(), descriptor=""):
@@ -532,7 +532,7 @@ class ProvedCheckerTests(SnapshotFixture):
         block["operations"].insert(index, {
             "op": "mem.load", "type": "dyn", "text": "", "immediate": 0, "descriptor": "",
             "results": [9999], "targets": [],
-            "operands": [{"value": f"%value.box.{number}", "type": "*dyn"}]})
+            "operands": [{"value": f"%value.box.{number}", "type": "&dyn"}]})
         payload["operands"][0]["value"] = "%t9999"
         self.assertFalse(self.check(self.normalized(snapshot)))
 

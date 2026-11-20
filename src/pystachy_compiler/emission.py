@@ -228,13 +228,17 @@ def gen_put(self, i: Ins, k: int) -> None:
 
 
 def gen_mem_load(self, a: Val) -> Val:
-    # Read a native value through its typed address. LLVM alone selects its spelling.
+    # Read a native value through its typed address &T. LLVM alone selects its spelling.
+    if not a.t.startswith("&"):
+        fail(f"internal error: mem.load through {a.v} of type {a.t}, which is no address", 0)
     i = Ins("mem.load", a.t[1:], "")
     i.a = [a]
     self.put(i, 1)
     return Val(tmpname(i.r[0]), i.t)
 
 def gen_mem_store(self, a: Val, v: Val) -> None:
+    if not a.t.startswith("&"):
+        fail(f"internal error: mem.store through {a.v} of type {a.t}, which is no address", 0)
     i = Ins("mem.store", "", "")
     i.a = [a, v]
     self.add(i)
@@ -286,7 +290,7 @@ def gen_ret_(self, v: Val) -> None:
         # Fresh arithmetic needs no box until its caller observes identity. An existing
         # binding/constant keeps its box, including the defining module's constant pool.
         b = Val(v.idfrom, "dyn") if v.idfrom != "" else self.dyn_id_held(v) if v.idslot != "" else self.dyn_id_box(v) if v.lit or v.t not in ["int", "int+", "float"] else Val("null", "dyn")
-        self.mem_store(Val("%idret", "*dyn"), b)
+        self.mem_store(Val("%idret", "&dyn"), b)
     i = Ins("ret", "", "")
     if v.t != "None":
         i.a = [v]

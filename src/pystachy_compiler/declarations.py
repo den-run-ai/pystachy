@@ -3517,7 +3517,7 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
             # Exact comparison arms retain the actual operand's layout. A new
             # base-typed access cannot silently use the hidden prefix when a
             # descendant already has a different attribute at its own offset.
-            tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "*int"))
+            tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "&int"))
             for override_ci in overrides:
                 self.guard(self.num_cmp("==", tag, Val(str(override_ci.tag), "int")).v,
                            f"TypeError: comparison-created attribute '{name}' of {short(ci.name)} is shadowed by {short(override_ci.name)}; narrow to the concrete class")
@@ -3561,7 +3561,7 @@ def gen_fgep(self, o: Val, i: int) -> str:
     # remains in IFn.fa so native and machine memory operations have identical effects.
     ci = self.classes[o.t]
     t = ci.ftypes[ci.fields[i]] if i < len(ci.fields) else "dyn" if i in ci.fbox.values() else "bool"
-    op = Ins("field.addr", "*" + t, "")
+    op = Ins("field.addr", "&" + t, "")
     op.k = i
     op.a = [o]
     self.put(op, 1)
@@ -3583,26 +3583,26 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
             for sub in self.classes.values():
                 if sub.name != ci.name and self.derives(sub.name, ci.name) and name in sub.fdefault and self.default_home(sub, name) is not self.default_home(ci, name):
                     self.err(f"reading __slots__ through exception base {short(ci.name)} is not supported when a subclass overrides it; read it through the concrete class")
-        r = self.mem_load(Val(p.v, "*" + p.t)).v
+        r = self.mem_load(Val(p.v, "&" + p.t)).v
         if ci.tag != 0:
-            tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "*int")).v
+            tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "&int")).v
             for sub in self.classes.values():
                 if sub.tag != 0 and sub.name != ci.name and self.derives(sub.name, ci.name) and name in sub.fdefault:
                     if sub.ftypes[name] != p.t:
                         self.err(f"reading __slots__ through {short(ci.name)} is not supported when subclasses use different declaration types; read it through the concrete class")
                     self.class_default(sub, name)
-                    dv = self.mem_load(Val(sub.fglob[name], "*" + p.t))
+                    dv = self.mem_load(Val(sub.fglob[name], "&" + p.t))
                     r = self.select(self.num_cmp("==", Val(tag, "int"), Val(str(sub.tag), "int")).v, dv, Val(r, p.t))
         return Val(r, p.t)
     if o.t + "." + name in self.cvars:
         # a class variable: the object's own value once it has assigned one, else the class's
-        own = self.mem_load(Val(self.fgep(o, ci.fflag[name]), "*bool")).v
-        fv = self.mem_load(Val(p.v, "*" + p.t))
+        own = self.mem_load(Val(self.fgep(o, ci.fflag[name]), "&bool")).v
+        fv = self.mem_load(Val(p.v, "&" + p.t))
         if ci.tag != 0:
             # Each concrete class may shadow its base's class attribute. All related
             # mutable defaults share the inherited instance-assignment flag, but their
             # fallback globals still belong to the classes that define those defaults.
-            tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "*int")).v
+            tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "&int")).v
             cv = fv
             cb = box
             assigned = own
@@ -3611,7 +3611,7 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
                     match = self.num_cmp('==', Val(tag, "int"), Val(str(sub.tag), "int")).v
                     if sub.name + "." + name in self.cvars or not is_const(sub.fdefault[name]) or box != "":
                         self.class_default(sub, name)
-                        dv = self.mem_load(Val(sub.fglob[name], "*" + p.t))
+                        dv = self.mem_load(Val(sub.fglob[name], "&" + p.t))
                     else:
                         dv = self.coerce(self.expr(sub.fdefault[name], p.t), p.t)
                     cv = Val(self.select(match, dv, cv), p.t)
@@ -3624,7 +3624,7 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
                 box = self.select(own, Val(box, "%ptr"), Val(cb, "%ptr"))
         else:
             self.class_default(ci, name)
-            r = self.select(own, fv, self.mem_load(Val(ci.fglob[name], "*" + p.t)))
+            r = self.select(own, fv, self.mem_load(Val(ci.fglob[name], "&" + p.t)))
             if is_opt(p.t) or is_union(p.t):
                 self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
             v = Val(r, p.t)
@@ -3637,9 +3637,9 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
         # an object of an exception class whose class variable shadows the field (exc_shadows)
         # reads that class's value until it assigns the field itself: found, as for a tagged
         # class's objects above, by the object's class, here the ExcClass it holds
-        own = self.mem_load(Val(self.fgep(o, ci.fflag[name]), "*bool")).v
-        fv = self.mem_load(Val(p.v, "*" + p.t))
-        cls = self.mem_load(Val(self.fgep(o, ci.fpos[" cls"]), "*str")).v
+        own = self.mem_load(Val(self.fgep(o, ci.fflag[name]), "&bool")).v
+        fv = self.mem_load(Val(p.v, "&" + p.t))
+        cls = self.mem_load(Val(self.fgep(o, ci.fpos[" cls"]), "&str")).v
         cv = fv
         cb = box
         assigned = own
@@ -3649,7 +3649,7 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
             self.xcls[x.name] = True  # (its ExcClass, which its objects hold)
             match = self.ptr_cmp('==', Val(cls, "str"), Val(f"@x.{x.name}", "str")).v
             self.class_default(x, name)
-            cv = Val(self.select(match, self.mem_load(Val(x.fglob[name], "*" + p.t)), cv), p.t)
+            cv = Val(self.select(match, self.mem_load(Val(x.fglob[name], "&" + p.t)), cv), p.t)
             if box != "":
                 cb = self.select(match, Val(x.fglob[name] + ".box", "%ptr"), Val(cb, "%ptr"))
             assigned = self.scalar('or', [Val(assigned, 'bool'), Val(match, 'bool')])
@@ -3660,7 +3660,7 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
     if name in ci.fflag and name not in ci.fsure:
         f = self.fgep(o, ci.fflag[name])
         if bad == "":
-            bad = self.scalar('xor', [Val(self.mem_load(Val(f, '*bool')).v, 'bool'), Val('true', 'bool')])
+            bad = self.scalar('xor', [Val(self.mem_load(Val(f, '&bool')).v, 'bool'), Val('true', 'bool')])
         subs = [x for x in self.classes.values() if x.base == o.t]
         if len(subs) > 0 and (ci.exc != "" or ci.tag != 0):
             # CPython's missing-attribute error names the concrete object's class.
@@ -3671,7 +3671,7 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
             if ci.exc != "":
                 c = self.rt("pys_exc_cls", "ptr", [f"ptr {o.v}"])
             else:
-                tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "*int")).v
+                tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "&int")).v
                 if not self.fieldnames:
                     # Positive tags are assigned before discovery and never reused; templates
                     # are untagged. Share one immutable table rather than a subclass-name select
@@ -3697,7 +3697,7 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
     if p.t == NONEVAR and not self.fieldcmp:
         return Val("null", "None")  # (a field that is always None, see none_field)
     if r == "":
-        r = self.mem_load(Val(p.v, "*" + p.t)).v
+        r = self.mem_load(Val(p.v, "&" + p.t)).v
     if is_opt(p.t) or is_union(p.t):
         self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
     v = Val(r, p.t)
@@ -3737,13 +3737,13 @@ def gen_setfield_store(self, o: Val, p: Val, name: str, v: Val) -> None:
     cv = self.coerce(v, p.t, what)
     self.join_at(was[0], was[1], was[2])
     self.identity_field(ci, p.t, True)  # (dynamic.py)
-    self.mem_store(Val(p.v, "*" + p.t), cv)
+    self.mem_store(Val(p.v, "&" + p.t), cv)
     if name in ci.fbox and (numeric_identity(p.t) or p.t == NONEVAR):
         box = self.fgep(o, ci.fbox[name])
         if len(self.fn.lazyflag) == 0 or not self.lazy_store(o, box, name):
             self.dyn_id_store(box, v, p.t)
     if name in ci.fflag:
-        self.mem_store(Val(self.fgep(o, ci.fflag[name]), "*bool"), Val("true", "bool"))
+        self.mem_store(Val(self.fgep(o, ci.fflag[name]), "&bool"), Val("true", "bool"))
 
 def gen_is_prop(self, t: str, name: str) -> bool:
     # is attribute name of objects of type t a property (of the class or its specialization's template)
