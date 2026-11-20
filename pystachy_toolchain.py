@@ -44,6 +44,24 @@ UBUNTU_PACKAGES = (
      "1ad04ff658929491f8bf30fcf6454e07b1815a2b04164f1894156e92c91ef895",
      "b2c829cec030a9bab4fd27b92303eb8491140ad91edf62d55d5b1f8f3d6ef100"),
 )
+# The archives that tools/llvm_toolchain.sh builds and the LLVM toolchain workflow publishes
+# (docs/llvm-toolchain.md), one for each machine: the tools the driver runs, needing only the C
+# and C++ libraries.
+MINIMAL_VERSION = "18.1.8"
+MINIMAL_REVISION = "1"
+MINIMAL_RELEASE = (
+    "https://github.com/den-run-ai/pystachy/releases/download"
+    f"/llvm-toolchain-{MINIMAL_VERSION}-{MINIMAL_REVISION}"
+)
+MINIMAL_SHA256 = {
+    "x86_64": "aa7aeba224afd47728c7733cd13fe6a3bd32a38cee42d8fc30dca23f86e18d85",
+    "aarch64": "bf002c93b86956543ccd4b69dff0e7959769c104772772c4d8e5195bdc6fd087",
+}
+# Before glibc 2.34 the runtime does not link without -pthread.
+MINIMAL_GLIBC = (2, 34)
+# Where the driver looks for LLVM before PATH: llvm_dir in src/pystachy_compiler/driver.py.
+HOST_LLVM = ("/usr/lib/llvm-18/bin", "/opt/homebrew/opt/llvm@20/bin", "/usr/local/opt/llvm@20/bin",
+             "/home/linuxbrew/.linuxbrew/opt/llvm@18/bin")
 MACOS_VERSION = "20.1.8"
 MACOS_RELEASE = (
     f"https://github.com/llvm/llvm-project/releases/download/llvmorg-{MACOS_VERSION}"
@@ -142,6 +160,50 @@ def unpack_macos(staging: Path, payload: Path) -> Path:
     return tool_dir
 
 
+def minimal_archive(machine: str) -> str:
+    return f"pystachy-llvm-{MINIMAL_VERSION}-linux-{machine}"
+
+
+def unpack_minimal(staging: Path, payload: Path, machine: str) -> Path:
+    archive = staging / "llvm.tar.xz"
+    download(f"{MINIMAL_RELEASE}/{minimal_archive(machine)}.tar.xz", MINIMAL_SHA256[machine], archive)
+    extract_options = {"filter": "data"} if hasattr(tarfile, "data_filter") else {}
+    with tarfile.open(archive, "r:xz") as source:
+        source.extractall(payload, **extract_options)
+    return payload / minimal_archive(machine) / "bin"
+
+
+def name_host_gcc(tool_dir: Path) -> None:
+    # clang links with GCC's start files and libgcc, and looks for them under the names of the
+    # distributions it knows: LLVM 18 knows x86_64-amazon-linux and not aarch64-amazon-linux.
+    # Where it finds none, a configuration file beside it gives the name of the host's GCC.
+    found = subprocess.check_output([str(tool_dir / "clang"), "--print-file-name=crtbeginS.o"], text=True, timeout=30)
+    gcc = shutil.which("gcc")
+    if os.path.isabs(found.strip()) or gcc is None:
+        return
+    try:
+        libgcc = Path(subprocess.check_output([gcc, "-print-libgcc-file-name"], text=True, timeout=30).strip())
+    except (OSError, subprocess.SubprocessError):
+        return
+    if libgcc.is_absolute():
+        (tool_dir / "clang.cfg").write_text(f"--gcc-triple={libgcc.parent.parent.name}\n")
+
+
+def glibc() -> tuple[int, ...]:
+    # The C library the process runs on, as pip reads it for manylinux; () where it is not glibc.
+    try:
+        name, _, version = (os.confstr("CS_GNU_LIBC_VERSION") or "").partition(" ")
+        return tuple(map(int, version.split("."))) if name == "glibc" else ()
+    except (AttributeError, OSError, ValueError):
+        return ()
+
+
+def host_llvm() -> bool:
+    # Whether the driver would find a complete LLVM itself: a versioned one, else the tools on PATH.
+    return (any(all(os.path.exists(f"{place}/{tool}") for tool in TOOLS) for place in HOST_LLVM)
+            or all(shutil.which(tool) for tool in TOOLS))
+
+
 def available(bin_dir: Path, version: str) -> bool:
     major = version.split(".")[0]
     header = bin_dir.resolve().parent / f"lib/clang/{major}/include/stddef.h"
@@ -152,16 +214,22 @@ def available(bin_dir: Path, version: str) -> bool:
 
 def ensure_toolchain() -> Path | None:
     machine = platform.machine()
+    arch = None
     if sys.platform == "linux" and machine in ("x86_64", "aarch64"):
         try:
             distro = platform.freedesktop_os_release()
         except OSError:
+            distro = {}
+        if (distro.get("ID"), distro.get("VERSION_ID")) == ("ubuntu", "24.04"):
+            arch = "amd64" if machine == "x86_64" else "arm64"
+            key = f"ubuntu-{UBUNTU_REVISION}-{arch}"
+            version = "18.1.3"
+        # Elsewhere a host's own LLVM keeps serving; without one, no compile could succeed.
+        elif glibc() >= MINIMAL_GLIBC and not host_llvm():
+            key = f"minimal-{MINIMAL_VERSION}-{MINIMAL_REVISION}-{machine}"
+            version = MINIMAL_VERSION
+        else:
             return None
-        if (distro.get("ID"), distro.get("VERSION_ID")) != ("ubuntu", "24.04"):
-            return None
-        arch = "amd64" if machine == "x86_64" else "arm64"
-        key = f"ubuntu-{UBUNTU_REVISION}-{arch}"
-        version = "18.1.3"
     elif sys.platform == "darwin" and machine == "arm64":
         key = f"macos-{MACOS_VERSION}-arm64"
         version = MACOS_VERSION
@@ -184,8 +252,10 @@ def ensure_toolchain() -> Path | None:
         with tempfile.TemporaryDirectory(prefix=f".{key}-", dir=cache) as temporary:
             staging = Path(temporary)
             payload = staging / "payload"
-            if sys.platform == "linux":
+            if arch is not None:
                 tool_dir = unpack_ubuntu(staging, payload, arch)
+            elif sys.platform == "linux":
+                tool_dir = unpack_minimal(staging, payload, machine)
             else:
                 tool_dir = unpack_macos(staging, payload)
             if not available(tool_dir, version):
@@ -196,6 +266,8 @@ def ensure_toolchain() -> Path | None:
                 )
                 if f"version {version}" not in result:
                     raise ValueError(f"expected LLVM {version} from {tool}, got {result.strip()}")
+            if arch is None and sys.platform == "linux":
+                name_host_gcc(tool_dir)
             (payload / "bin").symlink_to(tool_dir.relative_to(payload), target_is_directory=True)
             if destination.exists():
                 shutil.rmtree(destination)

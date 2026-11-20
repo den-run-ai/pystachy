@@ -12,7 +12,7 @@ from install_smoke import PROGRAM, execute, jit_runners
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def check_install(command, python, directory, environment, revision, *, provision_llvm):
+def check_install(command, python, directory, environment, revision, *, provision_llvm, llvm_release=None):
     environment = dict(environment, XDG_CACHE_HOME=str(directory / f"{python.parent.parent.name} cache"))
     program = directory / "demo.py"
     expected = execute([sys.executable, str(program)], directory, environment)
@@ -40,6 +40,8 @@ def check_install(command, python, directory, environment, revision, *, provisio
             raise RuntimeError(f"{command} selected LLVM outside the managed cache: {llvm_bin!r}")
         clang_version = execute([str(Path(llvm_bin) / "clang"), "--version"], directory, environment)
         print(f"{command}: {clang_version.splitlines()[0]}", flush=True)
+        if llvm_release and f"clang version {llvm_release}" not in clang_version.splitlines()[0]:
+            raise RuntimeError(f"{command} provisioned another LLVM than {llvm_release}")
     executable = directory / "demo"
     executable.unlink(missing_ok=True)
     execute([str(command), "build", str(program), "-o", str(executable)], directory, environment)
@@ -67,7 +69,7 @@ def check_install(command, python, directory, environment, revision, *, provisio
     print(f"{command}: version, JIT, standalone AOT and external cache passed", flush=True)
 
 
-def smoke(source, revision, *, provision_llvm):
+def smoke(source, revision, *, provision_llvm, llvm_release=None):
     environment = {name: value for name, value in os.environ.items()
                    if not name.startswith("PYSTACHY_") or name == "PYSTACHY_LLVM"}
     for name in ("PYTHONHOME", "PYTHONPATH", "VIRTUAL_ENV"):
@@ -90,7 +92,7 @@ def smoke(source, revision, *, provision_llvm):
         run(*pip, "install", "--no-deps", source)
         pip_cli = venv / "bin/pystachy"
         check_install(pip_cli, pip_python, directory, environment, revision,
-                      provision_llvm=provision_llvm)
+                      provision_llvm=provision_llvm, llvm_release=llvm_release)
         run(*pip, "uninstall", "-y", "pystachy")
         if pip_cli.exists():
             raise RuntimeError("pip uninstall left the command installed")
@@ -102,7 +104,7 @@ def smoke(source, revision, *, provision_llvm):
         run("uv", "tool", "install", "--python", sys.executable, "--no-python-downloads", source)
         uv_cli = uv_bin / "pystachy"
         check_install(uv_cli, uv_tools / "pystachy/bin/python", directory, environment, revision,
-                      provision_llvm=provision_llvm)
+                      provision_llvm=provision_llvm, llvm_release=llvm_release)
         run("uv", "tool", "uninstall", "pystachy")
         if uv_cli.exists() or uv_cli.is_symlink():
             raise RuntimeError("uv tool uninstall left the command installed")
@@ -114,8 +116,11 @@ def main():
     parser.add_argument("--revision", help="expected full Git commit in installed provenance")
     parser.add_argument("--provision-llvm", action="store_true",
                         help="require automatic LLVM provisioning into a fresh cache")
+    parser.add_argument("--llvm-release", help="with --provision-llvm, the release its clang must report")
     args = parser.parse_args()
-    smoke(args.source, args.revision, provision_llvm=args.provision_llvm)
+    if args.llvm_release and not args.provision_llvm:
+        parser.error("--llvm-release needs --provision-llvm")
+    smoke(args.source, args.revision, provision_llvm=args.provision_llvm, llvm_release=args.llvm_release)
 
 
 if __name__ == "__main__":

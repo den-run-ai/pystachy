@@ -452,9 +452,9 @@ class PublishTests(unittest.TestCase):
         (self.directory / (name + ".sha256")).write_text(f"{digest}  {name}\n")
         return digest
 
-    def publish(self, releases, revision: str = "3", names=(NAME,)) -> str:
+    def publish(self, releases, revision: str = "3", names=(NAME,), **options) -> str:
         return llvm_toolchain_release.publish("owner/repo", self.COMMIT, revision,
-                                              [self.directory / name for name in names], run=releases)
+                                              [self.directory / name for name in names], run=releases, **options)
 
     def test_archive_is_read_back_from_a_draft_before_it_is_published(self):
         releases = Releases()
@@ -545,9 +545,53 @@ class PublishTests(unittest.TestCase):
             self.publish(releases, names=("llvm.tar.xz",))
         self.assertEqual((releases.commands, releases.releases), ([], {}))
 
+    def test_pinned_revision_takes_the_pinned_archives_and_no_other_bytes(self):
+        releases = Releases()
+        digest, arm = hashlib.sha256(b"an archive").hexdigest(), self.write(b"an ARM archive", self.ARM)
+        both = (self.NAME, self.ARM)
+        refused = "pins {} with SHA-256 {} for llvm-toolchain-18.1.8-3, and this build has {}: .*next revision, then pin that"
+        for pinned, names, message in (
+            ({self.NAME: "0" * 64, self.ARM: arm}, both, refused.format(self.NAME, "0" * 64, digest)),
+            ({self.NAME: digest, self.ARM: "0" * 64}, both, refused.format(self.ARM, "0" * 64, arm)),
+            ({self.NAME: digest, self.ARM: arm}, (self.NAME,), refused.format(self.ARM, arm, "no such archive")),
+        ):
+            with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
+                self.publish(releases, names=names, pinned=("3", pinned))
+        self.assertEqual((releases.commands, releases.releases), ([], {}))
+        # The pinned bytes pass, and so does any archive under another revision.
+        self.publish(releases, names=both, pinned=("3", {self.NAME: digest, self.ARM: arm}))
+        self.publish(releases, "4", pinned=("3", {self.NAME: "0" * 64, self.ARM: arm}))
+        self.assertEqual(sorted(releases.releases), [self.TAG, "llvm-toolchain-18.1.8-4"])
+
+    def test_command_line_passes_the_pin_of_pystachy_toolchain(self):
+        name = pystachy_toolchain.minimal_archive("x86_64") + ".tar.xz"
+        self.write(b"not the pinned archive", name)
+        arguments = ["--repository", "owner/repo", "--commit", self.COMMIT, "--revision",
+                     pystachy_toolchain.MINIMAL_REVISION, str(self.directory / name)]
+        result = subprocess.run([sys.executable, llvm_toolchain_release.__file__, *arguments],
+                                capture_output=True, text=True, timeout=60, env={**os.environ, "PATH": ""})
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(f"pins {name} with SHA-256 {pystachy_toolchain.MINIMAL_SHA256['x86_64']}", result.stderr)
+
+    def test_pystachy_downloads_the_archives_that_are_published(self):
+        # pystachy_toolchain.py names the release's address itself: the publication must create it.
+        self.assertEqual(sorted(pystachy_toolchain.MINIMAL_SHA256), ["aarch64", "x86_64"])
+        names = [pystachy_toolchain.minimal_archive(machine) + ".tar.xz" for machine in pystachy_toolchain.MINIMAL_SHA256]
+        for name in names:
+            self.write(name.encode(), name)
+        releases = Releases()
+        self.publish(releases, pystachy_toolchain.MINIMAL_REVISION, names=names)
+        (tag,) = releases.releases
+        self.assertEqual(pystachy_toolchain.MINIMAL_RELEASE, f"https://github.com/den-run-ai/pystachy/releases/download/{tag}")
+        self.assertEqual(pystachy_toolchain.MINIMAL_VERSION, setting("VERSION"))
+        document = DOCUMENT.read_text()
+        for pinned in (tag, *names, *pystachy_toolchain.MINIMAL_SHA256.values()):
+            self.assertIn(f"`{pinned}`", document)
+
     def test_archive_name_is_the_recipe_s(self):
         name = run("name").stdout.strip() + ".tar.xz"
         self.assertEqual(llvm_toolchain_release.ARCHIVE.fullmatch(name)[1], setting("VERSION"))
+        self.assertIn(name, [pystachy_toolchain.minimal_archive(machine) + ".tar.xz" for machine in ("x86_64", "aarch64")])
 
 
 if __name__ == "__main__":
