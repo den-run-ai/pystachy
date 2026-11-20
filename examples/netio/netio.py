@@ -1,4 +1,3 @@
-# pystachy: dynamic-any
 """Optional socket/readiness prototype; see README.md for the bounded contract.
 
 The C bridge borrows inputs only during a call. Receive allocations are copied
@@ -10,7 +9,6 @@ import errno
 import math
 import time
 from dataclasses import dataclass
-from typing import Any
 
 from ffi import bytes_at, c_int, c_int64, c_void_p, extern
 
@@ -320,13 +318,13 @@ def socketpair(family: int = AF_UNIX, type: int = SOCK_STREAM, proto: int = 0) -
 
 @dataclass(frozen=True)
 class SelectorKey:
-    fileobj: Any
+    fileobj: Socket | int
     fd: int
     events: int
     data: int | None
 
 
-def _fileno(fileobj: Any) -> int:
+def _fileno(fileobj: Socket | int) -> int:
     if isinstance(fileobj, int):
         fd: int = fileobj
     else:
@@ -355,7 +353,7 @@ class DefaultSelector:
         if self._selector < 0:
             raise ValueError("I/O operation on closed selector")
 
-    def register(self, fileobj: Any, events: int, data: int | None = None) -> SelectorKey:
+    def register(self, fileobj: Socket | int, events: int, data: int | None = None) -> SelectorKey:
         self._open()
         _events(events)
         fd = _fileno(fileobj)
@@ -381,20 +379,23 @@ class DefaultSelector:
             raise
         return key
 
-    def get_key(self, fileobj: Any) -> SelectorKey:
+    def get_key(self, fileobj: Socket | int) -> SelectorKey:
         self._open()
         try:
             fd = _fileno(fileobj)
         except ValueError:
-            for key in self._keys.values():
-                if key.fileobj is fileobj:
-                    return key
+            # A closed socket has no descriptor: its key is the one that holds the object.
+            # An invalid integer is no key's file object: register() accepted none.
+            if isinstance(fileobj, Socket):
+                for key in self._keys.values():
+                    if key.fileobj is fileobj:
+                        return key
             raise
         if fd not in self._keys:
             raise KeyError(str(fd) + " is not registered")
         return self._keys[fd]
 
-    def modify(self, fileobj: Any, events: int, data: int | None = None) -> SelectorKey:
+    def modify(self, fileobj: Socket | int, events: int, data: int | None = None) -> SelectorKey:
         self._open()
         _events(events)
         old = self.get_key(fileobj)
@@ -414,7 +415,7 @@ class DefaultSelector:
         self._by_token[token] = key
         return key
 
-    def unregister(self, fileobj: Any) -> SelectorKey:
+    def unregister(self, fileobj: Socket | int) -> SelectorKey:
         key = self.get_key(fileobj)
         token = self._tokens[key.fd]
         # Like selectors, remove bookkeeping even if a closed/reused fd makes

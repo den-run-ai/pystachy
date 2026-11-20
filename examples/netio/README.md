@@ -71,26 +71,17 @@ Socketpair address-query operations are also outside the supported surface.
 The `SelectorKey` attribute API is tested; tuple indexing/unpacking of the key
 itself is not provided. Use this module from one owner thread.
 
-### Dynamic file-object boundary
+### File-object type
 
-The explicit `Any` annotations in `netio.py` retain selector file objects and
-pass them through descriptor lookup. The supported inputs have the closed shape
-`Socket | int`; the dynamic annotation does not extend this contract to arbitrary
-objects or metadata. `SelectorKey.fileobj` must retain the original object so
-identity lookup still works after a socket is closed.
+A selector's file object is a `Socket | int`: `netio.py` annotates it so, and neither it nor
+`probe.py` opts in to dynamic `Any`. `SelectorKey.fileobj` holds the object that was
+registered, so `key.fileobj is sock` finds a socket's key after the socket is closed, and
+`key.fileobj == fd` compares a descriptor. Arbitrary objects and metadata are not file
+objects.
 
-This is compiler debt. On compiler commit `070c8137`, replacing those annotations
-with `Socket | int` and removing the dynamic-Any opt-in rejects compilation of
-the existing `probe.py` consumer at `DefaultSelector.register()`:
-
-```text
-parameter 'fileobj': reference unions cannot mix native references with scalar or container members
-```
-
-Retain the current API while that mixed reference/scalar union is unsupported.
-Removing the dynamic boundary requires the closed-union consumer to compile and
-preserve descriptor lookup, object identity, and GC-stress behavior. See the
-[typed/dynamic contract](../../docs/dynamic-any.md#the-typeddynamic-contract).
+`get_key()` looks a closed socket up by identity only after testing that the argument is a
+`Socket`. An invalid integer is no key's file object, because `register()` accepted none, and
+the identity of two integers is not something compiled code models.
 
 ## Ownership and deadlines
 
