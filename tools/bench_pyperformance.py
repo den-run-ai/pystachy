@@ -37,11 +37,16 @@ SDIST_DIR = "pyperformance-1.14.0/pyperformance/data-files/benchmarks/"
 # bench/pyperformance/NAME.py's main reads them; each starts with the number of loops.
 BENCHMARKS = {
     "barnes_hut": (["1"], ["1", "5", "50"]),
+    "base64": (["1"], ["1"]),
     "bpe_tokeniser": (["1"], ["1", "260", "smoke"]),
     "chaos": (["10"], ["1", "200"]),
     "comprehensions": (["10000"], ["1"]),
+    "decimal_factorial": (["4"], ["1", "200", "1000"]),
+    "decimal_pi": (["4"], ["1"]),
     "fannkuch": (["2"], ["1", "7"]),
     "float": (["10"], ["1", "1000"]),
+    "gc_collect": (["500"], ["1", "5", "3"]),
+    "gc_traversal": (["200"], ["1", "30"]),
     "generators": (["10"], ["1", "100"]),
     "go": (["4"], ["1"]),
     "hexiom": (["100"], ["1"]),
@@ -51,7 +56,10 @@ BENCHMARKS = {
     "meteor_contest": (["6"], ["1"]),
     "nbody": (["10"], ["1", "100"]),
     "nqueens": (["10"], ["1", "6"]),
+    "pathlib": (["50"], ["1", "40"]),
     "pidigits": (["4"], ["1", "200"]),
+    "pprint": (["1"], ["1", "50"]),
+    "pyflate": (["3"], ["1"]),
     "raytrace": (["4"], ["1", "20", "20"]),
     "regex_dna": (["4"], ["1", "1000"]),
     "regex_effbot": (["20"], ["1"]),
@@ -60,8 +68,13 @@ BENCHMARKS = {
     "richards_super": (["20"], ["1"]),
     "scimark": (["2"], ["1"]),
     "spectral_norm": (["10"], ["1"]),
+    "telco": (["200"], ["1"]),
     "unpack_sequence": (["50000"], ["1"]),
 }
+
+# Ports named for a standard library module: NAME.py alongside the other entry points would
+# shadow that module, so their files are bm_NAME.py.
+SHADOWING = {"base64", "logging", "pathlib", "pprint"}
 
 # Excluded from the delivered suite pending a separate provenance decision.
 DEFERRED = {"deltablue": "license provenance"}
@@ -193,17 +206,26 @@ CENSUS_CALLS = {
 
 
 # What pyperf times in each ported benchmark, which --census reads from the upstream main: the
-# function that runner.bench_func() calls, whose calls the port's main times in one loop; or the
-# functions that time themselves for runner.bench_time_func(), each around one loop. The ports
-# keep those timers in place with time.perf_counter(), which is pyperf.perf_counter(), and add
-# their seconds to a list TIMED, whose sum the main prints.
+# function that runner.bench_func() calls, whose calls the port's main times in one loop (a tuple
+# of them where the runner calls bench_func() several times: the main times one loop for each and
+# prints their total); or the functions that time themselves for runner.bench_time_func(), each
+# around one loop, or around one statement of that loop. The ports keep those timers in place with
+# time.perf_counter(), which is pyperf.perf_counter(), and add their seconds to a list TIMED,
+# whose sum the main prints.
 TIMED_PART = {
     "barnes_hut": ["bench_quadtree_nbody"],
+    "base64": ["bench_a85_large", "bench_a85_small", "bench_b16_large", "bench_b16_small", "bench_b32_large",
+               "bench_b32_small", "bench_b64_large", "bench_b64_small", "bench_b85_large", "bench_b85_small",
+               "bench_urlsafe_b64_small"],
     "bpe_tokeniser": ["bench_bpe_tokeniser"],
     "chaos": "create_image_chaos",
     "comprehensions": ["bench_comprehensions"],
+    "decimal_factorial": "bench_decimal_factorial",
+    "decimal_pi": "bench_decimal_pi",
     "fannkuch": "fannkuch",
     "float": "benchmark",
+    "gc_collect": ["benchamark_collection"],
+    "gc_traversal": ["benchamark_collection"],
     "generators": ["bench_generators"],
     "go": "versus_cpu",
     "hexiom": ["main"],
@@ -213,7 +235,10 @@ TIMED_PART = {
     "meteor_contest": ["bench_meteor_contest"],
     "nbody": ["bench_nbody"],
     "nqueens": "bench_n_queens",
+    "pathlib": ["bench_pathlib"],
     "pidigits": "calc_ndigits",
+    "pprint": ("_safe_repr", "pformat"),
+    "pyflate": ["bench_pyflake"],
     "raytrace": ["bench_raytrace"],
     "regex_dna": ["bench_regex_dna"],
     "regex_effbot": ["bench_regex_effbot"],
@@ -222,13 +247,13 @@ TIMED_PART = {
     "richards_super": "run",
     "scimark": ["SparseCompRow_matmult", "bench_FFT", "bench_LU", "bench_MonteCarlo", "bench_SOR"],
     "spectral_norm": ["bench_spectral_norm"],
+    "telco": ["bench_telco"],
     "unpack_sequence": ["do_unpacking"],
 }
 
 
 def port_path(name):
-    # A logging.py alongside the other entry points would shadow the standard library.
-    return BENCH / ("bm_logging.py" if name == "logging" else f"{name}.py")
+    return BENCH / (f"bm_{name}.py" if name in SHADOWING else f"{name}.py")
 
 
 def digest(data):
@@ -278,15 +303,26 @@ def called(node):
 
 
 def timers(tree, clock):
-    """{function: (timer statements, statements between the first and the last)} for each function
-    whose body calls CLOCK.perf_counter()."""
+    """{function: (timer statements, statements between the first and the last, inside)} for each
+    function whose body calls CLOCK.perf_counter(). Where the one statement that does is a loop,
+    the timer statements are that loop's, and INSIDE is true."""
     out = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
-            marks = [i for i, s in enumerate(node.body) if f"{clock}.perf_counter()" in ast.unparse(s)]
+            body, inside = node.body, False
+            marks = [i for i, s in enumerate(body) if f"{clock}.perf_counter()" in ast.unparse(s)]
+            if len(marks) == 1 and isinstance(body[marks[0]], ast.For):
+                body, inside = body[marks[0]].body, True
+                marks = [i for i, s in enumerate(body) if f"{clock}.perf_counter()" in ast.unparse(s)]
             if marks:
-                out[node.name] = (len(marks), node.body[marks[0] + 1:marks[-1]])
+                out[node.name] = (len(marks), body[marks[0] + 1:marks[-1]], inside)
     return out
+
+
+def misplaced(count, between, inside):
+    """Whether a function's two timer statements are neither around its one loop nor, inside that
+    loop, around one statement of it."""
+    return count != 2 or len(between) != 1 or not (inside or isinstance(between[0], ast.For))
 
 
 def upstream_timed_part(text):
@@ -295,10 +331,12 @@ def upstream_timed_part(text):
     targets = {ast.unparse(n.args[1]).split(".")[-1] for n in ast.walk(tree) if isinstance(n, ast.Call)
                and isinstance(n.func, ast.Attribute) and n.func.attr == "bench_func" and len(n.args) > 1}
     own = timers(tree, "pyperf")
-    problems = [f"{name}(): its timer is not around one loop" for name, (count, between) in sorted(own.items())
-                if count != 2 or len(between) != 1 or not isinstance(between[0], ast.For)]
-    if targets and own or len(targets) > 1:
-        problems.append("both bench_func() and its own timers, or several bench_func() targets")
+    problems = [f"{name}(): its timer is not around one loop" for name, timer in sorted(own.items())
+                if misplaced(*timer)]
+    if targets and own:
+        problems.append("both bench_func() and its own timers")
+    if len(targets) > 1:
+        return tuple(sorted(targets)), problems
     return (min(targets) if targets else sorted(own)), problems
 
 
@@ -314,7 +352,24 @@ def timing_errors(name, text):
                 value = ast.unparse(stmt.value.args[1])
                 starts = [i for i in range(k) if ast.unparse(body[i]) == "t0 = time.perf_counter()"]
                 region = body[starts[-1] + 1:k] if starts else None
-    if isinstance(spec, str):
+    if isinstance(spec, tuple):
+        # one timed loop of one statement for each target, added to the seconds that the main prints
+        if own:
+            errors.append(f"functions with their own timer: {', '.join(sorted(own))}")
+        loops = []
+        for node in ast.walk(tree):
+            body = getattr(node, "body", None)
+            for k, stmt in enumerate(body if isinstance(body, list) else []):
+                if ast.unparse(stmt) == "t0 = time.perf_counter()" and k + 2 < len(body) \
+                        and ast.unparse(body[k + 2]) == "seconds += time.perf_counter() - t0":
+                    loops.append(body[k + 1])
+        if value != "seconds" or text.count("time.perf_counter()") != 2 * len(loops):
+            errors.append("the main does not print the seconds that its timed loops add up")
+        elif any(not isinstance(loop, ast.For) or len(loop.body) != 1 for loop in loops):
+            errors.append("the main times more than one loop of one statement for a target")
+        elif [min(called(loop.body[0]) & set(spec), default="") for loop in loops] != list(spec):
+            errors.append(f"the main's timed loops do not call {', '.join(name + '()' for name in spec)}, one each")
+    elif isinstance(spec, str):
         if own:
             errors.append(f"functions with their own timer: {', '.join(sorted(own))}")
         if value != "time.perf_counter() - t0" or region is None:
@@ -327,8 +382,8 @@ def timing_errors(name, text):
         if sorted(own) != sorted(spec):
             errors.append(f"functions with their own timer: {', '.join(sorted(own)) or 'none'}; "
                           f"expected {', '.join(spec)}")
-        for function, (count, between) in sorted(own.items()):
-            if count != 2 or len(between) != 1 or not isinstance(between[0], ast.For):
+        for function, timer in sorted(own.items()):
+            if misplaced(*timer):
                 errors.append(f"{function}(): the timer is not around one loop")
         if value != "sum(TIMED)" or region is not None:
             errors.append("the main does not print sum(TIMED), without a timer of its own")
