@@ -65,11 +65,29 @@ class OperationTableTests(unittest.TestCase):
                 self.assertEqual(specs.OP_OPERAND_TYPES.get(op), row["operand_types"])
                 self.assertEqual(specs.OP_RESULT_TYPE.get(op), row["result_type"])
 
+    def test_each_field_is_named_for_its_op(self):
+        named = {row["name"]: row["names"] for row in typed_ir_ops.rows()}
+        self.assertEqual(named["rt"], {"s": "entry", "k": "hole", "x": "descriptor"})
+        self.assertEqual(named["mach.addr"], {"s": "element", "k": "inbounds"})
+        self.assertEqual(named["field.addr"], {"k": "index"})
+        self.assertEqual(named["br"], {})
+        for row in typed_ir_ops.rows():
+            self.assertEqual(set(row["names"]), set(row["fields"]) - {"t"})
+        # (an operator selects an arithmetic, conversion or comparison op's computation)
+        self.assertEqual(sorted(op for op, names in named.items() if names.get("s") == typed_ir_ops.OPERATOR),
+                         ["int.ucmp", "num.cmp", "ovf", "ptr.cmp", "scalar.bin", "scalar.cast", "scalar.cmp"])
+
     def test_malformed_rows_are_rejected(self):
         for text, why in (("T|0|0|1|", "columns"), ("Q|0|0|0||0|", "effect"), ("T T|0|0|0||0|", "effect"),
                           ("|1-0|0|0||0|", "operand count"), ("|01|0|0||0|", "operand count"),
-                          ("|0|-1|0||0|", "results"), ("|0|0|b||0|", "label count"), ("|0|0|0|s t|0|", "fields"),
+                          ("|0|-1|0||0|", "results"), ("|0|0|b||0|", "label count"), ("|0|0|0|s:name t|0|", "fields"),
                           ("|0|0|0|t t|0|", "fields"), ("|0|1|0||2|", "names no number"), ("|0|0|0||4|", "names no number"),
+                          # the fields column: t, or s, k or x with its name, one name per field of the op,
+                          # no field's letter as a name, and operator only for an s
+                          ("|0|0|0|s|0|", "with its name"), ("|0|0|0|t:type|0|", "with its name"),
+                          ("|0|0|0|s:Name|0|", "with its name"), ("|0|0|0|k:index s:item|0|", "in that order"),
+                          ("|0|0|0|s:k|0|", "cannot be named k"), ("|0|0|0|s:index k:index|0|", "cannot be named index"),
+                          ("|0|0|0|k:operator|0|", "cannot be named operator"),
                           ("E T|0|1|0||0|", "entry storage"), ("E|0|1|1||0|", "entry storage"), ("|0|vv|0||0|", "results"),
                           ("|0|v.x|0||0|", "results"), ("|0|..1|0||0|", "results"), ("|0||0||0|", "results"),
                           # the types column: one type per operand the count admits, a result type
@@ -387,10 +405,12 @@ class ShapeCheckTests(unittest.TestCase):
                 (ins("switch", operands=1, labels=1), False, "switch with 1 operands, where the operation table has 2+"),
                 (ins("rt", "int", "list.len", operands=1, labels=1), False, "rt with 1 labels, where the operation table has i"),
                 (ins("ret", operands=2), False, "ret with 2 operands, where the operation table has 0-1"),
-                (ins("br", s="text", labels=1), False, "br sets a field outside the operation table's none"),
-                (ins("br", "int", labels=1), False, "br sets a field outside the operation table's none"),
-                (ins("throw", operands=1, k=1), False, "throw sets a field outside the operation table's none"),
-                (ins("icall", "int", operands=1, x="inline"), False, "icall sets a field outside the operation table's t"),
+                (ins("br", s="text", labels=1), False, "br sets s, where its row of the operation table names no field"),
+                (ins("br", "int", labels=1), False, "br sets t, where its row of the operation table names no field"),
+                (ins("throw", operands=1, k=1), False, "throw sets k, where its row of the operation table names no field"),
+                (ins("icall", "int", operands=1, x="inline"), False, "icall sets x, where its row of the operation table names t"),
+                (ins("num.cmp", "bool", "<", operands=2, k=1), False,
+                 "num.cmp sets k, where its row of the operation table names t, s:operator"),
                 (ins("slot", "int", "x"), False, "slot in a block, where entry storage belongs among the slots"),
                 (ins("br", labels=1), True, "br among the slots")):
             with self.subTest(op=i.op, expected=expected):
@@ -444,7 +464,7 @@ class ShapeCheckTests(unittest.TestCase):
         errors = StringIO()
         with redirect_stderr(errors), self.assertRaises(SystemExit):
             Gen().verify(fn, False)
-        self.assertIn("slot sets a field outside the operation table's t s k", errors.getvalue())
+        self.assertIn("slot sets x, where its row of the operation table names t, s:name, k:kind", errors.getvalue())
         slot.x = ""
         Gen().verify(fn, False)
 

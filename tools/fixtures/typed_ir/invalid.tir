@@ -23,14 +23,21 @@ L1:
 
 function @a_field_outside_the_row() -> None {
 entry:
-  ; expected-error {{ret.none sets a field outside the operation table's none}}
+  ; expected-error {{ret.none sets k, where its row of the operation table names no field}}
   ret.none k=1
+}
+
+function @a_field_the_row_does_not_name(n: int) -> None {
+entry:
+  ; expected-error {{num.cmp sets k, where its row of the operation table names t, s:operator}}
+  %t1 = num.cmp < k=1 (int %a0, int 1) : bool
+  ret.none
 }
 
 function @entry_storage_in_a_block() -> None {
 entry:
   ; expected-error {{slot in a block, where entry storage belongs among the slots}}
-  %x.1 = slot x : int
+  %x.1 = slot name=x : int
   ret.none
 }
 
@@ -125,6 +132,14 @@ L1:
   ret.none
 }
 
+function @a_cleanup_a_yield_lacks() -> gen[int] coroutine {
+entry:
+  ; expected-error {{gen.yield with cleanup 2, where it is 0 or 1}}
+  ~%t1 ~%t2 = gen.yield cleanup=2 (%slot 0) -> L3
+L3:
+  ret.none
+}
+
 ; ---- blocks, terminators and the values operands name
 
 function @an_unknown_op() -> None {
@@ -187,7 +202,7 @@ entry:
 ; a view of specs.TYPE_VIEWS; an address &T and a packed slot *T are never read as each other
 
 function @a_value_read_at_another_type(n: int) -> None {
-  %y.2 = slot y : float
+  %y.2 = slot name=y : float
 entry:
   ; expected-error {{mem.store operand 1 reads %a0 as float, but it is int}}
   mem.store(&float %y.2, float %a0)
@@ -202,10 +217,10 @@ entry:
 }
 
 function @an_address_read_as_a_packed_slot() -> None {
-  %x.1 = slot x : int
+  %x.1 = slot name=x : int
 entry:
   ; expected-error {{rt operand 0 reads the address %x.1 as a packed slot}}
-  %t2 = rt box (*T %x.1) : %ptr
+  %t2 = rt entry=box (*T %x.1) : %ptr
   ret.none
 }
 
@@ -218,16 +233,16 @@ entry:
 }
 
 function @machine_bits_read_at_two_types(n: int) -> opt[int] {
-  %s.1 = slot s : str
+  %s.1 = slot name=s : str
 entry:
-  %t2 = rt box (*T %a0) : %ptr
+  %t2 = rt entry=box (*T %a0) : %ptr
   mem.store(&str %s.1, str %t2)
   ; expected-error {{ret operand 0 reads %t2 as opt[int], where mem.store operand 1 reads it as str}}
   ret(opt[int] %t2)
 }
 
 function @another_ops_word_read_as_a_typed_value(s: str) -> str {
-  %s.2 = slot s : str
+  %s.2 = slot name=s : str
 entry:
   %t3 = mach.load(%ptr %s.2) : %ptr
   ; expected-error {{ret operand 0 reads %t3 as str, but it is %ptr}}
@@ -239,28 +254,28 @@ entry:
 function @a_cast_of_no_kind(p: %ptr) -> None {
 entry:
   ; expected-error {{cast wide, where a cast is of a kind of specs.CAST_KINDS}}
-  %t1 = cast wide (%ptr %a0) : str
+  %t1 = cast kind=wide (%ptr %a0) : str
   ret.none
 }
 
 function @a_cast_to_another_llvm_type(p: %ptr) -> None {
 entry:
   ; expected-error {{cast bits of a %ptr to a int, where a cast reads its operand at another type of its LLVM type}}
-  %t1 = cast bits (%ptr %a0) : int
+  %t1 = cast kind=bits (%ptr %a0) : int
   ret.none
 }
 
 function @a_bits_cast_of_a_typed_value(s: str) -> None {
 entry:
   ; expected-error {{cast bits of a str to a list[int], where a cast of kind bits reads a machine word}}
-  %t1 = cast bits (str %a0) : list[int]
+  %t1 = cast kind=bits (str %a0) : list[int]
   ret.none
 }
 
 function @a_bits_cast_of_a_reference_read_as_a_word(s: str) -> None {
 entry:
   ; expected-error {{cast bits of %a0, a str read as a %ptr, where a cast of kind bits reads a machine word}}
-  %t1 = cast bits (%ptr %a0) : list[int]
+  %t1 = cast kind=bits (%ptr %a0) : list[int]
   ret.none
 }
 
@@ -268,28 +283,28 @@ function @a_bits_cast_of_a_packed_slot_read_as_a_word(x: float) -> None {
 entry:
   %t1 = slot.pack(float %a0) : *float
   ; expected-error {{cast bits of %t1, a *float read as a %slot, where a cast of kind bits reads a machine word}}
-  %t2 = cast bits (%slot %t1) : int
+  %t2 = cast kind=bits (%slot %t1) : int
   ret.none
 }
 
 function @an_object_cast_to_a_union_of_no_classes(p: %ptr) -> None {
 entry:
   ; expected-error {{cast object of a %ptr to a union[int,str], where a cast of kind object reads}}
-  %t1 = cast object (%ptr %a0) : union[int,str]
+  %t1 = cast kind=object (%ptr %a0) : union[int,str]
   ret.none
 }
 
 function @a_member_cast_of_a_box(u: union[int,str]) -> None {
 entry:
   ; expected-error {{cast member of a union[int,str] to a str, where a cast of kind member reads}}
-  %t1 = cast member (union[int,str] %a0) : str
+  %t1 = cast kind=member (union[int,str] %a0) : str
   ret.none
 }
 
 function @an_opaque_cast_outside_the_copy_memo(xs: list[int]) -> None {
 entry:
   ; expected-error {{cast opaque of a list[int] to a str, where a cast of kind opaque reads}}
-  %t1 = cast opaque (list[int] %a0) : str
+  %t1 = cast kind=opaque (list[int] %a0) : str
   ret.none
 }
 
@@ -300,7 +315,7 @@ entry:
 function @a_runtime_call_with_receivers_of_two_types(r: set[int], s: set[str], o: set[int]) -> None {
 entry:
   ; expected-error {{rt set.union_more operand 1 needs set[int], got set[str]}}
-  rt set.union_more (set[int] %a0, set[str] %a1, set[int] %a2) : None
+  rt entry=set.union_more (set[int] %a0, set[str] %a1, set[int] %a2) : None
   ret.none
 }
 
@@ -308,7 +323,7 @@ function @a_runtime_call_with_a_result_of_another_type(d: dict[str,int], k: str)
 entry:
   %t3 = slot.pack(str %a1) : *str
   ; expected-error {{rt dict.getitem result needs *int, got *str}}
-  %t4 = rt dict.getitem (dict[str,int] %a0, *str %t3) : *str
+  %t4 = rt entry=dict.getitem (dict[str,int] %a0, *str %t3) : *str
   ret.none
 }
 
@@ -316,26 +331,26 @@ function @a_runtime_result_variable_of_another_llvm_type(n: int) -> None {
 entry:
   %t2 = slot.pack(int %a0) : *int
   ; expected-error {{rt ubox result needs the LLVM type ptr of R, got int}}
-  %t3 = rt ubox (int 1, *int %t2) : int
+  %t3 = rt entry=ubox (int 1, *int %t2) : int
   ret.none
 }
 
 ; ---- functions the verifier accepts
 
 function @accepted_views(xs: list[int], s: str) -> opt[str] {
-  %ys.3 = slot ys : list[int]
+  %ys.3 = slot name=ys : list[int]
 entry:
   %t4 ~%t5 ~%t6 ~%t7 = list.load(list[int] %a0, int 0) : *int
   %t8 = num.cmp < (int %t4, int 10) : bool
-  %t9 = rt list.new (int 3) : list[T]
+  %t9 = rt entry=list.new (int 3) : list[T]
   mem.store(&list[int] %ys.3, list[int] %t9)
-  %t10 = rt box (*T %t4) : %ptr
+  %t10 = rt entry=box (*T %t4) : %ptr
   %t11 = ptr.cmp == (opt[int] %t10, None null) : bool
-  %t17 = rt list.new (int 0) : list[str]
+  %t17 = rt entry=list.new (int 0) : list[str]
   %t18 = slot.pack(str %a1) : *str
-  rt list.append (list[str] %t17, *str %t18) : None
-  %t19 = rt dict.new (int 1, int 0) : dict[str,int]
-  %t20 = rt dict.has (dict[str,int] %t19, *str %t18) : bool
+  rt entry=list.append (list[str] %t17, *str %t18) : None
+  %t19 = rt entry=dict.new (int 1, int 0) : dict[str,int]
+  %t20 = rt entry=dict.has (dict[str,int] %t19, *str %t18) : bool
   cbr(bool %t8) -> L12, L13
 L12:
   ret(opt[str] %a1)
@@ -345,9 +360,9 @@ L13:
 
 function @accepted_casts(p: %ptr, w: %slot) -> int {
 entry:
-  %t1 = cast bits (%ptr %a0) : &int
+  %t1 = cast kind=bits (%ptr %a0) : &int
   %t2 = mem.load(&int %t1) : int
-  %t3 = cast bits (%slot %a1) : int
+  %t3 = cast kind=bits (%slot %a1) : int
   %t4 = scalar.bin add (int %t2, int %t3) : int
   ret(int %t4)
 }
@@ -359,7 +374,7 @@ entry:
   cbr(bool %t5) -> L6, L7
 L6:
   ~%t8 %t9 %t10 = ovf + (int %a0, int 1) : int
-  check "OverflowError: integer overflow" (bool %t10) -> L7
+  check message="OverflowError: integer overflow" (bool %t10) -> L7
 L7:
   %t11 = phi(int %a0, int %t9) -> entry, L6 : int
   %t12 = list.len(list[int] %a1) : int
@@ -370,6 +385,6 @@ L14:
 L15:
   ret(int 0)
 L16:
-  raise OverflowError (str @s.1, str @s.2)
+  raise exception=OverflowError (str @s.1, str @s.2)
 cold "OverflowError: integer overflow" -> L16
 }
