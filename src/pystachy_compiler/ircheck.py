@@ -488,16 +488,24 @@ def class_union(self, t: str) -> bool:
     return len(ms) > 0 and all(m in self.classes for m in ms)
 
 
-def cast_error(self, fn: IFn, i: Ins, objects: dict[str, bool]) -> str:
+def cast_error(self, fn: IFn, i: Ins, objects: dict[str, bool], types: dict[str, str]) -> str:
     # What the rule of cast i's kind (specs.CAST_KINDS) says of its operand and its result, or "".
     # Every kind keeps the operand's LLVM type, since lowering erases the cast and its uses read
-    # the operand (Gen.erase_casts). objects: the values of the function's object casts
+    # the operand (Gen.erase_casts). A rule holds of the value the operand reads, of the type its
+    # definition gives it (types: ir.value_definitions), which the operand reads at that type: a
+    # view would read any reference as a %ptr, any packed slot as a %slot, and an object cast's
+    # union as another with a common member (specs.TYPE_VIEWS). (A constant or a symbol has no
+    # definition; an opaque cast's reference may be read by a view.) objects: the values of the
+    # function's object casts
+    v = i.a[0].v
     a = i.a[0].t
     t = i.t
     if i.s not in CAST_KINDS:
         return f"cast {i.s or 'of no kind'}, where a cast is of a kind of specs.CAST_KINDS"
     if lt(a) != lt(t) or a == t:
         return f"cast {i.s} of a {a} to a {t}, where a cast reads its operand at another type of its LLVM type"
+    if i.s != "opaque" and v in types and types[v] != a:
+        return f"cast {i.s} of {v}, a {types[v]} read as a {a}, where a cast of kind {i.s} reads {CAST_KINDS[i.s]}"
     ok = False
     if i.s == "bits":
         ok = (a == "%ptr" and (ref_type(t) or (t.startswith("&") and native_type(t[1:], self.classes)))) or (a == "%slot" and (t == "int" or (t.startswith("*") and native_type(t[1:], self.classes))))
@@ -554,7 +562,8 @@ def value_types(self, fn: IFn) -> None:
                     ok = d.startswith("&")
                 elif d == "%ptr" or d == "%slot":
                     # bits, of an rt op's result, whose type is its RUNTIME signature's, or read by an
-                    # rt op's operand of a runtime type variable (*T, S): other ops state their
+                    # rt op's operand of a runtime type variable (*T, S), which only the rt ops that
+                    # passes add after Gen.instantiate keep (unionslots' boxes): other ops state their
                     # results' types, and a cast reads a machine word as a typed value
                     ok = (rt or (i.op == "rt" and rt_generic(u))) and ((u.startswith("&") or ref_type(u)) if d == "%ptr" else (u == "int" or u.startswith("*") or (i.op == "rt" and u == "bool")))
                 else:
@@ -618,6 +627,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
     lands: dict[str, bool] = {}
     temps: dict[str, str] = {}  # (each lowering temporary that an op defines, OP_TEMPS: its op)
     objects: dict[str, bool] = {}  # (the values of object casts, which few ops may read: cast_error)
+    casts = False
     for b in fn.blocks:
         if len(b.code) > 0 and b.code[0].op == "landing":
             lands[b.label] = True
@@ -626,8 +636,15 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 for j in OP_TEMPS[i.op]:
                     if j < len(i.r):
                         temps[tmpname(i.r[j])] = i.op
-            if i.op == "cast" and i.s == "object" and len(i.r) == 1:
-                objects[tmpname(i.r[0])] = True
+            if i.op == "cast":
+                casts = True
+                if i.s == "object" and len(i.r) == 1:
+                    objects[tmpname(i.r[0])] = True
+    # (the type of each value where it is defined, of which a cast's rule holds: cast_error)
+    defined: dict[str, str] = {}
+    makers: dict[str, str] = {}
+    if casts:
+        value_definitions(fn, defined, makers)
     for i in fn.slots:
         if i.op != "slot" or len(i.r) != 1:
             self.bad_ir(fn, fn.blocks[0], f"a {i.op} op among the slots, with {len(i.r)} numbers")
@@ -757,7 +774,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
             if i.op == "slot.pack" and i.t != "%slot" and len(i.a) == 1 and i.t != "*" + i.a[0].t:
                 self.bad_ir(fn, b, f"slot.pack of a {i.a[0].t} needs *{i.a[0].t} or %slot, got {i.t}")
             if i.op == "cast" and len(i.a) == 1:
-                error = cast_error(self, fn, i, objects)
+                error = cast_error(self, fn, i, objects, defined)
                 if error != "":
                     self.bad_ir(fn, b, error)
             if i.op == "num.cast" and i.a[0].t != "bool" and not (i.a[0].t == "int" and i.t == "float"):
@@ -792,8 +809,8 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     self.bad_ir(fn, b, f"{i.op} operand {a.v} is no value, parameter, slot, symbol or constant")
                 if a.v in temps:
                     self.bad_ir(fn, b, f"{i.op} operand {a.v} is a temporary of a {temps[a.v]} op's lowering, which no op may use")
-                if a.v in objects and not (i.op == "ptr.cmp" or (i.op == "mach.load" and a.t == "%ptr") or (i.op == "cast" and i.s == "member")):
-                    self.bad_ir(fn, b, f"{i.op} reads {a.v}, an object cast's value, which only a ptr.cmp, a mach.load of its class word or a member cast reads")
+                if a.v in objects and not (i.op == "ptr.cmp" or (i.op == "mach.load" and a.t == "%ptr" and (i.t == "int" or i.t == "%ptr")) or (i.op == "cast" and i.s == "member")):
+                    self.bad_ir(fn, b, f"{i.op} reads {a.v}, an object cast's value, which only a ptr.cmp, a mach.load of its class word (an int or a %ptr) or a member cast reads")
             n = self.nums(i)
             if len(i.r) != n:
                 self.bad_ir(fn, b, f"{i.op} {i.s} with {len(i.r)} numbers, where its lowering prints {n}")

@@ -34,6 +34,8 @@ from src.pystachy_compiler.utils import (
     list_identity_kind,
     literal,
     lookable,
+    rt_bind,
+    rt_subst,
     selem,
     set_base,
     targs,
@@ -1185,10 +1187,11 @@ def gen_store_elem(self, k: Val, et: str) -> Val:
         self.err(f"a {typestr(k.t)} element is added to a set of {typestr(et)} elements, where CPython keeps an element it adds as the bool it is (True, not 1): convert the bool with int()")
     return self.list_hold(k, et) if held(narrow_type(et)) != narrow_type(et) else self.coerce(k, et)  # (a tuple of ints as the set holds it: bigints.held)
 
-def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str) -> str:
+def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str, dt: str = "") -> str:
     # the slot fn(av) returns, a dict lookup of key k (x: key_fx of the dict's keys, of type kt); a
     # key that is None is in no dict whose keys cannot be None (none_key: one whose keys can looks
-    # None up as any key): the result is then the slot none, or with none "" KeyError: None
+    # None up as any key): the result is then the slot none, or with none "" KeyError: None. dt:
+    # the dict's type, which types that slot where none is given
     if not is_opt(k.t) or none_key(kt):
         return self.rt(fn, "i64", av, x)
     if none == "":
@@ -1206,7 +1209,11 @@ def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str
     self.place(l1)
     self.br(l3)
     self.place(l3)
-    ph = Ins("phi", self.rtfns[self.runtime(name)].sig[0], "")  # (of the type of the word fn returns)
+    # (the type of the word fn returns from this dict, as Gen.instantiate types the call: not its
+    # signature's *V, whose type variable only an rt op may name, and which a class V would name)
+    bound: dict[str, str] = {}
+    rt_bind("S", dt, bound, False)
+    ph = Ins("phi", rt_subst(self.rtfns[self.runtime(name)].sig[0], bound), "")
     self.incoming(ph, none, l1)
     self.incoming(ph, r, e2)
     return self.phi(ph)

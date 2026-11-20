@@ -340,7 +340,7 @@ def gen_cast(self, v: Val, t: str, kind: str) -> Val:
 
 def gen_number_casts(self) -> None:
     # number the casts of the function being completed (gen_cast) after its last value, in the
-    # order of its blocks, and name them so in their operands
+    # order of its blocks, and name them so in their operands and in its loops' values
     names: dict[str, str] = {}
     for b in self.fn.blocks:
         for i in b.code:
@@ -360,6 +360,9 @@ def gen_number_casts(self) -> None:
         for v in [lp.stop] + lp.seqs:
             if v.v in names:
                 v.v = names[v.v]
+        for k in range(len(lp.idx)):
+            if lp.idx[k] in names:
+                lp.idx[k] = names[lp.idx[k]]
 
 def gen_rt(self, name: str, ret: str, args: list[str], x: str = "", t: str = "") -> str:
     # an rt op: a call of runtime function name (its LLVM symbol), whose LLVM result type is

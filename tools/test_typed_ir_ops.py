@@ -245,8 +245,6 @@ class ValueTypeTests(unittest.TestCase):
                 ("machine", [typed("mach.store", "", [("%x.1", "%ptr"), ("0", "int")])], (), [slot("x", "int", 1)]),
                 ("bits", [made("rt", "%ptr", 1, [("%a0", "*T")], "box"), typed("ret", "", [("%t1", "opt[int]")])], ["int"], ()),
                 ("bits", [made("rt", "%ptr", 1, [], "x"), typed("mem.load", "int", [("%t1", "&int")])], (), ()),
-                ("bits", [made("slot.pack", "%slot", 1, [("%a0", "float")]), typed("rt", "%ptr", [("0", "int"), ("%t1", "*T")], "ubox")],
-                 ["float"], ()),
                 ("instance", [made("rt", "list[T]", 1, [("3", "int")], "list.new"), typed("list.len", "int", [("%t1", "list[str]")])], (), ()),
                 ("instance", [typed("mem.load", "list[str]", [("%x.1", "&list[str]")])], (), [slot("x", "list[?]", 1)]),
                 ("instance", [typed("rt", "int", [("%a0", "S")], "dict.len")], ["dict[str,int]"], ()),
@@ -315,7 +313,7 @@ class CastTests(unittest.TestCase):
         fn.f.ptypes = list(params)
         fn.f.mod = mod
         g = Gen()
-        for name in ("A", "B", "C"):
+        for name in ("A", "B", "C", "D"):
             g.classes[name] = ClassInfo(name, Node("class", name, 1))
         g.classes["C"].base = "A"
         errors = StringIO()
@@ -332,6 +330,10 @@ class CastTests(unittest.TestCase):
                 ([made("cast", "str", 1, [("%a0", "%ptr")], "bits")], ["%ptr"], ""),
                 ([made("cast", "int", 1, [("%a0", "%slot")], "bits")], ["%slot"], ""),
                 ([made("cast", "*float", 1, [("%a0", "%slot")], "bits")], ["%slot"], ""),
+                # (another op's word, which the bits view reads at a type only where an rt op makes it
+                # or reads it at a type variable)
+                ([made("slot.pack", "%slot", 1, [("%a0", "float")]), made("cast", "int", 2, [("%t1", "%slot")], "bits"),
+                  made("num.cmp", "bool", 3, [("%t2", "int"), ("0", "int")], "==")], ["float"], ""),
                 ([made("cast", "union[A,B]", 1, [("%a0", "%ptr")], "object"), made("cast", "C", 2, [("%t1", "union[A,B]")], "member"),
                   made("ptr.cmp", "bool", 3, [("%t1", "union[A,B]"), ("null", "None")], "=="), made("mach.load", "%ptr", 4, [("%t1", "%ptr")])],
                  ["%ptr"], ""),
@@ -353,6 +355,19 @@ class CastTests(unittest.TestCase):
                  ["%ptr"], "", "cast member of a union[A,B] to a str, where a cast of kind member reads"),
                 ([made("cast", "union[A,B]", 1, [("%a0", "%ptr")], "object"), made("union.tag", "int", 2, [("%t1", "union[A,B]")])],
                  ["%ptr"], "", "union.tag reads %t1, an object cast's value"),
+                ([made("cast", "union[A,B]", 1, [("%a0", "%ptr")], "object"), made("mach.load", "str", 2, [("%t1", "%ptr")])],
+                 ["%ptr"], "", "mach.load reads %t1, an object cast's value"),
+                # (a rule holds of the value at its definition's type, which no view may change: a %ptr
+                # reads any reference, a %slot any packed slot, a union one with a common member)
+                ([made("cast", "list[int]", 1, [("%a0", "%ptr")], "bits")], ["str"], "",
+                 "cast bits of %a0, a str read as a %ptr, where a cast of kind bits reads a machine word"),
+                ([made("slot.pack", "*float", 1, [("%a0", "float")]), made("cast", "int", 2, [("%t1", "%slot")], "bits")], ["float"], "",
+                 "cast bits of %t1, a *float read as a %slot, where a cast of kind bits reads a machine word"),
+                ([made("cast", "B", 1, [("%a0", "%ptr")], "bits")], ["A"], "", "cast bits of %a0, a A read as a %ptr, where"),
+                ([made("cast", "union[A,B]", 1, [("%a0", "%ptr")], "object"), made("cast", "A", 2, [("%t1", "union[A,B]")], "member")],
+                 ["union[A,B]"], "", "cast object of %a0, a union[A,B] read as a %ptr, where a cast of kind object reads"),
+                ([made("cast", "union[A,B]", 1, [("%a0", "%ptr")], "object"), made("cast", "D", 2, [("%t1", "union[B,D]")], "member")],
+                 ["%ptr"], "", "cast member of %t1, a union[A,B] read as a union[B,D], where a cast of kind member reads"),
                 ([made("cast", "str", 1, [("%a0", "A")], "opaque")], ["A"], "", "cast opaque of a A to a str, where a cast of kind opaque reads"),
                 ([made("cast", "B", 1, [("%a0", "A")], "opaque")], ["A"], "_pystachy_copy", "cast opaque of a A to a B, where a cast of kind opaque reads")):
             with self.subTest(expected=expected):

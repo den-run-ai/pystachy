@@ -257,6 +257,21 @@ entry:
   ret.none
 }
 
+function @a_bits_cast_of_a_reference_read_as_a_word(s: str) -> None {
+entry:
+  ; expected-error {{cast bits of %a0, a str read as a %ptr, where a cast of kind bits reads a machine word}}
+  %t1 = cast bits (%ptr %a0) : list[int]
+  ret.none
+}
+
+function @a_bits_cast_of_a_packed_slot_read_as_a_word(x: float) -> None {
+entry:
+  %t1 = slot.pack(float %a0) : *float
+  ; expected-error {{cast bits of %t1, a *float read as a %slot, where a cast of kind bits reads a machine word}}
+  %t2 = cast bits (%slot %t1) : int
+  ret.none
+}
+
 function @an_object_cast_to_a_union_of_no_classes(p: %ptr) -> None {
 entry:
   ; expected-error {{cast object of a %ptr to a union[int,str], where a cast of kind object reads}}

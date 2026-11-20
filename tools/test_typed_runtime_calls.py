@@ -11,7 +11,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.ir import Val
+from src.pystachy_compiler.ir import Val, tmpname
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.utils import RT_VARS, rt_generic, rt_instance_error, rtsig
 
@@ -133,6 +133,45 @@ class RuntimeCallTests(unittest.TestCase):
         wrong.t = "*str"
         self.assertEqual(rt_instance_error(wrong, rtsig("dict.getitem")), "rt dict.getitem result needs *int, got *str")
         self.assertIn("R", RT_VARS)
+
+
+# Lookups by a key that may be None in dicts whose keys cannot be (Gen.nonekey), in a program that
+# has a class V, which a type of V names.
+NONE_KEYS = """
+class V:
+    def __init__(self) -> None:
+        self.x = 1
+
+
+def got(d: dict[str, int], k: str | None) -> int:
+    return d.get(k, 5)
+
+
+def popped(d: dict[str, float], k: str | None) -> float:
+    return d.pop(k, 2.5)
+
+
+def maybe(d: dict[str, int], k: str | None) -> int | None:
+    return d.get(k)
+
+
+print(got({"a": 1}, None), popped({"a": 1.0}, "a"), maybe({"a": 1}, None), V().x)
+"""
+
+
+class NoneKeyTests(unittest.TestCase):
+    def test_the_phi_of_a_none_key_has_the_type_of_the_calls_instance(self):
+        # (the slot that the lookup returns, or the default where the key is None: of the dict's
+        # values, as the call's instance returns them, not of its signature's *V, which names
+        # the class V here. compile_functions verifies each function with PYSTACHY_IRCHECK=1)
+        functions = compile_functions(NONE_KEYS)
+        for name, call, t in (("got", "dict.get", "*int"), ("popped", "dict.pop_default", "*float"),
+                              ("maybe", "dict.getbox", "*opt[int]")):
+            with self.subTest(function=name):
+                fn = functions[name][1]
+                [lookup] = calls(fn, call)
+                [phi] = [i for b in fn.blocks for i in b.code if i.op == "phi" and tmpname(lookup.r[0]) in [a.v for a in i.a]]
+                self.assertEqual((lookup.t, phi.t), (t, t))
 
 
 if __name__ == "__main__":

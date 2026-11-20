@@ -15,10 +15,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.pystachy_compiler import optimizations
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.driver import runtime_ir
-from src.pystachy_compiler.ir import IFn, Ins, Val
+from src.pystachy_compiler.ir import IFn, Ins, Val, cast_number, one_num, slot_register
 from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.loader import Loader
-from src.pystachy_compiler.specs import FXALL, FXBIT, RAWR
+from src.pystachy_compiler.specs import FXALL, FXBIT, RAWR, REACH
 from src.pystachy_compiler.syntax import Node
 
 
@@ -384,6 +384,125 @@ print(ys, box.value)
         with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "0", "PYSTACHY_OPT": ""}):
             normal = Gen().program(Loader([]).program("guarded_fields.py", source))
         self.assertEqual(checked, normal)
+
+
+def unused_casts(fn, n):
+    # n casts that nothing reads, numbered as a pass numbers the casts it adds (ir.cast_number)
+    added = []
+    for _ in range(n):
+        cast = Ins("cast", "int", "bits")
+        cast.a = [Val("0", "%slot")]
+        cast.r = one_num(cast_number(fn))
+        added.append(cast)
+    return added
+
+
+def drop(fn, added):
+    # fn without the casts added, whose numbers stay in IFn.casts, as a dropped cast's do
+    gone = {id(cast) for cast in added}
+    for block in fn.blocks:
+        block.code = [i for i in block.code if id(i) not in gone]
+
+
+def reaching_walk(gen, fn, slot):
+    # the ops that Gen.reaching walks over from the last load of slot back to the load or store
+    # of it before: how many, and how many of them are no cast
+    preds = gen.preds(fn)
+    loads = [(j, x) for j in range(len(fn.blocks)) for x in range(len(fn.blocks[j].code))
+             if fn.blocks[j].code[x].op == "mem.load" and fn.blocks[j].code[x].a[0].v == slot]
+    j, x = loads[-1]
+    walked = []
+    while True:
+        code = fn.blocks[j].code
+        for y in range(x - 1, -1, -1):
+            walked.append(code[y])
+            if code[y].op in ("mem.load", "mem.store") and code[y].a[0].v == slot:
+                return len(walked), len([i for i in walked if i.op != "cast"])
+        [j] = preds[fn.blocks[j].label]
+        x = len(fn.blocks[j].code)
+
+
+FUSED = """
+def looked_up(d: dict[str, int], key: str) -> int:
+    if key in d:
+        return d[key]
+    return -1
+
+
+print(looked_up({"x": 2}, "x"))
+"""
+
+
+class CastBudgetTests(unittest.TestCase):
+    """A cast touches no memory and lowering erases it: it counts toward no pass's budget, so that
+    a pass decides as it would had the frontend made no cast (docs/typed-ir.md#casts)."""
+
+    def lookups(self, source, name, casts=0):
+        # The dict ops of function name of source once dictfuse has run on it, and how many it
+        # rewrote, with casts unused casts put before the ops of the block of its last
+        # dict.getitem (between that lookup and those before it); and the walk of Gen.reaching
+        # there from the last load of its dict d (reaching_walk)
+        found = []
+        dictfuse = Gen.dictfuse
+
+        def observe(gen, fn):
+            if fn.f.name != name:
+                return dictfuse(gen, fn)
+            added = unused_casts(fn, casts)
+            last = max(j for j in range(len(fn.blocks)) if any(i.op == "rt" and i.s == "dict.getitem" for i in fn.blocks[j].code))
+            fn.blocks[last].code[0:0] = added
+            walk = reaching_walk(gen, fn, [slot_register(s) for s in fn.slots if s.s == "d" and s.k == 0][0])
+            changed = dictfuse(gen, fn)
+            drop(fn, added)
+            found.append((changed, [i.s for b in fn.blocks for i in b.code if i.op == "rt" and i.s.startswith("dict.")], walk))
+            return changed
+
+        with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "1", "PYSTACHY_OPT": ""}), \
+                patch.object(Gen, "dictfuse", observe):
+            Gen().program(Loader([]).program(name + ".py", source))
+        self.assertEqual(len(found), 1)
+        return found[0]
+
+    def test_lookups_that_casts_separate_are_fused(self):
+        # (the lookup's dict and key are what a lookup twice REACH casts before it read: it reuses
+        # that lookup's entry, as with no cast between them)
+        changed, plain, _ = self.lookups(FUSED, "looked_up")
+        self.assertGreater(changed, 0)
+        self.assertEqual(self.lookups(FUSED, "looked_up", 2 * REACH)[:2], (changed, plain))
+
+    def test_lookups_that_a_run_of_casts_separates_are_fused(self):
+        # (xs.index(v) of a float v in a list of ints makes two bits casts, slot_word's: fourteen of
+        # them put more than REACH ops between the loads of d of the two d["k"], fewer once the casts
+        # are left out, as without casts: the second reuses the first's entry)
+        source = ("def f(d: dict[str, int], xs: list[int], v: float) -> int:\n    a = d[\"k\"]\n    t = 0\n"
+                  + "    t += xs.index(v)\n" * 14 + "    b = d[\"k\"]\n    return a + b + t\n\n\nprint(f({\"k\": 1}, [1, 2, 3], 2.0))\n")
+        changed, ops, walk = self.lookups(source, "f")
+        if not walk[1] <= REACH < walk[0]:
+            self.skipTest(f"the walk passes {walk[0]} ops, {walk[1]} of them no cast: the casts no longer decide")
+        self.assertEqual((ops.count("dict.getitem"), ops.count("dict.entry")), (0, 1))
+
+    def test_charslots_counts_no_operand_of_a_cast(self):
+        # (classify's character slot is rewritten as with no cast, with more unused casts than the
+        # 4096 operands that the pass reads before it gives up)
+        source = Path(__file__).resolve().parents[1] / "tests/programs/optimizations/opt_charslots.py"
+        found = []
+        charslots = Gen.charslots
+
+        def observe(gen, fn):
+            if fn.f.name != "classify":
+                return charslots(gen, fn)
+            added = unused_casts(fn, 4097)
+            last = fn.blocks[len(fn.blocks) - 1].code
+            last[len(last) - 1:len(last) - 1] = added
+            changed = charslots(gen, fn)
+            drop(fn, added)
+            found.append(changed)
+            return changed
+
+        with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "1", "PYSTACHY_OPT": ""}), \
+                patch.object(Gen, "charslots", observe):
+            Gen().program(Loader([]).program(str(source), source.read_bytes().decode("latin1")))
+        self.assertEqual(found, [1])
 
 
 if __name__ == "__main__":

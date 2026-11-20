@@ -450,7 +450,8 @@ def gen_charslots(self, fn: IFn) -> int:
     for j in range(len(fn.blocks)):
         for x in range(len(fn.blocks[j].code)):
             i = fn.blocks[j].code[x]
-            operands += len(i.a)
+            if i.op != "cast":
+                operands += len(i.a)  # (not a cast's, which lowering erases: its uses count below)
             if operands > 4096:
                 return 0
             for k in range(len(i.a)):
@@ -1940,7 +1941,8 @@ def gen_reaching(self, vs: Values, a: str, j: int, x: int) -> str:
     # memory (a slot's: only a store to it; a global's: a store to it, or an op with wG;
     # another's: a store that may alias it, or an op with wL wD wO), or no such op is found
     # within REACH ops (each load would otherwise walk back over the whole function: a
-    # value that is not found is only its own canonical value)
+    # value that is not found is only its own canonical value). A cast, which touches no memory
+    # and which lowering erases, is not counted (ir.real_ops)
     slot = a.startswith("%") and "." in a
     glob = a.startswith("@")
     heap = not slot and not glob
@@ -1949,10 +1951,12 @@ def gen_reaching(self, vs: Values, a: str, j: int, x: int) -> str:
     while True:
         code = vs.fn.blocks[j].code
         for y in range(x - 1, -1, -1):
+            i = code[y]
+            if i.op == "cast":
+                continue
             steps += 1
             if steps > REACH:
                 return ""
-            i = code[y]
             if i.op == "mem.load" or i.op == "mem.store" or i.op == "mach.load" or i.op == "mach.store":
                 if i.op == "mach.load" and i.s != "":
                     continue

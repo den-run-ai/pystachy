@@ -14,7 +14,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Ins, Val
+from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Ins, Loop, Val
 from src.pystachy_compiler.ircheck import RESULT_NUMBERS
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.machine_ir import WORD_READS, machine_ops
@@ -239,6 +239,36 @@ class CastErasureTests(unittest.TestCase):
         self.assertEqual((cast.r, g.n, g.fn.casts), ([last + 1], last + 1, [last + 1]))
         load, = [i for i in g.fn.blocks[0].code if i.op == "mem.load"]
         self.assertEqual((load.a[0].v, load.r), (f"%t{last + 1}", [int(value.v[2:])]))
+
+    def test_a_loops_values_name_its_numbered_casts(self):
+        # (a loop's stop, sequences and indexes are values, which the loop passes read by name)
+        g = Gen()
+        word = g.cast(Val(g.mload("%slot", "%a0"), "%slot"), "int", "bits")
+        lp = Loop("seq", "L1", "L2", "L3", "L4")
+        lp.stop = Val(word.v, "int")
+        lp.idx = [word.v]
+        g.fn.loops.append(lp)
+        g.number_casts()
+        cast, = [i for i in g.fn.blocks[0].code if i.op == "cast"]
+        self.assertEqual((lp.stop.v, lp.idx), (f"%t{cast.r[0]}", [f"%t{cast.r[0]}"]))
+
+    def test_calls_that_return_slots_keep_their_marks(self):
+        # (Gen.vcalls marks a call that returns its tuple's slots by its function and value: the mark
+        # goes with its number, also where a call's new name is another's old one, the other's
+        # block coming later)
+        code = [op("mach.load", "%ptr", "", [("%a0", "%ptr")], [1]),
+                op("cast", "&int", "bits", [("%t1", "%ptr")], [2]),
+                op("call", "tuple[int,int]", "@pair", [], [4]),
+                op("call", "tuple[int,int]", "@pair", [], [3]),
+                Ins("ret.none", "", "")]
+        fn = function([("entry", code)])
+        fn.f.params, fn.f.ptypes, fn.ps = ["p"], ["%ptr"], [0]
+        fn.casts = [2]
+        g = Gen()
+        g.vcalls = {"@machine %t4": True, "@machine %t3": True, "@other %t3": True}
+        g.erase_casts(fn)
+        self.assertEqual([i.r for i in fn.blocks[0].code if i.op == "call"], [[3], [2]])
+        self.assertEqual(sorted(g.vcalls), ["@machine %t2", "@machine %t3", "@other %t3"])
 
 
 class MachineCheckTests(unittest.TestCase):

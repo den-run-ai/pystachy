@@ -574,11 +574,12 @@ class UnionProof:
         return self.native.get(v, "")
 
     def box_select(self, i: Ins) -> bool:
-        # Is select i one between None and boxes made here (Gen.ubox's, for an object that may be
-        # None: null, else its box)? Its result is one of them, so it has their members and None
-        # whatever its condition says of its object, a class whose domain has no None to select
-        # (a later read needs its own None test). Any other operand, a pointer of unknown
-        # provenance, leaves the result to the select's own rule
+        # Is each of select i's values None or a box made here, whatever the select's type? (Gen.ubox
+        # boxes an object that may be None so, in a select of the union's type: null, else its
+        # box.) Its result is one of them, so it has their members and None whatever its condition
+        # says of its object, a class whose domain has no None to select (a later read needs its
+        # own None test). Any other value, a pointer of unknown provenance, leaves the result to
+        # the select's own rule
         for a in i.a[1:]:
             d = self.defs[a.v] if a.v in self.defs else None
             if a.v != "null" and (d is None or d.op != "rt" or (d.s != "ubox" and d.s != "ubox_opt")):

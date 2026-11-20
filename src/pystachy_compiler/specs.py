@@ -763,12 +763,13 @@ TYPE_CLASSES: dict[str, str] = {
 
 # The kinds of a cast op (Ins.s), each a reading of its operand's value at another type of the
 # same LLVM type (utils.lt): lowering erases a cast, and its uses read its operand
-# (Gen.erase_casts). The verifier holds each to its kind's rule (ircheck.cast_error). A cast
-# that narrows takes the frontend's word for what it reads, such as a test before it.
+# (Gen.erase_casts). The verifier holds each to its kind's rule (ircheck.cast_error), which holds
+# of the value the operand reads, at the type its definition gives it. A cast that narrows takes
+# the frontend's word for what it reads, such as a test before its readers.
 CAST_KINDS: dict[str, str] = {
-    "bits": "a machine word as a typed value: %ptr as a reference or an address &T, %slot as an int or a packed slot *T",
-    "object": "%ptr as a closed union of classes: the object that a box of the union holds (Gen.cmp_object), which only a ptr.cmp, a mach.load of its class word and member casts read",
-    "member": "an object cast's value as one of its union's classes or a class derived from one, which a test of the object's class proves",
+    "bits": "a machine word, which its definition gives only that type, as a typed value: %ptr as a reference or an address &T, %slot as an int or a packed slot *T",
+    "object": "a %ptr as a closed union of classes: the object that a box of the union holds (Gen.cmp_object's phi), which only a ptr.cmp, a mach.load of its class word (an int or a %ptr) and member casts read",
+    "member": "an object cast's value as one of its union's classes or a class derived from one: Gen.cmp_alts makes one for each class it tells apart, beside the object cast, and only code that a test of the object's class leads to reads it",
     "opaque": "a reference as a str, and back, in lib/_pystachy_copy.py, whose deep-copy memo keeps any reference as a str",
 }
 

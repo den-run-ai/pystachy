@@ -143,11 +143,16 @@ def gen_erase_casts(self, fn: IFn) -> None:
     for i in fn.slots:
         if i.r[0] >= first:
             i.r = one_num(renum[i.r[0] - first])
+    prefix = fn.f.ll + " "
+    moved: list[str] = []  # (the keys of its calls in Gen.vcalls, each before its new one)
     for b in fn.blocks:
         b.label = renamed(b.label, first, renum)
         b.handler = renamed(b.handler, first, renum)
         for i in b.code:
             if len([n for n in i.r if n >= first]) > 0:
+                if i.op == "call" and len(i.r) == 1 and prefix + tmpname(i.r[0]) in self.vcalls:
+                    moved.append(prefix + tmpname(i.r[0]))
+                    moved.append(prefix + tmpname(renum[i.r[0] - first]))
                 i.r = one_num(renum[i.r[0] - first]) if len(i.r) == 1 else [renum[n - first] if n >= first else n for n in i.r]
             if len([a for a in i.a if a.v in source or renamed(a.v, first, renum) != a.v]) > 0:
                 i.a = [Val(renamed(source[a.v] if a.v in source else a.v, first, renum), a.t) for a in i.a]
@@ -174,9 +179,8 @@ def gen_erase_casts(self, fn: IFn) -> None:
     fn.gsaved = renamed(fn.gsaved, first, renum)
     fn.gouter = renamed(fn.gouter, first, renum)
     fn.ghand = renamed(fn.ghand, first, renum)
-    prefix = fn.f.ll + " "
-    for k in [c for c in self.vcalls if c.startswith(prefix)]:
-        v = renamed(k[len(prefix):], first, renum)
-        if prefix + v != k:
-            del self.vcalls[k]
-            self.vcalls[prefix + v] = True
+    # (all old keys go before any new one is added, which may be another call's old key)
+    for k in range(0, len(moved), 2):
+        del self.vcalls[moved[k]]
+    for k in range(1, len(moved), 2):
+        self.vcalls[moved[k]] = True

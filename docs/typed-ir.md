@@ -425,9 +425,9 @@ one, whatever block defines it.
 
 | Cast kind | Reads |
 |---|---|
-| `bits` | a machine word as a typed value: %ptr as a reference or an address &T, %slot as an int or a packed slot *T |
-| `object` | %ptr as a closed union of classes: the object that a box of the union holds (Gen.cmp_object), which only a ptr.cmp, a mach.load of its class word and member casts read |
-| `member` | an object cast's value as one of its union's classes or a class derived from one, which a test of the object's class proves |
+| `bits` | a machine word, which its definition gives only that type, as a typed value: %ptr as a reference or an address &T, %slot as an int or a packed slot *T |
+| `object` | a %ptr as a closed union of classes: the object that a box of the union holds (Gen.cmp_object's phi), which only a ptr.cmp, a mach.load of its class word (an int or a %ptr) and member casts read |
+| `member` | an object cast's value as one of its union's classes or a class derived from one: Gen.cmp_alts makes one for each class it tells apart, beside the object cast, and only code that a test of the object's class leads to reads it |
 | `opaque` | a reference as a str, and back, in lib/_pystachy_copy.py, whose deep-copy memo keeps any reference as a str |
 
 <!-- typed-ir-ops: end -->
@@ -464,12 +464,17 @@ an empty container keeps its placeholder (`list[?]`) until the use that types it
 A `cast` reads its operand's value at another type of the same LLVM type (`utils.lt`), as
 `%t9 = cast bits (%ptr %t8) : &int` reads a closure environment's word as the address of the
 variable's cell. Its text is its kind (the fourth table, `CAST_KINDS`), and with
-`PYSTACHY_IRCHECK=1` the verifier holds it to its kind's rule (`ircheck.cast_error`): a `bits`
-cast reads a machine word as a typed value, an `object` cast reads the object that a box of a
-closed union of classes holds as that union, and only identity tests, a load of its class word
-and `member` casts, which read it as one of the union's classes once a test of its class tag
-has passed, may read that value; an `opaque` cast reads a reference as a `str` and back in the
-deep-copy memo of `lib/_pystachy_copy.py`. Like the views that narrow, a cast takes the
+`PYSTACHY_IRCHECK=1` the verifier holds it to its kind's rule (`ircheck.cast_error`), which
+holds of the value its operand reads, read at the type the value's definition gives it: no
+view may stand between them, since a `%ptr` reads any reference and a `%slot` any packed slot.
+A `bits` cast reads a word that its definition types only as `%ptr` or `%slot` as a typed
+value. An `object` cast reads the object that a box of a closed union of classes holds, which
+`Gen.cmp_object` gets as a `%ptr`, as that union, and only identity tests, a load of its class
+word and `member` casts may read that value. `Gen.cmp_alts` makes the `member` casts beside it,
+one for each class it tells the object apart as; each reads the object as one of the union's
+classes, and only the code that a test of the object's class tag leads to reads it. An `opaque`
+cast reads a reference as a `str` and back in the deep-copy memo of `lib/_pystachy_copy.py`.
+Like the views that narrow, a cast takes the
 frontend's word for what it reads; unlike them it is an op, which the verifier checks and the
 passes see. The frontend makes them where an operand used to read another op's machine word as a
 typed value: a closure's cells, numeric identity boxes' addresses, dynamic identity words, a
@@ -486,9 +491,11 @@ and `Gen.number_casts` numbers the function's casts after its last value once it
 `IFn.casts` keeps those numbers and a pass's casts, which `cast_number` numbers as the pass's
 other values. Lowering then takes the casts' numbers out, every number above one one less for
 each below it, so that the LLVM text is the one the program would have without casts. Values
-(`Gen.canon`), the union proofs and the passes' size limits (`real_n`, `real_ops`) take a cast
-for its operand, and the Lean adapters read a snapshot's functions without their casts
-(`check_lean_boundary.erase_casts`); the shape checker reads them as they are.
+(`Gen.canon`) and the union proofs take a cast for its operand, and the passes' budgets leave
+casts out: their size limits (`real_n`, `real_ops`), the operands `charslots` counts and the
+ops that the walk back to a load's reaching store counts (`Gen.reaching`). The Lean adapters
+read a snapshot's functions without their casts (`check_lean_boundary.erase_casts`); the shape
+checker reads them as they are.
 
 The operation registry is closed: unknown operations, including `raw`, are rejected.
 Operations carry typed operands and finite operators, predicates, flags and metadata;
@@ -598,9 +605,10 @@ provably disjoint fresh storage retain facts across unrelated writes.
 Standalone tag reads and box construction also require these proofs. An integer
 machine load whose defined source is a union is checked as a tag read, including its
 nonnull requirement; one from a `tuple[T, ...] | None` reads its length word, no tag. A
-`select` of the union's type between `None` and a box built in the function (an object that
-may be `None` is boxed this way) has that box's members and `None`, whatever is known of its
-condition: a later read still needs its own None test. Simple guards of immutable,
+`select` whose values are each `None` or a box built in the function, whatever its type, has
+those boxes' members and `None`, whatever is known of its condition: a later read still needs
+its own None test (an object that may be `None` is boxed this way, in a `select` of the
+union's type). Simple guards of immutable,
 nonnullable union parameters can be proved by a bounded predecessor walk without allocating
 dataflow states. Mutable slots, nullable sources, raw payload transport and unsupported
 control-flow shapes fall back to the general solver.
