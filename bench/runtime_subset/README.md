@@ -289,3 +289,19 @@ a 33.1 MiB peak. In AOT its second reading costs what the copy did; under the JI
 4% slower (215 to 222 ns per iteration). The 64 collections of `hypot-3` are those of
 the list the program makes for each call, in both versions; the other cases make none.
 The AOT executable is 149,680 bytes before and 150,016 after.
+
+## Scalar integer helpers
+
+[`integers.py`](integers.py) times one operation per iteration over 256 signed
+inputs. The two true-division cases cover small operands that convert to floats
+exactly and operands above 2**53 that require a correctly rounded quotient.
+Right shifts include counts above 63, and left shifts stay within the signed
+64-bit range. The harness checks each integer sum or hexadecimal float sum
+against CPython before recording the paired timings.
+
+```sh
+taskset -c "$BENCH_CPU" python3.13 bench/runtime_subset/compare.py \
+  --before "$BENCH_BASELINE" --after . --pairs 7 \
+  --cases floordiv modulo lshift rshift bit-length bit-count idiv-small idiv-wide \
+  --json /tmp/integer-helpers.json
+```

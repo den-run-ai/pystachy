@@ -4,7 +4,7 @@ from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, tmpname
 
 
 SCALAR_INTS = ["bool", "%byte", "%i32", "int", "%i128"]
-SCALAR_BIN = ["add", "sub", "mul", "udiv", "urem", "shl", "lshr", "ashr", "and", "or", "xor"]
+SCALAR_BIN = ["add", "sub", "mul", "sdiv", "srem", "udiv", "urem", "shl", "lshr", "ashr", "and", "or", "xor"]
 SCALAR_FLOAT = ["fadd", "fsub", "fmul", "fdiv", "fneg"]
 SCALAR_ICMP = ["eq", "ne", "slt", "sle", "sgt", "sge", "ult", "ule", "ugt", "uge"]
 SCALAR_FCMP = ["oeq", "one", "olt", "ole", "ogt", "oge", "ueq", "une", "ult", "ule", "ugt", "uge", "ord", "uno"]

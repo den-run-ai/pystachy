@@ -185,10 +185,11 @@ CALLS: dict[str, str] = {
 RTL: dict[str, str] = {
     "byte": "str,int:int", "str_new": "int:str", "str_put": "str,int,int:None", "str_done": "str:str",
     "copy": "str,int,str,int,int:None", "wrap_add": "int,int:int", "wrap_sub": "int,int:int",
-    "wrap_mul": "int,int:int", "shl": "int,int:int", "lshr": "int,int:int", "null": "str:bool",
+    "wrap_mul": "int,int:int", "shl": "int,int:int", "lshr": "int,int:int", "ashr": "int,int:int", "null": "str:bool",
     "same": "str,int,str,int,int:bool", "find_byte": "str,int,int,int:int", "udiv": "int,int:int",
     "urem": "int,int:int", "mul_ovf": "int,int:bool", "find_sub": "str,str,int,int:int", "fail": "str,str:None",
-    "mul_hi": "int,int:int", "urem_wide": "int,int,int:int", "float_bits": "float:int", "bits_float": "int:float",
+    "sdiv": "int,int:int", "srem": "int,int:int", "ctlz": "int:int", "ctpop": "int:int",
+    "mul_hi": "int,int:int", "udiv_wide": "int,int,int:int", "urem_wide": "int,int,int:int", "float_bits": "float:int", "bits_float": "int:float",
     "fma": "float,float,float:float", "sqrt": "float:float", "fdiv": "float,float:float",
 }
 STR_HEADER_SIZE = 24  # offsetof(Str, s), checked against runtime.c and both CPython glues by rt-abi
@@ -1109,6 +1110,7 @@ RUNTIME: dict[str, str] = {
     "ceil": "int:float|R|", "int.str": "int:str,int|R A|", "float.str": "float:str|R A|", "float.hex": "str:float|A|",
     "float.is_integer": "bool:float||", "int.bit_length": "int:int||", "int.bit_count": "int:int||", "fabs": "float:float||fabs",
     "fma": "float:float,float,float||llvm.fma.f64", "sqrt": "float:float||llvm.sqrt.f64",
+    "ctlz": "int:int,%i1||llvm.ctlz.i64", "ctpop": "int:int||llvm.ctpop.i64",
     "ovf.sadd": "%ovf:int,int||llvm.sadd.with.overflow.i64", "ovf.ssub": "%ovf:int,int||llvm.ssub.with.overflow.i64",
     "ovf.smul": "%ovf:int,int||llvm.smul.with.overflow.i64",
     "m.sqrt": "float:float|R|", "m.sin": "float:float|R|", "m.cos": "float:float|R|", "m.tan": "float:float|R|",

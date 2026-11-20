@@ -1580,43 +1580,17 @@ double pys_float_str(Str *s) {
 
 /* ---------- arithmetic with Python semantics ----------
    ints are 64-bit: a result CPython would represent as a big int raises OverflowError */
-#define ZDE "ZeroDivisionError: integer division or modulo by zero"
 #define OVF "OverflowError: integer result does not fit in 64 bits"
-I pys_floordiv(I a, I b) {
-  if (!b) pys_fail(ZDE);
-  if (b == -1) { if (a == INT64_MIN) pys_fail(OVF); return -a; }
-  I q = a / b; return (a % b && (a < 0) != (b < 0)) ? q - 1 : q;
-}
-I pys_mod(I a, I b) {
-  if (!b) pys_fail("ZeroDivisionError: integer modulo by zero");
-  if (b == -1) return 0;
-  I r = a % b; return (r && (r < 0) != (b < 0)) ? r + b : r;
-}
+I pys_floordiv(I a, I b);
+I pys_mod(I a, I b);
 I pys_pow(I a, I b);
 I pys_powmod(I a, I b, I m);                 /* pow(a, b, m): runtime.py's, with its products in 128 bits */
-I pys_shl(I a, I b) {
-  if (b < 0) pys_fail("ValueError: negative shift count");
-  if (!a) return 0;
-  I r = b > 63 ? 0 : (I)((uint64_t)a << b);
-  if (b > 63 || r >> b != a) pys_fail(OVF);
-  return r;
-}
-I pys_shr(I a, I b) { if (b < 0) pys_fail("ValueError: negative shift count"); return a >> (b > 63 ? 63 : b); }
-I pys_int_bit_length(I a) {                  /* int.bit_length() and bit_count() count the bits of |a|: 2**63 for -2**63 */
-  uint64_t x = a < 0 ? 0 - (uint64_t)a : (uint64_t)a;
-  return x ? 64 - __builtin_clzll(x) : 0;    /* (clz(0) is undefined) */
-}
-I pys_int_bit_count(I a) { return __builtin_popcountll(a < 0 ? 0 - (uint64_t)a : (uint64_t)a); }
+I pys_shl(I a, I b);
+I pys_shr(I a, I b);
+I pys_int_bit_length(I a);
+I pys_int_bit_count(I a);
 double pys_fdiv(double a, double b) { if (b == 0) pys_fail("ZeroDivisionError: float division by zero"); return a / b; }
-double pys_idiv(I a, I b) {                  /* int / int, rounded once like CPython's true division */
-  if (!b) pys_fail("ZeroDivisionError: division by zero");
-  uint64_t x = a < 0 ? 0 - (uint64_t)a : (uint64_t)a, y = b < 0 ? 0 - (uint64_t)b : (uint64_t)b;
-  if (!x || (x <= (1ULL << 53) && y <= (1ULL << 53))) return (double)a / (double)b;   /* both exact: one rounding; 0 / b is a signed 0 (and clz(0) below is undefined) */
-  int k = 55 + (63 - __builtin_clzll(y)) - (63 - __builtin_clzll(x)); if (k < 0) k = 0;
-  unsigned __int128 num = (unsigned __int128)x << k, q = num / y; int sticky = num % y != 0;
-  double r = ldexp((double)(uint64_t)(q | sticky), -k);   /* q has 55+ bits: the sticky bit makes the conversion round once */
-  return (a < 0) != (b < 0) ? -r : r;
-}
+double pys_idiv(I a, I b);                    /* int / int, rounded once in runtime.py */
 static __attribute__((noinline, const)) I cmp_if_whole(I i, double d) {   /* pys_cmp_if past 2**53 */
   if (isnan(d)) return 2;
   if (d >= 9223372036854775808.0) return -1;

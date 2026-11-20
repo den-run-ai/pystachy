@@ -15,7 +15,7 @@ used by `runtime.py`. Ordinary programs cannot use that interface.
 
 | Part | Responsibilities |
 |---|---|
-| `runtime.py` | String methods and ASCII escaping, `os.path`'s string functions, `str(int)` and `int(str, base)`, scalar and integer `math`, `math.hypot`/`dist`/`fma`, `any`/`all`, `sum`/`fsum`/`prod`, checked integer power and `pow(a, b, m)`, `round(int, n)`, range arithmetic, dict hashing and format-spec parsing. |
+| `runtime.py` | String methods and ASCII escaping, `os.path`'s string functions, `str(int)` and `int(str, base)`, scalar and integer `math`, `math.hypot`/`dist`/`fma`, `any`/`all`, `sum`/`fsum`/`prod`, fixed-width integer division, remainder, shifts and bit counts, checked integer power and `pow(a, b, m)`, `round(int, n)`, range arithmetic, dict hashing and format-spec parsing. |
 | `runtime.c` | Collector, object and container memory layouts, I/O, signals, native library calls and float conversion. |
 | [The compiler](../src/README.md) | Runtime compilation, checked primitives, runtime signatures and linking. |
 
@@ -57,6 +57,15 @@ wrapping arithmetic. `round(x, n)` of an int needs 64 bits alone: `10**19` is pa
 them, so a comparison decides that case. The int `sum` adds with the checked
 arithmetic; where a program's lists may hold ints past 64 bits, the compiler narrows
 the list before the call, as for `math.prod` (`NARROWED`).
+
+Fixed-width integer operators keep their existing ABI. Floor division and remainder
+adjust truncation toward zero to Python's floor convention. Left shift checks for
+lost bits by shifting the result back. Bit length and population count use the
+magnitude as an unsigned bit pattern, including the magnitude of `-2**63`.
+For true division, integers up to `2**53` in magnitude convert exactly to double.
+Larger inputs use an integer quotient with extra rounding bits. A nonzero
+remainder sets its low bit before conversion, preserving a single rounding to
+binary64. A zero dividend takes the floating-point path to preserve signed zero.
 
 ## Writing runtime code
 
@@ -186,11 +195,13 @@ in the runtime table.
 | `find_sub(h, n, st, en)` | Search via `memmem`, returning an index or `-1`; check `0 <= st <= en <= len(h)`. |
 | `null(s)` | Test the null pointer used for an omitted string argument. |
 | `wrap_add`, `wrap_sub`, `wrap_mul` | Wrapping 64-bit arithmetic. |
-| `shl(a, n)`, `lshr(a, n)` | Shift by `n % 64`; the right shift is logical. |
+| `shl(a, n)`, `lshr(a, n)`, `ashr(a, n)` | Shift by `n % 64`. Right shift is logical for `lshr` and sign-extending for `ashr`. |
 | `udiv(a, b)`, `urem(a, b)` | Unsigned division/remainder of 64-bit patterns; check zero. |
+| `sdiv(a, b)`, `srem(a, b)` | Signed quotient truncated toward zero and corresponding remainder. Both check zero. For `-2**63` and `-1`, the quotient raises overflow and the remainder is zero. |
+| `ctlz(a)`, `ctpop(a)` | Count leading zeros or set bits in a 64-bit pattern. A zero input has 64 leading zeros. |
 | `mul_ovf(a, b)` | Test whether signed multiplication would overflow. |
 | `mul_hi(a, b)` | High 64 bits of the 128-bit product of two 64-bit patterns as unsigned ints; `wrap_mul` gives the low ones. |
-| `urem_wide(hi, lo, d)` | Remainder of the 128-bit `hi:lo` by `d`, unsigned; check zero. |
+| `udiv_wide(hi, lo, d)`, `urem_wide(hi, lo, d)` | Low 64 bits of the quotient or remainder of unsigned 128-bit `hi:lo` divided by `d`. Both check zero. |
 | `float_bits(x)`, `bits_float(i)` | A float's IEEE 754 bits as an int, and the float of such bits. |
 | `fma(x, y, z)`, `sqrt(x)`, `fdiv(x, y)` | `x * y + z` rounded once, the square root and the quotient as IEEE 754 defines them: an inf or a NaN, never an error. |
 

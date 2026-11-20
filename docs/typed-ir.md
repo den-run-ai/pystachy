@@ -516,7 +516,7 @@ operators/conversions and extra metadata. These operations are pure; frontend gu
 retain responsibility for bounds, overflow and division checks. `select` also checks
 its boolean condition and matching result/value types.
 
-Runtime mode's wide primitives (`_rt.mul_hi`, `_rt.urem_wide`) compute in `%i128`.
+Runtime mode's wide primitives (`_rt.mul_hi`, `_rt.udiv_wide`, `_rt.urem_wide`) compute in `%i128`.
 `scalar.bin` and `scalar.cmp` accept that type, and `scalar.cast` only extends an `int`
 to it (`zext`) and truncates it back (`trunc`); no value of it is stored, selected or
 passed. `_rt.float_bits` and `_rt.bits_float` are the `bitcast` conversions between

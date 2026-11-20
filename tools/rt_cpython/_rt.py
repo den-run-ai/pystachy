@@ -71,6 +71,18 @@ def lshr(a, n):
     return i64((a & M64) >> (n & 63))
 
 
+def ashr(a, n):
+    return i64(a) >> (n & 63)
+
+
+def ctlz(a):
+    return 64 - (a & M64).bit_length()
+
+
+def ctpop(a):
+    return (a & M64).bit_count()
+
+
 def null(s):
     return s is None
 
@@ -102,12 +114,34 @@ def urem(a, b):
     return i64((a & M64) % (b & M64))
 
 
+def sdiv(a, b):
+    if b == 0:
+        raise ZeroDivisionError("integer division or modulo by zero")
+    if a == -(1 << 63) and b == -1:
+        raise OverflowError("integer result does not fit in 64 bits")
+    q = abs(a) // abs(b)
+    return -q if (a < 0) != (b < 0) else q
+
+
+def srem(a, b):
+    if b == 0:
+        raise ZeroDivisionError("integer modulo by zero")
+    r = abs(a) % abs(b)
+    return -r if a < 0 else r
+
+
 def mul_ovf(a, b):
     return not -(1 << 63) <= a * b < 1 << 63
 
 
 def mul_hi(a, b):
     return i64(((a & M64) * (b & M64)) >> 64)
+
+
+def udiv_wide(hi, lo, d):
+    if d == 0:
+        raise ZeroDivisionError("integer division or modulo by zero")
+    return i64((((hi & M64) << 64) | (lo & M64)) // (d & M64))
 
 
 def urem_wide(hi, lo, d):

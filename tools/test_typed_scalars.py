@@ -36,7 +36,7 @@ class TypedScalarTests(unittest.TestCase):
         self.assertIn("bad IR", error.getvalue())
 
     def test_arithmetic_bitwise_and_overflow_flags_lower_exactly(self):
-        for op in ("add", "sub", "mul", "udiv", "urem", "shl", "lshr", "ashr", "and", "or", "xor"):
+        for op in ("add", "sub", "mul", "sdiv", "srem", "udiv", "urem", "shl", "lshr", "ashr", "and", "or", "xor"):
             for t, llvm in (("int", "i64"), ("bool", "i1"), ("%byte", "i8"), ("%i32", "i32"), ("%i128", "i128")):
                 g = Gen()
                 g.scalar(op, [Val("%a0", t), Val("1", t)])
@@ -69,6 +69,9 @@ class TypedScalarTests(unittest.TestCase):
         for name, vals, result, lines in (
                 ("mul_hi", [a, b], "int", ["  %t1 = zext i64 %a0 to i128", "  %t2 = zext i64 %a1 to i128", "  %t3 = mul i128 %t1, %t2",
                                            "  %t4 = lshr i128 %t3, 64", "  %t5 = trunc i128 %t4 to i64"]),
+                ("ashr", [a, b], "int", ["  %t1 = and i64 %a1, 63", "  %t2 = ashr i64 %a0, %t1"]),
+                ("ctlz", [a], "int", ["  %t1 = call i64 @llvm.ctlz.i64(i64 %a0, i1 false)"]),
+                ("ctpop", [a], "int", ["  %t1 = call i64 @llvm.ctpop.i64(i64 %a0)"]),
                 ("float_bits", [x], "int", ["  %t1 = bitcast double %a0 to i64"]),
                 ("bits_float", [a], "float", ["  %t1 = bitcast i64 %a0 to double"]),
                 ("fdiv", [x, y], "float", ["  %t1 = fdiv double %a0, %a1"]),
@@ -80,27 +83,44 @@ class TypedScalarTests(unittest.TestCase):
                 value = g.primitive(name, vals)
                 self.assertEqual((value.v, value.t), (f"%t{len(lines)}", result))
                 self.assertEqual(self.finish(g), lines)
-        # the remainder of a 128-bit dividend: the divisor is checked first, then all is unsigned
-        g = Gen()
-        g.rtmode = True
-        value = g.primitive("urem_wide", [a, b, c])
-        self.assertEqual(list(g.fn.cold), ["ZeroDivisionError: integer division or modulo by zero"])
-        self.assertEqual([(i.op, i.s) for i in g.fn.blocks[0].code], [("num.cmp", "=="), ("check", "ZeroDivisionError: integer division or modulo by zero")])
-        body = g.fn.blocks[-1].code
-        self.assertEqual([(i.op, i.s, i.t) for i in body],
-                         [("scalar.cast", "zext", "%i128"), ("scalar.bin", "shl", "%i128"), ("scalar.cast", "zext", "%i128"),
-                          ("scalar.bin", "or", "%i128"), ("scalar.cast", "zext", "%i128"), ("scalar.bin", "urem", "%i128"),
-                          ("scalar.cast", "trunc", "int")])
-        self.assertEqual(value.t, "int")
-        for i in body:
-            self.assertEqual(g.opfx(i, {}), 0)
-            g.lower_ins(g.fn, i)
-        self.assertEqual(g.out[-2:], ["  %t9 = urem i128 %t7, %t8", "  %t10 = trunc i128 %t9 to i64"])
+        # Both wide divisions guard the divisor before the i128 operation.
+        for op in ("udiv", "urem"):
+            g = Gen()
+            g.rtmode = True
+            value = g.primitive(op + "_wide", [a, b, c])
+            self.assertEqual(list(g.fn.cold), ["ZeroDivisionError: integer division or modulo by zero"])
+            self.assertEqual([(i.op, i.s) for i in g.fn.blocks[0].code], [("num.cmp", "=="), ("check", "ZeroDivisionError: integer division or modulo by zero")])
+            body = g.fn.blocks[-1].code
+            self.assertEqual([(i.op, i.s, i.t) for i in body],
+                             [("scalar.cast", "zext", "%i128"), ("scalar.bin", "shl", "%i128"), ("scalar.cast", "zext", "%i128"),
+                              ("scalar.bin", "or", "%i128"), ("scalar.cast", "zext", "%i128"), ("scalar.bin", op, "%i128"),
+                              ("scalar.cast", "trunc", "int")])
+            self.assertEqual(value.t, "int")
+            for i in body:
+                self.assertEqual(g.opfx(i, {}), 0)
+                g.lower_ins(g.fn, i)
+            self.assertEqual(g.out[-2:], [f"  %t9 = {op} i128 %t7, %t8", "  %t10 = trunc i128 %t9 to i64"])
         # a wide value is no storage, select or float-cast type
         for op, source, target in (("zext", "%i32", "%i128"), ("trunc", "%i128", "%i32"), ("sitofp", "%i128", "float"), ("bitcast", "float", "%i128"), ("bitcast", "int", "%ptr")):
             def cast(g, op=op, source=source, target=target):
                 return g.scalar_cast(op, Val("%a0", source), target)
             self.bad(cast, "k", 0)
+
+    def test_signed_division_guards_llvm_exceptional_operands(self):
+        a, b = Val("%a0", "int"), Val("%a1", "int")
+        for op in ("sdiv", "srem"):
+            g = Gen()
+            g.rtmode = True
+            g.primitive(op, [a, b])
+            if op == "sdiv":
+                self.assertEqual(list(g.fn.cold), ["ZeroDivisionError: integer division or modulo by zero",
+                                                   "OverflowError: integer result does not fit in 64 bits"])
+                self.assertEqual(g.fn.blocks[-1].code[-1].s, "sdiv")
+            else:
+                self.assertEqual(list(g.fn.cold), ["ZeroDivisionError: integer modulo by zero"])
+                safe, remainder = g.fn.blocks[-1].code[-2:]
+                self.assertEqual((safe.op, safe.a[1].v, safe.a[2].v), ("select", "1", b.v))
+                self.assertEqual((remainder.s, remainder.a[1].v), ("srem", "%t" + str(safe.r[0])))
 
     def test_verifier_rejects_mismatches_unknown_operators_and_extra_metadata(self):
         def binary(g):

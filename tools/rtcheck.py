@@ -371,6 +371,14 @@ def fuzz_numeric():
         if hasattr(math, "fma"):  # (Python 3.13)
             same("fma", bits(outcome(rt.pys_m_fma, x, y, z)), bits(outcome(math.fma, x, y, z)), (x, y, z))
         a, e, m = wide(), wide(), wide()
+        same("idiv", bits(outcome(rt.pys_idiv, a, m)), bits(outcome(lambda: a / m)), (a, m))
+        want = outcome(lambda: a // m)
+        if not fits(want):  # MIN // -1 overflows, but MIN % -1 is zero.
+            want = ("OverflowError", "integer result does not fit in 64 bits")
+        same("floordiv", outcome(rt.pys_floordiv, a, m), want, (a, m))
+        same("mod", outcome(rt.pys_mod, a, m), outcome(lambda: a % m), (a, m))
+        same("bit_length", outcome(rt.pys_int_bit_length, a), outcome(int.bit_length, a), (a,))
+        same("bit_count", outcome(rt.pys_int_bit_count, a), outcome(int.bit_count, a), (a,))
         if R.randrange(3) == 0:
             e = R.randrange(-5, 6)
         same("powmod", outcome(rt.pys_powmod, a, e, m), outcome(pow, a, e, m), (a, e, m))
@@ -416,6 +424,22 @@ def mix(k):
     h = k & M64
     h = ((h ^ h >> 30) * 0xBF58476D1CE4E5B9) & M64
     return h ^ h >> 31
+
+
+def check_shifts():
+    for n in [-MAXI - 1, -1, *range(66), MAXI]:
+        operands = {0, 1, -1, MAXI, -MAXI - 1}
+        if 0 <= n < 64:
+            lo, hi = (-MAXI - 1) >> n, MAXI >> n
+            operands.update((lo - 1, lo, lo + 1, hi - 1, hi, hi + 1))
+        for a in operands:
+            if -MAXI - 1 <= a <= MAXI:
+                # Beyond 63 bits only zero fits; cap the reference shift to avoid a giant int.
+                want = outcome(lambda: a << min(n, 64))
+                if not fits(want):
+                    want = ("OverflowError", "integer result does not fit in 64 bits")
+                same("shl", outcome(rt.pys_shl, a, n), want, (a, n))
+                same("shr", outcome(rt.pys_shr, a, n), outcome(lambda: a >> n), (a, n))
 
 
 def fuzz_hash():
@@ -811,6 +835,7 @@ fuzz_search()
 fuzz_math()
 fuzz_numeric()
 fuzz_hash()
+check_shifts()
 fuzz_format()
 fuzz_malformed()
 fuzz_ascii()

@@ -51,7 +51,40 @@ def pys_m_isclose(a: float, b: float, rel_tol: float, abs_tol: float) -> int:
     return 1 if diff <= abs_tol else 0
 
 
-# ---------- checked integer powers and unsigned range arithmetic ----------
+# ---------- checked integer arithmetic and unsigned range arithmetic ----------
+
+
+def pys_floordiv(a: int, b: int) -> int:
+    # Handle -1 before computing a remainder, so the two instructions below can share one
+    # hardware division. sdiv(a, -1) is a checked negation, including MIN's overflow.
+    if b == -1:
+        return _rt.sdiv(a, -1)
+    q = _rt.sdiv(a, b)
+    # Signed division truncates toward zero. A negative, non-integral quotient is one lower.
+    if _rt.srem(a, b) != 0 and (a ^ b) < 0:
+        return _rt.wrap_sub(q, 1)
+    return q
+
+
+def pys_mod(a: int, b: int) -> int:
+    if b == -1:
+        return 0
+    r = _rt.srem(a, b)
+    # The machine remainder has the dividend's sign; Python's has the divisor's.
+    if r != 0 and (r ^ b) < 0:
+        return _rt.wrap_add(r, b)
+    return r
+
+
+def pys_int_bit_length(a: int) -> int:
+    # Count bits of the magnitude, including 2**63 for the most negative int.
+    x = _rt.wrap_sub(0, a) if a < 0 else a
+    return _rt.wrap_sub(64, _rt.ctlz(x))
+
+
+def pys_int_bit_count(a: int) -> int:
+    x = _rt.wrap_sub(0, a) if a < 0 else a
+    return _rt.ctpop(x)
 
 
 def pys_pow(a: int, b: int) -> int:
@@ -72,6 +105,37 @@ def pys_pow(a: int, b: int) -> int:
         if b == 0:
             return r
         x *= x
+
+
+def pys_idiv(a: int, b: int) -> float:
+    if b == 0:
+        raise ZeroDivisionError("division by zero")
+    if a == 0 or (-9007199254740992 <= a <= 9007199254740992 and -9007199254740992 <= b <= 9007199254740992):
+        # Both inputs convert exactly through 2**53. A zero dividend also preserves the sign of 0 / b.
+        return _rt.fdiv(float(a), float(b))
+    x = _rt.wrap_sub(0, a) if a < 0 else a
+    y = _rt.wrap_sub(0, b) if b < 0 else b
+    # Keep at least 55 bits of the quotient: the 53 significand bits, a rounding bit and a sticky bit.
+    shift = 55 + b.bit_length() - a.bit_length()
+    if shift <= 0:
+        shift = 0
+        lo = x
+        q = _rt.udiv(x, y)
+    else:
+        # x << shift fits in 119 bits even for the largest divisor.
+        if shift < 64:
+            hi = _rt.lshr(x, 64 - shift)
+            lo = _rt.shl(x, shift)
+        else:
+            hi = _rt.shl(x, shift - 64)
+            lo = 0
+        q = _rt.udiv_wide(hi, lo, y)
+    # The remainder is smaller than 2**64, so its low word alone tells us whether it is nonzero.
+    if _rt.wrap_mul(q, y) != lo:
+        q |= 1
+    # q may be 2**63. Its negation always fits a signed word, whose conversion rounds to nearest even.
+    negative = float(_rt.wrap_sub(0, q)) * _rt.bits_float(_rt.shl(1023 - shift, 52))
+    return negative if (a < 0) != (b < 0) else -negative
 
 
 def mulmod(a: int, b: int, n: int) -> int:
@@ -120,6 +184,25 @@ def pys_powmod(a: int, b: int, m: int) -> int:
         x = mulmod(x, x, n)
         e = _rt.lshr(e, 1)
     return _rt.wrap_sub(r, n) if m < 0 and r != 0 else r
+
+
+def pys_shl(a: int, b: int) -> int:
+    if b < 0:
+        raise ValueError("negative shift count")
+    if b < 64:
+        shifted = _rt.shl(a, b)
+        # Shifting back restores a exactly when no significant bit was lost.
+        if _rt.ashr(shifted, b) == a:
+            return shifted
+    elif a == 0:
+        return 0
+    raise OverflowError("integer result does not fit in 64 bits")
+
+
+def pys_shr(a: int, b: int) -> int:
+    if b < 0:
+        raise ValueError("negative shift count")
+    return _rt.ashr(a, b if b < 63 else 63)
 
 
 def pys_round_int(x: int, n: int) -> int:
@@ -1058,7 +1141,7 @@ def uchar(s: str, i: int, n: int) -> int:
     k = 1 if c > 244 else 4 if c >= 240 else 3 if c >= 224 else 2 if c >= 194 else 1
     if k == 1 or k > _rt.wrap_sub(n, i):
         return c * 8 + 1
-    v = c & (127 >> k)
+    v = c & _rt.lshr(127, k)
     for j in range(1, k):
         b = _rt.byte(s, _rt.wrap_add(i, j))
         if b & 192 != 128:
@@ -1154,7 +1237,7 @@ def wsat(s: str, i: int, n: int) -> int:
     if c < 128:
         return 1 if ws(c) else -1
     u = uchar(s, i, n)
-    return u & 7 if uspace(u >> 3) else -(u & 7)
+    return u & 7 if uspace(_rt.lshr(u, 3)) else -(u & 7)
 
 
 def back(s: str, j: int) -> int:
