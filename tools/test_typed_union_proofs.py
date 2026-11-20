@@ -210,7 +210,7 @@ def exceptional(old=False):
     c.block("normal")
     c.ret()
     c.block("landing")
-    c.op("landing", "exc", a=[("%a2", "%ptr")], b=["handler"])
+    c.op("landing", "exc", a=[("%a2", "%addr")], b=["handler"])
     c.block("handler")
     after = v if old else c.op("mem.load", U, a=[("%a2", "*" + U)])
     c.payload(after)
@@ -893,7 +893,7 @@ class UnionProofTests(unittest.TestCase):
                 error = StringIO()
                 with redirect_stderr(error), self.assertRaises(SystemExit):
                     c.g.verify(c.fn, False)
-                expected = "union.tag needs one union operand and no extra metadata" if invalid_metadata else "a branch to (none for cold-key), which is no block of it"
+                expected = "union.tag with 1 labels, where the operation table has 0" if invalid_metadata else "a branch to (none for cold-key), which is no block of it"
                 self.assertIn(expected, error.getvalue())
                 for labels, values in before:
                     self.assertEqual(labels, values)

@@ -282,11 +282,23 @@ specialized classes are supplied by the frontend; the IR does not turn them into
 
 Each row of `OPS` gives an operation's effects, how many operands, result numbers and labels
 it holds, which of the fields `t` (result type), `s` (text), `k` (integer) and `x` (descriptor)
-it may set, and which result number names its value for the passes. `IROPS`, the result
-counts and the value index are read from those rows. With `PYSTACHY_IRCHECK=1` the verifier
-holds every instruction to its row before the checks specific to its operation run.
-`tools/typed_ir_ops.py --write` writes this table from the rows, and `--check` fails when
-it is out of date.
+it may set, which result number names its value for the passes, and the types of its operands
+and result. `IROPS`, the result counts and the value index are read from those rows. With
+`PYSTACHY_IRCHECK=1` the verifier holds every instruction to its row's shape and then to its
+types, before the checks specific to its operation run, as MLIR's operation definitions
+generate a verifier from declared type constraints. `tools/typed_ir_ops.py --write` writes
+the tables below from the rows, and `--check` fails when they are out of date.
+
+The types column reads `OPERAND, ... -> RESULT`. Each entry is a type (`bool`, `%slot`), a
+type class from the second table, or holds a variable such as `$T`. A variable is the same
+type wherever its row names it, alone or inside a type (`*$T`, `list[$E]`), and its class
+follows one of its names (`$T:native`); `select` is `bool, $T:scalar, $T -> $T`. The last
+operand's entry holds for any further operands the count admits, so `switch` is `int, int`.
+A runtime call's types are its `RUNTIME` signature's and a compiled call's its callee's, and
+both are checked where the call is built. The column constrains each instruction's own
+operand types. An operand's type is how that instruction reads the value, and nothing
+requires it to match the type its definition gives: a `%slot` result can be read as `int`
+without an explicit cast.
 
 Some result numbers only name an intermediate LLVM value of their operation's lowering:
 `ovf`'s `{i64, i1}` pair, the three addresses of `list.load`, the address of a `tuple.load`.
@@ -295,65 +307,86 @@ one, whatever block defines it.
 
 <!-- typed-ir-ops: begin (written by tools/typed_ir_ops.py --write) -->
 
-| Operation | Effects | Operands | Results | Labels | Fields | Value |
-|---|---|---|---|---|---|---|
-| `slot` | entry storage | 0 | 1 | 0 | `t`, `s`, `k` | none |
-| `rt` | per instruction | 0 or more | 0 or 1, by signature | 0, or 2 as an invoke | `t`, `s`, `k`, `x` | first |
-| `call` | per instruction | 0 or more | 0 or 1, by signature | 0, or 2 as an invoke | `t`, `s`, `x` | none |
-| `icall` | per instruction | 1 or more | 0 or 1, by signature | 0, or 2 as an invoke | `t` | none |
-| `init` | per instruction | 0 | 0 | 0, or 2 as an invoke | `s` | none |
-| `br` | ends its block | 0 | 0 | 1 | none | none |
-| `cbr` | ends its block | 1 | 0 | 2 | none | none |
-| `switch` | ends its block | 2 or more | 0 | one per operand | none | none |
-| `check` | ends its block, `R` | 1 | 0 | 1 | `s`, `x` | none |
-| `ret` | ends its block | 0 to 1 | 0 | 0 | none | none |
-| `ret.none` | ends its block | 0 | 0 | 0 | none | none |
-| `raise` | ends its block, `R`, `N` | 2 | 0 | 0 | `s` | none |
-| `unreachable` | ends its block | 0 | 0 | 0 | none | none |
-| `phi` | none | 1 or more | 1 | one per operand | `t` | none |
-| `select` | none | 3 | 1 | 0 | `t` | first |
-| `ovf` | none | 2 | 3: temporary, value, value | 0 | `t`, `s` | none |
-| `list.load` | `rL` | 2 | 4: value, temporary, temporary, temporary | 0 | `t` | none |
-| `list.store` | `rL`, `wL` | 3 | 3: temporary, temporary, temporary | 0 | none | none |
-| `list.len` | `rL` | 1 | 1 | 0 | `t` | first |
-| `alloc.fixed` | `A` | 0 | 1 | 0 | `t` | none |
-| `vtuple.make` | `A` | 0 or more | 1 | 0 | `t` | none |
-| `mem.load` | per instruction | 1 | 1 | 0 | `t` | first |
-| `mem.store` | per instruction | 2 | 0 | 0 | none | none |
-| `mach.load` | per instruction | 1 | 1 | 0 | `t`, `s` | first |
-| `mach.store` | per instruction | 2 | 0 | 0 | `s` | none |
-| `mach.addr` | none | 2 | 1 | 0 | `t`, `s`, `k` | first |
-| `tuple.load` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t`, `s`, `k` | each |
-| `tuple.store` | `wL`, `wD`, `wO` | 2 | 1: temporary | 0 | `s`, `k` | each |
-| `field.addr` | none | 1 | 1 | 0 | `t`, `k` | first |
-| `slot.pack` | none | 1 | 1 | 0 | `t` | first |
-| `slot.unpack` | none | 1 | 1 | 0 | `t` | first |
-| `scalar.bin` | none | 1 to 2 | 1 | 0 | `t`, `s`, `x` | first |
-| `scalar.cast` | none | 1 | 1 | 0 | `t`, `s` | first |
-| `scalar.cmp` | none | 2 | 1 | 0 | `t`, `s` | first |
-| `num.cast` | none | 1 | 1 | 0 | `t` | first |
-| `num.cmp` | none | 2 | 1 | 0 | `t`, `s` | first |
-| `int.ucmp` | none | 2 | 1 | 0 | `t`, `s` | first |
-| `ptr.cmp` | none | 2 | 1 | 0 | `t`, `s` | first |
-| `empty.kind` | `wD` | 1 | 1 | 0 | `k` | none |
-| `union.tag` | `rL`, `rD`, `rO` | 1 | 1 | 0 | `t` | none |
-| `union.payload` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t`, `s` | second |
-| `union.raw` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t` | second |
-| `dyn.type` | none | 1 | 1 | 0 | `t` | first |
-| `dyn.payload` | none | 1 | 2: temporary, value | 0 | `t`, `s` | second |
-| `dyn.raw` | none | 1 | 2: temporary, value | 0 | `t` | second |
-| `big.make` | none | 2 | 2: temporary, value | 0 | `t` | second |
-| `big.lo` | none | 1 | 1 | 0 | `t` | first |
-| `big.hi` | none | 1 | 1 | 0 | `t` | first |
-| `landing` | ends its block | 1 | 2: temporary, temporary | 1 | `t` | none |
-| `throw` | ends its block, `R`, `N` | 1 | 0 | 0 | none | none |
-| `exc.match` | none | 2 | 2: temporary, value | 0 | `t` | none |
-| `gen.start` | ends its block, `A` | 1 | 0 | 1 | none | none |
-| `gen.yield` | ends its block, `U` | 1 to 3 | 2: temporary, temporary | 1 | `k` | none |
-| `gen.ret` | ends its block | 0 to 2 | 2: temporary, temporary | 0 | none | none |
-| `gen.promise` | none | 0 to 1 | 1 | 0 | `t` | none |
-| `gen.resume` | `U` | 1 | 0 | 0, or 2 as an invoke | none | none |
-| `gen.drop` | `A`, `I`, `rL`, `wL`, `rD`, `wD`, `rO`, `wO`, `rG`, `wG`, `rF`, `wF` | 1 | 0 | 0 | none | none |
+| Operation | Effects | Operands | Results | Labels | Fields | Value | Types |
+|---|---|---|---|---|---|---|---|
+| `slot` | entry storage | 0 | 1 | 0 | `t`, `s`, `k` | none | `-> any` |
+| `rt` | per instruction | 0 or more | 0 or 1, by signature | 0, or 2 as an invoke | `t`, `s`, `k`, `x` | first | per instruction |
+| `call` | per instruction | 0 or more | 0 or 1, by signature | 0, or 2 as an invoke | `t`, `s`, `x` | none | per instruction |
+| `icall` | per instruction | 1 or more | 0 or 1, by signature | 0, or 2 as an invoke | `t` | none | per instruction |
+| `init` | per instruction | 0 | 0 | 0, or 2 as an invoke | `s` | none | per instruction |
+| `br` | ends its block | 0 | 0 | 1 | none | none | none |
+| `cbr` | ends its block | 1 | 0 | 2 | none | none | `bool` |
+| `switch` | ends its block | 2 or more | 0 | one per operand | none | none | `int, int` |
+| `check` | ends its block, `R` | 1 | 0 | 1 | `s`, `x` | none | `bool` |
+| `ret` | ends its block | 0 to 1 | 0 | 0 | none | none | `return` |
+| `ret.none` | ends its block | 0 | 0 | 0 | none | none | none |
+| `raise` | ends its block, `R`, `N` | 2 | 0 | 0 | `s` | none | `str, str` |
+| `unreachable` | ends its block | 0 | 0 | 0 | none | none | none |
+| `phi` | none | 1 or more | 1 | one per operand | `t` | none | `$T -> $T` |
+| `select` | none | 3 | 1 | 0 | `t` | first | `bool, $T:scalar, $T -> $T` |
+| `ovf` | none | 2 | 3: temporary, value, value | 0 | `t`, `s` | none | `int, int -> int` |
+| `list.load` | `rL` | 2 | 4: value, temporary, temporary, temporary | 0 | `t` | none | `list[$E:item], int -> *$E` |
+| `list.store` | `rL`, `wL` | 3 | 3: temporary, temporary, temporary | 0 | none | none | `list[$E:item], int, *$E` |
+| `list.len` | `rL` | 1 | 1 | 0 | `t` | first | `list[$E:item] -> int` |
+| `alloc.fixed` | `A` | 0 | 1 | 0 | `t` | none | `-> layout` |
+| `vtuple.make` | `A` | 0 or more | 1 | 0 | `t` | none | `$E:velem -> vtuple[$E]` |
+| `mem.load` | per instruction | 1 | 1 | 0 | `t` | first | `*$T:native -> $T` |
+| `mem.store` | per instruction | 2 | 0 | 0 | none | none | `*$T:native, $T` |
+| `mach.load` | per instruction | 1 | 1 | 0 | `t`, `s` | first | `%ptr -> machine` |
+| `mach.store` | per instruction | 2 | 0 | 0 | `s` | none | `%ptr, machine` |
+| `mach.addr` | none | 2 | 1 | 0 | `t`, `s`, `k` | first | `%ptr, int -> %ptr` |
+| `tuple.load` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t`, `s`, `k` | each | `ftuple -> %slot` |
+| `tuple.store` | `wL`, `wD`, `wO` | 2 | 1: temporary | 0 | `s`, `k` | each | `ftuple, %slot` |
+| `field.addr` | none | 1 | 1 | 0 | `t`, `k` | first | `class -> *$F` |
+| `slot.pack` | none | 1 | 1 | 0 | `t` | first | `native -> %slot` |
+| `slot.unpack` | none | 1 | 1 | 0 | `t` | first | `%slot -> native` |
+| `scalar.bin` | none | 1 to 2 | 1 | 0 | `t`, `s`, `x` | first | `$T:arith, $T -> $T` |
+| `scalar.cast` | none | 1 | 1 | 0 | `t`, `s` | first | `bits -> bits` |
+| `scalar.cmp` | none | 2 | 1 | 0 | `t`, `s` | first | `$T:bits, $T -> bool` |
+| `num.cast` | none | 1 | 1 | 0 | `t` | first | `numeric -> number` |
+| `num.cmp` | none | 2 | 1 | 0 | `t`, `s` | first | `$N:number, $N -> bool` |
+| `int.ucmp` | none | 2 | 1 | 0 | `t`, `s` | first | `int, int -> bool` |
+| `ptr.cmp` | none | 2 | 1 | 0 | `t`, `s` | first | `ref, ref -> bool` |
+| `empty.kind` | `wD` | 1 | 1 | 0 | `k` | none | `dictset` |
+| `union.tag` | `rL`, `rD`, `rO` | 1 | 1 | 0 | `t` | none | `union -> int` |
+| `union.payload` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t`, `s` | second | `union -> %slot` |
+| `union.raw` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t` | second | `union -> %slot` |
+| `dyn.type` | none | 1 | 1 | 0 | `t` | first | `dyn -> dyntype` |
+| `dyn.payload` | none | 1 | 2: temporary, value | 0 | `t`, `s` | second | `dyn -> %slot` |
+| `dyn.raw` | none | 1 | 2: temporary, value | 0 | `t` | second | `dyn -> %slot` |
+| `big.make` | none | 2 | 2: temporary, value | 0 | `t` | second | `int, %ptr -> int+` |
+| `big.lo` | none | 1 | 1 | 0 | `t` | first | `int+ -> int` |
+| `big.hi` | none | 1 | 1 | 0 | `t` | first | `int+ -> %ptr` |
+| `landing` | ends its block | 1 | 2: temporary, temporary | 1 | `t` | none | `%addr -> exc` |
+| `throw` | ends its block, `R`, `N` | 1 | 0 | 0 | none | none | `exc` |
+| `exc.match` | none | 2 | 2: temporary, value | 0 | `t` | none | `exc, str -> bool` |
+| `gen.start` | ends its block, `A` | 1 | 0 | 1 | none | none | `str` |
+| `gen.yield` | ends its block, `U` | 1 to 3 | 2: temporary, temporary | 1 | `k` | none | `%slot, %ptr, dyn` |
+| `gen.ret` | ends its block | 0 to 2 | 2: temporary, temporary | 0 | none | none | `%slot, %ptr` |
+| `gen.promise` | none | 0 to 1 | 1 | 0 | `t` | none | `gen -> %ptr` |
+| `gen.resume` | `U` | 1 | 0 | 0, or 2 as an invoke | none | none | `gen` |
+| `gen.drop` | `A`, `I`, `rL`, `wL`, `rD`, `wD`, `rO`, `wO`, `rG`, `wG`, `rF`, `wF` | 1 | 0 | 0 | none | none | `gen` |
+
+| Type class | Admits |
+|---|---|
+| `any` | any type |
+| `native` | a native value type: no machine type (%), address or packed slot (*) or descriptor (#) |
+| `scalar` | a native value type other than None, or a machine scalar (%ptr, %byte, %i32, %slot) |
+| `machine` | a native value type other than None, or %ptr, %byte or %i32 |
+| `ref` | a native reference type or None |
+| `number` | int or float |
+| `numeric` | bool, int or float |
+| `arith` | bool, %byte, %i32, int or float |
+| `bits` | bool, %byte, %i32, int, float or %ptr |
+| `union` | a closed union of two or more distinct members, none of them optional |
+| `ftuple` | a fixed tuple |
+| `class` | a declared class |
+| `layout` | a declared class or a fixed tuple |
+| `velem` | a runtime-length tuple's element type |
+| `item` | a list's item type: one type, no machine representation |
+| `dictset` | a dict or a set |
+| `gen` | a generator |
+| `return` | the function's return type, or T where it is opt[T] of a reference T |
 
 <!-- typed-ir-ops: end -->
 

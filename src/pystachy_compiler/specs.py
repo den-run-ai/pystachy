@@ -660,7 +660,7 @@ TEXT_OPS: dict[str, str] = {
 # the methods of frozenset (those that change nothing) and of set, which Gen.smethod compiles
 FSETMETHODS: list[str] = "copy difference intersection isdisjoint issubset issuperset symmetric_difference union".split()
 SETMETHODS: list[str] = FSETMETHODS + "add clear difference_update discard intersection_update pop remove symmetric_difference_update update".split()
-# The typed IR's operations (Ins.op), one row each: "effects|operands|results|labels|fields|value".
+# The typed IR's operations (Ins.op), one row each: "effects|operands|results|labels|fields|value|types".
 # Every instruction has typed operands; there is no text escape hatch. The rows are the one
 # definition of an operation's shape: IROPS, RESULT_NUMBERS, VALUE_AT and the shape tables below
 # are read from them, the IR check holds each instruction to its row (ircheck.op_shape_error), and
@@ -681,35 +681,41 @@ SETMETHODS: list[str] = FSETMETHODS + "add clear difference_update discard inter
 #             it may set: t s k x; the others stay "" or 0
 #   value     which number names the value Values places: 0 none, 1 the first, 2 the second
 #             (after an address), 3 each
+#   types     its operands' types, then its result's (Ins.t): "OPERAND, ... -> RESULT", without
+#             "-> RESULT" where it has no result type. Each is a type (bool, %slot), a type class
+#             (TYPE_CLASSES), or holds a variable, $T: the same type wherever the row names it, alone
+#             or inside a type (*$T, list[$E]), and of the class given after one of its names
+#             ($T:native). The last operand's holds for any further operands the count admits. *
+#             is decided per instruction: an rt op's by its RUNTIME signature, a call's by its callee
 OPS: dict[str, str] = {
-    "slot": "E|0|1|0|t s k|0",
-    "rt": "*|0+|?|i|t s k x|1", "call": "*|0+|?|i|t s x|0", "icall": "*|1+|?|i|t|0", "init": "*|0|0|i|s|0",
-    "br": "T|0|0|1||0", "cbr": "T|1|0|2||0", "switch": "T|2+|0|a||0", "check": "T R|1|0|1|s x|0",
-    "ret": "T|0-1|0|0||0", "ret.none": "T|0|0|0||0", "raise": "T R N|2|0|0|s|0", "unreachable": "T|0|0|0||0",
-    "phi": "|1+|1|a|t|0", "select": "|3|1|0|t|1", "ovf": "|2|.vv|0|t s|0",
-    "list.load": "rL|2|v...|0|t|0", "list.store": "rL wL|3|...|0||0", "list.len": "rL|1|1|0|t|1",
-    "alloc.fixed": "A|0|1|0|t|0", "vtuple.make": "A|0+|1|0|t|0",
-    "mem.load": "*|1|1|0|t|1", "mem.store": "*|2|0|0||0",
-    "mach.load": "*|1|1|0|t s|1", "mach.store": "*|2|0|0|s|0", "mach.addr": "|2|1|0|t s k|1",
-    "tuple.load": "rL rD rO|1|.v|0|t s k|3", "tuple.store": "wL wD wO|2|.|0|s k|3",
-    "field.addr": "|1|1|0|t k|1",
-    "slot.pack": "|1|1|0|t|1", "slot.unpack": "|1|1|0|t|1",
-    "scalar.bin": "|1-2|1|0|t s x|1", "scalar.cast": "|1|1|0|t s|1", "scalar.cmp": "|2|1|0|t s|1",
-    "num.cast": "|1|1|0|t|1", "num.cmp": "|2|1|0|t s|1", "int.ucmp": "|2|1|0|t s|1", "ptr.cmp": "|2|1|0|t s|1",
-    "empty.kind": "wD|1|1|0|k|0",
-    "union.tag": "rL rD rO|1|1|0|t|0", "union.payload": "rL rD rO|1|.v|0|t s|2", "union.raw": "rL rD rO|1|.v|0|t|2",
-    "dyn.type": "|1|1|0|t|1", "dyn.payload": "|1|.v|0|t s|2", "dyn.raw": "|1|.v|0|t|2",
-    "big.make": "|2|.v|0|t|2", "big.lo": "|1|1|0|t|1", "big.hi": "|1|1|0|t|1",
-    "landing": "T|1|..|1|t|0", "throw": "T R N|1|0|0||0", "exc.match": "|2|.v|0|t|0",
+    "slot": "E|0|1|0|t s k|0|-> any",
+    "rt": "*|0+|?|i|t s k x|1|*", "call": "*|0+|?|i|t s x|0|*", "icall": "*|1+|?|i|t|0|*", "init": "*|0|0|i|s|0|*",
+    "br": "T|0|0|1||0|", "cbr": "T|1|0|2||0|bool", "switch": "T|2+|0|a||0|int, int", "check": "T R|1|0|1|s x|0|bool",
+    "ret": "T|0-1|0|0||0|return", "ret.none": "T|0|0|0||0|", "raise": "T R N|2|0|0|s|0|str, str", "unreachable": "T|0|0|0||0|",
+    "phi": "|1+|1|a|t|0|$T -> $T", "select": "|3|1|0|t|1|bool, $T:scalar, $T -> $T", "ovf": "|2|.vv|0|t s|0|int, int -> int",
+    "list.load": "rL|2|v...|0|t|0|list[$E:item], int -> *$E", "list.store": "rL wL|3|...|0||0|list[$E:item], int, *$E", "list.len": "rL|1|1|0|t|1|list[$E:item] -> int",
+    "alloc.fixed": "A|0|1|0|t|0|-> layout", "vtuple.make": "A|0+|1|0|t|0|$E:velem -> vtuple[$E]",
+    "mem.load": "*|1|1|0|t|1|*$T:native -> $T", "mem.store": "*|2|0|0||0|*$T:native, $T",
+    "mach.load": "*|1|1|0|t s|1|%ptr -> machine", "mach.store": "*|2|0|0|s|0|%ptr, machine", "mach.addr": "|2|1|0|t s k|1|%ptr, int -> %ptr",
+    "tuple.load": "rL rD rO|1|.v|0|t s k|3|ftuple -> %slot", "tuple.store": "wL wD wO|2|.|0|s k|3|ftuple, %slot",
+    "field.addr": "|1|1|0|t k|1|class -> *$F",
+    "slot.pack": "|1|1|0|t|1|native -> %slot", "slot.unpack": "|1|1|0|t|1|%slot -> native",
+    "scalar.bin": "|1-2|1|0|t s x|1|$T:arith, $T -> $T", "scalar.cast": "|1|1|0|t s|1|bits -> bits", "scalar.cmp": "|2|1|0|t s|1|$T:bits, $T -> bool",
+    "num.cast": "|1|1|0|t|1|numeric -> number", "num.cmp": "|2|1|0|t s|1|$N:number, $N -> bool", "int.ucmp": "|2|1|0|t s|1|int, int -> bool", "ptr.cmp": "|2|1|0|t s|1|ref, ref -> bool",
+    "empty.kind": "wD|1|1|0|k|0|dictset",
+    "union.tag": "rL rD rO|1|1|0|t|0|union -> int", "union.payload": "rL rD rO|1|.v|0|t s|2|union -> %slot", "union.raw": "rL rD rO|1|.v|0|t|2|union -> %slot",
+    "dyn.type": "|1|1|0|t|1|dyn -> dyntype", "dyn.payload": "|1|.v|0|t s|2|dyn -> %slot", "dyn.raw": "|1|.v|0|t|2|dyn -> %slot",
+    "big.make": "|2|.v|0|t|2|int, %ptr -> int+", "big.lo": "|1|1|0|t|1|int+ -> int", "big.hi": "|1|1|0|t|1|int+ -> %ptr",
+    "landing": "T|1|..|1|t|0|%addr -> exc", "throw": "T R N|1|0|0||0|exc", "exc.match": "|2|.v|0|t|0|exc, str -> bool",
     # generators (LLVM switched-resume coroutines, docs/internals.md#generators): gen.start ends a
     # generator function's entry block (the frame, its promise and the initial suspend), gen.yield
     # and gen.ret suspend it (gen.ret finally); gen.promise is the address of its promise (of the
     # generator's own, or of a handle's), gen.resume runs it to its next suspend, and gen.drop
     # closes a generator a loop owns and destroys it (it reports what closing raises, as CPython
     # reports an exception it ignores, so it never raises itself)
-    "gen.start": "T A|1|0|1||0", "gen.yield": "T U|1-3|..|1|k|0", "gen.ret": "T|0-2|..|0||0",
-    "gen.promise": "|0-1|1|0|t|0", "gen.resume": "U|1|0|i||0",
-    "gen.drop": "A I rL wL rD wD rO wO rG wG rF wF|1|0|0||0",
+    "gen.start": "T A|1|0|1||0|str", "gen.yield": "T U|1-3|..|1|k|0|%slot, %ptr, dyn", "gen.ret": "T|0-2|..|0||0|%slot, %ptr",
+    "gen.promise": "|0-1|1|0|t|0|gen -> %ptr", "gen.resume": "U|1|0|i||0|gen",
+    "gen.drop": "A I rL wL rD wD rO wO rG wG rF wF|1|0|0||0|gen",
 }
 # What the rows say, by op. IROPS: the effects column without E (T ends a block; * as above).
 # RESULT_NUMBERS: the fixed result counts (a call's is Gen.nums'). OP_TEMPS: the positions in
@@ -718,13 +724,58 @@ OPS: dict[str, str] = {
 # of one that defines one; 2, the payload of union.payload/raw and dyn.payload/raw, their second;
 # 3, each value of tuple.load and tuple.store. OP_ENTRY: whether it is entry storage. OP_MIN and
 # OP_MAX: the operand counts (OP_MAX -1 for no limit). OP_LABELS: the label count, or OP_PER_OPERAND
-# or OP_INVOKE. OP_FIELDS: the fields it may set, as bits (OP_T, OP_S, OP_K, OP_X).
+# or OP_INVOKE. OP_FIELDS: the fields it may set, as bits (OP_T, OP_S, OP_K, OP_X). OP_OPERAND_TYPES
+# and OP_RESULT_TYPE: the types column's operand constraints and result constraint ("" for none),
+# for the ops whose row gives them (ircheck.op_type_error).
 OP_T = 1
 OP_S = 2
 OP_K = 4
 OP_X = 8
 OP_PER_OPERAND = -1
 OP_INVOKE = -2
+
+
+# The type classes a types column names, each by what it admits (ircheck.OpTypes.admits decides
+# each); any other name there is a type. A native value type is a Python value's, and a runtime
+# type variable (T K V S) is one only where a class has that name.
+TYPE_CLASSES: dict[str, str] = {
+    "any": "any type",
+    "native": "a native value type: no machine type (%), address or packed slot (*) or descriptor (#)",
+    "scalar": "a native value type other than None, or a machine scalar (%ptr, %byte, %i32, %slot)",
+    "machine": "a native value type other than None, or %ptr, %byte or %i32",
+    "ref": "a native reference type or None",
+    "number": "int or float",
+    "numeric": "bool, int or float",
+    "arith": "bool, %byte, %i32, int or float",
+    "bits": "bool, %byte, %i32, int, float or %ptr",
+    "union": "a closed union of two or more distinct members, none of them optional",
+    "ftuple": "a fixed tuple",
+    "class": "a declared class",
+    "layout": "a declared class or a fixed tuple",
+    "velem": "a runtime-length tuple's element type",
+    "item": "a list's item type: one type, no machine representation",
+    "dictset": "a dict or a set",
+    "gen": "a generator",
+    "return": "the function's return type, or T where it is opt[T] of a reference T",
+}
+
+
+def type_list(s: str) -> list[str]:
+    # the comma-separated constraints of s, split only where no bracket is open, without spaces
+    found: list[str] = []
+    depth = 0
+    start = 0
+    for j in range(len(s) + 1):
+        if j == len(s) or (s[j] == "," and depth == 0):
+            c = s[start:j].strip()
+            if c != "":
+                found.append(c)
+            start = j + 1
+        elif s[j] == "[":
+            depth += 1
+        elif s[j] == "]":
+            depth -= 1
+    return found
 
 
 def result_temps(roles: str) -> list[int]:
@@ -745,6 +796,8 @@ OP_MIN: dict[str, int] = {}
 OP_MAX: dict[str, int] = {}
 OP_LABELS: dict[str, int] = {}
 OP_FIELDS: dict[str, int] = {}
+OP_OPERAND_TYPES: dict[str, list[str]] = {}
+OP_RESULT_TYPE: dict[str, str] = {}
 for _k in OPS:
     _s = OPS[_k].split("|")[0]
     IROPS[_k] = _s.replace("E", "").strip()
@@ -771,6 +824,11 @@ for _k in OPS:
     OP_LABELS[_k] = OP_PER_OPERAND if _s == "a" else OP_INVOKE if _s == "i" else int(_s)
     _s = OPS[_k].split("|")[4]
     OP_FIELDS[_k] = (OP_T if "t" in _s else 0) | (OP_S if "s" in _s else 0) | (OP_K if "k" in _s else 0) | (OP_X if "x" in _s else 0)
+    _s = OPS[_k].split("|")[6]
+    if _s != "*":
+        _r = _s.find("->")
+        OP_OPERAND_TYPES[_k] = type_list(_s[:_r] if _r >= 0 else _s)
+        OP_RESULT_TYPE[_k] = _s[_r + 2 :].strip() if _r >= 0 else ""
 # the ops that may change what an attribute's read gives, for the facts of narrowed attribute
 # paths (unions.py's path_event): 1 runs code of the program (a generator's resume runs its body,
 # and its yield lets its caller run), 2 a runtime function, by its effects, 3 a store
