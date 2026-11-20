@@ -31,8 +31,10 @@ custom Clang configuration files and undeclared shell wrappers also bypass it.
 
 A miss runs the ordinary JIT IR passes, then compiles their output to machine
 code with further LLVM IR passes disabled. It links that object with the normal
-JIT runtime object. This keeps the JIT's inlining and allocation decisions;
-ordinary AOT builds use a separate whole-program optimization pipeline.
+JIT runtime object. This keeps the JIT's inlining and allocation decisions, and its
+code generation: the JIT runner generates code for the CPU that this compile names, clang's
+default (`x86-64` on x86-64 Linux; see [the JIT runner](internals.md#the-jit-runner)).
+Ordinary AOT builds use a separate whole-program optimization pipeline.
 
 The final executable is cached. Hits do not load bitcode into the JIT runner or `lli`.
 Linking also preserves native constructor execution, which cannot be assumed when handing an

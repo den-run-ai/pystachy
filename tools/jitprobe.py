@@ -11,7 +11,8 @@ PYSTACHY_JIT_LAUNCHER=lli) in both levels of code generation (#430): the runner 
 the -O it is given, and for -O0 lli's ORC links an object of llc's beside a main module that holds
 only the runtime callbacks' constructor. Each covers argv, exception unwinding, values that a loop
 passes to an except clause (critical edges split for -O0), coroutine lowering, GC stress, signal
-status and the PYSTACHY_TIMING record that names the runner. PYSTACHY_JIT_OPT=2, LLVM's -O2
+status and the PYSTACHY_TIMING record that names the runner. Every code generator gets the CPU that
+the program cache's clang compiles for (-mcpu=x86-64 on x86-64 Linux). PYSTACHY_JIT_OPT=2, LLVM's -O2
 pipeline in place of the JIT's cleanup, keeps the same behavior under GC stress, and the module
 the runner executes shows -O2's GlobalOpt (main marked local_unnamed_addr, which the cleanup never
 does).
@@ -238,6 +239,10 @@ def main():
                 executed = capture.read_text()
                 if 'target datalayout = ' not in executed or 'target triple = ' not in executed:
                     raise RuntimeError(f"{where}: JIT optimization ran without the runtime's target")
+                # (clang's default CPU, which the program cache's executables are compiled for)
+                cpu = ["-mcpu=x86-64"] if sys.platform.startswith("linux") and 'target triple = "x86_64-' in executed else []
+                if [arg for arg in flags if arg.startswith("-mcpu")] != cpu:
+                    raise RuntimeError(f"{where}: the code generator was not given clang's default CPU {cpu}: {flags}")
                 # (the object's allocation: pys_alloc's in the frontend's IR, since the object holds a
                 # list: only an object that holds no reference may come from pys_new's marked call,
                 # which LLVM may delete, lowering's alloc_call. The JIT tier inlines the fast path of
@@ -295,7 +300,8 @@ def main():
                     objects = len([arg for arg in flags if arg.startswith("-extra-object=/dev/fd/")])
                     levels = [arg for arg in flags if re.fullmatch(r"-O[0-3]", arg)]
                     if any(arg.startswith("-jit-kind=") for arg in flags) or levels != ([f"-O{mode}"] if runner else []) or \
-                            objects != (not shared) + (mode == "0" and not runner) or "-profile-guided-section-prefix=false" not in flags:
+                            objects != (not shared) + (mode == "0" and not runner) or "-profile-guided-section-prefix=false" not in flags or \
+                            [arg for arg in flags if arg.startswith("-mcpu")] != cpu:
                         raise RuntimeError(f"{where}: codegen={mode} selected unexpected flags: {flags}")
                     if (mode == "2" or runner) and codegen.exists():
                         raise RuntimeError(f"{where}: codegen={mode} ran llc")
@@ -303,7 +309,8 @@ def main():
                         llc = codegen.read_text().splitlines()
                         if any(arg not in llc for arg in ("-O0", "-filetype=obj", "-relocation-model=pic",
                                                           "-profile-guided-section-prefix=false")) or \
-                                any(arg.startswith(("-mcpu", "-mattr", "-march")) for arg in llc):
+                                [arg for arg in llc if arg.startswith("-mcpu")] != cpu or \
+                                any(arg.startswith(("-mattr", "-march")) for arg in llc):
                             raise RuntimeError(f"{where}: codegen=0 selected unexpected llc flags: {llc}")
                         main = capture.read_text()
                         defined = re.findall(r"^define [^@]*@([^(]*)\(", main, re.MULTILINE)
