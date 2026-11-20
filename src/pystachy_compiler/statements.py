@@ -650,7 +650,7 @@ def gen_with_cm(self, m: Val, it: Node, body: list[Node]) -> None:
     self.exits = self.exits[:n0]
 
 def gen_stmt(self, n: Node) -> None:
-    if len(self.fn.lazyobj) > 0 or len(self.fn.movebit) > 0:
+    if len(self.fn.build.lazyobj) > 0 or len(self.fn.build.movebit) > 0:
         self.id_stmt(n)  # (lazy field locals and moves: dynamic.py)
     else:
         self.stmt_main(n)
@@ -697,7 +697,7 @@ def gen_stmt_main(self, n: Node) -> None:
                 self.declare(n.kids[0].s, t)
             v = self.coerce(v, t)
         self.assign(n.kids[0], v)
-    elif k == "assign" and len(self.fn.lazyobj) + len(self.fn.lazyflag) > 0 and self.lazy_assign(n):
+    elif k == "assign" and len(self.fn.build.lazyobj) + len(self.fn.build.lazyflag) > 0 and self.lazy_assign(n):
         pass  # (x = o.f, o.f = x of a lazy numeric field local: dynamic.py)
     elif k == "assign":
         val = n.kids[-1]
@@ -743,10 +743,10 @@ def gen_stmt_main(self, n: Node) -> None:
             else:
                 v = self.expr(val, self.target_type(t0))
             src = self.joinsrc
-            moving = self.fn.idmove
-            passing = self.fn.idpass
-            self.fn.idmove = len(n.kids) == 2 and v.idexact and (t0.kind == "name" or t0.kind == "attr")
-            self.fn.idpass = len(n.kids) == 2 and (t0.kind == "name" or t0.kind == "attr") and self.id_move(val)
+            moving = self.fn.build.idmove
+            passing = self.fn.build.idpass
+            self.fn.build.idmove = len(n.kids) == 2 and v.idexact and (t0.kind == "name" or t0.kind == "attr")
+            self.fn.build.idpass = len(n.kids) == 2 and (t0.kind == "name" or t0.kind == "attr") and self.id_move(val)
             try:
                 if n.s == "local-retype":
                     self.joinsrc = val if t0.kind == "name" or t0.kind == "attr" else self.nokey  # (a call's value: see join_hint)
@@ -760,8 +760,8 @@ def gen_stmt_main(self, n: Node) -> None:
                         self.joinsrc = val if tgt.kind == "name" or tgt.kind == "attr" else self.nokey  # (each target's: box[0] = u = f(u))
                         self.assign(tgt, v)
             finally:
-                self.fn.idmove = moving
-                self.fn.idpass = passing
+                self.fn.build.idmove = moving
+                self.fn.build.idpass = passing
             self.joinsrc = src
         self.copying = False
     elif k == "annassign" and self.tmpl_ann(n.kids[1]):
@@ -1354,14 +1354,14 @@ def gen_augassign(self, n: Node) -> None:
         self.str_append(t, n.kids[1], "+=")
     elif t.kind == "name":
         fn = self.fn
-        held = fn.scalar_reads
+        held = fn.build.scalar_reads
         if (len(self.gidbox) > 0 or len(self.idbox) > 0) and op in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"] and self.scalar_read_value(t) and self.scalar_read_value(n.kids[1]):
-            fn.scalar_reads = True
+            fn.build.scalar_reads = True
         try:
             cur = self.read(t)
             value = self.inplace(op, cur, n.kids[1])
         finally:
-            fn.scalar_reads = held
+            fn.build.scalar_reads = held
         self.store_name(t.s, value)
     elif t.kind == "attr" and self.dotted(t) != "":
         self.err(f"assigning to {self.dotted(t)} is not supported; change its value in place")
@@ -1386,11 +1386,11 @@ def gen_augassign(self, n: Node) -> None:
         p = self.field(o, t.s, False)
         self.frozen(o.t, t.s)
         fn = self.fn
-        held = fn.scalar_reads
+        held = fn.build.scalar_reads
         if not held and self.idhere() and op in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"] and self.plain_field(t) in ["int", "float", "bool"] and self.scalar_read_value(n.kids[1]):
             # o.f op= v of a plain numeric field: as for a local (above), the old object
             # is an arithmetic operand only, and the store keeps the result's provenance
-            fn.scalar_reads = True
+            fn.build.scalar_reads = True
         try:
             cur = self.getfield(o, p, t.s)
             ci = self.classes[o.t]
@@ -1400,7 +1400,7 @@ def gen_augassign(self, n: Node) -> None:
                 self.err("rebinding __slots__ through an instance is not supported")
             nv = self.inplace(op, cur, n.kids[1])
         finally:
-            fn.scalar_reads = held
+            fn.build.scalar_reads = held
         if not self.frozen_store(o, t.s):
             self.setfield(o, p, t.s, nv)
     elif t.kind == "slice":
@@ -2219,14 +2219,14 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
     for k in range(len(seqs) if not now else 0):
         vals.extend(self.seq_item(seqs[k], at[k], mode))
     if len(vals) == 1 and mode != "zip":
-        moving = self.fn.idmove
+        moving = self.fn.build.idmove
         # A single generator result owns this private nullable companion.
         # Transfer it to one loop local as an ordinary lone assignment does.
-        self.fn.idmove = len(seqs) == 1 and is_gen(seqs[0].t) and vals[0].idexact and tgt.kind == "name"
+        self.fn.build.idmove = len(seqs) == 1 and is_gen(seqs[0].t) and vals[0].idexact and tgt.kind == "name"
         try:
             self.assign(tgt, vals[0])
         finally:
-            self.fn.idmove = moving
+            self.fn.build.idmove = moving
     elif (tgt.kind == "tuple" or tgt.kind == "list") and len(tgt.kids) == len(vals) and not starred_target(tgt):
         for k2 in range(len(vals)):
             self.assign(tgt.kids[k2], vals[k2])
@@ -2249,7 +2249,7 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
         return [self.list_item(s, Val(j, "int"))]
     if is_vtuple(s.t):
         et = targs(s.t)[0]
-        if self.list_id_kind(self.ctype("list", [et])) != 0 and not self.fn.scalar_reads:
+        if self.list_id_kind(self.ctype("list", [et])) != 0 and not self.fn.build.scalar_reads:
             return [self.vtuple_item(s, Val(j, "int"))]
         # for_seq has checked the immutable length. Keep its unboxed/reference
         # fast path: the raw slots follow the length and companion pointer.

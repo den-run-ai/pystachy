@@ -132,7 +132,7 @@ def gen_load_name(self, name: str) -> Val:
         if name in self.idbox and numeric_identity(t):
             # (A parameter's slot starts with its companion: null where the caller passed a
             # new number, dyn_id_arg, which its first crossing boxes.)
-            if name in self.fn.lazyflag and not self.fn.scalar_reads:
+            if name in self.fn.build.lazyflag and not self.fn.build.scalar_reads:
                 self.lazy_resolve(name)  # (a lazy field local's object gets its box: dynamic.py)
             self.dyn_id_read(val, self.idbox[name])
         if name in self.narrowed and (is_opt(t) or is_union(t) or t == "dyn" or t in self.classes) and t != NONEVAR:
@@ -1859,8 +1859,8 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
             self.mem_store(Val(self.owned[name], "&int"), Val("0", "int"))  # (a value others may hold: str_append)
         if name in self.idbox and numeric_identity(t):
             self.dyn_id_store(self.idbox[name], v, t)  # (the object it now holds: dyn_box)
-        if name in self.fn.lazyflag:
-            self.mem_store(Val(self.fn.lazyflag[name], "&bool"), Val("false", "bool"))  # (no longer a field's object)
+        if name in self.fn.build.lazyflag:
+            self.mem_store(Val(self.fn.build.lazyflag[name], "&bool"), Val("false", "bool"))  # (no longer a field's object)
         # (a local a closure assigns (nonlocal) keeps its declared type: a call may run the
         # closure, as narrowable says)
         u = unopt(t)

@@ -100,7 +100,6 @@ def callback_clone(fn: IFn, param: int, target: str, code: str, ft: str, codes: 
     g.cmpops = f.cmpops
     out = IFn(g)
     out.ps, out.n, out.located, out.casts = [p for p in fn.ps], fn.n, fn.located, [n for n in fn.casts]
-    out.numeric_only = fn.numeric_only
     out.fa, out.cold, out.coldh = dict(fn.fa), dict(fn.cold), dict(fn.coldh)
     out.rdepth, out.resumes, out.setslimit = fn.rdepth, fn.resumes, fn.setslimit
     # The original entry owns the source frame; a version is an uncounted helper.

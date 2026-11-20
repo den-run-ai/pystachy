@@ -177,7 +177,7 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     self.number_casts()  # (after its last value: gen_cast)
     self.instantiate(self.fn)
     self.fn.n = self.n
-    self.fn.otherbinds = None  # the binding index is needed only while building this function
+    self.fn.build.otherbinds = None  # the binding index is needed only while building this function
     self.fns.append(self.fn)
 
 def gen_numeric_proof(self, f: FnInfo, body: list[Node]) -> None:
@@ -255,7 +255,7 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         f.ret = self.hints[self.fnkey(f) + "|return"]  # (a join's type: as if annotated, see join_hint)
         self.ret = f.ret
     self.numeric_proof(f, body)
-    self.fn.numeric_only = f.scalar_only
+    self.fn.build.numeric_only = f.scalar_only
     if takes_self(f) and not f.nullable_self:
         # Attribute calls check the receiver; explicit C.m(o, ...) may pass None and
         # uses its own specialization without these assumptions (including self loads).

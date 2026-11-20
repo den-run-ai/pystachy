@@ -136,13 +136,13 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
             fn = self.funcs[f.s]
             scan_args: list[str] = []
             for j in range(6):
-                held = self.fn.scalar_reads
+                held = self.fn.build.scalar_reads
                 if j > 0 and self.scalar_read_value(args[j]):
-                    self.fn.scalar_reads = True
+                    self.fn.build.scalar_reads = True
                 try:
                     v = self.expr(args[j], fn.ptypes[j])
                 finally:
-                    self.fn.scalar_reads = held
+                    self.fn.build.scalar_reads = held
                 what = f"argument {j + 1} of {short(fn.name)}()" if is_opt(v.t) else ""
                 v = self.coerce(v, fn.ptypes[j], what)
                 scan_args.append(("ptr " if j == 0 else "i64 ") + v.v)
@@ -1298,7 +1298,7 @@ def gen_pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
     if identity_abi(f) and self.idhere() and self.fn_identity(f) and numeric_identity(v.t) and numeric_identity(t) and (not f.scalar_args or f.params[j] in f.idnames) and not self.dyn_id_fresh(v):
         captured = Val(v.v, v.t).identity(v)
         # (a local's last read hands its object on, boxed or not: id_move)
-        captured.idfrom = self.dyn_id_held(v).v if self.fn.idpass and v.t == t and (t == "int" or t == "float") and v.idslot.startswith("%") and ".box." in v.idslot else self.dyn_id_box(v).v
+        captured.idfrom = self.dyn_id_held(v).v if self.fn.build.idpass and v.t == t and (t == "int" or t == "float") and v.idslot.startswith("%") and ".box." in v.idslot else self.dyn_id_box(v).v
         v = captured
     if v.t == "bool" and t == BIG and self.bool_numeric(f, j):
         v = self.to_big(v)  # (a bool that f reads only as a number: the int it equals, see bool_numeric)
@@ -1574,11 +1574,11 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             vals[j] = self.at_arg(e, f, j, offs)
             continue
         quiet = identity_abi(f) and not f.generic and f.cls not in self.tmpl and f.scalar_args and f.params[j] not in f.idnames and numeric_identity(f.ptypes[j]) and self.scalar_read_value(e)
-        held = self.fn.scalar_reads
+        held = self.fn.build.scalar_reads
         if quiet:
             # (the callee never observes this argument's object: numeric_proof, as its null
             # companion below says; read it as an operand, without snapshots)
-            self.fn.scalar_reads = True
+            self.fn.build.scalar_reads = True
         # (a sentinel parameter's argument is a T, or the sentinel itself: declare_fn; also as a
         # sentinel parameter of the caller's for the same sentinel that may hold it: only the
         # sentinel can where its type is object's (store_name), unless a closure assigns it (nlw),
@@ -1589,9 +1589,9 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         try:
             arg = self.expr(e, pt if pt != "" or j >= len(hint) else self.generic_hint(e, hint[j]))
         finally:
-            self.fn.scalar_reads = held
-        passing = self.fn.idpass
-        self.fn.idpass = self.id_move(e)
+            self.fn.build.scalar_reads = held
+        passing = self.fn.build.idpass
+        self.fn.build.idpass = self.id_move(e)
         try:
             if cache is None and not self.rtmode and int_for_float(f, j, arg.t) and (f.cls == "" or (f.cls in self.classes and self.classes[f.cls].tag == 0 and self.classes[f.cls].origin == "" and f.cls not in self.tmpl)):
                 # an int for a float parameter (PEP 484 accepts it, and CPython passes the int
@@ -1601,7 +1601,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             else:
                 vals[j] = self.pcoerce(arg, pt, f, j)
         finally:
-            self.fn.idpass = passing
+            self.fn.build.idpass = passing
         if self.curfn.cmpops and self.term and vals[j].v == "undef":
             return Val("undef", want if want not in ["", "?"] else f.ret if f.ret != "" else "int")
         if j in f.pats:
