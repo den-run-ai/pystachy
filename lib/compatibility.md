@@ -768,6 +768,10 @@ Making an object of a class that leaves an abstract method raises CPython's `Typ
 - `MutableMapping.pop()` takes its default by position only
   ([test](../tests/errors/classes/abc_pop_keyword.py)), and `update()` takes pairs from a
   list, tuple, set or frozenset: another iterable object is read as a mapping (`keys()`).
+- `Sequence`'s `in`, `index()` and `count()` and the views' `in` test identity, then equality,
+  as CPython's do ([test](../tests/programs/classes/abc_identity.py)). A number has no identity
+  here, so a NaN item equals no value, as in a list
+  ([NaN identity](../docs/language/compatibility.md#numbers)).
 - `reversed()` of a `Mapping` is a compile-time error, where CPython's `__reversed__ = None`
   raises `TypeError` ([test](../tests/errors/classes/abc_mapping_reversed.py)); `Set._hash()`
   is not provided.

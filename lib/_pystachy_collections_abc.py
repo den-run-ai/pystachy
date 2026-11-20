@@ -7,7 +7,7 @@ Unit tests are in test_collections.
 # base names one of them (collections.abc's or typing's name, subscripted or not) derives from
 # this module's class instead (Loader's abc_classes), whose methods it inherits, as CPython's
 # subclasses do; the compiler decides isinstance() and issubclass() with each ABC itself
-# (Gen.abc_isinst), for the program's values and for these classes' objects alike, where
+# (Gen.cabc_isinst), for the program's values and for these classes' objects alike, where
 # CPython asks the ABC's __subclasshook__ and its registry. Elsewhere collections.abc's names
 # stay the types they annotate (Mapping[K, V] is dict[K, V]). The docstrings are CPython's.
 #
@@ -539,7 +539,10 @@ class ItemsView:
         except KeyError:
             return False
         else:
-            return v is value or v == value
+            # Pystachy port: value in (v,), which tests v is value and then v == value, as
+            # CPython's v is value or v == value does, also for numbers, whose 'is' Pystachy
+            # does not compile (an unboxed number keeps no identity: compatibility.md)
+            return value in (v,)
 
     def __iter__(self):
         for key in self._mapping:
@@ -616,7 +619,7 @@ class ValuesView:  # Pystachy port: was ValuesView(MappingView, Collection)
     def __contains__(self, value):
         for key in self._mapping:
             v = self._mapping[key]
-            if v is value or v == value:
+            if value in (v,):  # Pystachy port: see ItemsView.__contains__
                 return True
         return False
 
@@ -746,7 +749,7 @@ class Sequence(Collection):  # Pystachy port: was Sequence(Reversible, Collectio
 
     def __contains__(self, value):
         for v in self:
-            if v is value or v == value:
+            if value in (v,):  # Pystachy port: see ItemsView.__contains__
                 return True
         return False
 
@@ -772,14 +775,14 @@ class Sequence(Collection):  # Pystachy port: was Sequence(Reversible, Collectio
                 v = self[i]
             except IndexError:
                 break
-            if v is value or v == value:
+            if value in (v,):  # Pystachy port: see ItemsView.__contains__
                 return i
             i += 1
         raise ValueError
 
     def count(self, value):
         'S.count(value) -> integer -- return number of occurrences of value'
-        return sum(1 for v in self if v is value or v == value)
+        return sum(1 for v in self if value in (v,))  # Pystachy port: see ItemsView.__contains__
 
 
 class MutableSequence(Sequence):
