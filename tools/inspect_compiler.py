@@ -112,7 +112,7 @@ def base_report(source: str, function: str, typed_after_only: bool = False, stop
                          "scope": "Pystachy typed IR; LLVM assembly and execution are not performed"},
         "artifacts": {}, "artifact_sha256": {},
         "limitations": [
-            "Function-level source locations only; typed instructions currently carry no source spans.",
+            "Instruction locations are source lines, without columns or spans.",
             "The frontend combines semantic analysis, specialization and IR construction.",
             "Pass rules describe general contracts, not exact reasons for every missed optimization.",
             "This is the first terminal error, not multi-error or all-units semantic checking.",
@@ -164,18 +164,24 @@ class Observer:
     def selected(self, fn) -> bool:
         return not self.function or self.function in fn.f.ll or self.function in self.diagnostics.shown(fn.f.name)
 
-    def location(self, line: int) -> dict:
+    def location(self, line: int, precision: str = "function") -> dict:
         d = self.diagnostics
         file = d.FILES[line // d.LINES] if line >= d.LINES else d.SRC
         return {"file": file, "line": line % d.LINES if line >= d.LINES else line,
-                "column": None, "precision": "function"}
+                "column": None, "precision": precision}
 
-    @staticmethod
-    def instruction(ins) -> dict:
+    def files(self) -> list[str]:
+        """The program's source files, by the index that the compiler's lines number them by."""
+        return [self.diagnostics.SRC] + self.diagnostics.FILES[1:]
+
+    def instruction(self, ins) -> dict:
+        # An op's location is the line of the statement it implements (Ins.line), which the
+        # compiler gives every op of the functions it builds; None where it is unknown (0).
         return {"op": ins.op, "type": ins.t, "text": ins.s, "immediate": ins.k,
                 "descriptor": ins.x, "results": list(ins.r),
                 "operands": [{"value": a.v, "type": a.t} for a in ins.a],
-                "targets": list(ins.b)}
+                "targets": list(ins.b),
+                "location": self.location(ins.line, "line") if ins.line != 0 else None}
 
     def snapshot(self, fn) -> dict:
         f = fn.f
@@ -870,7 +876,8 @@ class Observer:
                 artifact = name + ".json"
                 state = "completed" if self.report["status"] == "ok" else "partial"
                 snapshot = {"schema_version": SCHEMA_VERSION, "stage": name, "status": state,
-                            "attempt": self.attempt["index"] if self.attempt else 0, "functions": functions}
+                            "attempt": self.attempt["index"] if self.attempt else 0,
+                            "files": self.files(), "functions": functions}
                 if name == "typed-after":
                     snapshot.update(self.after_metadata)
                 write_json(self.output / artifact, snapshot)

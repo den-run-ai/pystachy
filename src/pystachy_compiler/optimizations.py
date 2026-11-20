@@ -309,6 +309,7 @@ def gen_recursionscope(self) -> int:
             n += 1
             continue
         base = Ins("scalar.bin", "int", "sub")
+        base.line = fn.blocks[0].code[at].line
         base.a = [Val(fn.rdepth, "int"), Val("1", "int")]
         fn.n += 1
         base.r = one_num(fn.n)
@@ -318,6 +319,7 @@ def gen_recursionscope(self) -> int:
             for i in b.code:
                 if i.op == "ret" or i.op == "ret.none":
                     restore = Ins("rt", "None", "recursion.restore")
+                    restore.line = i.line
                     restore.a = [Val(tmpname(base.r[0]), "int")]
                     code.append(restore)
                 code.append(i)
@@ -1222,6 +1224,14 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
         branch.b = [target, lp.head]
         cur.code.append(branch)
         cur = nxt
+    # (the tests are the loop's, as the test of its head is: they take that test's line)
+    line = 0
+    for b in fn.blocks:
+        if b.label == lp.head:
+            line = b.code[0].line
+    for b in tests:
+        for i in b.code:
+            i.line = line
     # the block before the loop goes to the test, and the loop's test (and its copy's) comes from it
     end = plan.pre.code[len(plan.pre.code) - 1]
     end.b = [test.label if l == lp.head else l for l in end.b]
@@ -1505,6 +1515,7 @@ def gen_unionslots(self, fn: IFn) -> int:
         for half in ["tag", "pay"]:
             fn.n += 1
             h = Ins("slot", "int", f"{s.s or 'h'}.{half}")
+            h.line = s.line
             h.r = one_num(fn.n)
             fn.slots.append(h)
             halves[addr].append(f"%{h.s}.{fn.n}")
@@ -1536,6 +1547,7 @@ def gen_unionslots(self, fn: IFn) -> int:
                 o = fn.blocks[w[0]].code[w[1]]
                 if is_opt(split[addr].t) and o.op == "ptr.cmp":
                     test = Ins("num.cmp", "bool", o.s)
+                    test.line = o.line
                     test.a = [Val(parts[v][0], "int"), Val("0", "int")]
                     test.r = o.r
                     repl[f"{w[0]}:{w[1]}"] = [test]
@@ -1773,12 +1785,13 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
         heads[d[0]].extend(ph)
         return parts[v]
     fn.n += 1
+    line = i.line if d[1] >= 0 else fn.f.node.line  # (a parameter's: its def's, the line of the prologue)
     tg = Ins("union.tag", "int", "")
-    tg.line = i.line
+    tg.line = line
     tg.a = [Val(v, t)]
     tg.r = one_num(fn.n)
     pl = Ins("union.raw", "%slot", "")
-    pl.line = i.line
+    pl.line = line
     pl.a = [Val(v, t)]
     pl.r = [fn.n + 1, fn.n + 2]
     fn.n += 2

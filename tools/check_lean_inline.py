@@ -39,7 +39,7 @@ class Normalize:
             bridge.require(label not in self.starts, "duplicate block label")
             self.starts[label] = None
             for index, op in enumerate(block["operations"]):
-                bridge.require(isinstance(op, dict) and set(op) == bridge.OP_KEYS, "invalid instruction fields")
+                bridge.require(bridge.instruction_fields(op), "invalid instruction fields")
                 if op["op"] not in SUPPORTED:
                     raise bridge.Unsupported("unclassified inline instruction: " + op["op"])
                 if op["op"] in bridge.SUPPORTED_OPS:

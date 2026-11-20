@@ -617,7 +617,8 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
     # its lowering prints (Ins.r), and no number or label is above IFn.n. Exceptions (once the
     # passes of eh_ir have run, eh): a landing op is alone in its block, which only the unwind
     # edges of invokes reach, and every invoke's unwind edge goes to one; in a block that a
-    # try statement covers, no call that may raise is left a call, nor a raise or throw
+    # try statement covers, no call that may raise is left a call, nor a raise or throw. In a
+    # function the compiler built (IFn.located), every op, a slot too, has its source line
     at: dict[str, int] = {}
     union_types: dict[str, list[str]] = {}
     union_proofs = False
@@ -653,6 +654,8 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         shape = op_shape_error(i, True)
         if shape != "":
             self.bad_ir(fn, fn.blocks[0], shape)
+        if i.line == 0 and fn.located:
+            self.bad_ir(fn, fn.blocks[0], f"slot {slot_register(i)} has no source line")
     for j in range(len(fn.blocks)):
         l = fn.blocks[j].label
         if l in at:
@@ -677,6 +680,8 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 shape = op_type_error(types, i)
             if shape != "":
                 self.bad_ir(fn, b, shape)
+            if i.line == 0 and fn.located:
+                self.bad_ir(fn, b, f"{i.op} {i.s} has no source line" if i.s != "" else f"{i.op} has no source line")
             inv = len(i.b) == 2 and (i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume")
             if ("T" in IROPS[i.op] or inv) != (j == len(b.code) - 1):
                 self.bad_ir(fn, b, f"a terminator in the middle, at {i.op}" if j < len(b.code) - 1 else f"no terminator, last {i.op}")

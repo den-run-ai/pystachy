@@ -10,7 +10,7 @@ from collections import deque
 from pathlib import Path
 import sys
 
-from check_lean_boundary import OP_KEYS, require
+from check_lean_boundary import instruction_fields, require
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -164,7 +164,7 @@ def local_writes(function, identity_slot=False, tagged=lambda cls: False):
     operations = [op for block in function["blocks"] for op in block["operations"]]
     require(isinstance(function.get("slots", []), list), "invalid effect function slots")
     for op in operations + function.get("slots", []):
-        require(isinstance(op, dict) and set(op) == OP_KEYS, "invalid effect instruction fields")
+        require(instruction_fields(op), "invalid effect instruction fields")
         require(all(isinstance(op[key], str) for key in ("op", "text", "descriptor")),
                 "invalid effect instruction name")
         require(isinstance(op["results"], list) and all(type(number) is int for number in op["results"]),

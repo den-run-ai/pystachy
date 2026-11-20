@@ -799,6 +799,7 @@ from src.pystachy_compiler.emission import (
     gen_cast as emission_cast,
     gen_number_casts as emission_number_casts,
     gen_select as emission_select,
+    gen_slot as emission_slot,
     gen_tmp as emission_tmp,
     gen_unreachable as emission_unreachable,
     gen_unwrap as emission_unwrap,
@@ -2914,6 +2915,9 @@ class Gen:
 
     def jump(self, l: str) -> None:
         return emission_jump(self, l)
+
+    def slot(self, i: Ins) -> None:
+        return emission_slot(self, i)
 
     def br(self, l: str) -> None:
         return emission_br(self, l)

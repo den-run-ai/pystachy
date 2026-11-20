@@ -99,7 +99,7 @@ def callback_clone(fn: IFn, param: int, target: str, code: str, ft: str, codes: 
     g.synthetic, g.noret = True, f.noret
     g.cmpops = f.cmpops
     out = IFn(g)
-    out.ps, out.n, out.casts = [p for p in fn.ps], fn.n, [n for n in fn.casts]
+    out.ps, out.n, out.casts, out.located = [p for p in fn.ps], fn.n, [n for n in fn.casts], fn.located
     out.numeric_only = fn.numeric_only
     out.fa, out.cold, out.coldh = dict(fn.fa), dict(fn.cold), dict(fn.coldh)
     out.rdepth, out.resumes, out.setslimit = fn.rdepth, fn.resumes, fn.setslimit
@@ -126,7 +126,9 @@ def callback_clone(fn: IFn, param: int, target: str, code: str, ft: str, codes: 
 def callback_guards(fn: IFn, param: int, targets: list[str], variants: list[IFn]) -> None:
     # Retain the entry's depth snapshot ahead of the dispatcher. Every branch
     # executes the body once, after the caller has evaluated all arguments.
+    # The dispatcher is the function's entry: its ops take the snapshot's line.
     entry = fn.blocks[0]
+    line = entry.code[0].line
     fn.n += 1
     fallback = Blk(f"L{fn.n}")
     fallback.code = entry.code[1:]
@@ -147,7 +149,6 @@ def callback_guards(fn: IFn, param: int, targets: list[str], variants: list[IFn]
         compare.r = one_num(fn.n)
         branch = Ins("cbr", "", "")
         branch.a, branch.b = [Val(tmpname(fn.n), "bool")], [hit.label, miss.label]
-        current.code.extend([compare, branch])
         call = Ins("call", fn.f.ret, variants[j].f.ll)
         call.a = [Val(f"%a{p}", fn.f.ptypes[p]) for p in fn.ps]
         ret = Ins("ret", "", "")
@@ -155,6 +156,9 @@ def callback_guards(fn: IFn, param: int, targets: list[str], variants: list[IFn]
             fn.n += 1
             call.r = one_num(fn.n)
             ret.a = [Val(tmpname(fn.n), fn.f.ret)]
+        for i in [compare, branch, call, ret]:
+            i.line = line
+        current.code.extend([compare, branch])
         hit.code = [call, ret]
         added.append(hit)
         if miss is not fallback:

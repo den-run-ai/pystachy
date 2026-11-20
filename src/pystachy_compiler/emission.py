@@ -211,11 +211,11 @@ def gen_label(self) -> str:
 
 
 def gen_add(self, i: Ins) -> None:
-    # code after a terminator (dead code) goes to a block of its own
+    # code after a terminator (dead code) goes to a block of its own. i takes the line being
+    # compiled (Ins.line), as jump's branch and slot's entry storage do
     if self.term:
         self.place(self.label())
-    if self.source_lines.enabled:
-        i.line = self.line
+    i.line = self.line
     if i.op in PATH_OPS:
         self.path_event(i, PATH_OPS[i.op])  # (what a narrowed attribute path's facts do not outlast: unions.py)
     self.blk.code.append(i)
@@ -258,8 +258,15 @@ def gen_place(self, l: str) -> None:
 
 def gen_jump(self, l: str) -> None:
     i = Ins("br", "", "")
+    i.line = self.line
     i.b = [l]
     self.blk.code.append(i)
+
+def gen_slot(self, i: Ins) -> None:
+    # add slot op i to the function's entry storage, numbered by the caller: like any op, it takes
+    # the line being compiled, which binds its variable first (a parameter's: the def's line)
+    i.line = self.line
+    self.fn.slots.append(i)
 
 def gen_br(self, l: str) -> None:
     if not self.term:
@@ -864,14 +871,14 @@ def gen_alloca(self, t: str, name: str) -> str:
             i = Ins("slot", "bool", name)
             i.k = 1
             i.r = one_num(self.n)
-            self.fn.slots.append(i)
+            self.slot(i)
         return self.cells[name]
     self.n += 1
     r = f"%{name or 'h'}.{self.n}"
     self.anyopt = self.anyopt or is_opt(t) or is_union(t) or t == "dyn" or t in self.classes
     i = Ins("slot", t, name)
     i.r = one_num(self.n)
-    self.fn.slots.append(i)
+    self.slot(i)
     if name != "":
         self.ltype[name] = t
         self.lreg[name] = r
@@ -881,13 +888,13 @@ def gen_alloca(self, t: str, name: str) -> str:
             i = Ins("slot", "bool", name)
             i.k = 1
             i.r = one_num(self.n)
-            self.fn.slots.append(i)
+            self.slot(i)
         if t == "str" and name in self.appends and name not in self.owned and name not in self.compvars:
             # the owned flag of a str local that the function appends to (str_append): one for
             # the name, which its later slots share, as every read and store of it clears the flag
             i = Ins("slot", "int", name + ".own")
             i.r = one_num(self.n)
-            self.fn.slots.append(i)
+            self.slot(i)
             self.owned[name] = f"%{name}.own.{self.n}"
         self.idbox.pop(name, "")
         if numeric_identity(t) and self.idhere() and (not self.fn.numeric_only or name in self.curfn.idnames):
@@ -895,13 +902,13 @@ def gen_alloca(self, t: str, name: str) -> str:
             # function begins, until a store or its first crossing gives it one (dyn_box)
             i = Ins("slot", "dyn", name + ".box")
             i.r = one_num(self.n)
-            self.fn.slots.append(i)
+            self.slot(i)
             self.idbox[name] = f"%{name}.box.{self.n}"
             # Local generations distinguish an emitted store from one that actually runs.
             # This stack-only counter is dead when the value never needs identity.
             i = Ins("slot", "int", name + ".boxgen")
             i.r = one_num(self.n)
-            self.fn.slots.append(i)
+            self.slot(i)
     return r
 
 # ---- value conversions

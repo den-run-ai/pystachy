@@ -132,7 +132,7 @@ static branch need not be type-checked. The [typing](language/typing.md) and
 | Class | Holds |
 |---|---|
 | `Val` | An operand's spelling (`v`) and canonical static type (`t`) |
-| `Ins` | An operation, result type, immediate data, typed operands, result numbers and labels |
+| `Ins` | An operation, result type, immediate data, typed operands, result numbers, labels and source line |
 | `Blk` | A basic block's label, instruction list and enclosing exception handler |
 | `Loop` | Loop shape, sequences and indices used by loop optimizations |
 | `Try` | The source-level shape of a try statement; LLVM lowering uses block handler metadata |
@@ -211,7 +211,7 @@ past the `n` items: a `tuple.load` or `tuple.store` whose `k` is that slot and w
 `int+` reaches it (`tslots`, `hislot`), and a read of it is guarded by its item's slot
 (`big_item`). Descriptors give such an item as `i`: such a tuple reaches the runtime narrowed
 (`to_slot`), and its `repr()`, comparisons and `hash()` are compiled item by item.
-An `Ins` uses only the fields its operation needs:
+An `Ins` uses only the fields its operation needs, and every op has a `line`:
 
 | Field | Meaning |
 |---|---|
@@ -221,6 +221,7 @@ An `Ins` uses only the fields its operation needs:
 | `r` | Result/value numbers reserved for lowering |
 | `a` | Typed operands in evaluation order |
 | `b` | Successor labels, phi predecessors or invoke edges |
+| `line` | Source location: the line of the statement it implements ([locations](#locations)) |
 
 ### Operand values
 
@@ -1078,9 +1079,9 @@ decides a fixed tuple's slots while its function is printed.
 
 ## Validation
 
-- `make check-ir` verifies generated IR, each operand's type against its value's
-  [definition](#operation-reference) among the checks, and checks IR probes, including calls,
-  function attributes and effect summaries.
+- `make check-ir` verifies generated IR, among its checks each operand's type against its
+  value's [definition](#operation-reference) and each op's [source line](#locations), and checks
+  IR probes, including calls, function attributes and effect summaries.
 - `tools/typed_ir_ops.py --check` fails when the [operation reference](#operation-reference)
   differs from `OPS`.
 - `tools/typed_ir_text.py verify tools/fixtures/typed_ir/invalid.tir` holds the verifier to
@@ -1098,7 +1099,7 @@ self-compile timings in the design log are not current test totals or performanc
 
 `tools/typed_ir_text.py` prints a function's IR as text and parses it back. One instruction
 is one line: its results, the operation, its text (`Ins.s`), its other fields, its typed
-operands, its labels and its result type.
+operands, its labels, its result type and, on request, its [location](#locations).
 
 ```text
 L7:
@@ -1124,16 +1125,16 @@ Types are the compiler's canonical strings. Most are Python's (`int`, `list[floa
 the slot at `%s.3`, and `*X` is an eight-byte word that holds an `X`, as `list.load` returns a
 list item; `%ptr`, `%byte`, `%i32` and `%slot` are machine types with no Python meaning.
 
-Printing and parsing are inverse: a printed function parses to the record it was printed
-from, and a text that is not in the printed form is rejected. The record holds a function's
-symbol, parameters, return type, effects, slots, blocks, check targets and loops, as the
-[inspection snapshots](compiler-inspection.md) do. `to_ifn` builds the compiler's own `IFn`
-from it, so a test writes IR as text, runs the verifier or one pass and compares the printed
-result: [`tools/test_typed_ir_text.py`](../tools/test_typed_ir_text.py) runs `listget` on
-[a fixture](../tools/fixtures/typed_ir/score_samples.listget.before.tir) that way, and
+Printing and parsing are inverse: a function printed with its locations parses to the record
+it was printed from, and a text that is not in the printed form is rejected. The record holds
+a function's symbol, parameters, return type, effects, slots, blocks, check targets and loops,
+as the [inspection snapshots](compiler-inspection.md) do. `to_ifn` builds the compiler's own
+`IFn` from it, so a test writes IR as text, runs the verifier or one pass and compares the
+printed result: [`tools/test_typed_ir_text.py`](../tools/test_typed_ir_text.py) runs `listget`
+on [a fixture](../tools/fixtures/typed_ir/score_samples.listget.before.tir) that way, and
 checks that the fixture is what the compiler emits. The text holds no module data, class
-layouts or runtime declarations, so a function that needs those is tested from source. It
-is a test and review form of the hosted compiler, not an interchange format.
+layouts or runtime declarations, so a function that needs those is tested from source. It is a
+test and review form of the hosted compiler, not an interchange format.
 
 `verify` runs the verifier on each function of a text file, as MLIR's `-verify-diagnostics`
 does. A comment line `; expected-error {{MESSAGE}}` says that the function's verification
@@ -1142,6 +1143,25 @@ without one must verify. The verifier stops at its first error, so a function ex
 at most. [`invalid.tir`](../tools/fixtures/typed_ir/invalid.tir) breaks one rule per
 function: each kind of shape and type rule of an operation's row, some operations' own
 checks, block structure, and the values operands name. Its last function verifies.
+
+### Locations
+
+Every instruction records its source location in `Ins.line`, as every MLIR operation carries a
+`loc`: the line of the statement it implements, numbered as diagnostics number lines (a file's
+index times 10,000,000 plus its line). The frontend gives each op it builds, slots included,
+the line it is compiling. A function's prologue (entry depth, parameter stores, cells) takes
+its `def` line; module code's prologue takes its block's line 1, which the compiler numbers in
+the main program's file even for an imported module. A pass gives an op it creates the line of
+the op it derives from: listguard's tests take their loop's line, a depth restoration its
+`return`'s and exception lowering's branch its `raise`'s. With `PYSTACHY_IRCHECK=1`, the
+verifier rejects an op without a line in any function the compiler built (`IFn.located`). IR
+written as text may leave lines unknown (0), as MLIR's verifier accepts unknown locations.
+Only LLVM line tables (`PYSTACHY_DEBUG_LINES=1`) print them.
+
+Text holds locations only on request, as MLIR prints them only with `-mlir-print-debuginfo`:
+`print --locations` appends `loc(12)` for line 12 of the main program's file and `loc(3:12)`
+for line 12 of file 3, the snapshot's `files[3]`. The parser reads either back, and an
+instruction without one has line 0.
 
 The optional [Lean shape checker](../tools/lean_boundary/SHAPE.md) reads the same records
 and the operation table. For the functions it accepts it proves the table's counts and

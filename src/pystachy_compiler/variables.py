@@ -817,7 +817,7 @@ def gen_imp_flag(self, x: str, glob: bool) -> str:
         i = Ins("slot", "bool", x)
         i.k = 1
         i.r = one_num(self.n)
-        self.fn.slots.append(i)
+        self.slot(i)
         self.iflag[x] = f"%{x}.def.{self.n}"
     return self.iflag[x]
 
