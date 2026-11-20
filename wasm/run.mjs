@@ -6,9 +6,14 @@
 // environment, and the file system through "/" (the host's, as the user who runs node); its
 // working directory is node's. Its exit status is node's.
 import { readFile } from "node:fs/promises";
+import v8 from "node:v8";
 import { fileURLToPath } from "node:url";
 import { WASI } from "node:wasi";
 import process from "node:process";
+
+// Node 22's optimized fast calls of its WASI functions crash (SIGSEGV) some programs, every time
+// after many files were written or now and then under load; without them none did (wasm/README.md)
+v8.setFlagsFromString("--no-turbo-fast-api-calls");
 
 let argv = process.argv.slice(2);
 let runtimePath = fileURLToPath(new URL("../build/wasm/runtime.wasm", import.meta.url));
