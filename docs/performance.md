@@ -49,10 +49,11 @@ release's compiler, runtime and library sources.
   [this page as of `f07472a5`](https://github.com/den-run-ai/pystachy/blob/f07472a535f165f939fdda774b1fcd4813e5c66d/docs/performance.md#benchmarks),
   which also links the table before it.
 
-The [pyperformance results](../bench/pyperformance/README.md#recorded-results) compare alpha.3 and alpha.4 AOT instruction
-counts on the benchmarks adapted from pyperformance 1.14.0. These are comparisons on adapted
-sources, not official pyperformance scores. The [port notes](../bench/pyperformance/README.md)
-describe adaptations, unsupported benchmarks and how to time CPython, JIT and AOT.
+The [pyperformance results](../bench/pyperformance/README.md#recorded-results) compare
+v0.1.0-alpha.3 and v0.1.0-alpha.4 AOT instruction counts on the benchmarks adapted from
+pyperformance 1.14.0. These are comparisons on adapted sources, not official pyperformance
+scores. The [port notes](../bench/pyperformance/README.md) describe adaptations, unsupported
+benchmarks and how to time CPython, JIT and AOT.
 
 For numerical workloads, the [nanoGPT measurements](../examples/nanogpt/README.md#recorded-inference-performance)
 compare inference with CPython, NumPy and PyTorch. The
