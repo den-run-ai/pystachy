@@ -150,10 +150,10 @@ another archive, because `share/BUILD.txt` records the recipe's hash.
 |---|---|
 | Release | `llvm-toolchain-18.1.8-1` |
 | Archive | `pystachy-llvm-18.1.8-linux-x86_64.tar.xz` |
-| SHA-256 | `9d71e217eb32b6ad7cce1745aebf0552b3c2d3e7acec9eaf5dfe6305528b61c1` |
+| SHA-256 | `aa7aeba224afd47728c7733cd13fe6a3bd32a38cee42d8fc30dca23f86e18d85` |
 
 A `build` in the pinned image gives these bytes while `tools/llvm_toolchain.sh` has SHA-256
-`c5a55631…bce49ace`, which the archive's `share/BUILD.txt` records: the pin can be checked
+`35cba691…8e78ff2f`, which the archive's `share/BUILD.txt` records: the pin can be checked
 without trusting the release.
 
 A pip or uv installation downloads the archive at its first `run`, `build` or `ext` when all

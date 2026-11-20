@@ -53,7 +53,7 @@ MINIMAL_RELEASE = (
     "https://github.com/den-run-ai/pystachy/releases/download"
     f"/llvm-toolchain-{MINIMAL_VERSION}-{MINIMAL_REVISION}/{MINIMAL_ARCHIVE}.tar.xz"
 )
-MINIMAL_SHA256 = "9d71e217eb32b6ad7cce1745aebf0552b3c2d3e7acec9eaf5dfe6305528b61c1"
+MINIMAL_SHA256 = "aa7aeba224afd47728c7733cd13fe6a3bd32a38cee42d8fc30dca23f86e18d85"
 # Before glibc 2.34 the runtime does not link without -pthread.
 MINIMAL_GLIBC = (2, 34)
 # Where the driver looks for LLVM before PATH: llvm_dir in src/pystachy_compiler/driver.py.
