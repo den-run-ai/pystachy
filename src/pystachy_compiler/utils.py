@@ -7,7 +7,7 @@ from src.pystachy_compiler.diagnostics import FILES, LINES, dynamic_program, fai
 from src.pystachy_compiler.ir import Ins
 from src.pystachy_compiler.symbols import ClassInfo, Closure, FnInfo
 from src.pystachy_compiler.llvm_abi import llvm_decl
-from src.pystachy_compiler.names import short
+from src.pystachy_compiler.names import own_name, short
 from src.pystachy_compiler.specs import (
     BIG,
     BIGOPT,
@@ -437,7 +437,7 @@ def tname(t: str) -> str:
     if is_callable(t):
         return "function"
     b = t.find("[")
-    return t[:b] if b >= 0 else short(t)
+    return t[:b] if b >= 0 else own_name(t)  # (a nested class's __name__, Outer.Inner's Inner: as CPython's messages)
 
 
 def raising_op(op: str) -> bool:
@@ -1370,6 +1370,7 @@ def clone(n: Node) -> Node:
     c.tpsource = n.tpsource
     c.chk = n.chk
     c.mchk = n.mchk
+    c.outer = n.outer
     c.depth = n.depth
     c.made = n.made
     c.src = n.src

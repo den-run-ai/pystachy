@@ -1300,7 +1300,7 @@ RUNTIME: dict[str, str] = {
     "exc.begin": "exc:exc,int|R I wL rF wF|", "exc.in": "int:exc,str||", "exc.str": "str:exc|U|", "exc.repr": "str:exc|A U|",
     "exc.new": "exc:str,str,str|A|", "exc.exit": "exc:int,str,str|A|", "exc.detail": "exc:exc,str||", "throw": "None:exc|R N|",
     "exc.user": "exc:%ptr|A|", "exc.obj": "R:exc||", "exc.id": "%ptr:exc||", "exc.ostr": "str:%ptr|U|", "exc.orepr": "str:%ptr|U|",
-    "exc.brepr": "str:%ptr,str|A|", "exc.cls": "str:%ptr|A|", "exc.name": "str:exc|A|", "exc.type": "str:exc|A|",
+    "exc.brepr": "str:%ptr,str|A|", "exc.cls": "str:%ptr|A|", "exc.name": "str:exc|A|", "exc.qualname": "str:exc|A|", "exc.type": "str:exc|A|",
     "exc.setcause": "None:exc,exc|wO|", "exc.cause": "exc:exc|rO|", "exc.errcls": "str:int|A|",
     # exception classes as values: class objects (runtime.c's exceptions)
     "exc.proto": "exc:str,%ptr|A I|", "exc.canon": "exc:exc|A I|", "exc.sub": "int:exc,exc,str||", "exc.module": "str:exc|A|", "exc.setmodule": "None:%ptr,str|R I|",

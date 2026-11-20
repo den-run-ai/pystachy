@@ -8,7 +8,7 @@ from src.pystachy_compiler.dynamic import boxed_list_items, comparison_container
 from src.pystachy_compiler.frames import FmtArgs, IterArg
 from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname, one_num
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
-from src.pystachy_compiler.names import ENUMCLASSES, short
+from src.pystachy_compiler.names import ENUMCLASSES, NESTED, own_name, short
 from src.pystachy_compiler.patterns import pattern_expr, pattern_static
 from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
 from src.pystachy_compiler.specs import (
@@ -381,6 +381,24 @@ def gen_knownobj(self, n: Node) -> bool:
     # is n a template's parameter whose argument is an object known not to be None (see nnp)
     return n.kind == "name" and n.s in self.curfn.nnp and self.static_type(n) in self.classes
 
+def nested_owner(self, t: str, a: str) -> str:
+    # class t, or the base of it, whose body nests a class named a that no class attribute of
+    # it holds (an enum class, or one of a dataclass or a NamedTuple: Loader's nested_classes,
+    # which the program reads as C.a), or ""
+    c = t
+    while c in self.classes:
+        if self.classes[c].node.line in NESTED and a in NESTED[self.classes[c].node.line]:
+            return c
+        c = self.classes[c].base
+    return ""
+
+
+def nested_hint(self, t: str, a: str) -> str:
+    # (an error's) how the program reads class a that class t's body nests, if nested_owner finds it
+    c = nested_owner(self, t, a)
+    return f": {short(c)}.{a}, a class nested in its body, is read as {short(c)}.{a} here (an enum class, or one nested in a dataclass or NamedTuple, is no class attribute)" if c != "" else ""
+
+
 def gen_has(self, t: str, a: str) -> int:
     # hasattr(x, a) for x of static type t: 1 or 0; for an object's own attribute -1 (true
     # unless it is None), or -2 for a field __init__ may leave unassigned (its flag says).
@@ -414,6 +432,8 @@ def gen_has(self, t: str, a: str) -> int:
             return -2
         if a in ci.methods or a in ci.ftypes:
             return -1
+        if nested_owner(self, t, a) != "":
+            return -1  # (a class its body nests, which no class attribute holds: Loader's nested_classes)
         if t in self.nts:
             self.err(f"hasattr() of '{a}' on a NamedTuple is not supported")
         if (a == "__dict__" or a == "__weakref__") and ci.slotlimit:
@@ -1133,15 +1153,15 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             return self.class_attr(n.kids[0], n.s)
         if c in self.classes and n.s == "__name__":
             self.class_ready(n.kids[0])
-            return Val(self.sconst(short(c)), "str")  # (C.__name__, and cls.__name__ in a class method)
+            return Val(self.sconst(own_name(c)), "str")  # (C.__name__, and cls.__name__ in a class method: a nested class's last part)
         if metadata:
             self.class_ready(n.kids[0])
             return Val(self.sconst(self.refl_type_name(c, n.s)), "str")
         if c in self.classes and self.classes[c].exc != "" and (n.s == "__qualname__" or n.s == "__module__"):
             # (an exception class's, as its class object's: runtime.c's pys_exc_name, pys_exc_module)
             self.class_ready(n.kids[0])
-            q = self.exc_disp(c)
-            return Val(self.sconst(short(c) if n.s == "__qualname__" else q[: q.rfind(".")] if "." in q else "__main__"), "str")
+            q = self.exc_disp(c)  # (its module's name, then its __qualname__, short(c))
+            return Val(self.sconst(short(c) if n.s == "__qualname__" else q[: len(q) - len(short(c)) - 1] if len(q) > len(short(c)) else "__main__"), "str")
         if c in self.classes:
             self.no_class_attr(c, n.s)
         o = self.expr(n.kids[0], "")
@@ -1242,7 +1262,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if unopt(o.t) == "exctype" and (n.s == "__name__" or n.s == "__qualname__" or n.s == "__module__"):
             # (an exception class's class object: its name, qualified name and module)
             o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{n.s}'")
-            fn = "pys_exc_module" if n.s == "__module__" else "pys_exc_name"  # (no class is nested: its __qualname__ is its __name__)
+            fn = "pys_exc_module" if n.s == "__module__" else "pys_exc_qualname" if n.s == "__qualname__" else "pys_exc_name"
             return Val(self.rt(fn, "ptr", [f"ptr {o.v}"]), "str")
         if is_clsval(unopt(o.t)) and (n.s == "__name__" or n.s == "__qualname__" or n.s == "__module__"):
             return self.class_value_name(o, n.s)  # (an ordinary class's class object: class_values.py)
@@ -1645,7 +1665,7 @@ def gen_no_class_attr(self, c: str, a: str) -> None:
         self.err(f"method '{short(c)}.{a}' cannot be used as a value (call it)")
     if a in ci.fields:
         self.err(f"type object '{short(c)}' has no attribute '{a}' (its objects have the field '{a}')")
-    self.err(f"type object '{short(c)}' has no attribute '{a}'")
+    self.err(f"type object '{short(c)}' has no attribute '{a}'" + nested_hint(self, c, a))
 
 def gen_class_ready(self, cn: Node) -> ClassInfo:
     # the class that name cn reads (C.a, C.m(...)), checked where its class statement may not

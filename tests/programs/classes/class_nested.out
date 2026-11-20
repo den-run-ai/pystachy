@@ -1,0 +1,5 @@
+15 Tree.Stats(count=5) 9 0 Edge(a=1, b=2)
+14 True True True
+Node Tree.Node __main__ Tree.Stats Leaf
+Node Tree.Node <class '__main__.Tree.Node'> <class '__main__.Tree.Edge'> <class '__main__.Tree.Stats'>
+[exit 0]

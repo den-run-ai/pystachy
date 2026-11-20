@@ -14,6 +14,9 @@ RENAMED: dict[str, str] = {}
 # the enum classes the loader made (Loader's enum_classes), by the lines of their class statements:
 # the enum class each derives from (Enum, IntEnum or StrEnum)
 ENUMCLASSES: dict[int, str] = {}
+# the classes whose bodies nest an enum class (Loader's nested_classes), by the lines of their class
+# statements: the names of those enum classes, which no class attribute of theirs holds
+NESTED: dict[int, list[str]] = {}
 # the classes decorated @total_ordering (Loader's functools_classes), by the lines of their class
 # statements: the ones of __lt__, __le__, __gt__ and __ge__ that each body defines, after "+"
 # where another decorator comes first (Gen.ordered_class)
@@ -26,6 +29,13 @@ def short(name: str) -> str:
     if len(RENAMED) > 0 and unspec(name) in RENAMED:
         return RENAMED[unspec(name)]
     return unspec(name[name.rfind("$") + 1 :])
+
+
+def own_name(name: str) -> str:
+    # a class's __name__ (short): of a class that another's body nests, which the module names by
+    # its __qualname__ (Outer.Inner: Loader's nested_classes), the last part
+    s = short(name)
+    return s[s.rfind(".") + 1 :]
 
 
 def retoken(t: str, name: str, to: str) -> str:

@@ -343,6 +343,17 @@ def gen_default_problem(self, e: Node, t: str) -> str:
             return r
     return ""
 
+def nested_bound(self, c: str) -> None:
+    # class c's statement has run: the classes its body nests (C.N, Loader's nested_classes),
+    # which CPython binds as its attributes, are bound now for the reads of them written C.N
+    # (Node.outer), whose flags their own statements, which run before c's, leave unset
+    if "." in c[c.rfind("$") + 1 :]:
+        return
+    for x in self.gflag:
+        if x.startswith(c + ".") and x in self.classes:
+            self.mstore('bool', 'true', f'@g.{x}.def')
+
+
 def gen_hoist_class(self, ci: ClassInfo) -> None:
     # class-body defaults are evaluated once, when the class statement runs, in body order,
     # and shared. Pystachy has no class scope: names bound earlier in the body are rejected.
@@ -1222,10 +1233,13 @@ def gen_stmt_main(self, n: Node) -> None:
         else:
             self.modchk(n)  # (CPython reads its identity decorators before its body runs: Loader.identity_decos)
             self.hoist_class(self.classes[n.s])
-        if n.s in self.gflag:
+        if n.s in self.gflag and (k != "cdefaults" or "." not in n.s[n.s.rfind("$") + 1 :]):
             self.mstore('bool', 'true', f'@g.{n.s}.def')
+        if k == "cdefaults":
+            nested_bound(self, n.s)
     elif k == "lclass":
         self.left_out(self.cnodes[n.line], self.unsupported[n.s])
+        nested_bound(self, n.s)
     elif k == "import":
         for a in n.kids:
             self.aliases[a.s] = a.kids[0].s

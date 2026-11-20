@@ -247,6 +247,11 @@ def gen_flow_program(self, top: list[Node], mod: str, mfns: list[FnInfo], mcls: 
         self.fl_stmt(mfl, st)
     for nm in mfl.marks:
         self.gflag[nm] = True
+    for ci in mcls:
+        if "." in ci.name[ci.name.rfind("$") + 1 :]:
+            # (a nested class, C.N: reads of it written C.N, which code compiled later may mark,
+            # find it bound once C's statement has run, which sets its flag: nested_bound)
+            self.gflag[ci.name] = True
     # functions run only from module code: globals assigned before its first call into user
     # code stay assigned while any function runs
     safe = mfl.call if mfl.called else gl
@@ -290,6 +295,7 @@ def gen_flow_function(self, f: FnInfo, gl: dict[str, bool], safe: dict[str, bool
     refs: dict[str, bool] = {}
     for st in body:
         name_nodes(st, refs)
+        outer_names(st, refs)
     tracked: dict[str, bool] = {}
     defd: dict[str, bool] = {}
     for nm in refs:
@@ -315,6 +321,14 @@ def gen_flow_function(self, f: FnInfo, gl: dict[str, bool], safe: dict[str, bool
             f.uflags[nm] = True
         else:
             self.gflag[nm] = True
+
+def outer_names(n: Node, out: dict[str, bool]) -> None:
+    # (flow_function) the classes C of the reads of C.N of a nested class in n (Node.outer)
+    if n.kind == "name" and n.outer != "":
+        out[n.outer] = True
+    for k in n.kids:
+        outer_names(k, out)
+
 
 def self_fields(n: Node, me: str, fields: list[str], out: dict[str, bool]) -> bool:
     # whether code n uses the name me only as me.f, of a field f (each kept in out)
@@ -422,6 +436,7 @@ def gen_flow_body(self, d: Node, caps: dict[str, bool]) -> None:
     refs: dict[str, bool] = {}
     for st in body:
         name_nodes(st, refs)
+        outer_names(st, refs)
     tracked: dict[str, bool] = {}
     defd: dict[str, bool] = {}
     for nm in refs:
@@ -946,7 +961,8 @@ def gen_fl_expr(self, fl: Flow, e: Node) -> None:
         self.fl_nested(fl, e)
         return
     if k == "name":
-        if e.s in fl.tracked and e.s not in fl.defd and " dead" not in fl.defd:
+        r = e.outer if e.outer != "" else e.s  # (C.N of a nested class: unbound until C is, as C.N is CPython's)
+        if r in fl.tracked and r not in fl.defd and " dead" not in fl.defd:
             e.chk = True
             fl.marks[e.s] = True
         if e.s == fl.me:
@@ -1022,8 +1038,8 @@ def gen_fl_expr(self, fl: Flow, e: Node) -> None:
             fl.escaped = True
         elif c.kind != "name" or (c.s not in self.funcs and c.s not in self.classes) or c.s == fl.me:
             self.fl_expr(fl, c)  # (o(args) reads variable o, whose object is called; self shadows a function or class)
-        elif c.s in fl.tracked and c.s not in fl.defd and " dead" not in fl.defd:
-            c.chk = True
+        elif (c.outer if c.outer != "" else c.s) in fl.tracked and (c.outer if c.outer != "" else c.s) not in fl.defd and " dead" not in fl.defd:
+            c.chk = True  # (C.N(...) of a nested class: unbound until C is, see fl_expr)
             fl.marks[c.s] = True
         based = fl.me != "" and c.kind == "attr" and c.s == "__init__" and c.kids[0].kind == "name" and c.kids[0].s == fl.base and len(e.kids) > 1 and e.kids[1].kind == "name" and e.kids[1].s == fl.me
         for i in range(2 if based else 1, len(e.kids)):

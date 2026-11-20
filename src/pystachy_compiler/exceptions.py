@@ -15,7 +15,7 @@ from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.frames import Exit
 from src.pystachy_compiler.ir import Data, Ins, Try, Val, tmpname
 from src.pystachy_compiler.symbols import FnInfo
-from src.pystachy_compiler.names import owner, short
+from src.pystachy_compiler.names import own_name, owner, short
 from src.pystachy_compiler.specs import (
     BIG,
     BIGOPT,
@@ -1407,7 +1407,7 @@ def gen_super_own_init(self, args: list[Node]) -> Val:
     self.cbr(good.v, done, bad)
     self.place(bad)
     actual = mk("attr", "__name__", line, [self.vnode(second)]) if class_receiver else self.vnode(self.refl_type_attr(self.vnode(second), "__name__"))
-    expected = mk("attr", "__name__", line, [self.vnode(first)]) if exception_type else mk("str", short(named), line, [])
+    expected = mk("attr", "__name__", line, [self.vnode(first)]) if exception_type else mk("str", own_name(named), line, [])
     message = mk("str", "super(type, obj): obj (" + ("type " if class_receiver else "instance of "), line, [])
     for part in [actual, mk("str", ") is not an instance or subtype of type (", line, []), expected, mk("str", ").", line, [])]:
         message = mk("binop", "+", line, [message, part])

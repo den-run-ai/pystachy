@@ -13,7 +13,7 @@ from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_progra
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
-from src.pystachy_compiler.names import ENUMCLASSES, short
+from src.pystachy_compiler.names import ENUMCLASSES, own_name, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, BYTEARRAYC, COMPLEXC, EMPTYFS, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
@@ -200,12 +200,14 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
         own = self.classes[ci.origin] if ci.origin != "" else ci
         if dynamic_program() and what in ["__module__", "__qualname__"] and what in own.fdefault and self.default_home(own, what) is own and own.fdefault[what].kind == "str":
             return own.fdefault[what].s
-        mod = q[: q.rfind(".")] if "." in q else "__main__"
+        mod = q[: len(q) - len(short(c)) - 1] if len(q) > len(short(c)) else "__main__"  # (q: the module, then the class's __qualname__)
         mod = TYPEMODS.get(mod, mod)  # (_weakref's ReferenceType is CPython's weakref.ReferenceType)
         o = ci.origin if ci.origin != "" else c
         if o in self.cnts and self.cnts[o].kids[2].kind == "str":
             mod = self.cnts[o].kids[2].s  # (namedtuple(..., module=...)'s)
-        return mod if what == "__module__" else short(c)
+        # (a class nested in another's body, Outer.Inner, is named by its __qualname__, whose last
+        # part is its __name__: Loader's nested_classes)
+        return mod if what == "__module__" else short(c) if what == "__qualname__" else own_name(c)
     return ""
 
 
@@ -409,6 +411,10 @@ def gen_refl_type_attr(self, x: Node, what: str) -> Val:
             # NoneType's, builtins, for None)
             e = v if v.t == "exc" else self.exc_type_of(v)
             return Val(self.rt("pys_exc_module", "ptr", [f"ptr {e.v}"]), "str")
+        if what == "__qualname__":
+            # (its class's: the end of its displayed name, Outer.Inner of a nested class)
+            e = v if v.t == "exc" else self.exc_type_of(v)
+            return Val(self.rt("pys_exc_qualname", "ptr", [f"ptr {e.v}"]), "str")
         if v.t == "exc":
             return Val(self.rt("pys_exc_name", "ptr", [f"ptr {v.v}"]), "str")
         return Val(self.rt("pys_exc_cls", "ptr", [f"ptr {v.v}"]), "str")
@@ -425,7 +431,7 @@ def gen_refl_type_attr(self, x: Node, what: str) -> Val:
         l2 = self.label()
         self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, l2, l1)
         self.place(l1)
-        nv = self.rt("pys_exc_module" if what == "__module__" else "pys_exc_name", "ptr", [f"ptr {v.v}"])
+        nv = self.rt("pys_exc_module" if what == "__module__" else "pys_exc_qualname" if what == "__qualname__" else "pys_exc_name", "ptr", [f"ptr {v.v}"])
         e1 = self.cur
         self.br(l2)
         self.place(l2)
