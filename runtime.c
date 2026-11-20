@@ -444,10 +444,10 @@ static char *map_pages(I bytes) {      /* bytes (whole system pages) of zero pag
 }
 static I purge(uintptr_t a, uintptr_t e) {   /* the whole system pages in [a, e) back to the system,
                                                 zero when next read: their bytes (0: none) */
-  I page = os_page();
 #ifdef __wasi__
-  page = 0;                            /* (WASI: linear memory cannot give pages back) */
+  return 0;                            /* (WASI: linear memory cannot give pages back) */
 #endif
+  I page = os_page();
   if (!page) return 0;
   a = (a + page - 1) & ~(uintptr_t)(page - 1); e &= ~(uintptr_t)(page - 1);
   if (a >= e) return 0;
