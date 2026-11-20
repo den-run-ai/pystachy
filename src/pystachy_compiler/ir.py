@@ -256,6 +256,9 @@ class Blk:
         # where an exception raised here goes: the landing block of the innermost try statement
         # of its function around it, or "" (it leaves the function)
         self.handler = ""
+        # opened after an expression raised, for the code that uses its value, which nothing
+        # branches to (gen_class_new): an expression statement that leaves it empty ends it
+        self.dead = False
 
 
 class Loop:

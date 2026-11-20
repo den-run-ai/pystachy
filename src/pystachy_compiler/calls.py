@@ -389,6 +389,11 @@ def gen_class_new(self, c: str, args: list[Node], want: str, resultsoft: bool = 
             self.expr(a.kids[0] if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar" else a, "")
         names = ", ".join([f"'{n}'" for n in ab])
         self.raise_("TypeError", self.sconst(f"Can't instantiate abstract class {short(c)} without an implementation for abstract method{'s' if len(ab) > 1 else ''} {names}"))
+        # the object, which the code that uses it reads in a block of its own, open as after any
+        # expression: what names the current block, as the predecessor of a phi, names the one
+        # it branches from (#1618)
+        self.place(self.label())
+        self.blk.dead = True
         return Val("null", c)
     if c in self.tmpl:
         # a class template: the types of the arguments pick the specialization, whose
