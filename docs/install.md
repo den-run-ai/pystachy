@@ -236,7 +236,9 @@ program with `PYSTACHY_JIT_CODEGEN=0`. On Linux, `pystachy run` builds its
 
 On other Linux distributions, install LLVM 18, Python 3.11+ and `make` using the system
 package manager, then run `tools/setup.sh --check`. The script does not configure package
-repositories or replace the system Python.
+repositories or replace the system Python. Where no LLVM 18 package exists,
+[`tools/llvm_toolchain.sh`](llvm-toolchain.md) builds the six tools the compiler runs from
+LLVM's sources, for glibc 2.28 or later.
 
 ### Other LLVM releases
 
