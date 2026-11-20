@@ -33,8 +33,8 @@ const wasi = new WASI({
   args: [path, ...args],
   env: { ...process.env, PWD: process.cwd() }, // (wasi_stubs.c starts there)
   preopens: { "/": "/" },
-  // (a command returns its status from start(); on the runtime module, proc_exit ends node)
-  returnOnExit: section === undefined,
+  // (proc_exit throws, and start() returns its status; on the runtime module, see below)
+  returnOnExit: true,
 });
 if (section === undefined) {
   const instance = await WebAssembly.instantiate(programModule, wasi.getImportObject());
@@ -92,6 +92,8 @@ if (section === undefined) {
   try {
     process.exitCode = runtime.exports.pys_wasi_run();
   } catch (e) {
-    process.exitCode = trap(e);
+    // proc_exit, under returnOnExit, throws a symbol that keys its status on the WASI object
+    // (what start() reads); anything else is a trap
+    process.exitCode = typeof e === "symbol" && typeof wasi[e] === "number" ? wasi[e] : trap(e);
   }
 }
