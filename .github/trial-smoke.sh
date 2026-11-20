@@ -3,7 +3,8 @@
 # the first compile provision LLVM (tools/compiler_install_smoke.py). Arguments run afterwards.
 set -eu
 . /etc/os-release
-echo "== $PRETTY_NAME, $(getconf GNU_LIBC_VERSION), $(uname -m)"
+host="== $PRETTY_NAME, $(getconf GNU_LIBC_VERSION), $(uname -m)"
+echo "$host"
 if command -v apt-get > /dev/null; then
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -qq
@@ -17,7 +18,18 @@ elif command -v zypper > /dev/null; then
   zypper -q -n install gcc glibc-devel make python311 > /dev/null
 fi
 for tool in clang opt lli llvm-as llvm-link; do ! command -v "$tool" > /dev/null || echo "host has $tool"; done
-echo "== $($py --version), $(gcc --version | head -1)"
+host="$host, $($py --version), $(gcc --version | head -1), GCC files in $(dirname "$(gcc -print-libgcc-file-name)")"
+echo "$host"
 cp -r /src /work && cd /work
 "$py" -m venv /tools && /tools/bin/pip -q install -r tools/requirements-packaging.txt
-PATH=/tools/bin:$PATH /tools/bin/python tools/compiler_install_smoke.py --provision-llvm --llvm-release 18.1.8
+# What the provisioner does about the host's GCC, seen directly; then the installation check.
+bin=$(PYSTACHY_LLVM_CACHE=/tmp/toolchains "$py" -c "import pystachy_toolchain; print(pystachy_toolchain.ensure_toolchain())")
+config=$(cat "$bin/clang.cfg" 2> /dev/null || echo "no clang.cfg")
+host="$host, $config, clang finds $("$bin/clang" --print-file-name=crtbeginS.o)"
+status=0
+PATH=/tools/bin:$PATH /tools/bin/python tools/compiler_install_smoke.py --provision-llvm --llvm-release 18.1.8 > /tmp/smoke.log 2>&1 || status=$?
+grep -E "clang version|passed" /tmp/smoke.log || true
+[ "$status" -eq 0 ] || tail -40 /tmp/smoke.log
+echo "$host"
+echo "installation check: exit $status"
+exit "$status"
