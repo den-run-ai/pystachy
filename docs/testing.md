@@ -1102,7 +1102,7 @@ does the [Variants workflow](../.github/workflows/variants.yml), which
 
 The [LLVM toolchain workflow](../.github/workflows/llvm-toolchain.yml) runs manually and when
 its recipe changes on `main`, apart from PR CI; no check requires it. Compiling LLVM and clang
-takes about two CPU-hours, so eight jobs each compile one slice of the object files and a ninth
+takes about two CPU-hours, so twelve jobs each compile one slice of the object files and another
 links, checks and packs them: each stays within the job limit
 ([minimal LLVM toolchain](llvm-toolchain.md#build)).
 

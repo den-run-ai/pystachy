@@ -62,10 +62,10 @@ minutes on four cores, against a 15-minute limit on workflow jobs
 [LLVM toolchain workflow](../.github/workflows/llvm-toolchain.yml) therefore shares the
 compiling among jobs. It runs on manual dispatch and when the recipe changes on `main`:
 
-1. Eight `compile` jobs each run `tools/llvm_toolchain.sh compile OUT I 8`. It builds LLVM's
-   table generators, which every job needs, then compiles every eighth object file of the
+1. Twelve `compile` jobs each run `tools/llvm_toolchain.sh compile OUT I 12`. It builds LLVM's
+   table generators, which every job needs, then compiles every twelfth object file of the
    distribution into `OUT/objects`.
-2. `package` downloads the eight sets into one directory and runs `build` with
+2. `package` downloads the twelve sets into one directory and runs `build` with
    `LLVM_TOOLCHAIN_OBJECTS` naming it. `build` finds each object compiled, links, runs the
    check below and packs the archive, which the job uploads with its `.sha256`.
 3. `bootstrap` extracts the archive, runs the check and `make` with it, and runs two corpus
