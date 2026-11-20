@@ -76,7 +76,8 @@ applies. Bytes case methods remain ASCII-only.
 
 - **Invalid UTF-8:** builtin text files read/write unchecked bytes, where CPython
   decodes or raises `UnicodeDecodeError`. Each invalid byte counts as one character
-  for length, widths, padding, precision and `expandtabs()`. Case methods keep such
+  for length, widths, padding, precision and `expandtabs()`, and in encodes: ASCII
+  rejects it and Latin-1 writes the byte. Case methods keep such
   a byte and give it no case. `read(n)` counts
   non-continuation bytes instead, so malformed input can return `len(text) > n`.
 - **Surrogates:** U+D800–U+DFFF retain their three-byte encoding and can be printed

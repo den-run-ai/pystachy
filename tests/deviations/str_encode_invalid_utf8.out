@@ -1,0 +1,22 @@
+3 ['0xe0', '0x80', '0xaf'] b'???'
+  ascii 'ascii' codec can't encode characters in position 0-2: ordinal not in range(128)
+  latin-1 b'\xe0\x80\xaf'
+4 ['0xf0', '0x80', '0x80', '0xaf'] b'????'
+  ascii 'ascii' codec can't encode characters in position 0-3: ordinal not in range(128)
+  latin-1 b'\xf0\x80\x80\xaf'
+4 ['0xf4', '0x90', '0x80', '0x80'] b'????'
+  ascii 'ascii' codec can't encode characters in position 0-3: ordinal not in range(128)
+  latin-1 b'\xf4\x90\x80\x80'
+4 ['0xe0', '0x9f', '0xbf', '0x7a'] b'???z'
+  ascii 'ascii' codec can't encode characters in position 0-2: ordinal not in range(128)
+  latin-1 b'\xe0\x9f\xbfz'
+1 ['0xd800'] b'?'
+  ascii 'ascii' codec can't encode character '\ud800' in position 0: ordinal not in range(128)
+  latin-1 'latin-1' codec can't encode character '\ud800' in position 0: ordinal not in range(256)
+1 ['0xe9'] b'?'
+  ascii 'ascii' codec can't encode character '\xe9' in position 0: ordinal not in range(128)
+  latin-1 b'\xe9'
+1 ['0x800'] b'?'
+  ascii 'ascii' codec can't encode character '\u0800' in position 0: ordinal not in range(128)
+  latin-1 'latin-1' codec can't encode character '\u0800' in position 0: ordinal not in range(256)
+[exit 0]
