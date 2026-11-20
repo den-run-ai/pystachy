@@ -1400,7 +1400,7 @@ Str *pys_str_join(Str *sep, List *l);
 List *pys_str_split(Str *s, Str *sep, I maxsplit);
 List *pys_str_rsplit(Str *s, Str *sep, I maxsplit);
 List *pys_str_splitlines(Str *s, I keep);
-Str *pys_str_int(I v) { char b[32]; return pys_str(b, snprintf(b, 32, "%lld", (long long)v)); }
+Str *pys_str_int(I v);                        /* str(int): runtime.py counts and writes the digits */
 Str *pys_str_float(double d) {               /* Python repr(): shortest round-trip digits */
   char b[40], dig[24], o[64], *w = o;
   if (isnan(d)) return cstr("nan");
@@ -1486,34 +1486,12 @@ static Str *asciinum(Str *s) {         /* CPython's first step for int()/float()
   }
   return done(&b);
 }
-I pys_int_str(Str *s, I base) {               /* CPython's PyLong_FromString on the ASCII form, checks in its order */
-  if (base != 0 && (base < 2 || base > 36)) pys_fail("ValueError: int() base must be >= 2 and <= 36, or 0");
-  Str *t = asciinum(s);
-  const char *p = t->s, *e = t->s + t->len, *q; I b0 = base, nd = 0;
-  while (p < e && aws(*p)) p++;
-  while (e > p && aws(e[-1])) e--;
-  int neg = 0, octal = 0, prev = 0;            /* octal: base 0 and a leading 0, which only 0 may have */
-  if (p < e && (*p == '+' || *p == '-')) neg = *p++ == '-';
-  if (e - p >= 2 && p[0] == '0') {
-    int pb = (p[1] | 32) == 'x' ? 16 : (p[1] | 32) == 'o' ? 8 : (p[1] | 32) == 'b' ? 2 : 0;
-    if (pb && (base == 0 || base == pb)) { base = pb; p += 2; if (p < e && *p == '_') p++; }
-  }
-  if (base == 0) { base = 10; octal = p < e && *p == '0'; }
-  uint64_t u = 0, lim = neg ? (uint64_t)1 << 63 : ((uint64_t)1 << 63) - 1; int ovf = 0;
-  for (q = p; q < e && (digitv(*q) < base || (*q == '_' && q > p && prev != '_')); prev = *q++) {
-    if (*q == '_') continue;                   /* digits, with single underscores between them */
-    int dv = digitv(*q); nd++;
-    if (u > (lim - dv) / base) ovf = 1; else u = u * base + dv;
-  }
-  while (q < e && aws(*q)) q++;                /* whitespace before an embedded NUL, where CPython's C string ends */
-  if (!nd || prev == '_' || (q < e && *q)) badlit("ValueError: invalid literal for int()", b0, s);
-  if ((base & (base - 1)) && nd > 4300)        /* CPython's limit for its quadratic conversion */
-    failf("ValueError: Exceeds the limit (4300 digits) for integer string conversion: value has %lld digits; "
-          "use sys.set_int_max_str_digits() to increase the limit", (long long)nd);
-  if (q < e || (octal && u)) badlit("ValueError: invalid literal for int()", b0, s);
-  if (ovf) pys_fail("OverflowError: int() result does not fit in 64 bits");
-  return neg ? (I)(0 - u) : (I)u;
-}
+/* int(s, base) reads its digits in runtime.py (pys_int_str), which calls these two: for the ASCII
+   form of a str that has other characters, and for the error of a str that is no int, whose
+   message holds the str's repr */
+Str *pys_num_ascii(Str *s) { return asciinum(s); }
+_Noreturn void pys_int_badlit(Str *s, I base) { badlit("ValueError: invalid literal for int()", base, s); }
+I pys_int_str(Str *s, I base);
 /* Explicit arbitrary-precision integers; ordinary int keeps its checked i64 ABI. */
 #include "mpz/mpz.c"
 

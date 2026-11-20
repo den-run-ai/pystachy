@@ -19,6 +19,7 @@ import posixpath
 import random
 import re
 import sys
+import unicodedata
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path[:0] = [os.path.join(ROOT, "tools", "rt_cpython"), ROOT]
@@ -672,8 +673,81 @@ def fuzz_path():
         same("path.commonprefix", outcome(rt.pys_path_commonprefix, [b(x) for x in m]), want(posixpath.commonprefix, m), (m,))
 
 
+def fuzz_int_text():
+    # str(int) against CPython's, and int(str, base) against CPython's where its result fits in
+    # 64 bits: past them runtime.py raises OverflowError, once the str is found to be an int.
+    # The two steps that runtime.c keeps are CPython's here: the ASCII form of a str with other
+    # characters (a space for each Unicode space, a decimal digit's ASCII digit, and "?" for
+    # another character, where the text ends) and the ValueError, with 200 characters of the repr
+    def num_ascii(s):
+        out = ""
+        for ch in u(s):
+            d = unicodedata.decimal(ch, -1)
+            out += ch if ord(ch) < 128 else " " if ch.isspace() else str(d) if d >= 0 else "?"
+            if out[-1] == "?" and ch != "?":
+                break
+        return out
+
+    def badlit(s, base):
+        raise ValueError(b("invalid literal for int() with base %d: %.200s" % (base, repr(u(s)))))
+
+    rt.pys_num_ascii = num_ascii
+    rt.pys_int_badlit = badlit
+
+    def want(s, base):
+        r = outcome(int, u(s), base)
+        if r[0] == "ok" and not fits(r):
+            return ("OverflowError", "int() result does not fit in 64 bits")
+        return (r[0], b(r[1])) if isinstance(r[1], str) else r
+
+    def spell(v, base):
+        n, out = abs(v), ""
+        while n or not out:
+            out = "0123456789abcdefghijklmnopqrstuvwxyz"[n % base] + out
+            n //= base
+        return ("-" if v < 0 else "") + out
+
+    edge = [0, MAXI, MAXI - 1, -MAXI, -MAXI - 1, MAXI // 10, MAXI // 10 + 1]
+    for k in range(64):
+        edge += [10**k, 10**k - 1, 10**k + 1, -(10**k), 1 - 10**k, 1 << k, (1 << k) - 1, -(1 << k), -(1 << k) - 1]
+    edge = [v for v in edge if -MAXI - 1 <= v <= MAXI]
+    for v in edge + [R.randrange(-(10 ** R.randrange(1, 20)), 10 ** R.randrange(1, 20)) for _ in range(4 * N)]:
+        if -MAXI - 1 <= v <= MAXI:
+            same("str-int", outcome(rt.pys_str_int, v), ("ok", str(v)), (v,))
+    # the values around the 64-bit limits in every base: where the last digit that fits is found
+    for base in range(2, 37):
+        pre = {2: "0b", 8: "0o", 16: "0x"}.get(base, "")
+        for v in [MAXI, MAXI + 1, MAXI + 2, MAXI - 1, -MAXI - 1, -MAXI - 2, -MAXI, MAXI * base, MAXI * base + base - 1, (MAXI + 1) * base,
+                  (MAXI + 1) // base, (MAXI + 1) // base * base, 0, 1, base - 1, base, 1 << 64, (1 << 64) - 1, -(1 << 64)]:
+            d = spell(abs(v), base)
+            forms = [spell(v, base), spell(v, base).upper(), "+" + d, " " + spell(v, base) + "\n", "00000" + d]
+            if pre:
+                forms += [pre + d, "-" + pre + d, pre.upper() + "_" + d, pre + "__" + d, pre, pre + "_"]
+            for t in forms:
+                for given in [base, 0, 10, 36]:
+                    same("int-str", outcome(rt.pys_int_str, t, given), want(t, given), (t, given))
+    # the syntax: signs, prefixes, single underscores, whitespace, a NUL, and other characters
+    alphas = ["0123456789 _+-xXoObBaAfFzZ\t\n\x0b\x0c\r\x1c\x00.e", "0123456789_ ", "01_ -+xob",
+              "0123456789 _+-\u0660\u0669\u00a0\u2003\u00e9\uff11\U0001d7ce\U0001d7d9"]
+    for i in range(8 * N):
+        t = b("".join(R.choice(alphas[i % 4]) for _ in range(R.randrange(9 if i % 3 else 24))))
+        base = R.choice([10, 10, 10, 0, 0, 2, 8, 16, 36, 1, -1, 37, 3, 11, 35, R.randrange(-3, 40)])
+        same("int-str", outcome(rt.pys_int_str, t, base), want(t, base), (t, base))
+    # CPython's limit of 4300 digits: it counts digits alone, in a base that is no power of two,
+    # after the syntax is checked, but before a NUL ends the text
+    z = "0" * 4300
+    for t, base in [(z[1:] + "7", 10), (z + "7", 10), (z + "1", 16), ("0x" + z + "1", 0), ("0b" + z, 0), (z + "0", 32), ("-" + z[1:] + "_9", 10),
+                    (" " + z[1:] + "1 ", 10), (z + "7", 3), (z + "7x", 10), (z + "7\x00", 10), (z + "7 \x00", 10), (z + "7 \x00 ", 10), (z + "_", 10),
+                    ("1" * 4301, 10), ("1" * 4300, 10), ("1" * 4301, 2), ("0_" * 4301 + "0", 10), (z + "0", 0), (z + "1", 0), (z[1:] + "1", 0),
+                    (z + "\u0660", 8), ("9" * 30, 10), ("-" + "9" * 30, 10), ("0" + "9" * 30, 0), ("x" * 300, 10), ("\u00e9" * 300, 10), ("'" * 300, 10),
+                    ("12\x00", 10), ("12\x0034", 10), ("\x00", 10), ("", 10), ("_1", 10), ("1_", 10), ("1__2", 10), ("1_2", 10), ("0_7", 0), ("0_0", 0),
+                    ("00", 0), ("0", 0), ("-0", 0), ("+0_0", 0), ("0x_f", 0), ("0x_f", 16), ("0_x_f", 16), ("0x", 16), ("0x", 36), ("0b2", 0), ("0b1", 36)]:
+        same("int-str", outcome(rt.pys_int_str, b(t), base), want(b(t), base), (t[:30], len(t), base))
+
+
 fuzz_str()
 fuzz_path()
+fuzz_int_text()
 fuzz_unicode_classification()
 fuzz_unicode_case()
 fuzz_replace()

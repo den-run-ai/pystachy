@@ -15,7 +15,7 @@ used by `runtime.py`. Ordinary programs cannot use that interface.
 
 | Part | Responsibilities |
 |---|---|
-| `runtime.py` | String methods and ASCII escaping, scalar and integer `math`, float `sum`/`fsum`/`prod`, checked integer power, range arithmetic, dict hashing and format-spec parsing. |
+| `runtime.py` | String methods and ASCII escaping, `str(int)` and `int(str, base)`, scalar and integer `math`, float `sum`/`fsum`/`prod`, checked integer power, range arithmetic, dict hashing and format-spec parsing. |
 | `runtime.c` | Collector, object and container memory layouts, I/O, signals, native library calls and float conversion. |
 | [The compiler](../src/README.md) | Runtime compilation, checked primitives, runtime signatures and linking. |
 
@@ -35,6 +35,16 @@ ASCII spans and writes escapes. It reuses the runtime's UTF-8 decoder, including
 its malformed-byte and surrogate behavior. The result remains a fresh string,
 including for empty or already-ASCII input. Raw storage, the collector, and the
 small stack scratch arrays used by `hypot` and `dist` remain in `runtime.c`.
+
+`str(int)` counts the digits of the magnitude, allocates one string and writes it from
+the last digit. Its arithmetic wraps where it cannot overflow, so it raises nothing but
+the allocator's `MemoryError` and keeps the effects it had in C. `int(str, base)`
+gathers the value below zero, where `-2**63` has room, and decides whether a digit fits
+from one division for each call. Two steps remain in `runtime.c`: `pys_num_ascii` gives
+the ASCII form of a string that has other characters, from the table of decimal digits,
+and `pys_int_badlit` raises the error for a string that is no integer, whose message
+holds the string's `repr()`. `float(str)` and the arbitrary-precision parser in
+`mpz/mpz.c` use the same two steps.
 
 ## Writing runtime code
 

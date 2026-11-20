@@ -2120,6 +2120,119 @@ def pys_hash_int(k: int) -> int:
     return h ^ _rt.lshr(h, 31)
 
 
+# ---------- int and its text: str(i) and int(s, base) ----------
+# The digits are written and read here. runtime.c keeps the two steps that need its tables and
+# its repr: what a str that is not ASCII becomes first (pys_num_ascii), and the error for a str
+# that is no int (pys_int_badlit, which does not return).
+
+
+def pys_str_int(v: int) -> str:
+    # str(v). The digits of |v|, an unsigned 64-bit pattern (-2**63's is its own), are counted
+    # and then written from the last one. The arithmetic wraps where it cannot overflow, so
+    # that nothing here raises but the allocation
+    neg = 1 if v < 0 else 0
+    u = _rt.wrap_sub(0, v) if v < 0 else v
+    n = neg
+    q = u
+    while True:
+        n = _rt.wrap_add(n, 1)
+        q = _rt.udiv(q, 10)
+        if q == 0:
+            break
+    r = _rt.str_new(n)
+    if neg != 0:
+        _rt.str_put(r, 0, 45)
+    for i in range(n - 1, neg - 1, -1):
+        _rt.str_put(r, i, _rt.wrap_add(48, _rt.urem(u, 10)))
+        u = _rt.udiv(u, 10)
+    return _rt.str_done(r)
+
+
+def numws(c: int) -> bool:
+    # the whitespace that int() and float() strip around a number, and no other
+    return c == 32 or (c >= 9 and c <= 13)
+
+
+def digitv(c: int) -> int:
+    # the value of byte c as a digit of a base up to 36, or 99. Both readings are computed and
+    # one is selected: a branch on digit or letter is mispredicted for hex digits
+    d = _rt.wrap_sub(c, 48)
+    a = _rt.wrap_sub(c | 32, 87)
+    if a < 10 or a > 35:
+        a = 99
+    return d if d >= 0 and d < 10 else a
+
+
+def pys_num_ascii(s: str) -> str: ...
+def pys_int_badlit(s: str, base: int) -> None: ...
+
+
+def pys_int_str(s: str, base: int) -> int:
+    # int(s, base): CPython's PyLong_FromString on the ASCII form of s, with its checks in its
+    # order. Base 0 takes the base from a prefix, and then only 0 may begin with a 0 (octal)
+    if base != 0 and (base < 2 or base > 36):
+        raise ValueError("int() base must be >= 2 and <= 36, or 0")
+    t = pys_num_ascii(s) if nonascii(s) else s
+    p = 0
+    e = len(t)
+    while p < e and numws(_rt.byte(t, p)):
+        p += 1
+    while e > p and numws(_rt.byte(t, e - 1)):
+        e -= 1
+    neg = False
+    if p < e and (_rt.byte(t, p) == 43 or _rt.byte(t, p) == 45):
+        neg = _rt.byte(t, p) == 45
+        p += 1
+    b = base
+    if e - p >= 2 and _rt.byte(t, p) == 48:
+        x = _rt.byte(t, p + 1) | 32
+        pb = 16 if x == 120 else 8 if x == 111 else 2 if x == 98 else 0
+        if pb != 0 and (b == 0 or b == pb):
+            b = pb
+            p += 2
+            if p < e and _rt.byte(t, p) == 95:
+                p += 1
+    octal = False
+    if b == 0:
+        b = 10
+        octal = p < e and _rt.byte(t, p) == 48
+    # The value is gathered below zero, where -2**63 has room. lim is the least it may be, and
+    # digit d fits where acc * b - d >= lim, which cut and rest (|lim| divided by b) decide
+    # without a division for each digit. A digit that does not fit leaves acc as it is
+    lim = -9223372036854775807 - 1 if neg else -9223372036854775807
+    cut = _rt.wrap_sub(0, _rt.udiv(_rt.wrap_sub(0, lim), b))
+    rest = _rt.urem(_rt.wrap_sub(0, lim), b)
+    acc = 0
+    nd = 0
+    ovf = False
+    prev = 0
+    q = p
+    while q < e:  # digits, with single underscores between them
+        c = _rt.byte(t, q)
+        d = digitv(c)
+        if d < b:
+            nd += 1
+            if acc < cut or (acc == cut and d > rest):
+                ovf = True
+            else:
+                acc = _rt.wrap_sub(_rt.wrap_mul(acc, b), d)
+        elif c != 95 or q == p or prev == 95:
+            break
+        prev = c
+        q += 1
+    while q < e and numws(_rt.byte(t, q)):  # whitespace before a NUL, where CPython's C string ends
+        q += 1
+    if nd == 0 or prev == 95 or (q < e and _rt.byte(t, q) != 0):
+        pys_int_badlit(s, base)
+    if b & (b - 1) != 0 and nd > 4300:  # CPython's limit for its quadratic conversion
+        raise ValueError(f"Exceeds the limit (4300 digits) for integer string conversion: value has {nd} digits; use sys.set_int_max_str_digits() to increase the limit")
+    if q < e or (octal and acc != 0):
+        pys_int_badlit(s, base)
+    if ovf:
+        raise OverflowError("int() result does not fit in 64 bits")
+    return acc if neg else _rt.wrap_sub(0, acc)
+
+
 # ---------- formatting: f"{x:spec}" ----------
 # CPython's format-spec mini-language for int (and bool), float and str:
 # [[fill]align][sign][z][#][0][width][grouping][.precision][type]. Widths count code points.

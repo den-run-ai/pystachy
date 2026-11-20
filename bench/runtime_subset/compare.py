@@ -13,9 +13,16 @@ import tempfile
 import time
 
 SOURCE = Path(__file__).with_name("workload.py").resolve()
+INT_TEXT = Path(__file__).with_name("int_text.py").resolve()
 # Keep the small arithmetic kernels long enough to measure without launch time.
 COUNTS = {"scalar": 120000000, "range": 60000000, "power": 60000000,
-          "sum-float": 5000, "sum-int": 5000, "reduction": 5000, "ascii": 5000, "unicode": 5000}
+          "sum-float": 5000, "sum-int": 5000, "reduction": 5000, "ascii": 5000, "unicode": 5000,
+          "str-int": 20000000, "str-int-short": 20000000, "int-str": 20000000, "int-str-short": 20000000,
+          "int-str-hex": 20000000, "int-str-padded": 20000000}
+# The cases of a later migration have a source of their own, so that workload.py keeps the hash
+# that the first recorded report names.
+INT_TEXT_CASES = ("str-int", "str-int-short", "int-str", "int-str-short", "int-str-hex", "int-str-padded")
+SOURCES = {case: INT_TEXT if case in INT_TEXT_CASES else SOURCE for case in COUNTS}
 
 
 def run(command, cwd, env):
@@ -84,7 +91,8 @@ def main():
     report = {"complete": False, "requested_cases": args.cases, "load_average_at_start": os.getloadavg(),
               "platform": platform.platform(), "python": sys.version,
               "affinity": sorted(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else None,
-              "workload_sha256": digest(SOURCE), "pairs": args.pairs,
+              "workload_sha256": {path.name: digest(path) for path in sorted({SOURCES[case] for case in args.cases})},
+              "pairs": args.pairs,
               "environment": {k: v for k, v in env.items() if k.startswith("PYSTACHY_")},
               "sources": {label: metadata(root, compilers[label], env) for label, root in roots.items()},
               "cases": {}}
@@ -95,21 +103,25 @@ def main():
     with tempfile.TemporaryDirectory(prefix="runtime-subset-") as scratch:
         executables = {}
         for label, root in roots.items():
-            exe = Path(scratch) / label
-            build = run([str(compilers[label]), "build", str(SOURCE), "-o", str(exe)], root, env)
-            report["sources"][label]["aot_build"] = build
-            report["sources"][label]["executable_bytes"] = exe.stat().st_size
-            executables[label] = exe
+            report["sources"][label]["aot_build"] = {}
+            report["sources"][label]["executable_bytes"] = {}
+            for source in sorted({SOURCES[case] for case in args.cases}):
+                exe = Path(scratch) / f"{label}-{source.stem}"
+                build = run([str(compilers[label]), "build", str(source), "-o", str(exe)], root, env)
+                report["sources"][label]["aot_build"][source.name] = build
+                report["sources"][label]["executable_bytes"][source.name] = exe.stat().st_size
+                executables[label, source] = exe
         for case in args.cases:
+            source = SOURCES[case]
             count = max(1, int(COUNTS[case] * args.scale))
             params = [case, str(count)]
-            oracle = run([sys.executable, str(SOURCE), *params], roots["after"], env)
+            oracle = run([sys.executable, str(source), *params], roots["after"], env)
             expected = oracle["stdout"].split()[0]
             timed(oracle, expected)
             results = {"count": count, "checksum": expected, "cpython": oracle, "modes": {}}
             for mode in ("aot", "jit"):
-                commands = {label: ([str(executables[label])] if mode == "aot" else
-                                    [str(compilers[label]), "run", str(SOURCE)]) + params
+                commands = {label: ([str(executables[label, source])] if mode == "aot" else
+                                    [str(compilers[label]), "run", str(source)]) + params
                             for label in roots}
                 for label in roots:
                     timed(run(commands[label], roots[label], env), expected)
@@ -122,7 +134,7 @@ def main():
                     pairs.append(pair)
                 results["modes"][mode] = {"pairs": pairs,
                                           "median_ratio_after_over_before": statistics.median(p["ratio"] for p in pairs)}
-            results["gc"] = {label: gc_record(run([str(executables[label]), *params], root,
+            results["gc"] = {label: gc_record(run([str(executables[label, source]), *params], root,
                                                     {**env, "PYSTACHY_GC": "stats"}), expected)
                              for label, root in roots.items()}
             report["cases"][case] = results
