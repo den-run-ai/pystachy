@@ -1030,6 +1030,12 @@ class Counter(Generic[_T]):
     def _dict(self) -> dict[_T, int]:
         return self._data
 
+    def _counts(self) -> dict[_T, int]:
+        # Pystachy port: the counts that are not zero, which decide whether two Counters are
+        # equal (a missing count is zero): __eq__ says so of two Counters of one key type, and
+        # the compiler compares these dicts where the Counters are Any values of two key types
+        return {elem: count for elem, count in self._data.items() if count != 0}
+
     def __repr__(self) -> str:
         if not self:
             return 'Counter()'

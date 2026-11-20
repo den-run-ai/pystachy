@@ -24,9 +24,9 @@ from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
-from src.pystachy_compiler.specs import BIG, COMPLEXC, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
+from src.pystachy_compiler.specs import BIG, BYTEARRAYC, COMPLEXC, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, made_var, mentions, mk
-from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_clsval, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_clsval, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, lib_source, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -1334,6 +1334,174 @@ def gen_xdecline(self, method: FnInfo, after: bool) -> None:
     self.place(answered)
 
 
+def dyn_xown(self, c: str) -> list[str]:
+    # the static types whose boxes the comparison methods of library class c take, or [] for
+    # a class whose methods take any value. CPython's deque compares with deques, its bytearray
+    # with bytearrays and bytes (which no box holds yet), its weak reference with weak references,
+    # and its dict subclasses, which are lib/collections' mappings here (dict_class), with dicts
+    # and one another, as their _dict_eq tests: each returns NotImplemented for any other value.
+    # Its mappingproxy compares its dict with the other value, so it takes what a dict takes, and
+    # those mappings take it; an object of another class then answers with its own method, which
+    # is given the proxy here and the dict in CPython (lib/compatibility.md#types). lib's bodies
+    # are written for those operands: for another one they read a field it lacks or call it, or
+    # do not compile for an Any value
+    if c == BYTEARRAYC:
+        return [BYTEARRAYC, "bytes"]
+    if dyn_xdeque(self, c) or dyn_xlib(self, c, "_weakref$ReferenceType", "_pystachy_weakref.py"):
+        return [self.tmpl_of(c)]
+    if dyn_xmap(self, c):
+        return ["dict[dyn,dyn]", "collections$defaultdict", "collections$OrderedDict", "collections$Counter", "_pystachy_mappingproxy$mappingproxy"]
+    return []
+
+
+def dyn_xlib(self, c: str, name: str, source: str) -> bool:
+    # is c the class name of lib's file source, or a specialization of it
+    if c not in self.classes:
+        return False
+    o = self.classes[c].origin if self.classes[c].origin != "" else c
+    return o == name and lib_source(self.classes[o].node.line, self.libdir, source)
+
+
+def dyn_xdeque(self, c: str) -> bool:
+    # is c lib/collections' deque, or a specialization of it
+    return dyn_xlib(self, c, "collections$deque", "collections/__init__.py")
+
+
+def dyn_xmap(self, c: str) -> bool:
+    # is c one of lib's mappings, whose == compares a dict's items: lib/collections' (dict_class)
+    # or mappingproxy (types.MappingProxyType), or a specialization of one
+    return self.dict_class(c) or dyn_xlib(self, c, "_pystachy_mappingproxy$mappingproxy", "_pystachy_mappingproxy.py")
+
+
+def dyn_xkind(self, c: str, m: str) -> bool:
+    # does dispatcher @dyn.cmp.<c>.<m> compare items (dyn_xequal): the == of lib's deque or one of
+    # its mappings, which dyn_xbody asks for == and for != alone. Any other method of theirs, an
+    # ordering, keeps the cases of its own body
+    return m == "__eq__" and (dyn_xdeque(self, c) or dyn_xmap(self, c))
+
+
+def dyn_xitems(self, c: str, x: str) -> str:
+    # the method or field of lib container c that gives the items which == of it and an object of
+    # class x (or a dict, "") compares: a deque's list (_items()), a mapping's dict (_dict(), or
+    # the field _mapping of a mappingproxy, which has no method that gives its dict: a program
+    # holding the proxy must not reach it), or the counts of a Counter and another one that are
+    # not zero (_counts()), else ""
+    if dyn_xdeque(self, c):
+        return "_items"
+    if not dyn_xmap(self, c):
+        return ""
+    if not self.dict_class(c):
+        return "_mapping"
+    return "_counts" if self.tmpl_of(c) == "collections$Counter" and x != "" and self.tmpl_of(x) == self.tmpl_of(c) else "_dict"
+
+
+def dyn_xtype(self, c: str, x: str) -> str:
+    # the static type of those items, or "" where c has none
+    name = dyn_xitems(self, c, x)
+    if name in self.classes[c].methods:
+        return self.classes[c].methods[name].ret
+    return self.classes[c].ftypes.get(name, "")
+
+
+def dyn_xread(self, v: Val, x: str) -> Val:
+    # those items of lib container v (dyn_xitems). A dispatcher's code has no module, so the
+    # field is read here as lib's own module reads it, not as a program's attribute (glue_field)
+    name = dyn_xitems(self, v.t, x)
+    if name in self.classes[v.t].methods:
+        return self.expr(mk("call", "", self.line, [mk("attr", name, self.line, [self.vnode(v)])]), "")
+    return self.getfield(v, self.field(v, name), name)
+
+
+def dyn_xpair(self, a: str, b: str) -> bool:
+    # does dyn_xsame compare values of static types a and b
+    return a == b or self.wider(a, b) != "" or (self.ueq_type(a) and self.ueq_type(b)) or self.container_pair_type(a, b)
+
+
+def dyn_xsame(self, a: Val, b: Val) -> Val:
+    # a == b of two lists or two dicts that dyn_xpair takes, each item read in its own layout, as
+    # the code of a module that opts in to dynamic Any compares them (cmp2). A dispatcher's code
+    # has no module, so the comparison of two layouts with no common one is chosen here
+    if a.t != b.t and self.wider(a.t, b.t) == "" and not (self.ueq_type(a.t) and self.ueq_type(b.t)):
+        return self.container_pair_eq("==", a, b)
+    return self.cmp2("==", a, b)
+
+
+def dyn_xpeer(self, c: str, x: str) -> bool:
+    # does == of lib's deque or mapping c have a case for an object of boxed class x: another of
+    # its kind (dyn_xown) with another layout, a deque of other items or a mapping of another
+    # class or of other items, whose items dyn_xequal compares with c's
+    if dyn_xdeque(self, c) != dyn_xdeque(self, x) or dyn_xmap(self, c) != dyn_xmap(self, x):
+        return False
+    a = dyn_xtype(self, c, x)
+    b = dyn_xtype(self, x, c)
+    return a != "" and b != "" and dyn_xpair(self, a, b)
+
+
+def dyn_xequal(self, a: Val, b: Val) -> Val:
+    # a == b of lib's deque or mapping a and b, another of its kind (dyn_xpeer) or a dict's
+    # payload (dyn_xdict): CPython's deques are equal where their items are, and its dict
+    # subclasses, the mappings here, where their items are in any order, as dict's own method
+    # answers after theirs return NotImplemented. Two OrderedDicts also have their keys in one
+    # order, and two Counters the same counts, a missing one being zero. lib's methods say the
+    # same in typed code (deque.__eq__, _dict_eq, OrderedDict.__eq__ and Counter.__eq__), but are
+    # not compiled for an Any operand: they would call its _items() or _dict(), whose typed
+    # result no box holds, and a class that the program boxes later would add its case to that
+    # call's dispatcher. Here each object's items are read as they are, by the method or field
+    # its class has (dyn_xread)
+    line = self.line
+    x = dyn_xread(self, a, "" if is_dict(b.t) else b.t)
+    y = b if is_dict(b.t) else dyn_xread(self, b, a.t)
+    same = dyn_xsame(self, x, y)
+    if is_dict(b.t) or self.tmpl_of(a.t) != "collections$OrderedDict" or self.tmpl_of(b.t) != "collections$OrderedDict":
+        return same
+    ordered = self.label()
+    end = self.label()
+    ph = Ins("phi", "bool", "")
+    self.incoming(ph, "false", self.cur)
+    self.cbr(same.v, ordered, end)
+    self.place(ordered)
+    keys = [self.expr(mk("call", "", line, [mk("attr", "keys", line, [self.vnode(v)])]), "") for v in [a, b]]
+    self.incoming(ph, dyn_xsame(self, keys[0], keys[1]).v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), "bool")
+
+
+def dyn_xpeers(self, c: str, m: str, a: Val, b: Val, inv: bool) -> None:
+    # return what dispatcher @dyn.cmp.<c>.<m> answers for object a of class c and box b: the
+    # status of c's method m for b's concrete class, behind exact DynType guards, or of != where
+    # inv inverts an answer of ==
+    f = self.dyn_dispatcher(f"cmp.{c}.{m}", [DYN, c], "int", m)
+    result = self.dyn_call(f, [b, a])
+    if inv:
+        flip = Val(self.scalar("xor", [result, Val("1", "int")]), "int")
+        result = Val(self.select(self.num_cmp("<", result, Val("2", "int")).v, flip, result), "int")
+    self.ret_(result)
+
+
+def dyn_xdict(self, a: Val, b: Val) -> None:
+    # dispatcher @dyn.cmp's case (dyn_xkind) for lib mapping a and a box b that holds a dict: the
+    # items of a's dict and b's (dyn_xequal). A dict whose items have no comparison with a's
+    # (dyn_xpair) stays unsupported, as one whose comparison does not compile. A deque takes no
+    # dict: no case
+    if not dyn_xmap(self, a.t):
+        return
+    hit = self.label()
+    miss = self.label()
+    self.cbr(self.dyn_test(b, ["dict[dyn,dyn]"]), hit, miss)
+    self.place(hit)
+    attempt = f"{a.t}.__eq__:concrete:dict[dyn,dyn]"
+    items = dyn_xtype(self, a.t, "")
+    if attempt in self.xnot or items == "" or not dyn_xpair(self, items, "dict[dyn,dyn]"):
+        self.ret_(Val("3", "int"))
+    else:
+        self.xtry = attempt
+        same = dyn_xequal(self, a, self.dyn_payload(b, "dict[dyn,dyn]"))
+        self.xtry = ""
+        self.ret_(Val(self.select(same.v, Val("1", "int"), Val("0", "int")), "int"))
+    self.place(miss)
+
+
 def gen_dyn_xbody(self, c: str) -> None:
     # the body of @o.x.<class> (dyn_xhelper): c's own method, which takes b as its parameter's type
     # takes an Any value; != is not == where c has no __ne__, as object.__ne__ inverts __eq__. A
@@ -1361,6 +1529,16 @@ def gen_dyn_xbody(self, c: str) -> None:
         self.place(cdecline)
         self.ret_(Val("2", "int"))
         self.place(cgo)
+    own = dyn_xown(self, c)
+    if len(own) > 0:
+        # (lib's containers compare with their own kinds, dyn_xown: CPython's return
+        # NotImplemented for any other value, as complex's does above)
+        ogo = self.label()
+        odecline = self.label()
+        self.cbr(self.dyn_test(b, own), ogo, odecline)
+        self.place(odecline)
+        self.ret_(Val("2", "int"))
+        self.place(ogo)
     for k in range(len(XCMP)):
         m = XCMP[k]
         inv = False
@@ -1401,6 +1579,14 @@ def gen_dyn_xbody(self, c: str) -> None:
                         self.ret_(Val(self.select(r, Val("1", "int"), Val("0", "int")), "int"))
                 self.place(dynamic)
             key = f"{c}.{m}" + (":dynamic" if adapt else "")
+            if k < 2 and dyn_xkind(self, c, "__eq__"):
+                # (lib's deque or mapping and another of its kind, which the guard above let
+                # through: their items, by the cases of dyn_xpeer and dyn_xdict, and not the
+                # method's body for an Any operand, see dyn_xequal. Their != inverts ==, as their
+                # __ne__ methods do)
+                dyn_xpeers(self, c, "__eq__", a, b, k == 1)
+                self.place(nxt)
+                continue
             if key in self.xnot:
                 rebound = f"{c}.{m}:discarded-operand"
                 if len(ps) == 2 and method.deco == "" and rebound not in self.xnot and comparison_discards_operand(method.node.kids[2], method.params[0], method.params[1]):
@@ -1436,12 +1622,7 @@ def gen_dyn_xbody(self, c: str) -> None:
                     self.xtry = shape
                     self.instance(method, [c, canonical], [])
                     self.xtry = ""
-                    f = self.dyn_dispatcher(f"cmp.{c}.{m}", [DYN, c], "int", m)
-                    result = self.dyn_call(f, [b, a])
-                    if inv:
-                        flip = Val(self.scalar("xor", [result, Val("1", "int")]), "int")
-                        result = Val(self.select(self.num_cmp("<", result, Val("2", "int")).v, flip, result), "int")
-                    self.ret_(result)
+                    dyn_xpeers(self, c, m, a, b, inv)
                 else:
                     self.ret_(Val("3", "int"))
                 self.place(nxt)
@@ -3534,6 +3715,8 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         # Same-hierarchy comparisons already use the typed helper, not @o.x.
         if self.derives(c, own) or self.derives(own, c):
             return False
+        if dyn_xkind(self, own, dunder):
+            return dyn_xpeer(self, own, c)
         method = self.classes[own].methods[dunder]
         canonical = method.ptypes[1] if method.ptypes[1] in self.classes else own
         expected = comparison_layout(self.classes[canonical])
@@ -3710,6 +3893,12 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
             self.ret_(Val("3", "int"))
             return
         self.xtry = attempt
+        if dyn_xkind(self, receiver.t, dunder):
+            # (lib's deque or mapping and another of its kind, dyn_xpeer: their items)
+            same = dyn_xequal(self, receiver, x)
+            self.xtry = ""
+            self.ret_(Val(self.select(same.v, Val("1", "int"), Val("0", "int")), "int"))
+            return
         # Preserve typed storage and aliasing; no field is copied or reboxed. Keep
         # each failed arm separate from the generic and annotated typed attempts.
         original = self.classes[receiver.t].methods[dunder]
@@ -4550,6 +4739,8 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
     if promote:
         key = key[:-8]
     if key.startswith("cmp."):
+        if dyn_xkind(self, ps[1].t, self.dynkeys[key]):
+            dyn_xdict(self, ps[1], ps[0])
         self.ret_(Val("3", "int"))
         return
     o = ps[0]

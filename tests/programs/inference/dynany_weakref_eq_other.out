@@ -1,0 +1,6 @@
+FalseFalseTrueTrue FalseFalseTrueTrue FalseFalseTrueTrue FalseFalseTrueTrue FalseFalseTrueTrue FalseFalseTrueTrue FalseFalseTrueTrue FalseFalseTrueTrue FalseFalseTrueTrue
+False 0 TypeError TypeError
+TrueTrueFalseFalse TrueTrueFalseFalse FalseFalseTrueTrue FalseFalseTrueTrue TrueTrueFalseFalse
+True 3 1 TypeError
+True 2 int ref 3 True True
+[exit 0]

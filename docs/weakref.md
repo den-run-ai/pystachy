@@ -78,7 +78,10 @@ The callback rules are:
 A reference hashed while its referent lives therefore keeps its hash and remains
 usable as a dict key or set member. Comparisons require references to the same
 target type; other operands cause a compile-time type error where CPython would
-return `False`. Direct calls `r.__eq__(None)` and `r.__ne__(None)` return `False`
+return `False`. A reference held as a [dynamic `Any`](dynamic-any.md#object-comparisons)
+value compares with any value, as in CPython: it is unequal to one that is no
+reference, and references to two target types compare their referents
+(`tests/programs/inference/dynany_weakref_eq_other.py`). Direct calls `r.__eq__(None)` and `r.__ne__(None)` return `False`
 and `True`; CPython returns `NotImplemented`, which is not supported here.
 
 Collection timing can change equality results. If `c == Point(1, 2)`, then
