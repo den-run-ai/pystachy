@@ -8164,9 +8164,11 @@ _Noreturn void pys_recursion_stack_error(void) {
    Read once only for extensions or glibc's fallback, keeping ordinary program startup cheap. */
 static const char *hexnum(const char *s, unsigned long *v) {   /* past the hex digits at s, their value in *v: 0 for none, or too many */
   const char *p = s;
-  for (*v = 0; digitv(*p) < 16; p++) {
+  for (*v = 0;; p++) {
+    int c = *p | 32, d = *p >= '0' && *p <= '9' ? *p - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 : -1;
+    if (d < 0) break;
     if (*v >> (sizeof *v * 8 - 4)) return 0;
-    *v = *v << 4 | (unsigned)digitv(*p);
+    *v = *v << 4 | (unsigned)d;
   }
   return p == s ? 0 : p;
 }
@@ -8182,7 +8184,7 @@ static uintptr_t stack_mapping_bottom(uintptr_t here, uintptr_t page) {
     const char *perm = hexnum(line, &from);
     int np = 0;
     if (!perm || *perm != '-' || !(perm = hexnum(perm + 1, &to)) || *perm++ != ' ') break;
-    while (np < 4 && perm[np] && !aws((unsigned char)perm[np])) np++;
+    while (np < 4 && perm[np] && perm[np] != ' ' && !(perm[np] >= 9 && perm[np] <= 13)) np++;
     if (np != 4 || from >= to || previous > from) break;
     if (from <= here && here < to) {
       bottom = previous;
