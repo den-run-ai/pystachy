@@ -61,7 +61,8 @@ Compiling the 2,364 object files takes about two CPU-hours, 40% of it for clang'
 minutes on four cores, against a 15-minute limit on workflow jobs
 ([PR budget](testing.md#pr-budget)). The
 [LLVM toolchain workflow](../.github/workflows/llvm-toolchain.yml) therefore shares the
-compiling among jobs. It runs on manual dispatch and when the recipe changes on `main`:
+compiling among jobs. Only a person starts it, since an uncached run takes an hour of runner
+time:
 
 1. `generators` runs `tools/llvm_toolchain.sh fingerprint OUT`, a hash of the source archive,
    the compilers' versions and every compile command, and looks for a cache of objects under
@@ -127,6 +128,21 @@ program: C to IR, `llvm-as`, `llvm-link --only-needed`, a coroutine and `-O2` pi
 also builds [`lljit.c`](../lljit.c) against that `libLLVM` and runs its self-check, as the
 driver does at first use. `python3 -m unittest discover -s tools -p test_llvm_toolchain.py`
 checks the recipe's pins and the check's refusals.
+
+## Publish
+
+Run the workflow on `main` with a revision, such as `1`. Once `bootstrap` has passed, the
+`publish` job runs [`tools/llvm_toolchain_release.py`](../tools/llvm_toolchain_release.py), which
+attaches the archive and its `.sha256` to the GitHub release `llvm-toolchain-18.1.8-1`. No other
+job can write to the repository, and a run given a revision on another branch stops before it
+compiles.
+
+The release is a draft until the archive has been downloaded from it and compared. It is not
+a Pystachy version: its tag starts no release workflow, and it is published as neither a
+prerelease nor the repository's latest release, which the tool checks afterwards. A published
+release is not changed. Publishing the same archive under its revision again passes, and
+another archive needs the next revision; any change to `tools/llvm_toolchain.sh` gives
+another archive, because `share/BUILD.txt` records the recipe's hash.
 
 ## Measured
 

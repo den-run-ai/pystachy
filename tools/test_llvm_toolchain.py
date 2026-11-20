@@ -1,6 +1,8 @@
-"""The minimal LLVM toolchain recipe: what it builds, what its check refuses and how compiling is shared."""
+"""The minimal LLVM toolchain: what its recipe builds, what its check refuses, how compiling is
+shared and how an archive is published."""
 
 import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -39,6 +41,7 @@ printf '%s' "$COMMANDS" > "$build/compile_commands.json"
 """
 sys.path.insert(0, str(ROOT))
 
+import llvm_toolchain_release  # noqa: E402
 import pystachy_toolchain  # noqa: E402
 
 
@@ -320,6 +323,171 @@ class WorkflowTests(unittest.TestCase):
 
     def test_workflow_builds_in_the_documented_image(self):
         self.assertIn(self.workflow["env"]["IMAGE"], DOCUMENT.read_text())
+
+    def test_only_a_person_starts_a_run_and_only_a_revision_on_main_publishes(self):
+        self.assertEqual(list(self.workflow["on"]), ["workflow_dispatch"])
+        self.assertEqual(list(self.workflow["on"]["workflow_dispatch"]["inputs"]), ["revision"])
+        # Refused before the compiling: another branch than main, and a revision that is no number.
+        first = self.workflow["jobs"]["generators"]["steps"][0]
+        self.assertEqual(first["if"], "inputs.revision != ''")
+        self.assertEqual(first["env"], {"REVISION": "${{ inputs.revision }}"})
+        self.assertEqual(first["run"], "[[ $GITHUB_REF == refs/heads/main && $REVISION =~ ^[1-9][0-9]*$ ]]")
+
+        publish = self.workflow["jobs"]["publish"]
+        self.assertEqual(publish["needs"], ["package", "bootstrap"])
+        self.assertIn("needs.bootstrap.result == 'success' && inputs.revision != ''", publish["if"])
+        self.assertEqual(publish["concurrency"], {"group": "llvm-toolchain-publication", "cancel-in-progress": "false"})
+        # No other job may write to the repository.
+        self.assertEqual(self.workflow["permissions"], {"contents": "read"})
+        self.assertEqual({name: job["permissions"] for name, job in self.workflow["jobs"].items() if "permissions" in job},
+                         {"publish": {"contents": "write"}})
+        download = next(step["with"] for step in publish["steps"] if "download-artifact" in step.get("uses", ""))
+        self.assertEqual(download["name"], self.workflow["jobs"]["package"]["steps"][-1]["with"]["name"])
+        step = publish["steps"][-1]
+        self.assertEqual(step["env"], {"GH_TOKEN": "${{ github.token }}", "REVISION": "${{ inputs.revision }}"})
+        self.assertIn("[[ $GITHUB_REF == refs/heads/main ]]\n", step["run"])
+        self.assertIn('llvm_toolchain_release.py --repository "$GITHUB_REPOSITORY" --commit "$GITHUB_SHA"', step["run"])
+        self.assertIn('--revision "$REVISION" "$OUT/$(tools/llvm_toolchain.sh name).tar.xz"', step["run"])
+
+
+class Releases:
+    """Stands in for gh: the releases of one repository, and the commands that were run."""
+
+    def __init__(self, **releases: dict):
+        self.releases = releases
+        self.commands: list[str] = []
+        self.latest = "v0.6.0"
+        self.damage = False  # whether an upload stores other bytes
+
+    def __call__(self, *arguments: str) -> subprocess.CompletedProcess:
+        release, action, *rest = arguments
+        self.commands.append(action)
+        done = subprocess.CompletedProcess(arguments, 0, "", "")
+        if arguments[-2:] != ("--repo", "owner/repo") or release != "release":
+            raise AssertionError(arguments)
+        if action == "list":
+            done.stdout = json.dumps([{"tagName": tag, "isLatest": tag == self.latest}
+                                      for tag, entry in self.releases.items() if not entry["draft"]])
+            return done
+        tag = rest[0]
+        if action == "create":
+            if tag in self.releases or "--draft" not in rest or "--latest=false" not in rest:
+                raise AssertionError(arguments)
+            self.releases[tag] = {"draft": True, "assets": {}}
+        elif tag not in self.releases:
+            return subprocess.CompletedProcess(arguments, 1, "", "release not found\n")
+        entry = self.releases[tag]
+        if action == "view":
+            done.stdout = json.dumps({"isDraft": entry["draft"]})
+        elif action == "upload":
+            if not entry["draft"] or "--clobber" not in rest:
+                raise AssertionError(arguments)
+            for path in map(Path, rest[1:3]):
+                entry["assets"][path.name] = b"other bytes" if self.damage else path.read_bytes()
+        elif action == "download":
+            name, directory = rest[rest.index("--pattern") + 1], rest[rest.index("--dir") + 1]
+            (Path(directory) / name).write_bytes(entry["assets"][name])
+        elif action == "edit":
+            if rest[1:3] != ["--draft=false", "--prerelease=false"]:
+                raise AssertionError(arguments)
+            entry["draft"] = False
+            if "--latest=false" not in rest:
+                self.latest = tag
+        if action in ("create", "edit"):
+            entry["target"] = rest[rest.index("--target") + 1]
+            entry["title"] = rest[rest.index("--title") + 1]
+            entry["notes"] = Path(rest[rest.index("--notes-file") + 1]).read_text()
+        return done
+
+
+class PublishTests(unittest.TestCase):
+    NAME = "pystachy-llvm-18.1.8-linux-x86_64.tar.xz"
+    TAG = "llvm-toolchain-18.1.8-3"
+    COMMIT = "c" * 40
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.archive = Path(temporary.name) / self.NAME
+        self.write(b"an archive")
+
+    def write(self, content: bytes) -> str:
+        self.archive.write_bytes(content)
+        digest = hashlib.sha256(content).hexdigest()
+        self.archive.with_name(self.NAME + ".sha256").write_text(f"{digest}  {self.NAME}\n")
+        return digest
+
+    def publish(self, releases: Releases, revision: str = "3") -> str:
+        return llvm_toolchain_release.publish("owner/repo", self.COMMIT, revision, self.archive, run=releases)
+
+    def test_archive_is_read_back_from_a_draft_before_it_is_published(self):
+        releases = Releases()
+        digest = hashlib.sha256(b"an archive").hexdigest()
+        self.assertEqual(self.publish(releases), f"published {self.TAG} with {self.NAME}, SHA-256 {digest}")
+        self.assertEqual(releases.commands, ["view", "create", "upload", "download", "edit", "list"])
+        entry = releases.releases[self.TAG]
+        self.assertEqual((entry["draft"], entry["target"], entry["title"]), (False, self.COMMIT, "LLVM toolchain 18.1.8-3"))
+        self.assertEqual(entry["assets"], {self.NAME: b"an archive", self.NAME + ".sha256": f"{digest}  {self.NAME}\n".encode()})
+        self.assertIn(f"`{self.NAME}` has SHA-256 `{digest}`", entry["notes"])
+        self.assertIn(f"https://github.com/owner/repo/blob/{self.COMMIT}/docs/llvm-toolchain.md", entry["notes"])
+        self.assertEqual(releases.latest, "v0.6.0")
+
+    def test_published_release_is_not_changed(self):
+        releases = Releases()
+        self.publish(releases)
+        releases.commands.clear()
+        self.assertEqual(self.publish(releases), f"{self.TAG} already holds {self.NAME}")
+        self.assertEqual(releases.commands, ["view", "download"])
+        self.write(b"another archive")
+        with self.assertRaisesRegex(RuntimeError, "published with another archive: this one needs the next revision"):
+            self.publish(releases)
+        self.assertEqual(releases.releases[self.TAG]["assets"][self.NAME], b"an archive")
+        self.publish(releases, "4")
+        self.assertEqual(releases.releases["llvm-toolchain-18.1.8-4"]["assets"][self.NAME], b"another archive")
+
+    def test_interrupted_draft_is_completed_with_this_archive_and_commit(self):
+        releases = Releases(**{self.TAG: {"draft": True, "assets": {self.NAME: b"an earlier archive"}, "target": "d" * 40}})
+        self.publish(releases)
+        self.assertEqual(releases.commands, ["view", "upload", "download", "edit", "list"])
+        entry = releases.releases[self.TAG]
+        self.assertEqual((entry["draft"], entry["target"], entry["assets"][self.NAME]), (False, self.COMMIT, b"an archive"))
+
+    def test_draft_that_reads_back_differently_is_not_published(self):
+        releases = Releases()
+        releases.damage = True
+        with self.assertRaisesRegex(RuntimeError, "holds other bytes .* it stays a draft"):
+            self.publish(releases)
+        self.assertTrue(releases.releases[self.TAG]["draft"])
+
+    def test_toolchain_release_must_not_be_the_latest_release(self):
+        releases = Releases()
+        releases.latest = self.TAG
+        with self.assertRaisesRegex(RuntimeError, "is the latest release"):
+            self.publish(releases)
+
+    def test_failed_command_is_named_without_its_output(self):
+        def refuse(*arguments):
+            return subprocess.CompletedProcess(arguments, 4, "", "HTTP 403: a diagnostic with a token\n")
+        with self.assertRaises(RuntimeError) as raised:
+            self.publish(refuse)
+        self.assertEqual(str(raised.exception), "gh release view exited 4")
+
+    def test_wrong_inputs_run_no_command(self):
+        releases = Releases()
+        for revision in ("", "0", "01", "1a", "-1", "1.0"):
+            with self.assertRaisesRegex(ValueError, "revision must be a positive number"):
+                self.publish(releases, revision)
+        self.archive.with_name(self.NAME + ".sha256").write_text(f"{'0' * 64}  {self.NAME}\n")
+        with self.assertRaisesRegex(ValueError, "is not the checksum of"):
+            self.publish(releases)
+        self.archive = self.archive.with_name("llvm.tar.xz")
+        with self.assertRaisesRegex(ValueError, "is not a toolchain archive"):
+            self.publish(releases)
+        self.assertEqual((releases.commands, releases.releases), ([], {}))
+
+    def test_archive_name_is_the_recipe_s(self):
+        name = run("name").stdout.strip() + ".tar.xz"
+        self.assertEqual(llvm_toolchain_release.ARCHIVE.fullmatch(name)[1], setting("VERSION"))
 
 
 if __name__ == "__main__":
