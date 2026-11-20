@@ -90,6 +90,13 @@ archive (about 1.45 GB). Ubuntu needs the host C toolchain (`build-essential`)
 and shared libraries (`libedit2`, `libffi8`, `libxml2`). macOS needs the Xcode
 Command Line Tools.
 
+On other x86-64 Linux with glibc 2.34 or later, a host that has no complete LLVM of its
+own downloads the [minimal LLVM 18.1.8 toolchain](llvm-toolchain.md#download) from this
+repository's releases instead (about 26 MB). It needs the host's C toolchain and
+`libstdc++`. A complete LLVM that [discovery](#check-or-prepare-dependencies) finds is
+used as before, whatever its release. These hosts are outside full verification:
+[measured](llvm-toolchain.md#measured) lists what ran on seven distributions.
+
 The download is shared across pip and uv in `$XDG_CACHE_HOME/pystachy/toolchains`
 (default `~/.cache/pystachy/toolchains`). Use `PYSTACHY_LLVM_CACHE` to select a
 different cache. Set `PYSTACHY_LLVM` to an existing LLVM `bin` directory to
@@ -230,9 +237,9 @@ program with `PYSTACHY_JIT_CODEGEN=0`. On Linux, `pystachy run` builds its
 
 On other Linux distributions, install LLVM 18, Python 3.11+ and `make` using the system
 package manager, then run `tools/setup.sh --check`. The script does not configure package
-repositories or replace the system Python. Where no LLVM 18 package exists,
-[`tools/llvm_toolchain.sh`](llvm-toolchain.md) builds the six tools the compiler runs from
-LLVM's sources, for glibc 2.28 or later.
+repositories or replace the system Python. Where no LLVM 18 package exists, select the
+[minimal LLVM toolchain](llvm-toolchain.md) with `PYSTACHY_LLVM`: download its published
+archive, or build it from LLVM's sources with `tools/llvm_toolchain.sh`.
 
 ### Other LLVM releases
 

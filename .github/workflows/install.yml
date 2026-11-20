@@ -131,3 +131,28 @@ jobs:
           python3 tools/compiler_install_smoke.py \
             --source "pystachy @ git+${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git@${GITHUB_SHA}" \
             --revision "$GITHUB_SHA" --provision-llvm
+
+  # A host with no LLVM, which is not Ubuntu 24.04: the first compile downloads the minimal toolchain.
+  provision-minimal:
+    name: Source install with the minimal LLVM (Debian 12)
+    runs-on: ubuntu-24.04
+    container: debian:12
+    timeout-minutes: 15
+    steps:
+      - name: Python, Git and the C toolchain, without LLVM
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates gcc git libc6-dev python3 python3-venv
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install from the exact Git commit and exercise the downloaded toolchain
+        run: |
+          python3 -m venv "$RUNNER_TEMP/tools"
+          . "$RUNNER_TEMP/tools/bin/activate"
+          python -m pip install -r tools/requirements-packaging.txt
+          python tools/compiler_install_smoke.py \
+            --source "pystachy @ git+${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git@${GITHUB_SHA}" \
+            --revision "$GITHUB_SHA" --provision-llvm --llvm-release 18.1.8

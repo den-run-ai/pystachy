@@ -459,6 +459,23 @@ class PublishTests(unittest.TestCase):
             self.publish(releases)
         self.assertEqual((releases.commands, releases.releases), ([], {}))
 
+    def test_pystachy_downloads_the_archive_that_is_published(self):
+        # pystachy_toolchain.py names the release's address itself: the publication must create it.
+        name = pystachy_toolchain.MINIMAL_ARCHIVE + ".tar.xz"
+        self.archive = self.archive.with_name(name)
+        self.archive.write_bytes(b"the pinned archive")
+        digest = hashlib.sha256(b"the pinned archive").hexdigest()
+        self.archive.with_name(name + ".sha256").write_text(f"{digest}  {name}\n")
+        releases = Releases()
+        self.publish(releases, pystachy_toolchain.MINIMAL_REVISION)
+        (tag,) = releases.releases
+        self.assertEqual(pystachy_toolchain.MINIMAL_RELEASE,
+                         f"https://github.com/den-run-ai/pystachy/releases/download/{tag}/{name}")
+        self.assertEqual(pystachy_toolchain.MINIMAL_VERSION, setting("VERSION"))
+        document = DOCUMENT.read_text()
+        for pinned in (tag, name, pystachy_toolchain.MINIMAL_SHA256):
+            self.assertIn(f"`{pinned}`", document)
+
     def test_archive_name_is_the_recipe_s(self):
         name = run("name").stdout.strip() + ".tar.xz"
         self.assertEqual(llvm_toolchain_release.ARCHIVE.fullmatch(name)[1], setting("VERSION"))

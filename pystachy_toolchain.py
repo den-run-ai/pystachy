@@ -44,6 +44,21 @@ UBUNTU_PACKAGES = (
      "1ad04ff658929491f8bf30fcf6454e07b1815a2b04164f1894156e92c91ef895",
      "b2c829cec030a9bab4fd27b92303eb8491140ad91edf62d55d5b1f8f3d6ef100"),
 )
+# The archive that tools/llvm_toolchain.sh builds and the LLVM toolchain workflow publishes
+# (docs/llvm-toolchain.md): the tools the driver runs, needing only the C and C++ libraries.
+MINIMAL_VERSION = "18.1.8"
+MINIMAL_REVISION = "1"
+MINIMAL_ARCHIVE = f"pystachy-llvm-{MINIMAL_VERSION}-linux-x86_64"
+MINIMAL_RELEASE = (
+    "https://github.com/den-run-ai/pystachy/releases/download"
+    f"/llvm-toolchain-{MINIMAL_VERSION}-{MINIMAL_REVISION}/{MINIMAL_ARCHIVE}.tar.xz"
+)
+MINIMAL_SHA256 = "9d71e217eb32b6ad7cce1745aebf0552b3c2d3e7acec9eaf5dfe6305528b61c1"
+# Before glibc 2.34 the runtime does not link without -pthread.
+MINIMAL_GLIBC = (2, 34)
+# Where the driver looks for LLVM before PATH: llvm_dir in src/pystachy_compiler/driver.py.
+HOST_LLVM = ("/usr/lib/llvm-18/bin", "/opt/homebrew/opt/llvm@20/bin", "/usr/local/opt/llvm@20/bin",
+             "/home/linuxbrew/.linuxbrew/opt/llvm@18/bin")
 MACOS_VERSION = "20.1.8"
 MACOS_RELEASE = (
     f"https://github.com/llvm/llvm-project/releases/download/llvmorg-{MACOS_VERSION}"
@@ -142,6 +157,30 @@ def unpack_macos(staging: Path, payload: Path) -> Path:
     return tool_dir
 
 
+def unpack_minimal(staging: Path, payload: Path) -> Path:
+    archive = staging / "llvm.tar.xz"
+    download(MINIMAL_RELEASE, MINIMAL_SHA256, archive)
+    extract_options = {"filter": "data"} if hasattr(tarfile, "data_filter") else {}
+    with tarfile.open(archive, "r:xz") as source:
+        source.extractall(payload, **extract_options)
+    return payload / MINIMAL_ARCHIVE / "bin"
+
+
+def glibc() -> tuple[int, ...]:
+    # The C library the process runs on, as pip reads it for manylinux; () where it is not glibc.
+    try:
+        name, _, version = (os.confstr("CS_GNU_LIBC_VERSION") or "").partition(" ")
+        return tuple(map(int, version.split("."))) if name == "glibc" else ()
+    except (AttributeError, OSError, ValueError):
+        return ()
+
+
+def host_llvm() -> bool:
+    # Whether the driver would find a complete LLVM itself: a versioned one, else the tools on PATH.
+    return (any(all(os.path.exists(f"{place}/{tool}") for tool in TOOLS) for place in HOST_LLVM)
+            or all(shutil.which(tool) for tool in TOOLS))
+
+
 def available(bin_dir: Path, version: str) -> bool:
     major = version.split(".")[0]
     header = bin_dir.resolve().parent / f"lib/clang/{major}/include/stddef.h"
@@ -152,16 +191,22 @@ def available(bin_dir: Path, version: str) -> bool:
 
 def ensure_toolchain() -> Path | None:
     machine = platform.machine()
+    arch = None
     if sys.platform == "linux" and machine in ("x86_64", "aarch64"):
         try:
             distro = platform.freedesktop_os_release()
         except OSError:
+            distro = {}
+        if (distro.get("ID"), distro.get("VERSION_ID")) == ("ubuntu", "24.04"):
+            arch = "amd64" if machine == "x86_64" else "arm64"
+            key = f"ubuntu-{UBUNTU_REVISION}-{arch}"
+            version = "18.1.3"
+        # Elsewhere a host's own LLVM keeps serving; without one, no compile could succeed.
+        elif machine == "x86_64" and glibc() >= MINIMAL_GLIBC and not host_llvm():
+            key = f"minimal-{MINIMAL_VERSION}-{MINIMAL_REVISION}-x86_64"
+            version = MINIMAL_VERSION
+        else:
             return None
-        if (distro.get("ID"), distro.get("VERSION_ID")) != ("ubuntu", "24.04"):
-            return None
-        arch = "amd64" if machine == "x86_64" else "arm64"
-        key = f"ubuntu-{UBUNTU_REVISION}-{arch}"
-        version = "18.1.3"
     elif sys.platform == "darwin" and machine == "arm64":
         key = f"macos-{MACOS_VERSION}-arm64"
         version = MACOS_VERSION
@@ -184,8 +229,10 @@ def ensure_toolchain() -> Path | None:
         with tempfile.TemporaryDirectory(prefix=f".{key}-", dir=cache) as temporary:
             staging = Path(temporary)
             payload = staging / "payload"
-            if sys.platform == "linux":
+            if arch is not None:
                 tool_dir = unpack_ubuntu(staging, payload, arch)
+            elif sys.platform == "linux":
+                tool_dir = unpack_minimal(staging, payload)
             else:
                 tool_dir = unpack_macos(staging, payload)
             if not available(tool_dir, version):

@@ -1,13 +1,18 @@
 """Check the integrity and publication of managed LLVM installations."""
 
+import ast
+from contextlib import ExitStack
 import errno
 import hashlib
 import http.client
 import io
 from pathlib import Path
+import re
 import socket
 import socketserver
 import ssl
+import subprocess
+import tarfile
 import tempfile
 import threading
 import unittest
@@ -440,3 +445,145 @@ class ManagedToolchainTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MinimalToolchainTests(unittest.TestCase):
+    """The archive of docs/llvm-toolchain.md, on Linux that has no LLVM of its own."""
+
+    DEBIAN = {"ID": "debian", "VERSION_ID": "12"}
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.cache = self.root / "cache"
+
+    def archive(self, tools=toolchain.TOOLS, release=toolchain.MINIMAL_VERSION) -> Path:
+        """Laid out as the published archive: tools that print their release, and clang's headers."""
+        directory = Path(tempfile.mkdtemp(dir=self.root))
+        tree = directory / toolchain.MINIMAL_ARCHIVE
+        for name in tools:
+            path = tree / "bin" / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"#!/bin/sh\necho '{name} version {release}'\n")
+            path.chmod(0o755)
+        header = tree / "lib/clang/18/include/stddef.h"
+        header.parent.mkdir(parents=True)
+        header.touch()
+        archive = directory / "llvm.tar.xz"
+        with tarfile.open(archive, "w:xz") as packed:
+            packed.add(tree, arcname=toolchain.MINIMAL_ARCHIVE)
+        return archive
+
+    def host(self, stack: ExitStack, *, machine="x86_64", distro=DEBIAN, glibc=(2, 36), llvm=False, archive=None):
+        """Stand on a Linux host of this kind; the release is the archive, where one is given."""
+        release = {"side_effect": distro} if isinstance(distro, Exception) else {"return_value": distro}
+        patches = [patch.dict(toolchain.os.environ, {"PYSTACHY_LLVM_CACHE": str(self.cache)}),
+                   patch.object(toolchain.sys, "platform", "linux"),
+                   patch.object(toolchain.platform, "machine", return_value=machine),
+                   patch.object(toolchain.platform, "freedesktop_os_release", **release),
+                   patch.object(toolchain, "glibc", return_value=glibc),
+                   patch.object(toolchain, "host_llvm", return_value=llvm)]
+        if archive is not None:
+            patches += [patch.object(toolchain, "MINIMAL_RELEASE", archive.as_uri()),
+                        patch.object(toolchain, "MINIMAL_SHA256", hashlib.sha256(archive.read_bytes()).hexdigest())]
+        for each in patches:
+            stack.enter_context(each)
+
+    def test_first_use_downloads_the_archive_and_later_uses_do_not(self):
+        archive = self.archive()
+        with ExitStack() as stack:
+            self.host(stack, archive=archive)
+            bin_dir = toolchain.ensure_toolchain()
+            key = f"minimal-{toolchain.MINIMAL_VERSION}-{toolchain.MINIMAL_REVISION}-x86_64"
+            self.assertEqual(bin_dir, self.cache.resolve() / key / "bin")
+            for name in toolchain.TOOLS:
+                self.assertEqual(subprocess.check_output([str(bin_dir / name), "--version"], text=True),
+                                 f"{name} version {toolchain.MINIMAL_VERSION}\n")
+            self.assertTrue((bin_dir.resolve().parent / "lib/clang/18/include/stddef.h").is_file())
+            archive.unlink()
+            self.assertEqual(toolchain.ensure_toolchain(), bin_dir)
+
+    def test_archive_with_another_digest_is_not_extracted(self):
+        archive = self.archive()
+        with ExitStack() as stack:
+            self.host(stack, archive=archive)
+            stack.enter_context(patch.object(toolchain, "MINIMAL_SHA256", "0" * 64))
+            extract = stack.enter_context(patch.object(toolchain.tarfile, "open"))
+            with self.assertRaisesRegex(ValueError, "checksum mismatch"):
+                toolchain.ensure_toolchain()
+            extract.assert_not_called()
+            self.assertEqual(list(self.cache.glob("*/bin")), [])
+
+    def test_incomplete_or_other_release_is_not_published_to_the_cache(self):
+        for archive, message in ((self.archive(tools=toolchain.TOOLS[:-1]), "missing required tools"),
+                                 (self.archive(release="18.1.3"), "expected LLVM 18.1.8 from clang")):
+            with self.subTest(message=message), ExitStack() as stack:
+                self.host(stack, archive=archive)
+                with self.assertRaisesRegex(ValueError, message):
+                    toolchain.ensure_toolchain()
+                self.assertEqual(list(self.cache.glob("*/bin")), [])
+
+    def test_only_glibc_x86_64_without_a_host_llvm_selects_it(self):
+        ubuntu_22 = {"ID": "ubuntu", "VERSION_ID": "22.04"}
+        hosts = (
+            ({}, True),
+            ({"glibc": toolchain.MINIMAL_GLIBC}, True),
+            ({"distro": ubuntu_22, "glibc": (2, 35)}, True),
+            ({"distro": OSError("no os-release")}, True),
+            ({"glibc": (2, 33)}, False),  # the runtime does not link there
+            ({"glibc": ()}, False),  # musl
+            ({"llvm": True}, False),  # the host's LLVM keeps serving
+            ({"machine": "aarch64"}, False),  # no archive is published
+        )
+        for host, selected in hosts:
+            with self.subTest(host=host), ExitStack() as stack:
+                self.host(stack, **host)
+                unpack = stack.enter_context(patch.object(toolchain, "unpack_minimal", side_effect=ValueError("selected")))
+                if selected:
+                    with self.assertRaisesRegex(ValueError, "selected"):
+                        toolchain.ensure_toolchain()
+                else:
+                    self.assertIsNone(toolchain.ensure_toolchain())
+                    unpack.assert_not_called()
+
+    def test_ubuntu_24_04_keeps_its_packages(self):
+        ubuntu = {"ID": "ubuntu", "VERSION_ID": "24.04"}
+        for llvm in (False, True):
+            with self.subTest(llvm=llvm), ExitStack() as stack:
+                self.host(stack, distro=ubuntu, glibc=(2, 39), llvm=llvm)
+                minimal = stack.enter_context(patch.object(toolchain, "unpack_minimal"))
+                stack.enter_context(patch.object(toolchain, "unpack_ubuntu", side_effect=ValueError("packages")))
+                with self.assertRaisesRegex(ValueError, "packages"):
+                    toolchain.ensure_toolchain()
+                minimal.assert_not_called()
+
+    def test_glibc_is_the_running_c_library_s_release(self):
+        for answer, expected in (("glibc 2.39", (2, 39)), ("glibc 2.4", (2, 4)), ("glibc 2.41.9000", (2, 41, 9000)),
+                                 ("musl 1.2.5", ()), ("glibc", ()), ("glibc 2.x", ()), ("", ()), (None, ())):
+            with self.subTest(answer=answer), patch.object(toolchain.os, "confstr", return_value=answer, create=True):
+                self.assertEqual(toolchain.glibc(), expected)
+        for error in (ValueError("unrecognized configuration name"), OSError(errno.EINVAL, "Invalid argument")):
+            with self.subTest(error=error), patch.object(toolchain.os, "confstr", side_effect=error, create=True):
+                self.assertEqual(toolchain.glibc(), ())
+
+    def test_host_llvm_is_what_the_driver_finds_without_a_setting(self):
+        driver = (Path(toolchain.__file__).parent / "src/pystachy_compiler/driver.py").read_text()
+        found = re.search(r'def llvm_dir\(\).*?for d in \[(.*?)\]:\s+if all\(\[os\.path\.exists\(d \+ "/" \+ t\) for t in \[(.*?)\]\]\)',
+                          driver, re.S)
+        self.assertEqual(ast.literal_eval(f"({found[1]},)"), toolchain.HOST_LLVM)
+        self.assertEqual(sorted(ast.literal_eval(f"({found[2]},)")), sorted(toolchain.TOOLS))
+
+        tools = self.root / "tools"
+        tools.mkdir()
+        for name in toolchain.TOOLS[:-1]:
+            (tools / name).touch(mode=0o755)
+        elsewhere = str(self.root / "none")
+        for places, path in (((str(tools),), elsewhere), ((elsewhere,), str(tools))):
+            with self.subTest(places=places), patch.object(toolchain, "HOST_LLVM", places), \
+                    patch.dict(toolchain.os.environ, {"PATH": path}):
+                last = tools / toolchain.TOOLS[-1]
+                self.assertFalse(toolchain.host_llvm())
+                last.touch(mode=0o755)
+                self.assertTrue(toolchain.host_llvm())
+                last.unlink()

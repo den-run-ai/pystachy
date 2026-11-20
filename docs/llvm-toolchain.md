@@ -6,9 +6,9 @@ the part of LLVM that Pystachy's driver runs: `clang`, `opt`, `lli`, `llc`, `llv
 for that architecture. Built in the `manylinux_2_28` image, the x86-64 archive is 25.5 MiB
 (101.1 MiB unpacked) and its tools run on Linux with glibc 2.28 or later.
 
-Pystachy does not download this toolchain: [installation](install.md) still uses a
-distribution's LLVM, or the pinned packages that `pystachy_toolchain.py` fetches. Select a
-built toolchain with `PYSTACHY_LLVM`:
+A [pip or uv installation](install.md#install-from-github-with-pip-or-uv) [downloads](#download)
+the published archive at its first compile, on x86-64 Linux that has no LLVM of its own.
+Anywhere else, select a toolchain with `PYSTACHY_LLVM`:
 
 ```sh
 tar -xJf pystachy-llvm-18.1.8-linux-x86_64.tar.xz
@@ -139,6 +139,37 @@ release is not changed. Publishing the same archive under its revision again pas
 another archive needs the next revision; any change to `tools/llvm_toolchain.sh` gives
 another archive, because `share/BUILD.txt` records the recipe's hash.
 
+## Download
+
+`pystachy_toolchain.py` pins one published archive by its address and SHA-256:
+
+| | |
+|---|---|
+| Release | `llvm-toolchain-18.1.8-1` |
+| Archive | `pystachy-llvm-18.1.8-linux-x86_64.tar.xz` |
+| SHA-256 | `9d71e217eb32b6ad7cce1745aebf0552b3c2d3e7acec9eaf5dfe6305528b61c1` |
+
+A `build` in the pinned image gives these bytes while `tools/llvm_toolchain.sh` has SHA-256
+`c5a55631…bce49ace`, which the archive's `share/BUILD.txt` records: the pin can be checked
+without trusting the release.
+
+A pip or uv installation downloads the archive at its first `run`, `build` or `ext` when all
+of these hold:
+
+- The host is x86-64 Linux with glibc 2.34 or later, other than Ubuntu 24.04.
+- `PYSTACHY_LLVM` is not set.
+- The driver would find no complete LLVM: none of its versioned directories holds the five
+  tools it looks for, and they are not all on `PATH`.
+
+A host with an LLVM of its own keeps using it, so no working installation changes or starts
+to need the network. Ubuntu 24.04 keeps its pinned packages, which include compiler-rt. Before
+glibc 2.34 the runtime does not link without `-pthread`, so an older host is left to
+`PYSTACHY_LLVM`. Linux ARM64 has no archive.
+
+The download is checked against the pinned hash before anything is extracted, into
+[`PYSTACHY_LLVM_CACHE`](install.md#install-from-github-with-pip-or-uv), and each tool must
+report 18.1.8 before the directory is used.
+
 ## Measured
 
 These are measurements of 19 and 20 November 2026, built in the image above on a shared
@@ -205,3 +236,25 @@ reaches both fixed points only with `PYSTACHY_CFLAGS=-pthread`. Of 1,106 runs of
 sample there, 24 failed: in 22 JIT runs an exception escaped a handler that catches it in
 AOT, and one case printed another last digit from `pow` in both modes.
 [#998](https://github.com/den-run-ai/pystachy/issues/998) tracks an older baseline.
+
+On 20 November 2026 the [download](#download) ran in containers of seven distributions that
+had a C compiler and Python but no LLVM. No release existed yet, so a local server stood in
+for its address and served the pinned archive. In each container
+`tools/compiler_install_smoke.py --provision-llvm` installed Pystachy with pip and with uv,
+the first compile provisioned clang 18.1.8, and the JIT, AOT, GC-stressed and float-formatting
+runs matched CPython:
+
+| Distribution | glibc | GCC | Python |
+|---|---|---|---|
+| Rocky Linux 9.9 | 2.34 | 11.5.0 | 3.11.13 |
+| Amazon Linux 2023 | 2.34 | 11.5.0 | 3.11.18 |
+| Ubuntu 22.04 | 2.35 | 11.4.0 | 3.11.0rc1 |
+| Debian 12 | 2.36 | 12.2.0 | 3.11.2 |
+| openSUSE Leap 15.6 | 2.38 | 7.5.0 | 3.11.15 |
+| Debian 13 | 2.41 | 14.2.0 | 3.13.5 |
+| Fedora 45 | 2.44 | 16.2.1 | 3.15.2 |
+
+On Rocky Linux 9.9, the oldest C library of these, `make` with the archive also reached both
+fixed points without `-pthread`, and `make test` passed all 8,784 JIT and AOT runs. The other
+six ran the installation check alone. With glibc 2.28 and with musl nothing is downloaded:
+AlmaLinux 8.10 and Alpine were checked.
