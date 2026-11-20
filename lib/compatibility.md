@@ -831,11 +831,67 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   without members hands its `__new__` to the classes deriving from it (the documentation's
   `AutoNumber`) ([test](../tests/programs/library/lib_enum_new.py)).
 - `@_simple_enum(etype)` makes an enum class of a class statement without bases, as one
-  deriving from `etype` ([test](../tests/programs/library/lib_enum_simple.py)). As in CPython,
-  a name bound to `auto()` in such a body has no value that a later member can read.
+  deriving from `etype`, also with `boundary=`
+  ([test](../tests/programs/library/lib_enum_simple.py),
+  [CPython's `RegexFlag`](../tests/programs/library/lib_enum_simple_boundary.py)). As in
+  CPython, a name bound to `auto()` in such a body has no value that a later member can read.
   `@global_enum` binds each member's name in the module and makes `repr()` the module's name
-  and the member's, and an `Enum`'s `str()` the member's name
-  ([test](../tests/programs/library/lib_enum_global.py)).
+  and the member's, CPython's `global_flag_repr()` for a flag class, and `str()` of a class that
+  is no `ReprEnum` (an `Enum`, a `Flag` or a class of a mixin type) the member's name
+  ([test](../tests/programs/library/lib_enum_global.py),
+  [flags](../tests/programs/library/lib_enum_global_flag.py),
+  [mixins](../tests/programs/library/lib_enum_global_mixin.py)). A body may bind several names
+  at once (`ASCII = A = 256`), each in turn, as CPython's `re` declares its flags: the names
+  after the first are the first's aliases. It may also unpack values into names
+  (`R, W, X = 4, 2, 1`), whose values read none of those names
+  ([test](../tests/programs/library/lib_enum_unpack.py),
+  [error](../tests/errors/library/lib_enum_unpack_reads.py)).
+- `NAME = Enum("NAME", names)` at the top of a module, CPython's functional API, is the class
+  statement that `EnumType` makes of it, also of `IntEnum`, `StrEnum`, `Flag` and `IntFlag`:
+  `names` is a str of names (split at commas and spaces) or a list or tuple of them, valued as
+  `auto()` values them from `start=` (default 1), or literal `(name, value)` pairs or a dict
+  display; `type=int` or `str` (a mixin of an `Enum`), `boundary=` and `module=__name__` are
+  CPython's ([test](../tests/programs/library/lib_enum_functional_api.py)). Another name than
+  the one bound, and a call elsewhere (in a function, which makes a new class at each call), are
+  compile-time errors ([test](../tests/errors/library/lib_enum_functional_name.py),
+  [test](../tests/errors/library/lib_enum_functional.py)).
+- `@verify(UNIQUE, CONTINUOUS, NAMED_FLAGS)` checks the class it decorates, as `@unique` does,
+  in the order the decorators run; a failed check is a compile-time error with CPython's
+  message, as CPython's `ValueError` (or `TypeError` for values that are no ints) where the
+  class statement runs ([test](../tests/programs/library/lib_enum_verify.py),
+  [error](../tests/errors/library/lib_enum_verify_named.py)). `verify(...)` and `unique()`
+  called on a class, its `EnumType` object, check it at run time and raise CPython's errors.
+- `NAME = member(value)` makes the member of that value and `NAME = nonmember(value)` a class
+  attribute that holds it, which the class, its members and the members after it read
+  (`C = B + 1`); `@nonmember` of a method leaves it a method, as CPython's class namespace unwraps
+  both ([test](../tests/programs/library/lib_enum_member.py); with dynamic `Any`,
+  [test](../tests/programs/inference/dynany_enum_nonmember.py)). A `nonmember()`'s value is a
+  literal other than `None`, or an int or str expression as members' values are; a function
+  as a member's value (`@member`), a `nonmember()` of a `_sunder_`, `__dunder__` or private
+  method, `member()` or `nonmember()` in a class that `@_simple_enum` makes (where CPython's
+  makes the wrapper object a member's value), and a `nonmember()` after a member and a method
+  whose default value, annotation or decorator reads its name (Pystachy binds a `nonmember()`
+  before the members; [error](../tests/errors/library/lib_enum_nonmember_read_before.py)) are
+  compile-time errors. `@enum.property` (or `@property` of
+  `from enum import property`) of a method is a property of the members, whose name no member
+  may have here (CPython's lets a member of that name be found on the class).
+- The module's constants and helpers are CPython's: `FlagBoundary` (`STRICT`, `CONFORM`,
+  `EJECT`, `KEEP`) and `EnumCheck` (`UNIQUE`, `CONTINUOUS`, `NAMED_FLAGS`) are `StrEnum` classes
+  of `enum`, and `show_flag_values()`, `bin()`, `global_enum_repr()`, `global_flag_repr()`,
+  `global_str()`, `pickle_by_global_name()` and the private `_iter_bits_lsb()`, `_is_dunder()`,
+  `_is_sunder()`, `_is_private()` and `_is_single_bit()` behave as there
+  ([test](../tests/programs/library/lib_enum_helpers.py)). The two classes, their members and
+  `verify` are `lib/_pystachy_enum.py`'s, which a module's `from enum import` of them, or its
+  read of `enum.KEEP`, imports where the module reads them as values, and not where it names
+  them only as a `boundary=` or a `@verify(...)` the compiler applies: an `Enum` value of a
+  program that does not read them cannot hold their members, which is what lets it become an
+  `Any` value ([test](../tests/programs/library/lib_enum_marker_any.py)). `from enum import *`
+  binds none of them, nor does an import of them, or of `enum`, inside a function (a module's
+  imports at its top level do).
+  `EnumDict`, the namespace of a class body that CPython's `EnumType.__prepare__` makes, and
+  `_test_simple_enum()`, which compares two classes' `__dict__`s, may be imported, but calling
+  them is a compile-time error ([test](../tests/errors/library/lib_enum_enumdict.py)); `property`
+  is no name of the module (above), and `pickle_by_enum_name()` is not provided.
 - The class as a value is an object of `EnumType`: `C(value)` finds the member with that value
   (or returns a member it is given, also one held through a base class's type, such as `Enum` or
   `Flag`: [test](../tests/programs/library/lib_enum_base_lookup.py),
@@ -844,7 +900,12 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   definition order, and `len(C)`, `x in C` (a member, or a member's value), `C.__members__` (a
   read-only mapping, aliases included) and `repr(C)` are CPython's. Enum classes of other modules
   work where they are imported ([test](../tests/programs/library/lib_enum_import.py)), and so
-  do members in `Any` values ([test](../tests/programs/library/lib_enum_any.py)).
+  do members in `Any` values ([test](../tests/programs/library/lib_enum_any.py)). A variable or
+  a field (`self.kind = Color`, whose class then specializes as a class template does) holds
+  the object, through which the class's members and other class attributes are read
+  (`self.kind.RED`) ([test](../tests/programs/library/lib_enum_class_fields.py)); a class
+  attribute that holds it ([error](../tests/errors/library/lib_enum_class_attr_value.py)) and
+  `type[Color]` as an annotation are not supported.
 - An `IntEnum` member is no `int` here, nor a `StrEnum` member a `str`: each is an object of its
   class with `int`'s comparisons, arithmetic, `bool()` and `hash()`, or `str`'s comparisons,
   `+`, `in`, `len()` and `upper()`, `lower()`, `startswith()`, `endswith()` and `encode()`,
@@ -894,7 +955,7 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   greatest value before). Iterating over the class, and `len()` of it, give its single-bit
   members; `|`, `&`, `^` and `~` give members, or pseudo-members made once for each value (their
   names, `R|X`, are CPython's), with CPython's `ValueError` for bits that no member has (the
-  boundary `STRICT`); a flag's `in`, iteration, `len()`, `bool()`, `repr()` (`<P.R|X: 5>`,
+  boundary `STRICT`, `Flag`'s default); a flag's `in`, iteration, `len()`, `bool()`, `repr()` (`<P.R|X: 5>`,
   `<P: 0>`), `str()`, `format()` and `hash()`, and a member of value 0, are CPython's, and the
   name of a pseudo-member without members is `None`
   ([test](../tests/programs/library/lib_enum_flag.py)). Lookup also accepts a non-int value
@@ -902,7 +963,7 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   value map does; class containment tests declared values for non-ints
   ([test](../tests/programs/library/lib_enum_flag_numeric_lookup.py)). An `IntFlag` member has `int`'s
   operations, `str()` and `format()`, as an `IntEnum` member does, and `|`, `&` and `^` with an
-  int keep its class, whose boundary `KEEP` keeps the bits no member has (`<I: 12>`,
+  int keep its class, whose boundary `KEEP` (`IntFlag`'s default) keeps the bits no member has (`<I: 12>`,
   `<I.A|12: 13>`); its members follow the int-like members' rules above, and `isinstance()` of
   one and `ReprEnum`, which CPython's `IntFlag` derives from, is a compile-time error too
   ([test](../tests/programs/library/lib_enum_intflag.py)). Bits that occur only in composite
@@ -910,25 +971,32 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   Iteration looks up each bit as it advances: an unnamed bit yields `None` until a lookup of
   that value has created a pseudo-member ([test](../tests/programs/library/lib_enum_flag_bits.py)).
   Such bits with out-of-order single-bit members or a custom (including inherited)
-  `_iter_member_()` remain a compile-time error, as do a
-  `boundary=` keyword, a flag class's own `_missing_()`, and an int on the left of a `Flag`
-  member's `|`, `&` or `^`, which CPython rejects with `TypeError` (an `IntFlag` member's
-  computes, above).
+  `_iter_member_()` remain a compile-time error, as do a flag class's own `_missing_()`, and an
+  int on the left of a `Flag` member's `|`, `&` or `^`, which CPython rejects with `TypeError`
+  (an `IntFlag` member's computes, above).
+- A flag class's `boundary=` (`STRICT`, `CONFORM` or `KEEP`, as `enum` names them) sets what a
+  lookup by value, `|`, `&`, `^` and `~` do with bits that no member has, as in CPython: `STRICT`
+  raises `ValueError`, `CONFORM` drops the bits and `KEEP` keeps them (and `~` then gives every
+  bit but the member's); a class deriving from a flag class without members takes its boundary,
+  and a class of `Enum` takes and ignores one
+  ([test](../tests/programs/library/lib_enum_boundary.py)). `boundary=EJECT`, for which
+  CPython's lookup returns a plain `int`, a boundary given by another expression than those
+  names, and reading a class's `_boundary_`, are compile-time errors
+  ([test](../tests/errors/library/lib_enum_eject.py)).
 - These are compile-time errors: `ReprEnum` as a base; other mixin types
   (`class C(float, Enum)`) and keywords; members of other values or types, `_ignore_`, `_order_`
   and private names; a `__new__` of another form (`*args`, a `_value_` the compiler cannot
   compute, an `IntEnum` member made of another int than its `_value_`), with an `__init__`, in a
   flag class or under `@_simple_enum(Enum)`; `_generate_next_value_`; `__init__` in a flag class or in
   an enum class without members, or with arguments its members' values do not give;
-  `@_simple_enum` with `boundary=` or `use_args=`, `auto()` in a flag class it makes and
-  `@global_enum` of a flag class; an enum
+  `@_simple_enum` with `use_args=` and `auto()` in a flag class it makes; an enum
   class that derives from an enum class of another module, or from one with members (CPython's
   `TypeError`); a class statement in an `if` or `try` statement, or whose base is imported in
   one ([test](../tests/errors/library/lib_enum_conditional.py),
-  [test](../tests/errors/library/lib_enum_try_import.py)); the functional API (`Enum("Color", "RED GREEN")`); reassigning a member
+  [test](../tests/errors/library/lib_enum_try_import.py)); the functional API but as above;
+  reassigning a member
   (CPython's `AttributeError`); `reversed()` of an enum class, and an enum class without
-  members as a value. `enum.property`, `member`, `nonmember`, `verify` and the other helpers
-  are not provided.
+  members as a value.
 
 ### `heapq`
 

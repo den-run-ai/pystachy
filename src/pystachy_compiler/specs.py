@@ -57,9 +57,9 @@ STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pysta
 OPAQUE: dict[str, bool] = {"_weakref": True, "_pystachy_mappingproxy": True, "_pystachy_copy": True}
 # the module that CPython's types of a stand-in name as theirs (__module__, reprs), where it is
 # not the module's own: weakref.ReferenceType, _io.StringIO (every class that lib's
-# io defines is the C module _io's in CPython, as are the binary files of _pystachy_bfile), and
-# mappingproxy, a builtin type
-TYPEMODS: dict[str, str] = {"_weakref": "weakref", "io": "_io", "_pystachy_mappingproxy": "builtins", "_pystachy_bfile": "_io"}
+# io defines is the C module _io's in CPython, as are the binary files of _pystachy_bfile),
+# mappingproxy, a builtin type, and enum's FlagBoundary and EnumCheck (lib/_pystachy_enum.py)
+TYPEMODS: dict[str, str] = {"_weakref": "weakref", "io": "_io", "_pystachy_mappingproxy": "builtins", "_pystachy_bfile": "_io", "_pystachy_enum": "enum"}
 # binary files (lib/_pystachy_bfile.py): the names the loader binds a module's open() of a literal binary
 # mode to (binary_opens), each to the factory of the class CPython's open() makes for that mode, and their type
 BOPENS: dict[str, str] = {"_pys_bfile_reader": "open_reader", "_pys_bfile_writer": "open_writer",

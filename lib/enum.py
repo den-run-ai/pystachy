@@ -6,14 +6,136 @@
 # of the members' values), and the class as a value (iteration, len(), in, C(value), C[name],
 # __members__, repr()) is an object of EnumType that the module makes after the class statement.
 # The methods below are CPython's for the members (repr(), str(), format(), hash(), copies), with
-# the operations IntEnum and StrEnum members take from int and str.
+# the operations IntEnum and StrEnum members take from int and str. The decorators and the
+# wrappers a class body uses (unique, verify(...), global_enum, _simple_enum(...), member(),
+# nonmember() and a flag class's boundary=) are the compiler's to apply where it makes the class;
+# their functions here serve direct calls. FlagBoundary, EnumCheck, their members (STRICT, ...,
+# UNIQUE, ...) and verify are lib/_pystachy_enum.py's, which a program's import of them from
+# enum reads (Loader's enum_elsewhere): their StrEnum classes are no classes of a program that
+# does not name them. CPython's enum.property, a descriptor whose name its own Enum's @property
+# decorators use, is no name of this module, whose @property is the builtin: the compiler takes
+# @enum.property on a method of an enum class body as @property (and drops property from a
+# module's from enum import ...).
 from types import MappingProxyType
 
+# (CPython's, but the names of lib/_pystachy_enum.py, EnumDict, property and pickle_by_enum_name)
 __all__ = [
         'EnumType', 'EnumMeta',
         'Enum', 'IntEnum', 'StrEnum', 'Flag', 'IntFlag', 'ReprEnum',
-        'auto', 'unique', 'global_enum',
+        'auto', 'unique', 'member', 'nonmember',
+        'global_flag_repr', 'global_enum_repr', 'global_str', 'global_enum',
+        'pickle_by_global_name',
         ]
+
+
+class nonmember:
+    """
+    Protects item from becoming an Enum member during class creation.
+    """
+    # (in an enum class body the compiler makes NAME = nonmember(value) a class attribute that
+    # holds the value)
+    def __init__(self, value):
+        self.value = value
+
+
+class member:
+    """
+    Forces item to become an Enum member during class creation.
+    """
+    # (in an enum class body the compiler makes NAME = member(value) the member of that value)
+    def __init__(self, value):
+        self.value = value
+
+
+def _is_descriptor(obj) -> bool:
+    """
+    Returns True if obj is a descriptor, False otherwise.
+    """
+    return (
+            hasattr(obj, '__get__') or
+            hasattr(obj, '__set__') or
+            hasattr(obj, '__delete__')
+            )
+
+
+def _is_dunder(name: str) -> bool:
+    """
+    Returns True if a __dunder__ name, False otherwise.
+    """
+    return (
+            len(name) > 4 and
+            name[:2] == name[-2:] == '__' and
+            name[2] != '_' and
+            name[-3] != '_'
+            )
+
+
+def _is_sunder(name: str) -> bool:
+    """
+    Returns True if a _sunder_ name, False otherwise.
+    """
+    return (
+            len(name) > 2 and
+            name[0] == name[-1] == '_' and
+            name[1] != '_' and
+            name[-2] != '_'
+            )
+
+
+def _is_private(cls_name: str, name: str) -> bool:
+    # do not use `re` as `re` imports `enum`
+    pattern = '_%s__' % (cls_name, )
+    pat_len = len(pattern)
+    if (
+            len(name) > pat_len
+            and name.startswith(pattern)
+            and (name[-1] != '_' or name[-2] != '_')
+        ):
+        return True
+    else:
+        return False
+
+
+def _is_single_bit(num: int) -> bool:
+    """
+    True if only one bit set in num (should be an int)
+    """
+    if num == 0:
+        return False
+    num &= num - 1
+    return num == 0
+
+
+def _flag_int(num) -> int:
+    # num, an int or an enum member of an int value, as _iter_bits_lsb() computes with it: CPython's
+    # TypeError, or ValueError (-1), where its first operation on another value fails
+    if isinstance(num, int):
+        return num
+    if isinstance(num, Enum):
+        return _flag_int(num._value_)
+    if isinstance(num, float) and num < 0:
+        return -1
+    if isinstance(num, float) and not num:
+        return 0
+    if isinstance(num, float):
+        raise TypeError("bad operand type for unary ~: 'float'")
+    raise TypeError("'<' not supported between instances of '%s' and 'int'" % type(num).__name__)
+
+
+def _iter_bits_lsb(num):
+    # num must be a positive integer
+    original = num
+    value = _flag_int(num)
+    if value < 0:
+        raise ValueError('%r is not a positive integer' % original)
+    while value:
+        b = value & (~value + 1)
+        yield b
+        value ^= b
+
+
+def show_flag_values(value) -> list[int]:
+    return list(_iter_bits_lsb(value))
 
 
 class EnumType:
@@ -542,10 +664,10 @@ class _FlagType:
     # (EnumType for a Flag or IntFlag class: the compiler makes one object of it for each flag
     # class, with its name, its canonical members (single-bit) in definition order, its members by
     # name, aliases included, its members by value, which the pseudo-members join as they are made,
-    # and CPython's _flag_mask_, _singles_mask_, _all_bits_ and boundary, STRICT for Flag and KEEP
-    # for IntFlag)
+    # and CPython's _flag_mask_, _singles_mask_, _all_bits_ and _boundary_, as the value of its
+    # FlagBoundary member: the class's boundary=, else "strict" for Flag and "keep" for IntFlag)
 
-    def __init__(self, name, members, member_map, value_map, flag_mask: int, singles_mask: int, all_bits: int, keep: bool):
+    def __init__(self, name, members, member_map, value_map, flag_mask: int, singles_mask: int, all_bits: int, boundary: str):
         self._cls_name_ = name
         self._member_list_ = members
         self._member_map_ = member_map
@@ -553,7 +675,7 @@ class _FlagType:
         self._flag_mask_ = flag_mask
         self._singles_mask_ = singles_mask
         self._all_bits_ = all_bits
-        self._keep_ = keep
+        self._boundary_ = boundary
 
     def __bool__(self) -> bool:
         """
@@ -595,20 +717,23 @@ class _FlagType:
         flag_mask = self._flag_mask_
         singles_mask = self._singles_mask_
         all_bits = self._all_bits_
+        boundary = self._boundary_
         neg_value = 0
         negative = False
         if (
                 not ~all_bits <= value <= all_bits
                 or value & (all_bits ^ flag_mask)
             ):
-            if not self._keep_:
+            if boundary == "strict":
                 max_bits = max(_bits(value), _bits(flag_mask))
                 raise ValueError(
                         "%r invalid value %r\n    given %s\n  allowed %s" % (
                             self, value, _flag_bin(value, max_bits), _flag_bin(flag_mask, max_bits),
                             ))
-            if value < 0:
-                # Add the greater of the two powers of two to the negative value.
+            elif boundary == "conform":
+                value = value & flag_mask
+            elif value < 0:
+                # (keep) Add the greater of the two powers of two to the negative value.
                 # Its half fits even when the power is 2**63, so form the signed
                 # result without first materializing an overflowing intermediate.
                 half = max((all_bits >> 1) + 1, 2**(_bits(value) - 1))
@@ -621,7 +746,7 @@ class _FlagType:
         unknown = value & ~flag_mask
         aliases = value & ~singles_mask
         member_value = value & singles_mask
-        if unknown and not self._keep_:
+        if unknown and boundary != "keep":
             raise ValueError(
                     '%s(%r) -->  unknown values %r [%s]'
                     % (self._cls_name_, value, unknown, _flag_bin(unknown))
@@ -642,7 +767,7 @@ class _FlagType:
             name = '|'.join([m._name_ for m in members])
             if not combined_value:
                 name = ""
-            elif unknown and not self._keep_:
+            elif unknown and boundary == "strict":
                 raise ValueError('%r: no members with value %r' % (self, unknown))
             elif unknown:
                 name += '|%s' % repr(unknown)
@@ -804,7 +929,10 @@ class Flag(Enum):
         return self._flag_type_()(self._value_ ^ self._flag_of_(other, '^'))
 
     def __invert__(self):
-        return self._flag_type_()(self._flag_type_()._singles_mask_ & ~self._value_)
+        ft = self._flag_type_()
+        if ft._boundary_ == "keep":
+            return ft(~self._value_)
+        return ft(ft._singles_mask_ & ~self._value_)
 
 
 def _intflag_of(x, a, op: str) -> int:
@@ -823,7 +951,8 @@ class IntFlag(Flag):
     """
     # (CPython's IntFlag(int, ReprEnum, Flag, boundary=KEEP): a member is an object of its class
     # with int's operations, str() and format(), as an IntEnum member is; |, & and ^ with an int
-    # keep the class, whose boundary KEEP keeps bits that no member has)
+    # keep the class, whose boundary, KEEP unless the class gives another, keeps bits that no
+    # member has)
 
     def __str__(self) -> str:
         return repr(self._value_)
@@ -893,9 +1022,6 @@ class IntFlag(Flag):
     def __xor__(self, other):
         return self._flag_type_()(self._value_ ^ _intflag_of(other, self, '^'))
 
-    def __invert__(self):
-        return self._flag_type_()(~self._value_)
-
     def __radd__(self, other):
         return _int_left(other, self, '+') + self._value_
 
@@ -953,7 +1079,17 @@ def unique(enumeration):
     Class decorator for enumerations ensuring unique member values.
     """
     # (the compiler checks the members of an enum class that @unique decorates, and reports its
-    # aliases as an error: CPython's ValueError where the class statement runs)
+    # aliases as an error: CPython's ValueError where the class statement runs. A direct call
+    # takes the class as a value, its EnumType object, and checks it here)
+    duplicates = []
+    for name, member in enumeration._member_map_.items():
+        if name != member._name_:
+            duplicates.append((name, member._name_))
+    if duplicates:
+        alias_details = ', '.join(
+                ["%s -> %s" % (alias, name) for (alias, name) in duplicates])
+        raise ValueError('duplicate values found in %r: %s' %
+                (enumeration, alias_details))
     return enumeration
 
 
@@ -980,3 +1116,96 @@ def _simple_enum(etype):
     # decorates, as it makes one of a statement that derives from etype: Loader's enum_classes.
     # No other call reaches this function)
     raise TypeError("_simple_enum() is supported as the decorator of a class statement")
+
+
+def global_enum_repr(self) -> str:
+    """
+    use module.enum_name instead of class.enum_name
+
+    the module is the last module in case of a multi-module name
+    """
+    module = type(self).__module__.split('.')[-1]
+    return '%s.%s' % (module, self._name_)
+
+
+def global_flag_repr(self) -> str:
+    """
+    use module.flag_name instead of class.flag_name
+
+    the module is the last module in case of a multi-module name
+    """
+    # (a pseudo-member without members has the _name_ "" here, CPython's None)
+    module = type(self).__module__.split('.')[-1]
+    cls_name = type(self).__name__
+    if self._name_ == "":
+        return "%s.%s(%r)" % (module, cls_name, self._value_)
+    if _is_single_bit(self._value_):
+        return '%s.%s' % (module, self._name_)
+    if self._flag_type_()._boundary_ != "keep":
+        return '|'.join(['%s.%s' % (module, name) for name in self._name_.split('|')])
+    else:
+        name = []
+        for n in self._name_.split('|'):
+            if n[0].isdigit():
+                name.append(n)
+            else:
+                name.append('%s.%s' % (module, n))
+        return '|'.join(name)
+
+
+def global_str(self) -> str:
+    """
+    use enum_name instead of class.enum_name
+    """
+    if self._name_ == "":
+        cls_name = type(self).__name__
+        return "%s(%r)" % (cls_name, self._value_)
+    else:
+        return self._name_
+
+
+def pickle_by_global_name(self, proto) -> str:
+    # should not be used with Flag-type enums
+    return self._name_
+
+
+
+class EnumDict:
+    """
+    Track enum member order and ensure member names are not reused.
+
+    EnumType will use the names found in self._member_names as the
+    enumeration member names.
+    """
+    # (CPython's class namespace of an enum class body, a dict, which EnumType's __prepare__
+    # makes: here the compiler reads the class body itself, and an EnumDict cannot be made. The
+    # compiler reports a call of EnumDict as an error; this serves one it cannot see)
+    def __init__(self, cls_name=None):
+        raise TypeError("EnumDict is not supported")
+
+
+def _test_simple_enum(checked_enum, simple_enum):
+    """
+    A function that can be used to test an enum created with :func:`_simple_enum`
+    against the version created by subclassing :class:`Enum`::
+
+        >>> from enum import Enum, _simple_enum, _test_simple_enum
+        >>> @_simple_enum(Enum)
+        ... class Color:
+        ...     RED = auto()
+        ...     GREEN = auto()
+        ...     BLUE = auto()
+        >>> class CheckedColor(Enum):
+        ...     RED = auto()
+        ...     GREEN = auto()
+        ...     BLUE = auto()
+        >>> _test_simple_enum(CheckedColor, Color)
+
+    If differences are found, a :exc:`TypeError` is raised.
+    """
+    # (CPython's compares the two classes' __dict__s, which Pystachy's enum classes do not have:
+    # the compiler reports a call of it as an error)
+    raise TypeError("_test_simple_enum() is not supported")
+
+
+bin = _flag_bin

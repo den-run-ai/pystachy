@@ -1,0 +1,5 @@
+__main__.R|__main__.W __main__.R R|W Perm(0) __main__.Perm(0) __main__.RWX RWX W|
+__main__.LOW_BEAM_K|__main__.FOG_K __main__.LOW_BEAM_K|__main__.FOG_K|8 13 __main__.OFF_K __main__.HeadlightsK(16)
+__main__.LOW_BEAM_C|__main__.FOG_C __main__.LOW_BEAM_C|__main__.FOG_C __main__.OFF_C 1 2
+__main__.A|8 A|8 __main__.Mode(8) Mode(8) __main__.B True [__main__.A, __main__.B]
+[exit 0]

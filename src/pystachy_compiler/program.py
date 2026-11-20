@@ -8,7 +8,7 @@ from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_pr
 from src.pystachy_compiler.ir import Val
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import ORDERED, RENAMED, owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, ORDERED, RENAMED, owner, short
 from src.pystachy_compiler.pipeline import PreparedProgram
 from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
@@ -817,7 +817,23 @@ def gen_init_generic(self, st: Node, hier: bool = False) -> bool:
                     fixed[b.kids[0].s] = True
             if self.init_makes_tmpl(d.kids[2], ps[0].s if len(ps) > 0 else "", fixed) if hier else self.makes_tmpl(d.kids[2]):
                 return True  # (a field may hold an object of a class template: typed where the object is made)
+            if not hier and stores_enum_class(d.kids[2], ps[0].s if len(ps) > 0 else "", self.classes):
+                return True  # (a field holds an enum class's EnumType object, of a class template too)
     return False
+
+def stores_enum_class(n: Node, me: str, classes: dict[str, ClassInfo]) -> bool:
+    # does __init__'s code n store an enum class, its EnumType object (Loader's enum_classes), into
+    # a field of me (self.kind = Color), which is of a specialization of lib/enum.py's class
+    # template, as the object of a class template is
+    if n.kind == "assign" and len(n.kids) == 2 and n.kids[0].kind == "attr" and n.kids[0].kids[0].kind == "name" and n.kids[0].kids[0].s == me:
+        v = n.kids[1]
+        if v.kind == "name" and v.s in classes and classes[v.s].node.line in ENUMCLASSES:
+            return True
+    for k in n.kids:
+        if stores_enum_class(k, me, classes):
+            return True
+    return False
+
 
 def fixed_ann_shape(a: Node, classes: dict[str, ClassInfo]) -> bool:
     if a.kind == "str" or a.kind == "noann":

@@ -27,6 +27,7 @@ dynamic_proof.BOX_TAGS expressions.ORDERS expressions.CMPDUNDERS
 ir.NONUMS ir.NOVALS ir.NOLABELS ir.OPERAND_KINDS
 lexer.KEYWORDS lexer.OPS lexer.ESCAPES lexer.PREFIXES lexer.NONPRINT lexer.NOTID
 loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS loader.FUNCTOOLS_NAMES loader.ORDERINGS
+loader.ENUM_BOUNDARIES loader.ENUM_CHECKS loader.ENUM_ELSEWHERE loader.ENUM_UNCALLED
 local_versions.UNVERSIONED machine_ir.WORD_READS optimizations.PASS_CONTRACTS parser.ATOMS patterns.SEQ_SCALARS program.BOUND_FORMS program.ORDER_OPS program.TV_TYPES
 pipeline.STAGE_PREDECESSORS
 reflection.BUILTIN_TYPES reflection.CLASS_BUILTINS reflection.SLOT_WRAPPERS reflection.OBJ_BUILTINS reflection.TYPE_BUILTINS reflection.PICKLING
