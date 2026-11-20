@@ -8,6 +8,8 @@ name: LLVM toolchain
 
 # Nothing but a person starts a run: an uncached one takes an hour of runner time.
 on:
+  push:
+    branches: [claude/gracious-cannon-a68uaf-trial]
   workflow_dispatch:
     inputs:
       revision:
@@ -243,3 +245,73 @@ jobs:
           [[ $GITHUB_REF == refs/heads/main ]]
           python3 tools/llvm_toolchain_release.py --repository "$GITHUB_REPOSITORY" --commit "$GITHUB_SHA" \
             --revision "$REVISION" "$OUT/$(tools/llvm_toolchain.sh name).tar.xz"
+
+  # Trial only: everything the publication does before it publishes, on a draft that is then deleted.
+  rehearse:
+    name: rehearse the publication on a draft
+    needs: [package, bootstrap]
+    if: ${{ !cancelled() && needs.bootstrap.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: llvm-toolchain-18.1.8-999
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+        with:
+          name: pystachy-llvm-linux-x86_64
+          path: ${{ env.OUT }}
+
+      - name: Create the draft, upload, read back and stop before publishing
+        run: |
+          gh --version
+          python3 - "$OUT/$(tools/llvm_toolchain.sh name).tar.xz" <<'PY'
+          import os
+          from pathlib import Path
+          import sys
+
+          sys.path.insert(0, "tools")
+          import llvm_toolchain_release as release
+
+
+          class Reached(Exception):
+              pass
+
+
+          def run(*arguments):
+              print("gh", *arguments, flush=True)
+              if arguments[:2] == ("release", "edit"):
+                  raise Reached
+              result = release.gh(*arguments)
+              print(f"  exit {result.returncode} {result.stderr.strip()[:300]!r}", flush=True)
+              return result
+
+
+          try:
+              release.publish(os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_SHA"], "999", Path(sys.argv[1]), run=run)
+          except Reached:
+              print("the draft was created, uploaded and read back: the publishing step was reached")
+          else:
+              sys.exit("the rehearsal did not stop before publishing")
+          PY
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,tagName,targetCommitish,assets \
+            --jq '{isDraft, tagName, targetCommitish, assets: [.assets[] | {name, size, digest}]}'
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 30 --json tagName,isLatest,isDraft \
+            --jq '.[] | select(.isLatest or .isDraft)'
+          [ "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" = true ]
+
+      - name: Delete the draft
+        if: always()
+        run: |
+          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes || true
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2> "$RUNNER_TEMP/view.err"; then
+            echo "the draft $TAG is still there" >&2; exit 1
+          fi
+          cat "$RUNNER_TEMP/view.err"
+          grep -q "release not found" "$RUNNER_TEMP/view.err"
