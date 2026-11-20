@@ -59,7 +59,7 @@ stages in order, for both ordinary programs and `runtime.py`:
 | `discover_program(prepared)` | Reachable functions, module initializers, specializations and helpers produce typed `IFn` bodies. C declarations become validated ABI plans with their dependencies registered. Empty-container holes resolve as types become known; a pending inference retry prevents completion. |
 | `analyze_program()` | Callback versions and the function index are complete. Effect summaries and the recursion policy precede requested typed-IR verification. |
 | `optimize_program()` | Enabled typed-IR passes run under their existing prerequisites, preserved facts and invalidation contracts. Exception regions remain in pre-lowering form. |
-| `finalize_program()` | Required exception edges and tuple-return ABI decisions are ready for the backend. Runtime-module and CPython-export admission checks have passed. Function bodies, ABI plans and representation tables remain available for inspection. |
+| `finalize_program()` | Required exception edges, tuple-return ABI decisions and the key kinds of holes (`Gen.key_kinds`) are ready for the backend, which asks the frontend nothing. Runtime-module and CPython-export admission checks have passed. Function bodies, ABI plans and representation tables remain available for inspection, and print as a module that [compiles](#text-form). |
 | `lower_program()` | Each function's layout reads first become machine operations (`Gen.machine_ir`, see [machine lowering](#machine-lowering)). Function, adapter and module lowering serialize LLVM. Function bodies are consumed; summaries remain available. |
 
 `Gen.typed_program(modules)` runs through finalization without calling
@@ -1100,6 +1100,9 @@ decides a fixed tuple's slots while its function is printed.
   the error each function of the file expects, `classes.tir` holds the verifier's class view
   to the classes its module declares, and `fields.tir` its `field.addr` rule to their structs
   (see [text form](#text-form)).
+- `tools/test_typed_ir_compile.py` (in `make check-fast`) prints a sample of programs' modules,
+  compiles them from text and requires the compiler's LLVM byte for byte;
+  `tools/typed_ir_text.py roundtrip` measures it for any programs.
 - `make check-runtime` checks runtime signature/effect declarations.
 - `make irsame` and `make irsame-py` compare a refactor's IR, diagnostics and exit status with a
   reference compiler. Behavior changes need their own explicit tests, not a byte-identical promise.
@@ -1144,13 +1147,14 @@ Types are the compiler's canonical strings. Most are Python's (`int`, `list[floa
 the slot at `%s.3`, and `*X` is an eight-byte word that holds an `X`, as `list.load` returns a
 list item; `%ptr`, `%byte`, `%i32` and `%slot` are machine types with no Python meaning.
 
-A text holds functions alone, or a module: its declarations between `module {` and `}`, then
-its functions, each written as it is alone. `print` writes a typed-after snapshot as a module,
-whose declarations are the snapshot's tables of the program's classes, DynTypes and class
-layouts:
+A text holds functions alone, or a module: its attributes on its `module` line, its
+declarations between that line and `}`, then its functions, each written as it is alone. `print`
+writes a typed-after snapshot as a module. Its first declarations are the snapshot's tables of
+the program's classes, DynTypes and class layouts, which the verifier reads (the module's
+attributes and lowering's declarations, below, are left out here):
 
 ```text
-module {
+module complete opts=[...] {
   class Both base=Storage roles=[Reader] tagged fields=[" class":int value:int " Storage.0":bool " Storage.box.0":dyn] flags=[value:2] boxes=[value:3]
   class Reader overlaps=[Storage] tagged fields=[" class":int]
   class Storage overlaps=[Reader] tagged fields=[" class":int value:int] flags=[value:2] boxes=[value:3]
@@ -1175,17 +1179,87 @@ its kind, class number, flags, base and role DynTypes and the static type of its
 payload, and a `layout` is the struct of a class that has one. A field that holds its default
 (`""`, `[]`, `{}`, 0 or false) is omitted.
 
+A typed-after snapshot is taken at the lowering boundary, once finalization has run, and its
+module also holds everything else that LLVM lowering (`Gen.lower_program`: `gen_lower`,
+`gen_lower_module` and their helpers) reads: the module's attributes, lowering's declarations
+after the layouts, in their order, and each function's attributes after its effects. Of a
+program with a class, a dict filled after it was made empty and a recursive function (some of
+its declarations left out):
+
+```text
+module complete opts=[charslots listget listguard dictfuse tupleiter listfast moduleints fieldtbaa tupleret unionslots nullcheck allocelide callbacks] {
+  class Point fields=[x:int y:int]
+  hole 1 type=dict[str,int]
+  global @g.counts type=dict[?,?]
+  global @g.points type=list[Point]
+  root @g.counts
+  root @g.points
+  const @s.2 kind=string text=a
+  const @tc.0 kind=tuple text=tuple[int,str] items=(int 1, str @s.2)
+  runtime dict.new
+  runtime recursion.enter
+  keykind dict[str,int] kind=1
+}
+
+function @f.fact(n: int) -> int effects="R I" name=fact rdepth=%t1 closed {
+```
+
+<a id="lowering-state"></a>
+
+| What lowering reads | In the text |
+|---|---|
+| The optimizations on (`Gen.opts`: allocelide, fieldtbaa, listguard), exceptions on (`Gen.eh`), generator `send`/`throw` (`gproto`), the dynamic Any and promoting int opt-ins (`dynamic_program()`, `int_program()`) | module attributes `opts`, `exceptions`, `protocol`, `dynamic`, `promoting` |
+| Each class's struct (`struct_types`, `field_tag`, `ref_free`) in `Gen.classes` order, its base, `exc` and `mod` (`fn_home`); the class templates (`Gen.tmpl`) | `class`, in the compiler's order, with `template`, `exception`, `module` |
+| The types of holes (`Gen.holes`) and the key kinds of their dicts and sets (`Gen.keykinds`, `builtkinds`) | `hole N type=T`, `keykind T kind=K built=K` |
+| Globals (`Gen.globs`) and the GC roots `@main` hands the runtime (`gcroots`) | `global SYMBOL type=T`, `root VALUE` |
+| Module data (`Gen.consts`, and its `@tc.` constant tuples, `tconstdata`) | `const NAME kind=K text=... refs=[...] items=(T V, ...)` |
+| Runtime functions and data declared, in order (`Gen.rtfns`, `rtdatas`) | `runtime KEY`, `rtdata SYMBOL` |
+| Extern and C ABI plans (`Gen.externs`: `ExternDecl`) | `extern KEY symbol=... params=[...] result=...` and the plan's fields |
+| The object dispatchers' classes (`Gen.ocls`, `ocmp`, `hcls`, `one`, `xobj`: `gen_dispatch`) | module attributes `objects`, `compared`, `hashed`, `unequal`, `crossed` |
+| Generator types that never recur (`Gen.genplain`) and modules that track no numeric identity (`idoff`) | module attributes `plain`, `untracked` |
+| Closed recursion (`Gen.rdpass`, `IFn.rdepth`) and tuples returned by value (`vrets`, `vconst`, `vcalls`) | function attributes `closed`, `rdepth`, `tupleret`, `tupleconst`, `tuplecalls` |
+| A function's `FnInfo` (`name`, `cls`, `deco`, `nullable_self`, `mod`, `home`, `node.kind`, `export`, `pyexport`, `extern`, `gret`) and its casts' numbers (`IFn.casts`, which `erase_casts` renumbers by) | function attributes `name`, `class`, `decorator`, `nullable`, `module`, `home`, `kind`, `export`, `pyexport`, `extern`, `gret`, `casts` |
+| `IFn.ps`, `pads` and `n` | derived from the parameters not typed `None`, the landing ops and the largest number the function names (its casts' too); the printer names a function whose `ps` or `pads` differ `unsupported` |
+| Lowering's own state (`Gen.out`, `tbaa`, `ftags`, `coros`, `rangeused` and its other flags) | none: lowering starts it empty |
+
+Lowering asks the frontend nothing. The key kind of a dict or set that a hole made (`key_kind`)
+may add a descriptor's string constant or number an object class, which lowering used to do;
+`Gen.key_kinds` now resolves them when finalization ends, in the order lowering reads them, and
+lowering reads the tables. `complete` says that a module holds this state; `unsupported` names
+what the printer found it cannot hold yet.
+
+`compile` builds a fresh `Gen` that holds a module's state (`gen_for_module`) and runs the
+compiler's own `Gen.lower_program`, with the module's opt-ins set as lowering reads them, so
+a module printed from a snapshot compiles to the LLVM module that the compiler emitted for the
+program, byte for byte, as MLIR's printed modules round-trip:
+
+```sh
+python3 tools/inspect_compiler.py prog.py --output /tmp/inspect --typed-after-only
+python3 tools/typed_ir_text.py print /tmp/inspect/typed-after.json > prog.tir
+python3 tools/typed_ir_text.py compile prog.tir -o prog.ll  # (prog.ll is /tmp/inspect/llvm.ll)
+python3 tools/typed_ir_text.py roundtrip tests/programs/*/*.py --jobs 2
+```
+
+`roundtrip` does the first three steps for each program and compares the LLVM, which
+[`tools/test_typed_ir_compile.py`](../tools/test_typed_ir_compile.py) requires of a sample:
+classes, closures, generators, exceptions, unions, dynamic Any, promoting ints, tuples returned
+by value, closed recursion, key kinds, object dispatchers and C externs. `compile` fails closed:
+it refuses a module that is not `complete` or that names something `unsupported`, an extension
+module's entry points (`pystachy ext`: `Gen.funcs`, `gen_pyext`), runtime.py's module
+(`Gen.rtdefs`) and LLVM line tables (`PYSTACHY_DEBUG_LINES=1`: the program's files, working
+directory, definitions' lines and renamed classes), which the text does not hold yet.
+
 Printing and parsing are inverse: a module or a function printed with its locations parses to
 the record it was printed from, and a text that is not in the printed form is rejected. A function record holds
-a function's symbol, parameters, return type, effects, slots, blocks, check targets and loops,
-as the [inspection snapshots](compiler-inspection.md) do, and a module record holds the
-declarations and its function records. `to_ifn` builds the compiler's own `IFn` from a
-function record, so a test writes IR as text, runs the verifier or one pass and compares the
-printed result: [`tools/test_typed_ir_text.py`](../tools/test_typed_ir_text.py) runs `listget`
+a function's symbol, parameters, return type, effects, attributes, slots, blocks, check targets
+and loops, as the [inspection snapshots](compiler-inspection.md) do, and a module record holds
+its attributes, the declarations and its function records. `to_ifn` builds the compiler's own
+`IFn` from a function record, so a test writes IR as text, runs the verifier or one pass and
+compares the printed result: [`tools/test_typed_ir_text.py`](../tools/test_typed_ir_text.py) runs `listget`
 on [a fixture](../tools/fixtures/typed_ir/score_samples.listget.before.tir) that way, and
-checks that the fixture is what the compiler emits. The text holds no globals or runtime
-declarations, so a function that needs those is tested from source. It is a test and review
-form of the hosted compiler, not an interchange format.
+checks that the fixture is what the compiler emits. It is a test and review form of the
+hosted compiler, not a versioned interchange format: its declarations follow the compiler's
+tables, and a text printed by one compiler compiles only with the same compiler.
 
 `verify` runs the verifier on each function of a text file, as MLIR's `-verify-diagnostics`
 does. A comment line `; expected-error {{MESSAGE}}` says that the function's verification
@@ -1241,9 +1315,14 @@ It proves no typing or lowering property.
 
 ## Remaining work
 
-Typed instruction coverage is complete for the LLVM backend. Further backend neutrality
-needs shared compiler/runtime layout definitions and a clearer separation of frontend
-elaboration from machine contracts. Operands still read values through the views of
+Typed instruction coverage is complete for the LLVM backend, and a module's [text](#text-form)
+holds what lowering reads of a program: printed at the lowering boundary, it compiles to the
+compiler's LLVM. It does not hold yet an extension module's entry points (`Gen.funcs`,
+`gen_pyext`), runtime.py's module (`Gen.rtdefs`) or the inputs of LLVM line tables
+(`PYSTACHY_DEBUG_LINES=1`), which `compile` refuses; its tables follow `Gen`'s and are not
+versioned. Further backend neutrality needs shared compiler/runtime layout definitions and a
+clearer separation of frontend elaboration from machine contracts. Operands still read values
+through the views of
 `TYPE_VIEWS`: precise result types for empty containers and for runtime calls that return
 untyped memory (`alloc`), and casts for the views that still narrow (a runtime call's word
 read through `bits`, `opt[U]` read as `U`, a derived class) would leave each value one type,
