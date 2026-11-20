@@ -104,3 +104,62 @@ The probe extracts the actual compiled runtime functions and links a small
 exception shim. Its 137,781 checks establish native values and error text; they
 do not test the complete runtime unwinder, GC, or performance. Full-runtime JIT,
 AOT, GC-stress and sanitizer regressions are separate validation linked from the PR.
+
+## Integer text conversion
+
+`str(int)` and `int(str, base)` moved from `runtime.c` to `runtime.py` after the migration
+above. Their workload is [`int_text.py`](int_text.py), a separate source so that
+`workload.py` keeps the hash the first report names. `compare.py` selects it for these
+cases:
+
+| Case | Default iterations | Work measured |
+|---|---:|---|
+| `str-int` | 20,000,000 | `str()` of ints of 1 to 19 digits, both signs |
+| `str-int-short` | 20,000,000 | `str()` of ints of 1 to 4 digits, both signs |
+| `int-str` | 20,000,000 | `int(s, 10)` of the same numbers' decimal digits |
+| `int-str-short` | 20,000,000 | `int(s, 10)` of 1 to 4 decimal digits |
+| `int-str-hex` | 20,000,000 | `int(s, 16)` of the same numbers' hex digits |
+| `int-str-padded` | 20,000,000 | `int(s, 10)` with a space before and a newline after |
+
+The 4,096 numbers and their texts are made before the timed region. Each iteration reads
+one of them; `str()` takes a value that also depends on the iteration, and the length and
+last byte of its result enter the checksum.
+
+```sh
+taskset -c "$BENCH_CPU" python3.13 bench/runtime_subset/compare.py \
+  --before "$BENCH_BASELINE" --after . --pairs 7 \
+  --cases str-int str-int-short int-str int-str-short int-str-hex int-str-padded \
+  --json /tmp/int-text.json
+```
+
+The [recorded report](int-text.json) compares baseline
+`d35417c967f25ac699bb713f4c796dfaf2c57fac` with
+`094d880c35b3c06cb68801bc03c9b2426e555794`, both from clean checkouts with freshly
+bootstrapped compilers, on CPython 3.13.16 and LLVM 18.1.3. The host is a shared four-CPU
+Linux x86-64 virtual machine (an Intel Xeon whose model the host does not name); the run
+was pinned to CPU 2 and the load average was 0.92 when it began.
+
+| Workload | AOT after / C | JIT after / C | AOT ns per iteration, C to after |
+|---|---:|---:|---:|
+| `str-int` | 0.628 | 0.622 | 55.7 to 34.9 |
+| `str-int-short` | 0.455 | 0.427 | 44.5 to 20.5 |
+| `int-str` | 0.634 | 0.673 | 42.1 to 26.6 |
+| `int-str-short` | 0.744 | 0.797 | 22.1 to 16.4 |
+| `int-str-hex` | 0.410 | 0.436 | 57.7 to 23.6 |
+| `int-str-padded` | 0.637 | 0.662 | 43.8 to 27.9 |
+
+Ratios are medians of seven alternating pairs, and the times are medians of the kernel
+timer divided by the iterations, loop included. Every pair of every case has a ratio below
+1; the largest is 0.804 (`int-str-short`, JIT). Collections and managed-heap peaks are
+equal in both versions: 23 and 19 collections with a 32.8 and 32.9 MiB peak for the two
+`str()` cases, none for the others.
+
+The AOT executable grows from **140,536 to 145,416 bytes** (+4,880; +3.5%), and its text
+from 100,945 to 102,313 bytes (`size`). By symbol (`nm -S`), `pys_int_str` grows by 576
+bytes and `pys_str_int` by 95; 618 are `pys_str_cat`, which builds the message for a
+number past CPython's 4,300 digits and which this program did not link before.
+
+The hex case gains most because the digit's value is selected from its two readings,
+digit and letter, where the C helper branched on them. A variant that branched ran the
+decimal cases about 6% faster and the hex case about twice as slow as the recorded one.
+That comparison was three runs of each variant on the same host and is not in the report.
