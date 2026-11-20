@@ -34,6 +34,12 @@ F64 = 0x7C
 VOID = 0x40
 
 
+# machine_ir.WORD_READS: layout reads that load an object's word, by its index
+WORD_READS: dict[str, int] = {"union.tag": 0, "dyn.type": 0, "union.payload": 1, "union.raw": 1, "dyn.payload": 1, "dyn.raw": 1}
+# LLVM's ordered fcmp predicates and une, as WebAssembly's f64 comparisons
+FCMP_OPS: dict[str, int] = {"oeq": 0x61, "une": 0x62, "olt": 0x63, "ogt": 0x64, "ole": 0x65, "oge": 0x66}
+
+
 class Refused(Exception):
     def __init__(self, what: str):
         super().__init__(what)
@@ -90,6 +96,7 @@ class Const:
         self.kind = kind
         self.text = ""
         self.items: list[Operand] = []
+        self.refs: list[str] = []
 
 
 class Module:
@@ -347,7 +354,7 @@ def declaration(m: Module, line: str) -> None:
         c.kind = f.get("kind", "")
         c.text = f.get("text", "")
         if "refs" in f:
-            raise Refused(f"constant {name} refers to others ({c.kind})")
+            c.refs = items_of(f["refs"])
         m.consts.append(c)
     elif keyword == "global":
         m.globals[name] = fields(line, at, len(line))["type"]
@@ -498,6 +505,7 @@ class Emitter:
         self.fnindex: dict[str, int] = {}
         self.data = bytearray()
         self.addr: dict[str, int] = {}
+        self.relocs: list[int] = []
         self.recursion = False
         # per function
         self.fn = Func("")
@@ -511,24 +519,53 @@ class Emitter:
         self.depth_local = -1
 
     # -- module data: constants, then globals, each 8-aligned --
+    # -- module data: constants, then globals, each 8-aligned. An address in it is relative to
+    # the block until the loader adds the block's base at each of relocs (pystachy.reloc) --
     def lay_out_data(self) -> None:
+        at = 0
+        for c in self.m.consts:
+            at = (at + 7) // 8 * 8
+            self.addr[c.name] = at
+            at += const_size(c)
         for c in self.m.consts:
             self.align8()
-            self.addr[c.name] = len(self.data)
+            if len(self.data) != self.addr[c.name]:
+                raise Refused(f"layout of constant {c.name}")
             if c.kind == "string":
-                b = bytearray([ord(ch) for ch in c.text])
-                for x in b:
+                codes = [ord(ch) for ch in c.text]
+                ascii_only = True
+                for x in codes:
                     if x > 255:
                         raise Refused(f"string constant {c.name} holds a character past a byte")
-                ascii_only = True
-                for x in b:
                     if x >= 128:
                         ascii_only = False
-                self.word(len(b))
+                self.word(len(codes))
                 self.word(0)
-                self.word(len(b) + 1 if ascii_only else 0)
-                self.data.extend(b)
+                self.word(len(codes) + 1 if ascii_only else 0)
+                for x in codes:
+                    self.data.append(x)
                 self.data.append(0)
+            elif c.kind == "tuple" or c.kind == "listdata":
+                # (lower_data: an i64 slot an item, lower_module.const_slot's; the empty tuple one slot)
+                for item in c.items:
+                    self.slot(item)
+                if c.kind == "tuple" and len(c.items) == 0:
+                    self.word(0)
+            elif c.kind == "fieldnames":
+                for r in c.refs:
+                    self.ref(r)
+            elif c.kind == "classrec" and len(c.refs) == 5 and len(c.items) == 3:
+                # {ptr, ptr, ptr, i64, i64, ptr, i64, ptr}, at wasm32's offsets 0 4 8 16 24 32 40 48
+                for r in c.refs[0:3]:
+                    self.ref(r)
+                self.align8()
+                self.slot(c.items[0])
+                self.slot(c.items[1])
+                self.ref(c.refs[3])
+                self.align8()
+                self.slot(c.items[2])
+                self.ref(c.refs[4])
+                self.align8()
             else:
                 raise Refused(f"constants of kind {c.kind}")
         for g in self.m.order:
@@ -539,6 +576,35 @@ class Emitter:
             for _ in range(n):
                 self.data.append(0)
         self.align8()
+
+    def ref(self, name: str) -> None:
+        # a 4-byte address: null, or a constant's (relocated)
+        if name == "null":
+            self.data.extend(bytes(4))
+        elif name in self.addr:
+            self.relocs.append(len(self.data))
+            self.data.extend(struct.pack("<I", self.addr[name]))
+        else:
+            raise Refused(f"a constant's reference to {name}")
+
+    def slot(self, v: Operand) -> None:
+        # an 8-byte slot of a constant tuple's item: as lower_module.const_slot gives it
+        if v.t == "int":
+            self.word(int(v.v))
+        elif v.t == "bool":
+            self.word(1 if v.v == "true" else 0)
+        elif v.v == "null":
+            self.word(0)
+        elif v.t == "float":
+            if v.v.startswith("0x"):
+                self.data.extend(struct.pack("<Q", int(v.v[2:], 16)))
+            else:
+                self.data.extend(struct.pack("<d", float(v.v)))
+        elif v.v.startswith("@"):
+            self.ref(v.v)
+            self.data.extend(bytes(4))
+        else:
+            raise Refused(f"a constant item {v.t} {v.v}")
 
     def align8(self) -> None:
         while len(self.data) % 8 != 0:
@@ -812,7 +878,35 @@ class Emitter:
                 else:
                     self.result(i, 0, i.t)
         elif op == "init":
-            raise Refused("module imports (init)")
+            callee = "@init." + i.fields.get("module", "")
+            if callee not in self.fnindex:
+                raise Refused(f"module init {callee}")
+            self.op(0x10)
+            uleb(self.code, self.fnindex[callee])
+        elif op == "cast":
+            # (a cast reads its operand at another type of the same LLVM type: no instruction)
+            self.push(i.args[0], value_ll(i.t))
+            self.result(i, 0, i.t)
+        elif op in WORD_READS:
+            # (machine_ir: a load of the object's word k, at the op's type)
+            ll = value_ll(i.t)
+            self.address(i.args[0])
+            self.mem(access(ll)[0], access(ll)[2], 8 * WORD_READS[op])
+            self.result(i, len(i.res) - 1, i.t)
+        elif op == "empty.kind":
+            # a fresh empty dict's or set's key kind, its second word, as finalization resolved it
+            hole = int(i.fields.get("hole", "0"))
+            t = self.m.holes.get(hole, "") if hole > 0 else i.args[0].t
+            kind = self.m.builtkinds.get(t, "") if t != "" else "0"
+            if not kind.lstrip("-").isdigit():
+                raise Refused(f"empty.kind of {t}")
+            self.address(i.args[0])
+            self.i32c(8)
+            self.op(0x6A)
+            self.set(self.local(i.res[0], I32))
+            self.get(self.locals[i.res[0]])
+            self.i64c(int(kind))
+            self.mem(0x37, 3, 0)
         elif op == "ret":
             self.restore_depth()
             if len(i.args) > 0:
@@ -940,6 +1034,33 @@ class Emitter:
             self.op(0x10)
             uleb(self.code, self.fnindex[imp.sym])
             self.set(self.local(i.res[0], I32))
+        elif op == "tuple.load" or op == "tuple.store":
+            # a fixed tuple's slot k: an i64 at its address plus 8 k (lowering's tuple.load/store)
+            self.address(i.args[0])
+            if op == "tuple.load":
+                self.mem(0x29, 3, 8 * int(i.fields.get("index", "0")))
+                self.set(self.local(i.res[1], I64))
+            else:
+                self.push(i.args[1], "i64")
+                self.mem(0x37, 3, 8 * int(i.fields.get("index", "0")))
+        elif op == "vtuple.make":
+            # runtime.c's VTuple: its length, a null identity companion (the allocation is
+            # zeroed), then each item in an 8-byte slot, stored at its own type (a bool widened)
+            p = self.local(i.res[0], I32)
+            imp = self.alloc_import()
+            self.i64c(8 * (len(i.args) + 2))
+            self.op(0x10)
+            uleb(self.code, self.fnindex[imp.sym])
+            self.set(p)
+            self.get(p)
+            self.i64c(len(i.args))
+            self.mem(0x37, 3, 0)
+            for k in range(len(i.args)):
+                v = i.args[k]
+                ll = "i64" if v.t == "bool" else value_ll(v.t)
+                self.get(p)
+                self.push(v, ll)
+                self.mem(access(ll)[1], access(ll)[2], 8 * (k + 2))
         elif op == "list.len":
             self.address(i.args[0])
             self.mem(0x29, 3, 0)
@@ -1124,12 +1245,10 @@ class Emitter:
         table = {"i64": {"add": 0x7C, "sub": 0x7D, "mul": 0x7E, "sdiv": 0x7F, "udiv": 0x80, "srem": 0x81, "urem": 0x82,
                          "and": 0x83, "or": 0x84, "xor": 0x85, "shl": 0x86, "ashr": 0x87, "lshr": 0x88},
                  "i1": {"and": 0x71, "or": 0x72, "xor": 0x73},
-                 "double": {"fadd": 0xA0, "fsub": 0xA1, "fmul": 0xA2, "fdiv": 0xA3}}
-        if ll not in table or o not in table[ll]:
+                 "double": {"fadd": 0xA0, "fsub": 0xA1, "fmul": 0xA2, "fdiv": 0xA3, "fneg": 0x9A}}
+        if ll not in table or o not in table[ll] or (o == "fneg") != (len(i.args) == 1):
             raise Refused(f"scalar.bin {o} of {ll}")
         self.op(table[ll][o])
-        if ll == "double" and o == "fneg":
-            raise Refused("fneg")
         self.result(i, 0, i.t)
 
     def scalar_cmp(self, i: Inst) -> None:
@@ -1143,8 +1262,10 @@ class Emitter:
             self.op(int_cmp(icmp[o], False))
         elif ll == "i64" and o in ucmp:
             self.op(int_cmp(ucmp[o], True))
-        elif ll == "i1" and (o == "eq" or o == "ne"):
+        elif (ll == "i1" or ll == "ptr") and (o == "eq" or o == "ne"):
             self.op(0x46 if o == "eq" else 0x47)
+        elif ll == "double" and o in FCMP_OPS:
+            self.op(FCMP_OPS[o])
         else:
             raise Refused(f"scalar.cmp {o} of {ll}")
         self.result(i, 0, "bool")
@@ -1298,7 +1419,28 @@ class Emitter:
         name_bytes(custom, "pystachy.data")
         uleb(custom, len(self.data))
         section(out, 0, custom)
+        reloc = bytearray()
+        name_bytes(reloc, "pystachy.reloc")
+        uleb(reloc, len(self.relocs))
+        for r in self.relocs:
+            uleb(reloc, r)
+        section(out, 0, reloc)
         return out
+
+
+def const_size(c: Const) -> int:
+    # the bytes that lay_out_data writes for c
+    if c.kind == "string":
+        return 24 + len(c.text) + 1
+    if c.kind == "tuple":
+        return 8 * max(1, len(c.items))
+    if c.kind == "listdata":
+        return 8 * len(c.items)
+    if c.kind == "fieldnames":
+        return 4 * len(c.refs)
+    if c.kind == "classrec":
+        return 56
+    raise Refused(f"constants of kind {c.kind}")
 
 
 def wasm_ll(wt: int, ll: str) -> str:

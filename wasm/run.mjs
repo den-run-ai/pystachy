@@ -60,8 +60,16 @@ if (section === undefined) {
     env: { pys_obj_eq: none("pys_obj_eq"), pys_obj_cmp: none("pys_obj_cmp"), pys_obj_repr: none("pys_obj_repr") },
   });
   wasi.initialize(runtime);
-  let size = 0;
-  for (let k = 0, shift = 0, b = new Uint8Array(section); k < b.length; k++, shift += 7) size += (b[k] & 0x7f) * 2 ** shift;
+  const reader = (bytes) => {
+    const b = new Uint8Array(bytes);
+    let k = 0;
+    return () => { // an unsigned LEB128
+      let v = 0, shift = 0, x;
+      do { x = b[k++]; v += (x & 0x7f) * 2 ** shift; shift += 7; } while (x & 0x80);
+      return v;
+    };
+  };
+  const size = reader(section)();
   const data = runtime.exports.malloc(Math.max(size, 8));
   if (data === 0) {
     process.stderr.write("MemoryError: no room for the program's data\n");
@@ -71,6 +79,16 @@ if (section === undefined) {
     env: { memory: runtime.exports.memory, data: new WebAssembly.Global({ value: "i32", mutable: false }, data) },
     rt: runtime.exports,
   });
+  // the addresses in the program's data, relative to its block until its base is added
+  const [relocs] = WebAssembly.Module.customSections(programModule, "pystachy.reloc");
+  if (relocs !== undefined) {
+    const leb = reader(relocs);
+    const view = new DataView(runtime.exports.memory.buffer);
+    for (let n = leb(); n > 0; n--) {
+      const at = data + leb();
+      view.setUint32(at, view.getUint32(at, true) + data, true);
+    }
+  }
   try {
     process.exitCode = runtime.exports.pys_wasi_run();
   } catch (e) {
