@@ -2,17 +2,18 @@
 # Compiling LLVM and clang takes about two CPU-hours, so one job compiles the table generators that
 # every other object file waits for, six jobs each compile one slice of the object files, and
 # another finds them all compiled and links, checks and packs the archive. The objects are cached
-# under a hash of every compile command: a run with the same hash compiles nothing.
+# under a hash of every compile command: a run with the same hash compiles nothing. Given a
+# revision, a run on main publishes the archive that bootstrapped Pystachy as a release asset.
 name: LLVM toolchain
 
+# Nothing but a person starts a run: an uncached one takes an hour of runner time.
 on:
   workflow_dispatch:
-  # A changed recipe is rebuilt at once, so a broken one is found before an archive is needed.
-  push:
-    branches: [main]
-    paths:
-      - tools/llvm_toolchain.sh
-      - .github/workflows/llvm-toolchain.yml
+    inputs:
+      revision:
+        description: 'Publish the archive as release llvm-toolchain-<LLVM release>-<revision>, for example 1; empty builds only'
+        required: false
+        type: string
 
 concurrency:
   group: llvm-toolchain-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
@@ -36,6 +37,13 @@ jobs:
       key: ${{ steps.fingerprint.outputs.key }}
       cached: ${{ steps.objects.outputs.cache-hit }}
     steps:
+      # Before an hour of compiling, not after it.
+      - name: Publish only from main and under a revision number
+        if: inputs.revision != ''
+        env:
+          REVISION: ${{ inputs.revision }}
+        run: '[[ $GITHUB_REF == refs/heads/main && $REVISION =~ ^[1-9][0-9]*$ ]]'
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
@@ -203,3 +211,35 @@ jobs:
 
       - name: Native JIT and AOT on two corpus areas
         run: make test FILES="tests/programs/generators/*.py tests/programs/exceptions/*.py"
+
+  publish:
+    name: publish the archive
+    needs: [package, bootstrap]
+    # Only the archive that bootstrapped Pystachy, and only when the run was given a revision.
+    if: ${{ !cancelled() && needs.bootstrap.result == 'success' && inputs.revision != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    concurrency:
+      group: llvm-toolchain-publication
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+        with:
+          name: pystachy-llvm-linux-x86_64
+          path: ${{ env.OUT }}
+
+      # A draft until the archive has been read back; never the repository's latest release.
+      - name: Publish the archive as a release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVISION: ${{ inputs.revision }}
+        run: |
+          [[ $GITHUB_REF == refs/heads/main ]]
+          python3 tools/llvm_toolchain_release.py --repository "$GITHUB_REPOSITORY" --commit "$GITHUB_SHA" \
+            --revision "$REVISION" "$OUT/$(tools/llvm_toolchain.sh name).tar.xz"
