@@ -2,8 +2,13 @@
 // The program sees its arguments, the environment, and the file system through "/" (the host's,
 // read and written as the user who runs node). Its exit status is node's.
 import { readFile } from "node:fs/promises";
+import v8 from "node:v8";
 import { WASI } from "node:wasi";
 import process from "node:process";
+
+// Node 22's optimized fast calls of its WASI functions crash (SIGSEGV) some programs, every time
+// after many files were written or now and then under load; without them none did (wasm/README.md)
+v8.setFlagsFromString("--no-turbo-fast-api-calls");
 
 const [path, ...args] = process.argv.slice(2);
 if (!path) {

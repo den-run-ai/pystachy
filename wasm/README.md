@@ -18,6 +18,11 @@ node --disable-warning=ExperimentalWarning wasm/run.mjs prog.wasm ARGS...
 tests/run.sh ./pystachy wasm tests/programs/apps/ouro2_*.py   # the corpus's wasm mode
 ```
 
+Node 22.23 (V8 12.4) crashed with SIGSEGV in its optimized fast calls of WASI functions: every
+time after a program wrote 48 files of 1 MiB buffers (`io_dropped_buffers`), and now and then
+under load, about ten programs per corpus run. `run.mjs` turns those fast calls off
+(`--no-turbo-fast-api-calls`), after which no run crashed.
+
 `wasm/build.sh program` runs `pystachy ir`, adapts the IR to wasm32 (`wasm32_ir.py`),
 compiles it with `clang --target=wasm32-wasi -O2` and links it with `wasm-ld` against the
 runtime. The link treats a signature mismatch as an error, because a mismatched call traps.
