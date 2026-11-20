@@ -409,7 +409,8 @@ class SmokeTests(unittest.TestCase):
         def running(pid):
             try:
                 state = (Path("/proc") / str(pid) / "stat").read_text().rsplit(")", 1)[1].split()[0]
-            except FileNotFoundError:
+            except (FileNotFoundError, ProcessLookupError):
+                # (a process that exits between the open and the read fails the read with ESRCH)
                 return False
             return state not in ("Z", "X")
 
