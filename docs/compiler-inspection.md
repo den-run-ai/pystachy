@@ -81,7 +81,12 @@ DynType descriptor the program emits for its classes, functions and generators.
 A dynamic box's tag is the address of one of these or of a runtime.c builtin.
 Each entry records the descriptor's kind, class number (the word class
 dispatchers switch on), base, secondary role, flags and the static type of the
-payload its boxes hold.
+payload its boxes hold. Its `lowering` record holds everything else that LLVM
+lowering reads (settings, globals, constants, runtime and extern declarations,
+dispatch tables and each function's attributes), so that the module that
+`typed_ir_text.py print` writes from it compiles to `llvm.ll`
+([text form](typed-ir.md#text-form)); with `--function`, the module of the
+selected functions does not compile.
 
 ## Three questions to try
 
