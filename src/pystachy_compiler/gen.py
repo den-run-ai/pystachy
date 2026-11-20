@@ -15,6 +15,7 @@ from src.pystachy_compiler.union_arithmetic import (
     gen_ucmp as union_arithmetic_ucmp,
     gen_ucontains as union_arithmetic_ucontains,
     gen_uorder as union_arithmetic_uorder,
+    gen_uidentity as union_arithmetic_uidentity,
     gen_uvalue_orders as union_arithmetic_uvalue_orders,
     gen_unumeric as union_arithmetic_unumeric,
     gen_unumeric_case as union_arithmetic_unumeric_case,
@@ -1240,6 +1241,7 @@ from src.pystachy_compiler.program import (
     gen_fixed_base_properties as program_fixed_base_properties,
     gen_fixed_hierarchy as program_fixed_hierarchy,
     gen_hierarchy_chain as program_hierarchy_chain,
+    gen_request_fixed_params as program_request_fixed_params,
     gen_request_hierarchy as program_request_hierarchy,
     gen_retry_hierarchy as program_retry_hierarchy,
     gen_template_fix as program_template_fix,
@@ -3536,6 +3538,9 @@ class Gen:
     def uvalue_orders(self, a: str, b: str) -> bool:
         return union_arithmetic_uvalue_orders(self, a, b)
 
+    def uidentity(self, a: str, b: str) -> bool:
+        return union_arithmetic_uidentity(self, a, b)
+
     def join_hint(self, t: str, vt: str) -> bool:
         return unions_join_hint(self, t, vt)
 
@@ -4164,6 +4169,9 @@ class Gen:
 
     def hierarchy_chain(self, name: str, chain: list[str], seen: list[str]) -> bool:
         return program_hierarchy_chain(self, name, chain, seen)
+
+    def request_fixed_params(self, name: str) -> None:
+        program_request_fixed_params(self, name)
 
     def request_hierarchy(self, name: str) -> None:
         return program_request_hierarchy(self, name)

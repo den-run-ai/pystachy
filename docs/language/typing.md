@@ -717,7 +717,8 @@ Narrowing is still needed for:
 - `**`, bit operations and shifts;
 - `reversed()`, `str.join()` of a union value, and `sum()`, `min()`, `max()` and
   `sorted()` of the union's values;
-- `is` between unions that hold scalars;
+- `is` where both operands may hold a number or a str (`held is rows` is compiled for a list
+  `rows`: a number or str is never that list);
 - methods of unions that hold two list types or two dict types, objects or tuples.
 
 `value % number` takes the remainder of a number in `value`. A str there that holds no
@@ -851,8 +852,12 @@ that the tag selects performs it:
 A `None` value raises CPython's `TypeError` there, or is `None`'s own text and truth. A `str`
 member has no arithmetic to select, and members whose results have no union (two differently
 typed tuples from `divmod()`) are rejected: narrow first. So are a method call, an attribute,
-`is` between two such values, `hash()`, `callable()` where a member's class or one derived from
+`hash()`, `callable()` where a member's class or one derived from
 it defines `__call__`, and use as a set element, a dict key or in `sorted()`.
+`is` and `is not` compare such a value with an object, as in `key.fileobj is sock` for a
+`Socket | int` field: the same object or not, and never a number or str. Where both operands
+may hold a number or str, as two `Socket | int` values may, `is` is rejected, because the
+identity of two numbers is not modeled: narrow one operand to the class first.
 A comparison method whose parameter is such a union (`other: Money | int`) takes each member.
 No union with a class member is [inferred](#inferred-unions): annotate the variable, as in
 `total: int | Money = 0`. [`sum()` of objects](semantics.md#sums-of-objects) returns one.
@@ -1118,6 +1123,10 @@ dependencies before a subclass is used. For example, `errors = Errors(Options(..
 can precede `Checker(errors)` when `Options` has independently annotated storage.
 This retry also supports imported, aliased, qualified and quoted parameter annotations;
 it does not activate unrelated imported subclasses or make variable-layout fields nominal.
+
+A class in a hierarchy can take such a class as a constructor parameter before any code
+uses that class's own subclass, as `pathlib`'s `_PurePathParents(path: PurePosixPath)` does
+in a program that never names `Path`.
 
 An imported subclass becomes available when compiled code needs it, including class
 tests and annotations of a called helper. Its activation recompiles earlier dispatch sites

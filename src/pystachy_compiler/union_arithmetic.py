@@ -280,6 +280,19 @@ def gen_uorders(self, a: str, b: str) -> bool:
     ms = (umembers(a) if is_union(a) else [a]) + (umembers(b) if is_union(b) else [b])
     return all([m in ["int", "float", "bool"] for m in ms]) or all([m == "str" for m in ms])
 
+def gen_uidentity(self, a: str, b: str) -> bool:
+    # can a value of type a be compared by identity (is, is not) with one of type b, one of them a
+    # union that holds numbers or strs beside objects, lists or dicts (Socket | int): where no
+    # number or str of one may meet a number or str of the other, whose identity Pystachy does
+    # not model ("'is' is only supported for objects and None"). An object, list or dict is the
+    # other's by its pointer, and never a number or str (ucmp)
+    ma = umembers(unopt(a)) if is_union(unopt(a)) else [unopt(a)]
+    mb = umembers(unopt(b)) if is_union(unopt(b)) else [unopt(b)]
+    for m in ma + mb:
+        if m not in ["int", "float", "bool", "str"] and not is_list(m) and not is_dict(m) and (m not in self.classes or self.classes[m].exc != "" or m == COMPLEXC):
+            return False
+    return len([x for x in ma if x in ["int", "float", "bool", "str"]]) == 0 or len([y for y in mb if y in ["int", "float", "bool", "str"]]) == 0
+
 def gen_uvalue_orders(self, a: str, b: str) -> bool:
     # can a op b, an ordering, select each member's by its tag (uorder): one of them is a closed
     # value union's (which may be None) and the other is one too, or of a builtin type
@@ -475,6 +488,8 @@ def gen_ucmp(self, op: str, a: Val, b: Val, nonnull: bool = False) -> Val:
             pass  # (a number or str is never None)
         elif (op == "==" or op == "!=") and (self.unequal_types(la.t, lb.t) or self.unequal_types(lb.t, la.t)):
             pass  # (a number or str and an object whose class has no __eq__: never equal)
+        elif (op == "is" or op == "is not") and (la.t in ["int", "float", "bool", "str"]) != (lb.t in ["int", "float", "bool", "str"]) and not is_union(unopt(la.t)) and not is_union(unopt(lb.t)):
+            r = Val("false" if op == "is" else "true", "bool")  # (a number or str is no object, list, dict or None: uidentity)
         else:
             r = self.cmp2(op, la, lb)  # (the other operand's union, in turn)
         if not self.term:

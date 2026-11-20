@@ -6302,6 +6302,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             members = (umembers(unopt(a.t)) if is_union(unopt(a.t)) else [unopt(a.t)]) + (umembers(unopt(b.t)) if is_union(unopt(b.t)) else [unopt(b.t)])
             if all(is_list(t) or is_dict(t) or t in self.classes for t in members):
                 return self.ucmp(op, a, b)  # compare original pointers under member-tag guards
+            if self.uidentity(a.t, b.t):
+                return self.ucmp(op, a, b)  # (... and a number or str is no object, list or dict)
         if (op == "==" or op == "!=") and self.ueq_type(a.t) and self.ueq_type(b.t):
             return self.uequal(op, a, b)
         if (op == "==" or op == "!=") and any([x.t == COMPLEXC or (is_union(unopt(x.t)) and COMPLEXC in umembers(unopt(x.t))) for x in [a, b]]):

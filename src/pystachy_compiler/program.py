@@ -980,6 +980,27 @@ def gen_request_hierarchy(self, name: str) -> None:
         raise NeedHierarchy()
 
 
+def gen_request_fixed_params(self, name: str) -> None:
+    # A hierarchy's class, name, is a class template: where only because its __init__ takes an
+    # object of a class whose own hierarchy no use has requested yet (_PurePathParents(path:
+    # PurePosixPath), whose subclass PosixPath a program may never name), and that class has a
+    # fixed layout, admit that class as request_hierarchy would have at its subclass's first use.
+    # Its unused subclass stays deferred. Nothing is admitted for a class whose own parameters or
+    # fields make it a template: the error stands
+    if self.xtry != "":
+        return
+    named: dict[str, bool] = {}
+    self.init_param_classes(self.classes[name].node, named)
+    chain: list[str] = []
+    for c in named:
+        if c != name and c in self.tmpl and c not in self.hierarchies:
+            self.hierarchy_chain(c, chain, [])
+    if any(c not in self.hierarchies for c in chain):
+        for c in chain:
+            self.hierarchies[c] = True
+        raise NeedHierarchy()
+
+
 def gen_retry_hierarchy(self, msg: str) -> None:
     # Deferred annotation failures may be kept on a lazy function/class until its first
     # use. Retry only when that exact stored class diagnostic would become terminal.
@@ -2041,6 +2062,7 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
     for ci in self.classes.values():
         ci.init_only = ci.exc == "" and ci.name not in self.tmpl and self.init_generic(ci.node)
         if ci.tag != 0 and ci.name in self.tmpl:
+            self.request_fixed_params(ci.name)
             self.line = ci.node.line
             self.err("inheritance with generic class templates is not supported: " + self.template_fix([ci.node]))
     for m in mods:
