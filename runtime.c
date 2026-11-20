@@ -266,7 +266,7 @@ static I gc_min = GC_MIN;              /* GC_MIN, or PYSTACHY_GC_MIN's */
 static I gc_allocd, gc_limit = GC_MIN, gc_live, gc_heap, gc_peak, gc_n, gc_ns, gc_stress, gc_tick;
 static I gc_big, gc_big_limit = BIG_MIN;   /* pointer-free large-object bytes handed out since the last collection */
 static I gc_ext;                       /* malloc'd bytes that heap objects hold: open files' buffers (see I/O) */
-static int gc_off, gc_stats;
+static int gc_off, gc_stats, gc_busy;   /* gc_busy: a collection is running */
 /* GC_NO_ROOT(gc_bottom): stack boundary; mark_roots scans the stack range explicitly. */
 static char *gc_bottom;                /* the stack is scanned from the collector up to here */
 /* How far past sb, the frame address of @main or of an extension's outermost entry (pys_enter),
@@ -317,7 +317,20 @@ static I nprotos, cprotos;
 
 static void out_flush(void);           /* stdout, before an error message (see I/O) */
 void pys_finish(void);                 /* every way out of the program runs it (lli skips atexit handlers) */
-static _Noreturn void oom(void) { out_flush(); fputs("MemoryError\n", stderr); pys_finish(); exit(1); }
+static _Noreturn void oom(void) {
+  if (gc_busy) gc_off = 1, gc_stress = 0;   /* (the collection it stops has marked part of the heap: none may start
+                                               while pys_finish runs atexit's callbacks, #1585) */
+  out_flush(); fputs("MemoryError\n", stderr); pys_finish(); exit(1);
+}
+/* p, an array of *cap items of size bytes, realloc'd to 2 * *cap + more items. On failure, oom() with p and *cap as
+   they were: pys_finish runs atexit's callbacks, which may allocate, collect, raise and close files (#1585) */
+__attribute__((noinline)) static void *arr_grow(void *p, I *cap, I more, size_t size) {
+  I c = 2 * *cap + more;
+  void *q = realloc(p, (size_t)c * size);
+  if (!q) oom();
+  *cap = c;
+  return q;
+}
 static I cls(I n) {                    /* size class for n bytes plus one byte of slack */
   uint64_t r = (uint64_t)n + 1, y = r - 8;
   if (r <= 136) return r <= 16 ? 0 : (I)((r + 7) >> 3) - 2;
@@ -334,9 +347,7 @@ __attribute__((noinline)) static void pmap_set(uintptr_t a, uintptr_t e, Seg *v)
     m[a >> 12 & 0x3ffff] = v;
   }
 }
-__attribute__((noinline)) static void mstk_grow(void) {
-  if (!(mstk = realloc(mstk, (mcap = 2 * mcap + 4096) * sizeof *mstk))) oom();
-}
+__attribute__((noinline)) static void mstk_grow(void) { mstk = arr_grow(mstk, &mcap, 4096, sizeof *mstk); }
 __attribute__((noinline, no_sanitize("address"))) static void scan(const W *p, const W *e) {
   uintptr_t lo = gc_lo, span = gc_hi - gc_lo;   /* fixed while marking: keep them in registers */
   Seg ***pm = pmap;
@@ -459,7 +470,7 @@ static I next_bit(const uint64_t *m, I i, int v) {   /* the first bit at or past
 static int run_bin(I n) { return n <= 32 ? (int)n - 1 : 27 + (63 - __builtin_clzll((uint64_t)n - 1)); }
 __attribute__((noinline)) static void run_push(int c, I r, I first, I n) {   /* c: 1 for a clean run */
   int b = run_bin(n);
-  if (nbin[c][b] == cbin[c][b] && !(bins[c][b] = realloc(bins[c][b], (cbin[c][b] = 2 * cbin[c][b] + 16) * sizeof(PRun)))) oom();
+  if (nbin[c][b] == cbin[c][b]) bins[c][b] = arr_grow(bins[c][b], &cbin[c][b], 16, sizeof(PRun));
   bins[c][b][nbin[c][b]++] = (PRun){(int32_t)r, (int32_t)first, (int32_t)n};
 }
 /* np pages (at most RPAGES) from the shortest free run that holds them, one with dirty pages if
@@ -480,7 +491,10 @@ static char *pages_take(I np, I *rg, int *dirty) {
       }
   if (r < 0) {                         /* a new region, whose pages are all free and zero */
     for (r = 0; r < nregs && regs[r].base; r++) {}
-    if (r == nregs && nregs++ == cregs && !(regs = realloc(regs, (cregs = 2 * cregs + 16) * sizeof *regs))) oom();
+    if (r == nregs) {
+      if (nregs == cregs) regs = arr_grow(regs, &cregs, 16, sizeof *regs);
+      nregs++;
+    }
     memset(&regs[r], 0, sizeof *regs);
     regs[r].base = map_pages(REGION);
     if (np < RPAGES) run_push(1, r, np, RPAGES - np);
@@ -624,6 +638,7 @@ static int gc_marked(const void *p);
 static void weakrefs_sweep(void);
 __attribute__((noinline)) static void collect(void) {
   struct timespec t0, t1;
+  gc_busy = 1;
   memset(text_hints, 0, sizeof text_hints);
   __builtin_unwind_init();             /* spill the callee-saved registers into this frame */
   if (gc_stats) clock_gettime(CLOCK_MONOTONIC, &t0);
@@ -651,7 +666,7 @@ __attribute__((noinline)) static void collect(void) {
   weakrefs_sweep();                    /* clear weak targets before any memory is reclaimed */
   if (nfiles) files_sweep();
   if (ntrk) trk_sweep();
-  sweep(); gc_n++;
+  sweep(); gc_n++; gc_busy = 0;
   if (gc_stats) {
     clock_gettime(CLOCK_MONOTONIC, &t1);
     gc_ns += (t1.tv_sec - t0.tv_sec) * 1000000000 + t1.tv_nsec - t0.tv_nsec;
@@ -816,7 +831,7 @@ __attribute__((noinline)) static void weakrefs_sweep(void) {
     if (ref->target && !gc_marked(ref->target)) {
       ref->target = NULL;
       if (ref->fire) {
-        if (wr_nfired == wr_cap && !(wr_fired = realloc(wr_fired, (wr_cap = 2 * wr_cap + 16) * sizeof *wr_fired))) oom();
+        if (wr_nfired == wr_cap) wr_fired = arr_grow(wr_fired, &wr_cap, 16, sizeof *wr_fired);
         wr_fired[wr_nfired++] = ref->fire;
       }
       ref->fire = NULL;
@@ -2677,7 +2692,7 @@ static void **busy; static I nbusy, cbusy;   /* objects whose generated __repr__
 static void unbusy(void *p) { for (I i = nbusy - 1; i >= 0; i--) if (busy[i] == p) { busy[i] = busy[--nbusy]; return; } }
 I pys_repr_enter(void *p) {
   for (I i = 0; i < nbusy; i++) if (busy[i] == p) return 0;
-  if (nbusy == cbusy && !(busy = realloc(busy, (cbusy = cbusy * 2 + 8) * sizeof(void *)))) oom();   /* not catchable */
+  if (nbusy == cbusy) busy = arr_grow(busy, &cbusy, 8, sizeof(void *));   /* (a failure is not catchable) */
   busy[nbusy++] = p;
   if (eh) unwind_push(unbusy, p);      /* a raise that leaves the __repr__ ends it too */
   return 1;
@@ -2927,13 +2942,16 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   case 'S': case 'F': {                             /* set() or {1, 2}; frozenset() or frozenset({1, 2}) */
     Set *s = (Set *)v; int f = d[-1] == 'F';
     if (!s->len) { put(b, f ? "frozenset()" : "set()", f ? 11 : 5); return skip(d); }
+    /* (one being printed already, through an element's __repr__, is set(...), as CPython's set_repr
+       prints it: #1586) */
+    if (!pys_repr_enter(s)) { put(b, f ? "frozenset(...)" : "set(...)", f ? 14 : 8); return skip(d); }
     put(b, f ? "frozenset({" : "{", f ? 11 : 1);
     for (I i = 0, n = 0; i <= s->mask; i++) if (s->hs[i] != -1) {
       if (n++) put(b, ", ", 2);
       Mpz *m = sbig(s, i);   /* (an int past 64 bits: kb) */
       if (m) { Str *t = mpz_digits(m); if (!t) digits_deep(); put(b, t->s, t->len); } else repr_depth(b, s->keys[i], d, depth);
     }
-    put(b, f ? "})" : "}", f ? 2 : 1); return skip(d);
+    put(b, f ? "})" : "}", f ? 2 : 1); pys_repr_leave(s); return skip(d);
   }
   case 'T': {
     if (!v) { put(b, "None", 4); return skip(d - 1); }
@@ -7306,7 +7324,7 @@ File *pys_open(Str *path, Str *mode, Str *enc, Str *nl, I buffering) {   /* CPyt
   }
   if (a) fseek(f, 0, SEEK_END);        /* CPython starts an append file at its end */
   o->rstart = a ? ftell(f) : 0;
-  if (nfiles == cfiles && !(files = realloc(files, (cfiles = 2 * cfiles + 16) * sizeof *files))) oom();
+  if (nfiles == cfiles) files = arr_grow(files, &cfiles, 16, sizeof *files);
   files[nfiles++] = o;
   io_out();
   return o;
@@ -7570,7 +7588,7 @@ File *pys_bopen(Str *path, Str *mode, Str *enc, Str *errs, Str *nl, I buffering)
     setbuf1(o, bs);
   }
   if (a) fseeko(f, 0, SEEK_END);       /* FileIO starts an append file at its end */
-  if (nfiles == cfiles && !(files = realloc(files, (cfiles = 2 * cfiles + 16) * sizeof *files))) oom();
+  if (nfiles == cfiles) files = arr_grow(files, &cfiles, 16, sizeof *files);
   files[nfiles++] = o;
   io_out();
   return o;
@@ -8565,7 +8583,7 @@ Exc *pys_exc_proto(Str *kind, void *xcls) {   /* the class object of builtin cla
     if (xcls ? protos[i]->obj && XCLS(protos[i]) == xcls : !protos[i]->obj && pys_str_eq(protos[i]->kind, kind)) return protos[i];
   Exc *e = exc_new(xcls ? ((ExcClass *)xcls)->kind : kind, cstr(""), 0);
   if (xcls) { void **o = pys_alloc(sizeof *o); *o = xcls; e->obj = o; }
-  if (nprotos == cprotos && !(protos = realloc(protos, (cprotos = 2 * cprotos + 16) * sizeof *protos))) oom();
+  if (nprotos == cprotos) protos = arr_grow(protos, &cprotos, 16, sizeof *protos);
   return protos[nprotos++] = e;
 }
 Exc *pys_exc_canon(Exc *e) { return e->obj ? pys_exc_proto(0, XCLS(e)) : pys_exc_proto(e->kind, 0); }   /* type(e) */
@@ -8632,7 +8650,7 @@ Exc *pys_exc_make(Exc *c, I n, Str *s, Str *r, I flags, I code) {
   return !strcmp(k->s, "KeyError") ? exc_new(k, r, 0) : exc_new(k, s, r);
 }
 static void unwind_push(void (*fn)(void *), void *arg) {   /* run fn(arg) if a raise leaves this frame */
-  if (nunw == cunw && !(unw = realloc(unw, (cunw = 2 * cunw + 16) * sizeof *unw))) oom();
+  if (nunw == cunw) unw = arr_grow(unw, &cunw, 16, sizeof *unw);
   unw[nunw++] = (Unwind){fn, arg};
 }
 static void unwind_pop(void) { nunw--; }   /* the frame is left another way: forget the latest action */
@@ -10912,12 +10930,15 @@ static Trk *trk;
 /* GC_NO_ROOT(dq): queued CPython references, outside the Pystachy heap. */
 static I ctrk, trk_free = -1, *dq, ndq, cdq, trk_gc, trk_exit;
 I pys_track(void *o, I v, I n) {
-  gc_allocd += TRK_BYTES + (n > 0 ? n : 0);
+  /* (the count stops at INT64_MAX / 2, which no heap reaches, so that what is added later cannot overflow it: a size
+     near INT64_MAX, which a __sizeof__ that lies gives, overflowed it, and no collection started again, #1584) */
+  I add = n > 0 ? n : 0;
+  gc_allocd = add < INT64_MAX / 2 - TRK_BYTES - gc_allocd ? gc_allocd + TRK_BYTES + add : INT64_MAX / 2;
   if (!gc_off && gc_allocd >= gc_limit) collect();   /* (as an allocation of that size would: o is live in the caller) */
   I i = trk_free;
   if (i >= 0) trk_free = trk[i].v;
   else {
-    if (ntrk == ctrk && !(trk = realloc(trk, (ctrk = 2 * ctrk + 64) * sizeof *trk))) oom();
+    if (ntrk == ctrk) trk = arr_grow(trk, &ctrk, 64, sizeof *trk);
     i = ntrk++;
   }
   trk[i].o = o; trk[i].v = v;
@@ -10927,7 +10948,7 @@ void pys_untrack(I i) { if (i >= 0 && i < ntrk && trk[i].o) { trk[i].o = 0; trk[
 static void trk_sweep(void) {          /* after marking */
   for (I i = 0; i < ntrk; i++)
     if (trk[i].o && !gc_marked(trk[i].o)) {
-      if (ndq == cdq && !(dq = realloc(dq, (cdq = 2 * cdq + 64) * sizeof *dq))) oom();
+      if (ndq == cdq) dq = arr_grow(dq, &cdq, 64, sizeof *dq);
       dq[ndq++] = trk[i].v; trk_gc++; pys_untrack(i);
     }
 }

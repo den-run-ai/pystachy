@@ -1,7 +1,7 @@
 #!/bin/sh
 # FFI tests (docs/ffi.md). Each runs JIT and AOT, the programs collecting every 7 allocations
-# (PYSTACHY_GC_STRESS_PROGRAM; 1 for an extension module, 50 for py_release, none for py_big and
-# the ext client memclient.py, which check peak memory):
+# (PYSTACHY_GC_STRESS_PROGRAM; 1 for an extension module, 50 for py_release, none for py_big,
+# py_sizeof and the ext client memclient.py, which check peak memory):
 #   tests/ffi/c_*.py       @ffi.extern (libc, libm, and tests/ffi/ffitest.c built as
 #                          libpystachy-ffitest.so on LD_LIBRARY_PATH): stdout and "[exit N]" must be
 #                          tests/ffi/NAME.out, which CPython printed with tools/rt_cpython on PYTHONPATH,
@@ -100,7 +100,7 @@ if [ -z "$LIBPY" ]; then
 else
   # lib/pyobj.py: CPython embedded
   for f in tests/ffi/py_*.py; do
-    n=$(basename "$f" .py); st=3; [ "$n" = py_release ] && st=50; [ "$n" = py_big ] && st=0
+    n=$(basename "$f" .py); st=3; [ "$n" = py_release ] && st=50; case "$n" in py_big | py_sizeof) st=0 ;; esac
     case "$n:$PYS" in py_coerce:*" -m pystachy"* | py_coerce:*pystachy.py*) skipped="${skipped:+$skipped; }py_coerce (the CPython-hosted compiler's own locale coercion reaches the program)"; continue ;; esac
     in=/dev/null; [ -f "tests/ffi/$n.in" ] && in=tests/ffi/$n.in
     args=; [ -f "tests/ffi/$n.args" ] && args=$(cat "tests/ffi/$n.args")

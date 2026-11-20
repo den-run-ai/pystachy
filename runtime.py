@@ -2870,7 +2870,8 @@ def codec_name(k: int) -> str:
 
 def u8seq(s: str, i: int, n: int) -> int:
     # the length of the UTF-8 character at s[i] (a surrogate's three bytes are one), as a str
-    # holds it; 1 for a byte that begins none
+    # holds it and runtime.c's u8char counts it; 1 for a byte that begins none, which an
+    # overlong sequence's first byte and one past U+10FFFF's do (#1587)
     c = _rt.byte(s, i)
     if c < 0xC2 or c > 0xF4:
         return 1
@@ -2880,6 +2881,9 @@ def u8seq(s: str, i: int, n: int) -> int:
     for j in range(i + 1, i + k):
         if _rt.byte(s, j) & 0xC0 != 0x80:
             return 1
+    c2 = _rt.byte(s, i + 1)
+    if (c == 0xE0 and c2 < 0xA0) or (c == 0xF0 and c2 < 0x90) or (c == 0xF4 and c2 >= 0x90):
+        return 1
     return k
 
 
