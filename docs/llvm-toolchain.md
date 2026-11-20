@@ -131,12 +131,19 @@ comes from one `build` of the recipe at commit `7fde2da2`; the `MinSizeRel` one
 each figure is the median of three interleaved rounds. The bootstrap and corpus times are
 single runs with four workers on Ubuntu 24.04.
 
-The shared build was run as the workflow runs it, each job alone in a fresh container on the
-four cores. The `compile` job of slice 0 took 5.7 minutes: half a minute to unpack and
-configure, 1.4 minutes for the table generators and 3.8 minutes for its 296 objects. The other
-slices' own objects took 3.2 to 3.8 minutes. `package` took 1.9 minutes: it found 2,360
-objects compiled, assembled the other four and gave an `-O2` archive of the same size
-(`364462a2…94aafc98`).
+The workflow ran twice on GitHub's `ubuntu-24.04` runners on 20 November 2026, first with
+eight slices. Those runners compile 1.4 to 2 times slower than the host above:
+
+| Slices | `compile` jobs | `package` | Whole run |
+|---:|---:|---:|---:|
+| 8 | 7.7 to 8.6 min, and one of 11.1 | 3.0 min | 22.9 min |
+| 12 | 5.7 to 9.1 min | 2.7 min | 20.0 min |
+
+A whole run includes `bootstrap`, 5.8 minutes with twelve slices, and the wait for runners
+while the pull request's own checks ran. In the 11.1-minute job, one minute fetched the image
+and the sources and configured, and three built the table generators. `package` found 2,360
+objects compiled and assembled the other four. Both runs, and eight slices built in the same
+image on the host above, gave one archive, byte for byte: SHA-256 `364462a2…94aafc98`.
 
 With each of the three archives selected by `PYSTACHY_LLVM` on Ubuntu 24.04, `make` reached
 the compiler's and the runtime's fixed points and `make test` passed all 5,395 cases (8,784
