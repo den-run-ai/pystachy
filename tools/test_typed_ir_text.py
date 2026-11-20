@@ -6,6 +6,7 @@ from contextlib import redirect_stderr
 from io import StringIO
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -273,6 +274,64 @@ class PassTests(unittest.TestCase):
         with redirect_stderr(errors), self.assertRaises(SystemExit):
             text.gen_for(fn).verify(fn, False)
         self.assertIn("bad IR in @f.score_samples, block entry", errors.getvalue())
+
+
+class VerifyModeTests(unittest.TestCase):
+    INVALID = FIXTURES / "invalid.tir"
+    CASE = """function @f(n: int) -> None {
+entry:
+  ; expected-error {{cbr operand 0 needs bool, got int}}
+  cbr(int %a0) -> L1, L1
+L1:
+  ret.none
+}
+"""
+
+    def test_each_fixture_function_reports_the_error_it_expects(self):
+        source = self.INVALID.read_text()
+        self.assertEqual(text.verify_errors(source), [])
+        expected = [e["message"] for found in text.expectations(source) for e in found]
+        # (each kind of rule of an op's row, and of its types, has a case; MLIR's testing guide
+        # asks a diagnostic test of every error a user can see)
+        for pattern in (r"with \d+ operands, where", r"with \d+ labels, where", r"sets a field outside",
+                        r"in a block, where entry storage", r"operand \d+ needs [a-z%]+, got",
+                        r"operand \d+ needs a ", r"operand \d+ needs .* \(\$\w+ is ", r"needs \*\$T, \$T ",
+                        r"result needs ", r"the function's return type"):
+            with self.subTest(pattern=pattern):
+                self.assertTrue(any(re.search(pattern, m) for m in expected), pattern)
+        self.assertEqual(len(text.parse_functions(source)), len(text.expectations(source)))
+
+    def test_an_expected_error_must_be_reported_in_its_block(self):
+        self.assertEqual(text.verify_errors(self.CASE), [])
+        moved = self.CASE.replace("  ; expected-error {{cbr operand 0 needs bool, got int}}\n", "").replace(
+            "L1:\n", "L1:\n  ; expected-error {{cbr operand 0 needs bool, got int}}\n")
+        self.assertEqual(text.verify_errors(moved), ["@f: line 5: expected error {{cbr operand 0 needs bool, got int}} "
+                                                     "in block L1, got in block entry: cbr operand 0 needs bool, got int"])
+        other = self.CASE.replace("needs bool, got int}}", "needs int}}")
+        self.assertIn("expected error {{cbr operand 0 needs int}} in block entry, got in block entry", text.verify_errors(other)[0])
+
+    def test_an_error_nothing_expects_and_an_expected_error_not_reported_fail(self):
+        unexpected = self.CASE.replace("  ; expected-error {{cbr operand 0 needs bool, got int}}\n", "")
+        self.assertEqual(text.verify_errors(unexpected), ["@f: unexpected error in block entry: cbr operand 0 needs bool, got int"])
+        missing = self.CASE.replace("cbr(int %a0)", "cbr(bool true)")
+        self.assertEqual(text.verify_errors(missing), ["@f: line 3: expected error {{cbr operand 0 needs bool, got int}} was not reported"])
+        twice = self.CASE.replace("entry:\n", "entry:\n  ; expected-error {{cbr}}\n")
+        self.assertEqual(text.verify_errors(twice), ["@f: expects 2 errors, where the verifier reports its first alone"])
+        with self.assertRaisesRegex(text.TextError, "line 1: an expected error outside a function"):
+            text.verify_errors("; expected-error {{x}}\n" + self.CASE)
+
+    def test_verify_mode_reports_and_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "case.tir"
+            path.write_text(self.CASE.replace("  ; expected-error {{cbr operand 0 needs bool, got int}}\n", ""))
+            result = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "verify", str(path)],
+                                    capture_output=True, text=True, check=False)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("@f: unexpected error in block entry", result.stderr)
+            result = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "verify", str(self.INVALID)],
+                                    capture_output=True, text=True, check=False)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("functions verify as expected", result.stdout)
 
 
 if __name__ == "__main__":
