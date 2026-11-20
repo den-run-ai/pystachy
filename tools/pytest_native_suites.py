@@ -40,7 +40,8 @@ class Suite:
 SUITES = tuple(Suite(name, "examples/" + name, IMPORTS.get(name, ())) for name in EXAMPLES) + tuple(
     Suite("pyperformance-" + category, "bench/pyperformance/pytest/test_" + category + ".py",
           ("bench/pyperformance",), "pyperformance")
-    for category in ("algorithms", "decimal", "gc", "json", "library", "logging", "numeric", "regex", "toml")
+    for category in ("algorithms", "bigint", "decimal", "gc", "json", "library", "logging", "numeric", "regex",
+                     "toml")
 )
 
 

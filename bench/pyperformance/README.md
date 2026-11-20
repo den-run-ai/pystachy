@@ -50,9 +50,12 @@ python3 tools/pytest_native_suites.py --group pyperformance --mode jit
 python3 tools/pytest_native_suites.py --group pyperformance --mode aot
 ```
 
-The registry preserves all 52 cases in nine independent categories, each with
+The registry preserves all 52 cases in ten independent categories, each with
 its own original-pytest oracle. This bounds native build memory and separates
-the JSON, TOML and nested-list opt-ins from typed workloads. `make bench-pyperformance-check` includes
+the JSON, TOML and nested-list opt-ins from typed workloads. `pidigits` has a
+category of its own: its promoting-int opt-in makes every `int` list read in its
+program check for a large value, and `unpack_sequence`'s 400 unrolled list unpackings
+then took most of the algorithms suite's AOT build. `make bench-pyperformance-check` includes
 both native modes in addition to its existing process/timing/provenance checks.
 
 These original tests check full discrete results where available, finite numeric
