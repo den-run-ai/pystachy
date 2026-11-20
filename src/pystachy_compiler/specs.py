@@ -671,7 +671,9 @@ SETMETHODS: list[str] = FSETMETHODS + "add clear difference_update discard inter
 #             memory op its address's (Gen.opfx)
 #   operands  how many Ins.a holds: N, N-M, or N+ for N or more
 #   results   how many numbers Ins.r holds, as its lowering prints them; ? is a call's, by its
-#             signature: none or one
+#             signature: none or one. Where some are its lowering's own, one letter per number:
+#             v a value that other ops use, . a temporary that only names an intermediate LLVM
+#             value of its lowering, which no op may use (OP_TEMPS)
 #   labels    how many Ins.b holds: N; i for none, or two once an exception edge makes a call an
 #             invoke (then it ends its block); a for one per operand (a phi's predecessors, a
 #             switch's default and cases)
@@ -684,33 +686,34 @@ OPS: dict[str, str] = {
     "rt": "*|0+|?|i|t s k x|1", "call": "*|0+|?|i|t s x|0", "icall": "*|1+|?|i|t|0", "init": "*|0|0|i|s|0",
     "br": "T|0|0|1||0", "cbr": "T|1|0|2||0", "switch": "T|2+|0|a||0", "check": "T R|1|0|1|s x|0",
     "ret": "T|0-1|0|0||0", "ret.none": "T|0|0|0||0", "raise": "T R N|2|0|0|s|0", "unreachable": "T|0|0|0||0",
-    "phi": "|1+|1|a|t|0", "select": "|3|1|0|t|1", "ovf": "|2|3|0|t s|0",
-    "list.load": "rL|2|4|0|t|0", "list.store": "rL wL|3|3|0||0", "list.len": "rL|1|1|0|t|1",
+    "phi": "|1+|1|a|t|0", "select": "|3|1|0|t|1", "ovf": "|2|.vv|0|t s|0",
+    "list.load": "rL|2|v...|0|t|0", "list.store": "rL wL|3|...|0||0", "list.len": "rL|1|1|0|t|1",
     "alloc.fixed": "A|0|1|0|t|0", "vtuple.make": "A|0+|1|0|t|0",
     "mem.load": "*|1|1|0|t|1", "mem.store": "*|2|0|0||0",
     "mach.load": "*|1|1|0|t s|1", "mach.store": "*|2|0|0|s|0", "mach.addr": "|2|1|0|t s k|1",
-    "tuple.load": "rL rD rO|1|2|0|t s k|3", "tuple.store": "wL wD wO|2|1|0|s k|3",
+    "tuple.load": "rL rD rO|1|.v|0|t s k|3", "tuple.store": "wL wD wO|2|.|0|s k|3",
     "field.addr": "|1|1|0|t k|1",
     "slot.pack": "|1|1|0|t|1", "slot.unpack": "|1|1|0|t|1",
     "scalar.bin": "|1-2|1|0|t s x|1", "scalar.cast": "|1|1|0|t s|1", "scalar.cmp": "|2|1|0|t s|1",
     "num.cast": "|1|1|0|t|1", "num.cmp": "|2|1|0|t s|1", "int.ucmp": "|2|1|0|t s|1", "ptr.cmp": "|2|1|0|t s|1",
     "empty.kind": "wD|1|1|0|k|0",
-    "union.tag": "rL rD rO|1|1|0|t|0", "union.payload": "rL rD rO|1|2|0|t s|2", "union.raw": "rL rD rO|1|2|0|t|2",
-    "dyn.type": "|1|1|0|t|1", "dyn.payload": "|1|2|0|t s|2", "dyn.raw": "|1|2|0|t|2",
-    "big.make": "|2|2|0|t|2", "big.lo": "|1|1|0|t|1", "big.hi": "|1|1|0|t|1",
-    "landing": "T|1|2|1|t|0", "throw": "T R N|1|0|0||0", "exc.match": "|2|2|0|t|0",
+    "union.tag": "rL rD rO|1|1|0|t|0", "union.payload": "rL rD rO|1|.v|0|t s|2", "union.raw": "rL rD rO|1|.v|0|t|2",
+    "dyn.type": "|1|1|0|t|1", "dyn.payload": "|1|.v|0|t s|2", "dyn.raw": "|1|.v|0|t|2",
+    "big.make": "|2|.v|0|t|2", "big.lo": "|1|1|0|t|1", "big.hi": "|1|1|0|t|1",
+    "landing": "T|1|..|1|t|0", "throw": "T R N|1|0|0||0", "exc.match": "|2|.v|0|t|0",
     # generators (LLVM switched-resume coroutines, docs/internals.md#generators): gen.start ends a
     # generator function's entry block (the frame, its promise and the initial suspend), gen.yield
     # and gen.ret suspend it (gen.ret finally); gen.promise is the address of its promise (of the
     # generator's own, or of a handle's), gen.resume runs it to its next suspend, and gen.drop
     # closes a generator a loop owns and destroys it (it reports what closing raises, as CPython
     # reports an exception it ignores, so it never raises itself)
-    "gen.start": "T A|1|0|1||0", "gen.yield": "T U|1-3|2|1|k|0", "gen.ret": "T|0-2|2|0||0",
+    "gen.start": "T A|1|0|1||0", "gen.yield": "T U|1-3|..|1|k|0", "gen.ret": "T|0-2|..|0||0",
     "gen.promise": "|0-1|1|0|t|0", "gen.resume": "U|1|0|i||0",
     "gen.drop": "A I rL wL rD wD rO wO rG wG rF wF|1|0|0||0",
 }
 # What the rows say, by op. IROPS: the effects column without E (T ends a block; * as above).
-# RESULT_NUMBERS: the fixed result counts (a call's is Gen.nums'). VALUE_AT: the ops whose values
+# RESULT_NUMBERS: the fixed result counts (a call's is Gen.nums'). OP_TEMPS: the positions in
+# Ins.r of the ops' lowering temporaries, for the ops that have some. VALUE_AT: the ops whose values
 # Values places, by the number each defines (its block and position there), as how: 1, the value
 # of one that defines one; 2, the payload of union.payload/raw and dyn.payload/raw, their second;
 # 3, each value of tuple.load and tuple.store. OP_ENTRY: whether it is entry storage. OP_MIN and
@@ -722,8 +725,20 @@ OP_K = 4
 OP_X = 8
 OP_PER_OPERAND = -1
 OP_INVOKE = -2
+
+
+def result_temps(roles: str) -> list[int]:
+    # the positions of a results column's lowering temporaries (its dots), for OP_TEMPS
+    found: list[int] = []
+    for j in range(len(roles)):
+        if roles[j] == ".":
+            found.append(j)
+    return found
+
+
 IROPS: dict[str, str] = {}
 RESULT_NUMBERS: dict[str, int] = {}
+OP_TEMPS: dict[str, list[int]] = {}
 VALUE_AT: dict[str, int] = {}
 OP_ENTRY: dict[str, bool] = {}
 OP_MIN: dict[str, int] = {}
@@ -736,7 +751,9 @@ for _k in OPS:
     OP_ENTRY[_k] = "E" in _s
     _s = OPS[_k].split("|")[2]
     if _s != "?" and _s != "0":
-        RESULT_NUMBERS[_k] = int(_s)
+        RESULT_NUMBERS[_k] = len(_s) if _s[0] == "v" or _s[0] == "." else int(_s)
+        if "." in _s:
+            OP_TEMPS[_k] = result_temps(_s)
     _s = OPS[_k].split("|")[5]
     if _s != "0":
         VALUE_AT[_k] = int(_s)

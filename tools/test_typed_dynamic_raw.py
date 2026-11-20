@@ -123,7 +123,7 @@ class DynamicRawTests(unittest.TestCase):
                 if forward:
                     c.b.code[0], c.b.code[1] = c.b.code[1], c.b.code[0]
                 c.ret()
-                self.assert_bad(c, "dyn.raw internal address")
+                self.assert_bad(c, f"mem.load operand {address} is a temporary of a dyn.raw op's lowering")
 
     def test_frontend_identity_uses_raw_reads(self):
         source = """# pystachy: dynamic-any

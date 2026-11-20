@@ -45,7 +45,7 @@ specs.EXCKW specs.HASATTR specs.NONEARG specs.OPTARG specs.NONERET specs.OPTCALL
 specs.NOREF specs.UNSUPPORTED specs.INERT_DECOS specs.IDENTITY_DECOS specs.INERT specs.PURE specs.RAISERS
 specs.CODECS specs.ARITY specs.METHODS specs.TEXT_OPS
 specs.FSETMETHODS specs.SETMETHODS specs.OPS specs.IROPS specs.RESULT_NUMBERS specs.OPTS specs.VALUE_AT specs.FX specs.LIST_READS specs.LIST_WRITES
-specs.OP_ENTRY specs.OP_MIN specs.OP_MAX specs.OP_LABELS specs.OP_FIELDS
+specs.OP_ENTRY specs.OP_MIN specs.OP_MAX specs.OP_LABELS specs.OP_FIELDS specs.OP_TEMPS
 specs.FXBIT specs.RUNTIME specs.NARROWED specs.PATH_OPS specs.READ_HELPERS specs.INT_HELPERS specs.RTDATA specs.RTSYM
 structs.STRUCT_FNS structs.NATIVE_SIZES structs.STANDARD_SIZES
 syntax.DCOPTS syntax.EXPRNAMES syntax.STARTS syntax.CMPOPS syntax.AUGOPS syntax.BINOPS syntax.NOKIDS

@@ -5,7 +5,7 @@ from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, operand_kind, tmpname
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME
-from src.pystachy_compiler.specs import OPS, OP_ENTRY, OP_FIELDS, OP_INVOKE, OP_K, OP_LABELS, OP_MAX, OP_MIN, OP_PER_OPERAND, OP_S, OP_T, OP_X, RESULT_NUMBERS
+from src.pystachy_compiler.specs import OPS, OP_ENTRY, OP_FIELDS, OP_INVOKE, OP_K, OP_LABELS, OP_MAX, OP_MIN, OP_PER_OPERAND, OP_S, OP_T, OP_TEMPS, OP_X, RESULT_NUMBERS
 from src.pystachy_compiler.utils import elem, gelem, generator_identity, is_dict, is_gen, is_opt, is_set, is_tuple, is_union, is_vtuple, list_read_error, list_receiver_error, list_write_error, lt, same_kind, targs, tslots, umembers
 
 class EffectSummaries:
@@ -140,20 +140,17 @@ def op_shape_error(i: Ins, entry: bool) -> str:
 def verify_dynamic_raw(self, fn: IFn) -> None:
     # Raw dynamic payload bits are only an identity-comparison input. Collect all
     # producers before uses: block order and an operand's annotation cannot hide
-    # a reinterpretation, address escape or later producer. No phi/slot/call
-    # transport is admitted, so another pass cannot launder the bits into a type.
-    addresses: dict[str, bool] = {}
+    # a reinterpretation or later producer. No phi/slot/call transport is admitted,
+    # so another pass cannot launder the bits into a type. (The op's address is a
+    # temporary of its lowering, which gen_verify admits as no op's operand.)
     payloads: dict[str, bool] = {}
     for b in fn.blocks:
         for i in b.code:
             if i.op == "dyn.raw":
-                addresses[tmpname(i.r[0])] = True
                 payloads[tmpname(i.r[1])] = True
     for b in fn.blocks:
         for i in b.code:
             for a in i.a:
-                if a.v in addresses:
-                    self.bad_ir(fn, b, "dyn.raw internal address cannot be used")
                 if a.v in payloads and not (i.op == "num.cmp" and (i.s == "==" or i.s == "!=") and a.t == "int"):
                     self.bad_ir(fn, b, "dyn.raw bits require a direct integer equality comparison")
 
@@ -174,9 +171,15 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
     dynamic_raw = False
     machine_tags = False
     lands: dict[str, bool] = {}
+    temps: dict[str, str] = {}  # (each lowering temporary that an op defines, OP_TEMPS: its op)
     for b in fn.blocks:
         if len(b.code) > 0 and b.code[0].op == "landing":
             lands[b.label] = True
+        for i in b.code:
+            if i.op in OP_TEMPS:
+                for j in OP_TEMPS[i.op]:
+                    if j < len(i.r):
+                        temps[tmpname(i.r[j])] = i.op
     for i in fn.slots:
         if i.op != "slot" or len(i.r) != 1:
             self.bad_ir(fn, fn.blocks[0], f"a {i.op} op among the slots, with {len(i.r)} numbers")
@@ -407,6 +410,8 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
             for a in i.a:
                 if operand_kind(a.v) < 0:
                     self.bad_ir(fn, b, f"{i.op} operand {a.v} is no value, parameter, slot, symbol or constant")
+                if a.v in temps:
+                    self.bad_ir(fn, b, f"{i.op} operand {a.v} is a temporary of a {temps[a.v]} op's lowering, which no op may use")
             n = self.nums(i)
             if len(i.r) != n:
                 self.bad_ir(fn, b, f"{i.op} {i.s} with {len(i.r)} numbers, where its lowering prints {n}")

@@ -47,9 +47,16 @@ def rows():
         if low < 0 or (high is not None and high < low) or operands != (
                 f"{low}+" if high is None else str(low) if high == low else f"{low}-{high}"):
             raise ValueError(f"{name}: invalid operand count {operands!r}")
-        results = None if row["results"] == "?" else int(row["results"])
-        if row["results"] != "?" and (results < 0 or str(results) != row["results"]):
-            raise ValueError(f"{name}: invalid result count {row['results']!r}")
+        roles = row["results"]
+        if roles == "?":
+            results, temporaries = None, []
+        elif roles.isdigit() and str(int(roles)) == roles:
+            results, temporaries = int(roles), []
+        elif roles != "" and set(roles) <= {"v", "."} and "." in roles:
+            # (one letter per number: v a value, . a temporary of the op's lowering)
+            results, temporaries = len(roles), [j for j, c in enumerate(roles) if c == "."]
+        else:
+            raise ValueError(f"{name}: invalid results {roles!r}: a count, ?, or v and . per number with some .")
         labels = row["labels"]
         if labels not in ("a", "i") and (not labels.isdigit() or str(int(labels)) != labels):
             raise ValueError(f"{name}: invalid label count {labels!r}")
@@ -64,7 +71,7 @@ def rows():
         result.append({
             "name": name, "text": text, "effects": [t for t in tokens if t not in FLAGS],
             "terminator": "T" in tokens, "entry": "E" in tokens, "varies": "*" in tokens,
-            "min": low, "max": high, "results": results, "labels": labels,
+            "min": low, "max": high, "results": results, "temporaries": temporaries, "labels": labels,
             "fields": fields, "value": value,
         })
     return result
@@ -89,7 +96,9 @@ def reference():
                                   ("varies", "per instruction")) if row[flag]]
         effects = ", ".join([*kind, *(f"`{e}`" for e in row["effects"])]) or "none"
         operands = str(row["min"]) if row["max"] == row["min"] else f"{row['min']} or more" if row["max"] is None else f"{row['min']} to {row['max']}"
-        results = "0 or 1, by signature" if row["results"] is None else str(row["results"])
+        results = ("0 or 1, by signature" if row["results"] is None else str(row["results"]) if not row["temporaries"]
+                   else f"{row['results']}: " + ", ".join("temporary" if j in row["temporaries"] else "value"
+                                                           for j in range(row["results"])))
         fields = ", ".join(f"`{f}`" for f in row["fields"]) or "none"
         value = ("none", "first", "second", "each")[row["value"]]
         lines.append(f"| `{row['name']}` | {effects} | {operands} | {results} | {words.get(row['labels'], row['labels'])} | {fields} | {value} |")
