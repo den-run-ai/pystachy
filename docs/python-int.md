@@ -226,7 +226,7 @@ Some of these boundaries reject values CPython accepts. The
 
 | Destination | Limit |
 |---|---|
-| Closed unions other than scalar `int \| None` | Int members stay 64-bit, including inferred bool/int joins and mixed int/float/bool/str container displays. |
+| Closed unions other than scalar `int \| None` | Int members stay 64-bit, including inferred bool/int joins, mixed int/float/bool/str container displays and a location annotated `float` that was [given an `int`](language/typing.md#int-values-in-float-locations) ([deviation](../tests/deviations/python_int_float_store.py)). Arithmetic on such a union that could yield an `int` is rejected. |
 | Unsupported list items, dict keys/values and set elements | Int storage promotes only in the supported integer and tuple forms above. An `int \| None` inside a list or tuple remains 64-bit, including nested tuple items. |
 | Optional tuple results | Dict `get()`/`pop()` results that may be `None`, such as `d.get(k)` for tuple values, retain the 64-bit tuple boundary. |
 | Runtime-length tuples | `tuple[int, ...]` items, including a tuple sliced by a variable, stay 64-bit. |

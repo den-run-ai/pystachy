@@ -9,7 +9,7 @@ unsupported forms, see [compatibility](compatibility.md).
 |---|---|
 | `int` | Signed 64-bit; overflow raises `OverflowError` |
 | `float`, `bool`, `str` | Double-precision floats; strings hold UTF-8, with code-point lengths, indexing and slicing |
-| `complex` | Two double-precision floats; an `int` or `float` where `complex` is declared is rejected, as an `int` is for `float` ([complex numbers](semantics.md#complex-numbers)) |
+| `complex` | Two double-precision floats; an `int` or `float` where `complex` is declared is rejected ([complex numbers](semantics.md#complex-numbers)) |
 | `bytes` | Immutable bytes, whose items are ints; also a dict key and set element |
 | `list[T]`, `dict[K, V]` | One static element type, or one key and value type |
 | `set[T]`, `frozenset[T]` | Elements must use the supported dict key types |
@@ -96,7 +96,8 @@ defines `__eq__` or `__hash__`: they hash and compare by identity, whichever mem
 typed by their class or the union. An object key may be `None`. Floats, NamedTuples and exception objects cannot be keys or set
 elements. `hash()` gives CPython's results for ints, floats, `None`, objects with `__hash__`,
 frozensets and tuples and NamedTuples of these; a str's and an object's identity hash differ from CPython's,
-which change from run to run, but are equal for equal strs and for the same object.
+which change from run to run, but are equal for equal strs and for the same object. A union of
+`int`, `float`, `bool` and `str` members hashes as its member does, also as a tuple's item.
 
 `Optional[T]`, `None | T` and `Union[T, None]` are equivalent. Repeated members of
 `Union[...]` collapse: `Union[T, T, None]` is optional and `Union[T]` is `T`.
@@ -168,10 +169,11 @@ its `None` result type; an explicit `-> None` still rejects returning a value.
 Unannotated `__str__` and `__repr__` use their required `str` result type and `__bool__`
 uses `bool`; their bodies are checked against those contracts. An unannotated `__len__` or
 `__hash__` infers `int` or `bool`. Constructors keep their `None` result contract.
-There is no implicit `int` to `float`
-conversion in an assignment or return: write `1.0`, or convert explicitly. An `int` argument
-for a `float` parameter is not converted either: the function is
-[compiled for the `int`](#int-arguments-for-float-parameters).
+There is no implicit `int` to `float` conversion: an `int` given where an annotation says
+`float` stays an `int`, as in CPython. A variable, a field or a return annotated `float`
+then [holds an `int | float`](#int-values-in-float-locations), and a function is
+[compiled for an `int` argument](#int-arguments-for-float-parameters) of a `float` parameter.
+A `float` item of a container takes no `int`: write `1.0`, or convert explicitly.
 Arithmetic and numeric list searches may mix integers and floats. Equality also compares
 closed builtin value trees with different layouts: numbers, strings, `None`, and lists, dicts
 or tuples of these, including optional and union members. Each operand keeps its own layout;
@@ -537,9 +539,9 @@ claim.
 A `complex` member, as mypy's `int | bool | float | complex | str` holds one, narrows with
 `isinstance()`; truth tests, `str()`, `repr()`, printing, `format()` and f-string
 specifications, `==` and `!=` (across members, so `1 == 1+0j` is true), `+`, `-`, `*`, `/`
-and `**` of numeric members, and `abs()` select its operations by the tag. Ordering, `hash()`
-(as of any union), other builtins, and the equality of containers that hold such a union
-require narrowing first.
+and `**` of numeric members, and `abs()` select its operations by the tag. Ordering, `hash()`,
+other builtins, and the equality of containers that hold such a union require narrowing
+first.
 
 ### Inferred unions
 
@@ -587,8 +589,9 @@ then compiles the program again with the union as that location's annotation, up
 times. A program without joins compiles once, as before. A template's function or class
 specialization joins its own locations: `mean([1, 2])` keeps an `int` total, and only the
 specialization for a `list[float]` holds a union. Annotated variables, parameters, constants
-and locations of other types do not join: a value of a list type and a `str`, or objects of
-two classes, still need an annotation or are rejected. A joined union supports the
+and locations of other types do not join (but a location annotated `float` that is
+[given an `int`](#int-values-in-float-locations)): a value of a list type and a `str`, or
+objects of two classes, still need an annotation or are rejected. A joined union supports the
 operations of an annotated one, so narrow it before other operations; a global or a field
 is not narrowed by a test, as described above.
 
@@ -599,6 +602,67 @@ a closure captures, and of functions whose first attempt compiled another functi
 closure or specialization still compile the program again; so do all joins in a program
 that opts in to [dynamic `Any`](../dynamic-any.md). Either way, the result is that of the
 annotated program.
+
+### `int` values in `float` locations
+
+A variable, a field or a return annotated `float` takes an `int` or a `bool`, as PEP 484
+allows, and holds it unconverted, as CPython does. A location that is given one becomes an
+`int | float` (with a `bool`, a `bool | float`), as if it were annotated so:
+
+```python
+from dataclasses import dataclass
+
+
+@dataclass
+class P:
+    x: float
+    y: float = 0
+
+    def first(self) -> float:
+        return self.x
+
+
+p = P(3)
+total: float = 0
+print(p, p.x / 2, p.first(), P(0) == P(0.0), total)  # P(x=3, y=0) 1.5 3 True 0
+```
+
+This holds for module and local variables, for fields annotated in a class body (a
+dataclass's and a `NamedTuple`'s too, with their defaults, `default_factory` results and the
+arguments of the `__init__` they write) or at `self.x: float = ...` in `__init__`, for
+annotated class attributes, and for functions and methods annotated `-> float`, whose callers
+then take the union. Overrides of a method in a hierarchy all return it once one of them
+does. A hand-written `__init__` given an `int` for a `float` parameter is
+[compiled for it](#int-arguments-for-float-parameters), and the fields it fills join.
+Tests: [dataclass fields](../../tests/programs/classes/float_field_int.py),
+[their defaults](../../tests/programs/classes/float_field_factory.py),
+[plain classes](../../tests/programs/classes/float_field_plain.py),
+[a class template](../../tests/programs/classes/float_field_template.py),
+[`NamedTuple` fields](../../tests/programs/classes/float_field_namedtuple.py),
+[variables](../../tests/programs/numbers/float_var_int.py) and
+[returns](../../tests/programs/numbers/float_return_int.py).
+
+Only a store that would be an error widens a location: one that is given only floats keeps
+the type `float` and its code. The compiler finds these stores as it finds
+[inferred unions](#inferred-unions) and compiles the program again, so each annotated
+location in a chain (a field, the method that returns it, the variable that takes the
+result) costs one of the eight passes; past them, the store's error is reported.
+
+The value is a [numeric union](#closed-scalar-unions): it prints, formats, compares and
+hashes as its member does and supports `+`, `-`, `*`, `/`, `//` and `%`, and `isinstance()`
+narrows a local that holds it. What a union does not support stays an error, such as `**`,
+an item of a `list[float]` or a `Callable[..., float]`'s result; its message names where the
+program first gave an `int` to a field, global or return annotated `float`. `float(x)`
+there, or at the use, keeps a float. These keep the type `float` and reject an `int`: items
+of containers and tuples (`list[float]`, `tuple[float, float]`), `float | None`, a class
+attribute that only its value types (`scale = 1.5`), a parameter's default (`k: float = 2`)
+and a store to a parameter, a property setter's argument, a generator's yields, the result
+of a special method (`__float__`) and of a function that C or CPython calls, and the
+`__init__` parameters of a class template or an exception class. An `Any` value is checked
+against the location's type where it is unboxed, as [dynamic `Any`](../dynamic-any.md)
+describes: it does not widen the location. In a module that opts in to
+[promoting ints](../python-int.md#storage-boundaries) the union's ints are 64-bit, and
+arithmetic on it that could yield an `int` is rejected.
 
 ## Mixed scalar and container unions
 
@@ -890,10 +954,11 @@ print(half(3), keep(3), keep(3.0))  # 1.5 3 3.0
 
 Where the return annotation is `float`, that compilation infers its result from its returns,
 so `keep(3)` is the `int` `3`. It has a template's limits: an augmented or conditional store
-of a `float` to the parameter, a store of the `int` into `float` storage (a field, a
-`list[float]`) and a recursive call before a return statement that returns the `int` are
-errors, which name the call and the parameter. Pass a `float` to compile the function as
-annotated.
+of a `float` to the parameter, a store of the `int` into a `list[float]` and a recursive call
+before a return statement that returns the `int` are errors, which name the call and the
+parameter. Pass a `float` to compile the function as annotated. An `int | float` argument,
+as a `float` field that was [given an `int`](#int-values-in-float-locations) is, compiles
+the function for the union in the same way.
 
 The body then computes with `int` operations where CPython's does, and they follow the
 [`int` deviations](compatibility.md#numbers): a result past 64 bits raises `OverflowError`,
@@ -903,11 +968,12 @@ rejected such calls at compile time
 ([deviation](../../tests/deviations/int_for_float_int_ops.py)). A `float` argument, as in
 `10.0`, computes in floats.
 
-This applies to direct calls of module-level functions and of ordinary methods of classes
-outside inheritance hierarchies. Constructors and other special methods, properties, static
-and class methods, closures, generators, cached functions, `*args`, methods of generic
-classes and values called through a `Callable` keep the annotated type and reject the `int`,
-as annotated variables, fields and container items do.
+This applies to direct calls of module-level functions, of ordinary methods of classes
+outside inheritance hierarchies and of hand-written constructors (but an exception class's),
+whose fields then hold the `int` too. Other special methods, properties, static and class
+methods, closures, generators, cached functions, `*args`, methods and constructors of class
+templates and values called through a `Callable` keep the annotated type and reject the
+`int`, as container items and parameter defaults do.
 
 ### Variadic arguments
 

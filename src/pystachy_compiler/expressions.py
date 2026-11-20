@@ -52,6 +52,7 @@ from src.pystachy_compiler.specs import (
 )
 from src.pystachy_compiler.syntax import Node, comp_names, made_var, mk, names_in
 from src.pystachy_compiler.union_arithmetic import unarith
+from src.pystachy_compiler.unions import field_value
 from src.pystachy_compiler.utils import (
     holds_no_object,
     packed_item,
@@ -1725,7 +1726,7 @@ def gen_class_attr(self, cn: Node, a: str) -> Val:
     identity = numeric_identity(t) and self.class_identity(ci)
     self.identity_field(ci, t, False)  # (dynamic.py)
     if is_const(ci.fdefault[a]) and cn.s + "." + a not in self.cvars and not identity:
-        return self.coerce(self.expr(ci.fdefault[a], t), t)
+        return field_value(self, ci, a, self.expr(ci.fdefault[a], t))
     self.class_default(ci, a)
     v = Val(self.mload(t, ci.fglob[a]), t)
     if identity and self.idhere():
@@ -1784,7 +1785,7 @@ def gen_class_store(self, ci: ClassInfo, a: str, v: Val) -> None:
     # C.a = v through the class: its class variable's global
     self.class_default(ci, a)
     self.identity_field(ci, ci.ftypes[a], True)  # (dynamic.py)
-    self.mstore(ci.ftypes[a], self.coerce(v, ci.ftypes[a]).v, ci.fglob[a])
+    self.mstore(ci.ftypes[a], field_value(self, ci, a, v).v, ci.fglob[a])
     if numeric_identity(ci.ftypes[a]) and self.class_identity(ci):
         self.dyn_id_store(ci.fglob[a] + ".box", v, ci.ftypes[a])
 

@@ -15,6 +15,7 @@ from src.pystachy_compiler.specs import (
     TEMPLATE_RETAINED,
 )
 from src.pystachy_compiler.syntax import Node, mentions, mk
+from src.pystachy_compiler.unions import float_takes
 from src.pystachy_compiler.utils import (
     clone,
     elem,
@@ -840,7 +841,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
         missing = {a: self.classes[cmpfields].ftypes[a] for a in self.classes[cmpfields].ftypes if a not in actual.ftypes and a not in actual.methods}
         if g.cmprebind == "":
             comparison_missing(g.node.kids[2], comparison_aliases(g.node.kids[2], f.params[1]), missing)
-    late = [j for j in range(len(ts)) if j < len(f.ptypes) and f.ptypes[j] == "float" and (ts[j] == "int" or ts[j] == "bool" or ts[j] == BIG)]
+    late = [j for j in range(len(ts)) if j < len(f.ptypes) and f.ptypes[j] == "float" and float_takes(ts[j])]
     if len(late) > 0 and cmpfields == "":
         # an int for a float parameter (see int_for_float): in this instance's own copy of the
         # def the parameter has no annotation, so its body may bind it again, as a template's

@@ -11,6 +11,7 @@ from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_f
 from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, COMPLEXC, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, OBJECTC, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
+from src.pystachy_compiler.unions import field_value, float_open, float_returns, float_site, float_takes
 from src.pystachy_compiler.utils import (
     is_clsval,
     clsof,
@@ -1302,7 +1303,11 @@ def gen_pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
         v = captured
     if v.t == "bool" and t == BIG and self.bool_numeric(f, j):
         v = self.to_big(v)  # (a bool that f reads only as a number: the int it equals, see bool_numeric)
-    value = self.coerce(v, t, what) if t != "" else v
+    if float_site(t) and float_takes(v.t) and f.name == "__init__" and f.cls in self.classes and f.node.kids[0].kind == "noann" and self.classes[f.cls].ftypes.get(f.params[j], "") == t:
+        # (an int for a float field that the __init__ @dataclass writes fills: the field's join)
+        value = field_value(self, self.classes[f.cls], f.params[j], v)
+    else:
+        value = self.coerce(v, t, what) if t != "" else v
     if identity_abi(f) and self.idhere() and self.fn_identity(f) and numeric_identity(value.t) and (not f.scalar_args or f.params[j] in f.idnames) and not self.dyn_id_fresh(value):
         # Capture now, before a later argument can rebind the original local or cell.
         # (A new number has nothing to capture: its companion is null, dyn_id_arg.)
@@ -1370,6 +1375,13 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
     for v in vals[1:]:
         t = self.join(t, v.t)
         if t == "":
+            both = self.union_type([u.t for u in vals]) if all([float_site(u.t) for u in vals]) else ""
+            if float_takes(both) and not self.final and float_open(self):
+                # (-> float overrides, one of which returns an int: all return what it does, the
+                # join of their returns, a union of numbers, see float_returns)
+                for c in cs:
+                    if c.methods[f.name].ret == "float" and float_returns(c.methods[f.name]) and self.hints.get(f"return:{c.methods[f.name].node.line}", "") != both:
+                        self.newhints[f"return:{c.methods[f.name].node.line}"] = both
             self.err(f"overrides of {short(o.t)}.{f.name}() return incompatible types; use a common return type")
     ph = Ins("phi", t, "")
     for i in range(len(vals)):
@@ -1494,11 +1506,13 @@ def int_for_float(f: FnInfo, j: int, t: str) -> bool:
     # does an argument of type t compile f again, for a float parameter j that takes an int (a
     # promoting one too) or a bool: a function's or an ordinary method's, whose body then reads
     # the int, as CPython's does
-    if (t != "int" and t != "bool" and t != BIG) or f.ptypes[j] != "float" or j == f.vararg or j == f.kwarg or len(f.node.kids) < 3:
+    if not float_takes(t) or f.ptypes[j] != "float" or j == f.vararg or j == f.kwarg or len(f.node.kids) < 3:
         return False
     if f.gen or f.extern or f.export or f.pyexport or f.clo >= 0 or f.prop or f.acc != "" or f.deco != "":
         return False
-    return f.cls == "" or not (f.name.startswith("__") and f.name.endswith("__"))
+    # (a constructor too, whose fields join: join_hint; but the one @dataclass writes, whose
+    # parameters are its fields: pcoerce)
+    return f.cls == "" or not (f.name.startswith("__") and f.name.endswith("__")) or (f.name == "__init__" and f.node.kids[0].kind != "noann")
 
 
 def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "", unbound: bool = False, got: list[FnInfo] | None = None) -> Val:
@@ -1593,7 +1607,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         passing = self.fn.build.idpass
         self.fn.build.idpass = self.id_move(e)
         try:
-            if cache is None and not self.rtmode and int_for_float(f, j, arg.t) and (f.cls == "" or (f.cls in self.classes and self.classes[f.cls].tag == 0 and self.classes[f.cls].origin == "" and f.cls not in self.tmpl)):
+            if cache is None and not self.rtmode and int_for_float(f, j, arg.t) and (f.cls == "" or (f.cls in self.classes and (self.classes[f.cls].tag == 0 or f.name == "__init__") and self.classes[f.cls].origin == "" and f.cls not in self.tmpl)):
                 # an int for a float parameter (PEP 484 accepts it, and CPython passes the int
                 # on): the function compiles for it, as a template's does (see instance)
                 vals[j] = self.pcoerce(arg, "", f, j)

@@ -1,7 +1,7 @@
 """Explicit closed scalar, container and native reference unions."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import ann_target
-from src.pystachy_compiler.diagnostics import dynamic_program, int_lists
+from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, where
 from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import owner
@@ -808,9 +808,69 @@ def gen_fnkey(self, f: FnInfo) -> str:
     return k + "(" + self.stable(f.ikey) + ")" if f.inst else k
 
 
+def field_home(self, ci: ClassInfo, name: str) -> ClassInfo:
+    # the class that declares field name of class ci (field_root): of a class template's
+    # specialization, the template, where its body annotates the field float (its
+    # specializations share that annotation, and so the join of an int given to it: float_takes)
+    root = self.field_root(ci, name)
+    return self.classes[root.origin] if root.origin != "" and name in self.classes[root.origin].ffloat else root
+
+
 def gen_field_key(self, ci: ClassInfo, name: str) -> str:
     # the key for joins of field name of class ci: of the class that declares it (see stable)
-    return f"field:{self.stable(self.field_root(ci, name).name)}.{name}"
+    return f"field:{self.stable(field_home(self, ci, name).name)}.{name}"
+
+
+FLOATAT = "float:at"  # (no location's key: where the program first gave an int to one annotated float)
+
+
+def float_takes(vt: str) -> bool:
+    # is vt the type of a number that a location annotated float holds too, as it is: an int (a
+    # promoting one as well) or a bool, which PEP 484 accepts where a float is expected and
+    # CPython stores unconverted, or a union of numbers, as such a location has once it joined.
+    # Only a store that was an error joins one (join_hint), which then is an int | float (or a
+    # bool | float, ...), as if annotated so; what holds only floats keeps its type
+    return vt == "int" or vt == "bool" or vt == BIG or (is_union(vt) and all([m == "int" or m == "float" or m == "bool" for m in umembers(vt)]))
+
+
+def float_open(self) -> bool:
+    # may a location annotated float join now: not in an attempt that an error declines (xtry: a
+    # comparison's or an adapter's of a program with Any values), whose int for a float declines
+    # it, as before, so that no declined code widens storage; a narrowing's attempt drops its
+    # joins where it is declined (err)
+    return self.xtry == "" or self.xtry.startswith("narrow:")
+
+
+def float_site(t: str) -> bool:
+    # can a location of type t be one annotated float, before or after its join (float_takes)
+    return t == "float" or (is_union(t) and "float" in umembers(t))
+
+
+def field_value(self, ci: ClassInfo, name: str, v: Val) -> Val:
+    # v as a value of field name of class ci, where no store of the object's field takes it: the
+    # default its class body gives it, or the argument of the __init__ @dataclass writes. An int
+    # for a field annotated float joins the field, as a store does (setfield, join_hint)
+    t = ci.ftypes[name]
+    if not float_site(t) or not float_takes(v.t) or name not in field_home(self, ci, name).ffloat:
+        return self.coerce(v, t)
+    was = self.join_at("float:field", self.field_key(ci, name), t)
+    cv = self.coerce(v, t)
+    self.join_at(was[0], was[1], was[2])
+    return cv
+
+
+def float_returns(f: FnInfo) -> bool:
+    # may the return of f, annotated -> float, join with an int it returns (join_hint, whose key
+    # is its def's, "return:" and the line: its instances and its class's specializations share
+    # the join): a function's or a method's whose def has the annotation, but a special method's,
+    # whose result the operation that calls it checks, and a function that C or CPython calls.
+    # Of the functions the compiler writes (a Callable's adapter, a dispatcher, ...), only a
+    # dataclass field's default_factory, whose join is the field's
+    if f.synthetic:
+        return f.name.endswith(".factory")
+    if f.node.kind != "def" or len(f.node.kids) < 3 or f.node.kids[1].kind == "noann" or f.gen or f.extern or f.export or f.pyexport or f.iters:
+        return False
+    return f.cls == "" or not (f.name.startswith("__") and f.name.endswith("__"))
 
 
 def gen_local_hint(self, name: str) -> str:
@@ -833,21 +893,29 @@ def gen_join_hint(self, t: str, vt: str) -> bool:
     # join_at set it), does not take: unless this is the last pass, a join gives the location
     # the union of both types, as if annotated (Gen.newhints, which the next pass compiles it
     # with: see Rejoin), and the store is dropped; False where the location is annotated or
-    # another kind's, or the union is no type a join gives
+    # another kind's, or the union is no type a join gives. A location annotated float (a
+    # variable, a field: "float:field", or a function's return: "float:return") joins too, but
+    # only with the numbers it also holds (float_takes), from its annotation's type or from the
+    # join an earlier pass gave it
     if self.final or self.joinkind == "" or t != self.jointype or self.drying > 0 or self.rtmode:
         return False
     key = ""
+    ann = self.joinkind == "float:field" or self.joinkind == "float:return"
     if self.joinkind == "local":
         body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
-        if self.joinname in self.curfn.params or self.joinname in self.compvars or ann_target(body, self.joinname):
+        if self.joinname in self.curfn.params or self.joinname in self.compvars:
             return False
+        ann = ann_target(body, self.joinname)
         key = f"{self.fnkey(self.curfn)}|{self.joinname}"
     elif self.joinkind == "global":
-        if self.joinname in self.constflags or owner(self.joinname) not in self.inits or ann_target(self.inits[owner(self.joinname)].node.kids, self.joinname):
+        if self.joinname in self.constflags or owner(self.joinname) not in self.inits:
             return False
+        ann = ann_target(self.inits[owner(self.joinname)].node.kids, self.joinname)
         key = f"global:{self.joinname}"
-    elif self.joinkind == "field" or self.joinkind == "return":
+    elif self.joinkind == "field" or self.joinkind == "return" or ann:
         key = self.joinname
+    if ann and not (float_takes(vt) and (t == "float" or (float_site(t) and self.hints.get(key, "") == t)) and float_open(self)):
+        return False
     j = self.join_type(self.newhints.get(key, t), vt)
     if key != "" and (j == "" or j == t or j == self.hints.get(key, "")) and (is_list(t) or is_dict(t)) and self.join_type(t, vt) == t:
         # a list or dict of another item type, which the location's cannot be as it is: where a
@@ -872,6 +940,8 @@ def gen_join_hint(self, t: str, vt: str) -> bool:
     if key == "" or j == "" or j == t or j == self.hints.get(key, ""):
         return False
     self.newhints[key] = j
+    if ann and self.joinkind != "local" and FLOATAT not in self.hints and FLOATAT not in self.newhints:
+        self.newhints[FLOATAT] = where(self.line)  # (the first such store, which an error names: err)
     return True
 
 

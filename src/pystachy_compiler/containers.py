@@ -1446,12 +1446,14 @@ def gen_hash_value(self, v: Val) -> Val:
 def gen_hashable(self, t: str) -> bool:
     # can hash() take a value of type t (but an object's, obj_hash): a number, a str, None, an
     # object, a frozenset (runtime.c's hfset, of the hashes its table keeps) or a tuple of such
-    # items, or one of these that may be None
+    # items, or one of these that may be None; a union of numbers and strs
     u = unopt(t)
     if u == "int" or u == BIG or u == "bool" or u == "float" or u == "str" or u == "bytes" or u == "None" or u == "exctype" or is_clsval(u) or self.key_class(u):
         return True
     if is_fset(u):
         return self.elem_problem(selem(u)) == ""
+    if is_union(t) and self.scalar_union(t):
+        return True  # (an int | float, as a float field that was given an int is: its member's, runtime.c's hitem)
     return (is_tuple(u) or is_vtuple(u)) and all(self.hashable(x) for x in targs(u))
 
 def gen_repr(self, v: Val) -> Val:

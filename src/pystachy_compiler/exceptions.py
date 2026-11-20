@@ -29,6 +29,7 @@ from src.pystachy_compiler.specs import (
     is_excname,
 )
 from src.pystachy_compiler.syntax import NOKIDS, Node, has_kind, mk
+from src.pystachy_compiler.unions import field_value
 from src.pystachy_compiler.utils import (
     is_const,
     is_opt,
@@ -1254,7 +1255,7 @@ def gen_class_defaults(self, o: Val) -> None:
             identity = fl in ci.fbox and numeric_identity(t)
             if not is_const(ci.fdefault[fl]) or identity:
                 self.class_default(h, fl)  # (compiled before the class statement runs)
-            v = Val(self.mload(t, h.fglob[fl]), t) if fl in h.fglob else self.coerce(self.expr(ci.fdefault[fl], t), t)
+            v = Val(self.mload(t, h.fglob[fl]), t) if fl in h.fglob else field_value(self, ci, fl, self.expr(ci.fdefault[fl], t))
             if identity:
                 self.dyn_id_read(v, h.fglob[fl] + ".box")
             self.setfield(o, self.field(o, fl), fl, v)

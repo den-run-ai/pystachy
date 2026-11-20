@@ -52,6 +52,7 @@ from src.pystachy_compiler.specs import (
     VTUPLE_ITEMS,
 )
 from src.pystachy_compiler.syntax import Node, has_kind, has_value_return, mentions, mk, other_return
+from src.pystachy_compiler.unions import field_home, float_site
 from src.pystachy_compiler.utils import (
     holds_no_object,
     is_clsval,
@@ -1705,6 +1706,8 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         f.ret = ""  # (-> Box: decided by its first return, as an unannotated one is)
     elif d.kids[1].kind != "noann":
         f.ret = self.typeof(d.kids[1])
+        if f.ret == "float" and len(self.hints) > 0:
+            f.ret = self.hints.get(f"return:{d.line}", f.ret)  # (it returned an int too: a join's type, see float_returns)
     elif cls != "" and (d.s == "__len__" or d.s == "__hash__") and has_value_return(d.kids[2]):
         # bool is also a legal length or hash; infer it so an explicit obj.__len__()
         # keeps returning bool while len(obj) converts it to int (and so hash()).
@@ -1859,6 +1862,15 @@ def gen_init_after(self, ci: ClassInfo, name: str) -> bool:
         if (st.kind == "assign" or st.kind == "annassign") and st.kids[0].kind == "attr" and st.kids[0].s == name and st.kids[0].kids[0].kind == "name" and st.kids[0].kids[0].s == me:
             return True
     return False
+
+def field_ann(self, ci: ClassInfo, name: str, a: Node) -> str:
+    # the type that annotation a in class ci's body gives its field name: where that is float and
+    # an earlier pass stored an int in the field, their union (a join's type, as if annotated:
+    # see float_takes)
+    t = self.vtype(a)
+    if t == "float":
+        ci.ffloat[name] = True
+    return self.hints.get(self.field_key(ci, name), t) if t == "float" and len(self.hints) > 0 else t
 
 def gen_add_field(self, ci: ClassInfo, name: str, t: str) -> None:
     if name in ci.methods and ci.methods[name].prop:
@@ -2043,13 +2055,13 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
                 o["kw_only"] = True
         if dc and st.kind == "annassign" and st.kids[0].kind == "name" and ci.base in self.classes and st.kids[0].s in self.classes[ci.base].ftypes:
             # (a base dataclass's field declared again, with or without a default)
-            if self.vtype(st.kids[1]) != self.classes[ci.base].ftypes[st.kids[0].s]:
+            if field_ann(self, ci, st.kids[0].s, st.kids[1]) != self.classes[ci.base].ftypes[st.kids[0].s]:
                 self.bad_class(ci, f"field '{st.kids[0].s}' of '{short(ci.base)}' declared again in '{short(ci.name)}' with another type (not supported)")
                 continue
         elif st.kind == "annassign" and st.kids[0].kind == "name" and ci.base in self.classes and st.kids[0].s in self.classes[ci.base].ftypes:
             # (a class attribute of the base bound again, with the same type: as x = v is)
             b = self.classes[ci.base]
-            if len(st.kids) < 3 or st.kids[0].s not in b.fdefault or self.vtype(st.kids[1]) != b.ftypes[st.kids[0].s]:
+            if len(st.kids) < 3 or st.kids[0].s not in b.fdefault or field_ann(self, ci, st.kids[0].s, st.kids[1]) != b.ftypes[st.kids[0].s]:
                 self.err(f"field '{st.kids[0].s}' of '{short(ci.base)}' declared again in '{short(ci.name)}' (not supported" + (", but for a class attribute of the same type" if st.kids[0].s in b.fdefault else "") + ")")
         if st.kind == "annassign" and st.kids[0].kind == "name" and ci.mod != "" and self.ann_problem(st.kids[1], False) != "":
             # an imported module's class: an error only where the program uses it
@@ -2059,7 +2071,7 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
                 del ci.fopts[st.kids[0].s]  # (whose default is not checked: see below)
         elif st.kind == "annassign" and st.kids[0].kind == "name":
             name = st.kids[0].s
-            self.add_field(ci, name, self.vtype(st.kids[1]))
+            self.add_field(ci, name, field_ann(self, ci, name, st.kids[1]))
             if len(st.kids) == 3:
                 ci.fdefault[name] = st.kids[2]
             if len(st.kids) == 3 and st.kids[2].kind in ["enummember", "enumalias"] and ci.node.line in ENUMCLASSES:
@@ -2526,7 +2538,9 @@ def gen_scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dic
                 t = "" if t == "None" or why != "" else t  # (f() that returns None: a field has a value type)
                 if t == "" and why == "" and ci.origin in self.cnts:
                     why = f"field '{name}' of namedtuple {short(ci.name)} given {'None' if given == 'None' else 'a value whose type cannot be inferred'} is not supported (the call that makes an object types its fields)"
-                jh = self.hints.get(f"field:{self.stable(ci.name)}.{name}", "") if k == "assign" and len(self.hints) > 0 else ""
+                if k == "annassign" and t == "float":
+                    ci.ffloat[name] = True  # (annotated float: an int it is given may widen it too, see float_takes)
+                jh = self.hints.get(f"field:{self.stable(ci.name)}.{name}", "") if (k == "assign" or name in ci.ffloat) and len(self.hints) > 0 else ""
                 if jh != "":
                     t = jh  # (a join's type: as if annotated, see join_hint)
                     why = ""
@@ -3739,8 +3753,9 @@ def gen_setfield_store(self, o: Val, p: Val, name: str, v: Val) -> None:
                 comparison_record_write(self, name, combined)
                 raise Rejoin()  # layout discovery is not a failed comparison body
     what = f"the value assigned to field '{name}' ({typestr(p.t)})" if is_opt(v.t) else ""
-    # (a value of another type than an inferred field's may widen it: join_hint)
-    was = self.join_at("field" if name in self.field_root(ci, name).fguess else "", self.field_key(ci, name), p.t)
+    # (a value of another type than an inferred field's may widen it, and an int a field's that
+    # is annotated float: join_hint)
+    was = self.join_at("field" if name in self.field_root(ci, name).fguess else "float:field" if float_site(p.t) and name in field_home(self, ci, name).ffloat else "", self.field_key(ci, name), p.t)
     cv = self.coerce(v, p.t, what)
     self.join_at(was[0], was[1], was[2])
     self.identity_field(ci, p.t, True)  # (dynamic.py)

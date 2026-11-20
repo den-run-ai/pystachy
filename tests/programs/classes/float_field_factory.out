@@ -1,0 +1,4 @@
+P(a=0, b=1, c=0, d=3, e=2) P(a=0.5, b=1.5, c=2.5, d=3.5, e=4.5) True
+[True, True, True, True, True] [False, False, False, False, False]
+1.5 1.0 0.0 Q(a=0.5, b=0.0) Q(a=1, b=0.0) Q(a=1, b=2)
+[exit 0]
