@@ -173,6 +173,22 @@ def unpack_minimal(staging: Path, payload: Path, machine: str) -> Path:
     return payload / minimal_archive(machine) / "bin"
 
 
+def name_host_gcc(tool_dir: Path) -> None:
+    # clang links with GCC's start files and libgcc, and looks for them under the names of the
+    # distributions it knows: LLVM 18 knows x86_64-amazon-linux and not aarch64-amazon-linux.
+    # Where it finds none, a configuration file beside it gives the name of the host's GCC.
+    found = subprocess.check_output([str(tool_dir / "clang"), "--print-file-name=crtbeginS.o"], text=True, timeout=30)
+    gcc = shutil.which("gcc")
+    if os.path.isabs(found.strip()) or gcc is None:
+        return
+    try:
+        libgcc = Path(subprocess.check_output([gcc, "-print-libgcc-file-name"], text=True, timeout=30).strip())
+    except (OSError, subprocess.SubprocessError):
+        return
+    if libgcc.is_absolute():
+        (tool_dir / "clang.cfg").write_text(f"--gcc-triple={libgcc.parent.parent.name}\n")
+
+
 def glibc() -> tuple[int, ...]:
     # The C library the process runs on, as pip reads it for manylinux; () where it is not glibc.
     try:
@@ -250,6 +266,8 @@ def ensure_toolchain() -> Path | None:
                 )
                 if f"version {version}" not in result:
                     raise ValueError(f"expected LLVM {version} from {tool}, got {result.strip()}")
+            if arch is None and sys.platform == "linux":
+                name_host_gcc(tool_dir)
             (payload / "bin").symlink_to(tool_dir.relative_to(payload), target_is_directory=True)
             if destination.exists():
                 shutil.rmtree(destination)

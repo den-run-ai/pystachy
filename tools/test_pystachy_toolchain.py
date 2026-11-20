@@ -466,7 +466,9 @@ class MinimalToolchainTests(unittest.TestCase):
         for name in tools:
             path = tree / "bin" / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(f"#!/bin/sh\necho '{name} version {release}'\n")
+            # (clang finds the host's GCC, as on the distributions it knows)
+            path.write_text(f"#!/bin/sh\ncase \"$1\" in --print-file-name=*) echo \"/gcc/${{1#*=}}\" ;; "
+                            f"*) echo '{name} version {release}' ;; esac\n")
             path.chmod(0o755)
         header = tree / "lib/clang/18/include/stddef.h"
         header.parent.mkdir(parents=True)
@@ -506,6 +508,39 @@ class MinimalToolchainTests(unittest.TestCase):
                 self.assertTrue((bin_dir.resolve().parent / "lib/clang/18/include/stddef.h").is_file())
                 archive.unlink()
                 self.assertEqual(toolchain.ensure_toolchain(), bin_dir)
+
+    def test_host_gcc_that_clang_does_not_find_is_named_beside_it(self):
+        tools = self.root / "bin"
+        tools.mkdir()
+        clang, gcc, config = tools / "clang", tools / "gcc", tools / "clang.cfg"
+        for found, libgcc, expected in (
+            ("crtbeginS.o", "/usr/lib/gcc/aarch64-amazon-linux/11/libgcc.a", "--gcc-triple=aarch64-amazon-linux\n"),
+            ("/usr/lib/gcc/aarch64-redhat-linux/11/crtbeginS.o", "/usr/lib/gcc/aarch64-redhat-linux/11/libgcc.a", None),
+            ("crtbeginS.o", "libgcc.a", None),  # a GCC that does not find its own library either
+            ("crtbeginS.o", None, None),  # no GCC
+        ):
+            with self.subTest(found=found, libgcc=libgcc):
+                config.unlink(missing_ok=True)
+                gcc.unlink(missing_ok=True)
+                clang.write_text(f"#!/bin/sh\n[ \"$1\" = --print-file-name=crtbeginS.o ] && echo {found}\n")
+                clang.chmod(0o755)
+                if libgcc is not None:
+                    gcc.write_text(f"#!/bin/sh\n[ \"$1\" = -print-libgcc-file-name ] && echo {libgcc}\n")
+                    gcc.chmod(0o755)
+                with patch.dict(toolchain.os.environ, {"PATH": str(tools)}):
+                    toolchain.name_host_gcc(tools)
+                self.assertEqual(config.read_text() if config.exists() else None, expected)
+
+    def test_only_the_downloaded_archive_is_told_the_host_s_gcc(self):
+        archive = self.archive()
+        with ExitStack() as stack:
+            self.host(stack, archive=archive)
+            named = stack.enter_context(patch.object(toolchain, "name_host_gcc"))
+            bin_dir = toolchain.ensure_toolchain()
+            # (before the directory is published to the cache, where it does not change again)
+            named.assert_called_once()
+            self.assertEqual(named.call_args.args[0].name, "bin")
+            self.assertNotEqual(named.call_args.args[0], bin_dir.resolve())
 
     def test_archive_with_another_digest_is_not_extracted(self):
         archive = self.archive()
@@ -558,10 +593,12 @@ class MinimalToolchainTests(unittest.TestCase):
             with self.subTest(llvm=llvm, machine=machine), ExitStack() as stack:
                 self.host(stack, machine=machine, distro=ubuntu, glibc=(2, 39), llvm=llvm)
                 minimal = stack.enter_context(patch.object(toolchain, "unpack_minimal"))
+                named = stack.enter_context(patch.object(toolchain, "name_host_gcc"))
                 stack.enter_context(patch.object(toolchain, "unpack_ubuntu", side_effect=ValueError("packages")))
                 with self.assertRaisesRegex(ValueError, "packages"):
                     toolchain.ensure_toolchain()
                 minimal.assert_not_called()
+                named.assert_not_called()
 
     def test_glibc_is_the_running_c_library_s_release(self):
         for answer, expected in (("glibc 2.39", (2, 39)), ("glibc 2.4", (2, 4)), ("glibc 2.41.9000", (2, 41, 9000)),
