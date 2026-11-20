@@ -309,7 +309,7 @@ resource files.
 The Linux archives retain a **glibc 2.39+** support baseline. `manylinux_2_28` is a
 feasible follow-up build target, not a compatibility tag for the current Ubuntu-built
 compiler. The [30 October 2026 portability audit](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/linux-portability.md)
-records the alpha.3 artifact measurements and older-sysroot/toolchain requirements.
+records the v0.1.0-alpha.3 artifact measurements and older-sysroot/toolchain requirements.
 An older native baseline and compiler packages with a pinned toolchain are tracked
 in [#998](https://github.com/den-run-ai/pystachy/issues/998).
 

@@ -33,7 +33,8 @@ def _errors(errors: str | None) -> str:
 def _seq(b: bytes, i: int, n: int) -> int:
     # the length of the UTF-8 sequence at b[i], which is a character's; 1 for a byte that begins
     # none, which is the character of that code point (a byte that chr() makes in Pystachy), as
-    # Pystachy's str methods read a str's bytes
+    # Pystachy's str methods read a str's bytes: an overlong sequence's first byte and one past
+    # U+10FFFF's begin none (#1587)
     c = b[i]
     if c < 0xC2 or c > 0xF4:
         return 1
@@ -43,6 +44,8 @@ def _seq(b: bytes, i: int, n: int) -> int:
     for j in range(i + 1, i + k):
         if b[j] & 0xC0 != 0x80:
             return 1
+    if (c == 0xE0 and b[i + 1] < 0xA0) or (c == 0xF0 and b[i + 1] < 0x90) or (c == 0xF4 and b[i + 1] >= 0x90):
+        return 1
     return k
 
 
