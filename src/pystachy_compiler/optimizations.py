@@ -1796,7 +1796,7 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
     pl.r = [fn.n + 1, fn.n + 2]
     fn.n += 2
     c = Ins("cast", "int", "bits")  # (its bits, as the int that the payload slot holds)
-    c.line = i.line
+    c.line = line
     c.a = [Val(tmpname(pl.r[1]), "%slot")]
     c.r = one_num(cast_number(fn))
     parts[v] = [tmpname(tg.r[0]), tmpname(c.r[0])]
