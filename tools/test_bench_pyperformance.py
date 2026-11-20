@@ -334,7 +334,7 @@ class RecordTests(unittest.TestCase):
             cases.extend(generate(source, path.name).cases)
         modules = {bench.port_path(name).stem for name in bench.BENCHMARKS}
         self.assertEqual(imported & modules, modules)
-        self.assertEqual(len(cases), 48)
+        self.assertEqual(len(cases), 49)
         self.assertEqual(len(set(cases)), len(cases))
 
     def test_pytest_correctness_suite_matches_original_pytest(self):

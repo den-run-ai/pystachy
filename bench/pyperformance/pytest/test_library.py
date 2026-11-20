@@ -1,4 +1,4 @@
-"""Standard-library kernels: encodings, listings, formatted text and decompressed data."""
+"""Library kernels: encodings, listings, formatted text, decompressed and encrypted data."""
 import hashlib
 import os
 import shutil
@@ -6,6 +6,7 @@ import shutil
 import bm_base64
 import bm_pathlib
 import bm_pprint
+import crypto_pyaes
 import pyflate
 
 
@@ -47,3 +48,10 @@ def test_pyflate():
     assert len(out) == 399360
     assert hashlib.md5(out).hexdigest() == "afa004a630fe072901b1d9628b960974"
     assert len(pyflate.TIMED) == 1
+
+
+def test_crypto_pyaes():
+    ciphertext = crypto_pyaes.bench_pyaes(1)
+    assert len(ciphertext) == len(crypto_pyaes.CLEARTEXT) == 23000
+    assert hashlib.md5(ciphertext).hexdigest() == "730a31abcccb1d0491a2a73360383cce"
+    assert crypto_pyaes.pyaes.AESModeOfOperationCTR(crypto_pyaes.KEY).decrypt(ciphertext) == crypto_pyaes.CLEARTEXT

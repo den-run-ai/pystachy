@@ -48,6 +48,9 @@
 
 VERSION = [1, 3, 0]
 
-from .aes import AES, AESModeOfOperationCTR, AESModeOfOperationCBC, AESModeOfOperationCFB, AESModeOfOperationECB, AESModeOfOperationOFB, AESModesOfOperation, Counter
-from .blockfeeder import decrypt_stream, Decrypter, encrypt_stream, Encrypter
-from .blockfeeder import PADDING_NONE, PADDING_DEFAULT
+# Pystachy port: without AESModesOfOperation, which aes.py leaves out
+from .aes import AES, AESModeOfOperationCTR, AESModeOfOperationCBC, AESModeOfOperationCFB, AESModeOfOperationECB, AESModeOfOperationOFB, Counter
+# Pystachy port: the block feeder and its padding helpers (blockfeeder.py and util.py, kept
+# as upstream's) are not imported: crypto_pyaes uses the CTR mode only, and they do not compile.
+# from .blockfeeder import decrypt_stream, Decrypter, encrypt_stream, Encrypter
+# from .blockfeeder import PADDING_NONE, PADDING_DEFAULT
