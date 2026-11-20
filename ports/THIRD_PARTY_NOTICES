@@ -608,7 +608,7 @@ Kuhn's code that wcwidth derives from.
 pyperformance (bench/pyperformance/)
 ------------------------------------
 
-The Python files in bench/pyperformance/ are the run_benchmark.py files of 25 benchmarks from
+The Python files in bench/pyperformance/ are the run_benchmark.py files of 37 benchmarks from
 pyperformance 1.14.0 (https://github.com/python/pyperformance), edited where
 bench/pyperformance/README.md lists (each edit is marked "Pystachy port:"); that README records
 the sdist's and each file's SHA-256. pyperformance is used under the MIT License, whose text is in
@@ -620,9 +620,54 @@ pending a separate provenance decision. fannkuch.py, meteor_contest.py,
 nbody.py, pidigits.py, regex_dna.py and spectral_norm.py say they come from The Computer Language Benchmarks
 Game, whose programs are published under the 3-clause BSD License; richards.py and
 richards_super.py credit a Java version "Copyright (C) 1995 Sun Microsystems, Inc."; chaos.py says
-"Copyright (C) 2005 Carl Friedrich Bolz". pyperformance distributes all of these files under its
-MIT License; their origins are listed here so that a license review can confirm that this
+"Copyright (C) 2005 Carl Friedrich Bolz". pyflate.py says "Copyright 2006--2007-01-21 Paul Sladen"
+and "You may use and distribute this code under any DFSG-compatible license (eg. BSD, GNU GPLv2)".
+decimal_factorial.py and decimal_pi.py say they were copied from Modules/_decimal/tests/bench.py
+in the CPython source, with its notice "Copyright (C) 2001-2012 Python Software Foundation. All
+Rights Reserved. Modified and extended by Stefan Krah." telco.py implements the telco benchmark
+of http://speleotrove.com/decimal/telco.html. pyperformance distributes all of these files under
+its MIT License; their origins are listed here so that a license review can confirm that this
 suffices.
+
+Three files in bench/pyperformance/data/ come from the same pyperformance 1.14.0 sdist, whose
+MIT License covers them as it distributes them; bench/pyperformance/README.md records their
+SHA-256. telco-bench.b is bm_telco's input, byte for byte. interpreter.tar.bz2 is bm_pyflate's
+input, byte for byte: an archive of 25 files of PyPy's pypy/interpreter package
+(https://pypy.org), which carry no license header; PyPy is distributed under the MIT License.
+regex_compile.txt records the regexes that bm_regex_compile captures from pyperformance's
+regex_effbot and regex_v8 benchmarks; regex_v8's are those of the V8 project's benchmark, under
+the BSD license in regex_v8.py's header.
+
+pyaes (bench/pyperformance/pyaes/)
+----------------------------------
+
+bench/pyperformance/pyaes/ holds the four modules of pyaes 1.6.1 (https://github.com/ricmoo/pyaes;
+pyaes-1.6.1.tar.gz, SHA-256 02c1b1405c38d3c370b085fb952dd8bea3fadcee6411ad99f312cc129c536d8f),
+which pyperformance's crypto_pyaes benchmark requires. aes.py and __init__.py are edited where
+marked "Pystachy port:"; blockfeeder.py and util.py are unchanged. Each module keeps its header,
+and LICENSE.txt beside them is the package's:
+
+The MIT License (MIT)
+
+Copyright (c) 2014 Richard Moore
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 
 Byte BPE (bench/pyperformance/bpe_tokeniser.py and examples/byte_bpe/upstream/bpe_tokeniser.py)
 -------------------------------------------------------------------------------------------

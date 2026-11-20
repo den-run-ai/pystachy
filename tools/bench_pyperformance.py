@@ -42,7 +42,7 @@ BENCHMARKS = {
     "chaos": (["10"], ["1", "200"]),
     "comprehensions": (["10000"], ["1"]),
     "crypto_pyaes": (["20"], ["1"]),
-    "decimal_factorial": (["4"], ["1", "200", "1000"]),
+    "decimal_factorial": (["2"], ["1", "200", "1000"]),
     "decimal_pi": (["4"], ["1"]),
     "fannkuch": (["2"], ["1", "7"]),
     "float": (["10"], ["1", "1000"]),

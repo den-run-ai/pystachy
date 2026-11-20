@@ -51,7 +51,8 @@ def bench_decimal_factorial():
 if __name__ == "__main__":
     # Pystachy port: a deterministic main replaces pyperf.Runner: argv[1] is the
     # number of loops and the other arguments replace upstream's sizes; the digits
-    # of each factorial are counted and two of its remainders printed, and the time goes to stderr.
+    # of each factorial are counted and two of its remainders printed, and the time
+    # goes to stderr.
     import sys
     import time
     loops = int(sys.argv[1]) if len(sys.argv) > 1 else 1
