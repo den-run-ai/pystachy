@@ -672,6 +672,10 @@ def gen_stmt_main(self, n: Node) -> None:
         elif n.kids[0].kind != "str" and n.kids[0].kind != "ellipsis":
             self.stmtexpr = n.kids[0]  # (whose value is dropped: g.close() as a statement)
             self.expr(n.kids[0], "")  # (a string or ... alone does nothing)
+            if self.blk.dead and len(self.blk.code) == 0:
+                # (it raised, and nothing used its value: the statement ends as the raise does,
+                # so code after it is code after a raise, Blk.dead)
+                self.unreachable()
     elif k == "gendrop":
         self.gen_drop(self.expr(n.kids[0], ""))  # (a generator a loop owns: owned_loop)
     elif k == "dynbody":
