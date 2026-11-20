@@ -155,12 +155,14 @@ plan() {
   if [ "$PROFILE" = pr ]; then
     case $1 in
       all) echo 'bootstrap tests-cpython tests-native-jit-0 tests-native-jit-1 tests-native-aot-0 tests-native-aot-1 tests-native-aot-2 tests-native-aot-3 tests-opt-off-0 runtime-cache python-free-0 ubsan-0 gc-self gc-jit-0 gc-aot-0 benchmarks example-cli dynany-optin-0 python-int-optin-0 annotation-widening check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1'; return ;;
-      native-jit-[01]|native-aot-[012]) echo "bootstrap tests-$1"; return ;;
+      native-jit-[01]|native-aot-[01]) echo "bootstrap tests-$1"; return ;;
+      # (the shortest quarter takes the two runtime-cache lanes; GC self-compilation has a job alone)
+      native-aot-2) echo 'bootstrap tests-native-aot-2 runtime-cache'; return ;;
       native-aot-3) echo 'bootstrap tests-native-aot-3 scaling-1'; return ;;
       safety-0) echo 'bootstrap tests-opt-off-0 python-free-0 gc-jit-0'; return ;;
       safety-1) echo 'bootstrap ubsan-0 gc-aot-0'; return ;;
       opt-in) echo 'bootstrap dynany-optin-0 python-int-optin-0 annotation-widening'; return ;;
-      cache-gc) echo 'bootstrap runtime-cache gc-self'; return ;;
+      gc-self) echo 'bootstrap gc-self'; return ;;
       benchmarks) echo 'bootstrap benchmarks example-cli scaling-0'; return ;;
       bootstrap|hosted|contracts) ;; # shared names and steps below
       *) echo "verify: unknown PR group: $1" >&2; return 2 ;;
@@ -218,7 +220,7 @@ plan() {
 GROUP=${1:-all}
 if [ "$GROUP" = --list ]; then
   groups='all bootstrap hosted native-0 native-1 native-2 opt-off-0 opt-off-1 opt-off-2 python-free-0 python-free-1 python-free-2 python-free-3 ubsan-0 ubsan-1 ubsan-2 ubsan-3 ubsan-4 gc-self gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 contracts benchmarks scaling'
-  [ "$PROFILE" != pr ] || groups='all bootstrap hosted native-jit-0 native-jit-1 native-aot-0 native-aot-1 native-aot-2 native-aot-3 safety-0 safety-1 opt-in contracts cache-gc benchmarks'
+  [ "$PROFILE" != pr ] || groups='all bootstrap hosted native-jit-0 native-jit-1 native-aot-0 native-aot-1 native-aot-2 native-aot-3 safety-0 safety-1 opt-in contracts gc-self benchmarks'
   for g in $groups; do
     printf '%s %s\n' "$g" "$(plan "$g")"
   done
@@ -413,8 +415,8 @@ x=""
 step bootstrap $r "$s" "$L" "$x"
 fi
 
-# Self-compilation has its own full-CI runner; all/local runs can overlap earlier checks.
-# The compact cache-gc group waits for both cache runs before starting GC self-compilation.
+# Self-compilation has its own CI runner (a PR's gc-self job too); all/local runs can overlap
+# earlier checks.
 # Bound it separately from the CI job,
 # leaving time to write/upload a failed report. timeout forwards TERM to its process group,
 # including the compiler, so cancellation cannot leave the background self-compile running.
@@ -490,7 +492,7 @@ if want gc-self && [ -x "$V/pystachy2" ]; then
   gcpid=$!
 fi
 }
-[ "$GROUP" = cache-gc ] || start_gc_self
+start_gc_self
 
 # ---- differential tests with both compilers
 # tests-cpython: the CPython-hosted compiler must compile every case of the corpus exactly as stage 2
@@ -747,9 +749,6 @@ fi
 
 # ---- gc-self: fixed-point identity under compiler GC stress
 if want gc-self; then
-  # runtime-cache already uses two compiler lanes. Give this bounded compile the runner
-  # after those lanes finish instead of competing with them as a third heavy process.
-  if [ "$GROUP" = cache-gc ]; then start_gc_self; fi
 L=$V/gc-self-check.log; s=$(now); r=fail
 {
   self_ok=0; self_status=127

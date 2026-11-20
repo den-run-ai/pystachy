@@ -601,12 +601,12 @@ from the budget. Each test runner uses at most four processes within its worker.
 |---|---:|---|
 | Linux bootstrap | 1 | x86-64 compiler/runtime fixed points and verified compiler bundle. |
 | Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata. |
-| Native AOT | 4 | Disjoint quarters of the **complete** corpus in AOT; the fourth worker also checks scaling's second half. |
+| Native AOT | 4 | Disjoint quarters of the **complete** corpus in AOT; the third worker then runs both runtime-cache checks, side by side, and the fourth checks scaling's second half. |
 | Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers; the first then checks native program-cache invalidation and execution, the second runtime ABI, cache and GC controls. |
 | Safety | 2 | Representative and changed cases: optimizer off, Python-free rebuild, UBSan rebuild, JIT/AOT GC stress; generated ASan controls on the second worker. |
 | Opt-in compatibility | 1 | Selected programs with dynamic `Any` and promoting ints, against fresh CPython oracles; shared pytest example APIs and native runner qualification. |
 | Contracts | 1 | Complete IR/runtime/FFI and behavioral contract checks; bounded Lean null/union proofs. |
-| Cache and compiler GC | 1 | Both runtime-cache checks, then stressed self-compilation. |
+| Compiler GC | 1 | Collector-stressed self-compilation, alone in its job within its own 10-minute bound. |
 | Benchmarks and scaling | 1 | Correctness, scaling's first half, BLAS and large upstream regex. |
 | Full-only qualification | 1 skipped | O1 bootstrap comparison and native archive smoke run on main/manual CI. |
 | `Verification` | 1 | Confirms the selected plan. For code PRs, checks reports, profiles, selection manifests, counts and job results. |

@@ -307,7 +307,10 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
         for text in ("gc-self: started", "limit 10m", "gc-self: finished after", "gc statistics"):
             self.assertIn(text, logs["gc-self"])
 
-    def test_compact_cache_group_finishes_two_cache_lanes_before_gc_self(self):
+    def test_pr_gc_self_runs_alone_and_an_aot_quarter_takes_the_two_cache_lanes(self):
+        # GC self-compilation, which grows with the compiler, has a PR job to itself; the two
+        # runtime-cache lanes follow the third AOT quarter, the shortest, so neither shares the
+        # 15-minute job limit with the other
         shutil.copy(ROOT / "tools/ci_sample.py", self.root / "tools/ci_sample.py")
         compiler = self.root / "bin/compiler"
         compiler.write_text(compiler.read_text().replace(
@@ -337,21 +340,35 @@ if not os.environ.get("VERIFY_MOCK_SERIAL"):
 print((97 if name == "native" else 99), "passed, 0 failed")
 ''')
         cache.chmod(0o755)
-        for mode, serial in (("pass", False), ("pass", True), ("mismatch", False), ("timeout", False)):
-            with self.subTest(mode=mode, serial=serial):
+        listed = subprocess.run(["sh", "tests/verify.sh", "--list"], cwd=self.root, env=self.env,
+                                text=True, capture_output=True, timeout=60)
+        plans = {line.split()[0]: line.split()[1:] for line in listed.stdout.splitlines()}
+        self.assertEqual(plans["native-aot-2"], ["bootstrap", "tests-native-aot-2", "runtime-cache"])
+        self.assertEqual(plans["gc-self"], ["bootstrap", "gc-self"])
+        self.assertNotIn("cache-gc", plans)
+        self.assertEqual([group for group, steps in plans.items()
+                          if group != "all" and "runtime-cache" in steps and "gc-self" in steps], [])
+        # (the quarter's corpus run needs the real suite: the fixture's plan keeps its cache step)
+        self.mutate_verify("native-aot-2) echo 'bootstrap tests-native-aot-2 runtime-cache'",
+                           "native-aot-2) echo 'bootstrap runtime-cache'")
+        for serial in (False, True):
+            with self.subTest(serial=serial):
                 self.env["VERIFY_MOCK_SERIAL"] = "1" if serial else ""
                 for name in ("native", "hosted"):
                     (self.root / ("started-" + name)).unlink(missing_ok=True)
-                result, report, logs = self.run_group("cache-gc", mode)
-                self.assertEqual([step["name"] for step in report["steps"]],
-                                 ["bootstrap", "runtime-cache", "gc-self"])
-                cache_step, gc_step = report["steps"][1:]
+                result, report, logs = self.run_group("native-aot-2")
+                self.assertEqual([step["name"] for step in report["steps"]], ["bootstrap", "runtime-cache"])
+                cache_step = report["steps"][1]
                 self.assertEqual(cache_step["compilers"], ["stage2", "CPython-hosted"])
                 self.assertEqual((cache_step["result"], cache_step["passed"], cache_step["expected"]),
                                  ("pass", 196, 196), logs["runtime-cache"])
-                # The parent records cache completion only after both lanes have ended.
-                # Starting GC afterwards bounds this group to two simultaneous compiler lanes.
-                self.assertLess(result.stdout.index("runtime-cache"), result.stdout.index("gc-self: starting"))
+                self.assertNotIn("gc-self", result.stdout)
+                self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
+        for mode in ("pass", "mismatch", "timeout"):
+            with self.subTest(mode=mode):
+                result, report, logs = self.run_group("gc-self", mode)
+                self.assertEqual([step["name"] for step in report["steps"]], ["bootstrap", "gc-self"])
+                gc_step = report["steps"][1]
                 self.assertEqual(gc_step["compiler_interval"], 5000)
                 self.assertEqual(gc_step["ir_identical"], mode == "pass")
                 self.assertEqual((result.returncode, report["result"], gc_step["result"]),
