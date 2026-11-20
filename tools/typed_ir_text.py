@@ -4,18 +4,19 @@
 A function record holds what the inspection snapshots hold of one function's IR: its symbol,
 parameters, return type, slots, blocks, check targets and loops. `format_function` prints a
 record, `parse_function` reads one back, and the two are inverse: parse(format(r)) == r for
-every record, and format(parse(t)) == t for every text that format printed. `to_ifn` builds
-the compiler's own IFn from a record, so a test can write IR as text, run the verifier or a
-pass on it and compare the printed result; `from_ifn` is its inverse.
+every record, and format(parse(t)) == t for every text that format printed, where format prints
+locations (locations=True); without them, both hold where no instruction has a location.
+`to_ifn` builds the compiler's own IFn from a record, so a test can write IR as text, run the
+verifier or a pass on it and compare the printed result; `from_ifn` is its inverse.
 
-    python3 tools/typed_ir_text.py print typed-after.json [--function NAME]
+    python3 tools/typed_ir_text.py print typed-after.json [--function NAME] [--locations]
     python3 tools/typed_ir_text.py check FILE.tir          # parse, print again, compare
     python3 tools/typed_ir_text.py json FILE.tir           # the records, as JSON
     python3 tools/typed_ir_text.py verify FILE.tir         # verify each function, as expected
 
 One instruction is one line:
 
-    [RESULT ... = ] op [TEXT] [k=INT] [x=DESCRIPTOR] [(TYPE VALUE, ...)] [-> LABEL, ...] [: TYPE]
+    [RESULT ... = ] op [TEXT] [k=INT] [x=DESCRIPTOR] [(TYPE VALUE, ...)] [-> LABEL, ...] [: TYPE] [loc([FILE:]LINE)]
 
     %t12 = num.cmp < (int %t10, int %t11) : bool
     ~%t6 %t7 %t8 = ovf + (int %t4, int %t5) : int
@@ -26,6 +27,12 @@ A result is written as operands name it: %tN, or a slot's register (ir.slot_regi
 marks a temporary of the op's lowering (OP_TEMPS), which no operand names; printing and parsing
 read those, and slot registers, from the compiler. TEXT is the op's Ins.s: its operator, runtime
 entry, callee, error or variable.
+
+An instruction's location is the line of the statement it implements (Ins.line). A record
+holds it as the compiler numbers lines, a file's index times diagnostics.LINES plus the line,
+and 0 where it is unknown. The text holds it only where asked to, as MLIR prints locations
+only with -mlir-print-debuginfo: `loc(12)` is line 12 of the program's main file, and
+`loc(3:12)` line 12 of its file 3 (diagnostics.FILES[3]). An instruction without one reads as 0.
 
 An atom (a type, a value, a label, a text) is written bare where that is unambiguous, else as
 a JSON string. The form is for tests and review. It is no stable interchange format, and it
@@ -177,8 +184,25 @@ def result_names(ins):
     return [("~" if j in temps else "") + f"%t{r}" for j, r in enumerate(ins["results"])]
 
 
-def instruction_text(ins):
+def lines_per_file():
+    """diagnostics.LINES: the lines of file K are numbered from K times it."""
+    compiler()
+    from src.pystachy_compiler.diagnostics import LINES
+    return LINES
+
+
+def location_text(line):
+    """An instruction's location (a nonzero line, as the compiler numbers lines) as text."""
+    per = lines_per_file()
+    return f"loc({line})" if line < per else f"loc({line // per}:{line % per})"
+
+
+LOCATION = re.compile(r" loc\((\d+)(?::(\d+))?\)$")
+
+
+def instruction_text(ins, locations=False):
     require(isinstance(ins["immediate"], int) and not isinstance(ins["immediate"], bool), "an immediate must be an integer")
+    require(type(ins.get("line")) is int and ins["line"] >= 0, "a line must be a nonnegative integer")
     require(re.fullmatch(r"[a-z]+(\.[a-z]+)?", ins["op"]) is not None, f"invalid operation name {ins['op']!r}")
     parts = []
     if ins["results"]:
@@ -202,6 +226,8 @@ def instruction_text(ins):
         parts.append(" -> " + ", ".join(atom(label) for label in ins["targets"]))
     if ins["type"] != "":
         parts.append(" : " + atom(ins["type"]))
+    if locations and ins["line"] != 0:
+        parts.append(" " + location_text(ins["line"]))
     return "".join(parts)
 
 
@@ -209,6 +235,17 @@ RESULT = re.compile(r"(~?)%t(-?\d+)|%(.+)\.(-?\d+)")
 
 
 def read_instruction(text):
+    line = 0
+    located = LOCATION.search(text)
+    if located:
+        # (no other part of an instruction ends so: a bare atom holds no parenthesis)
+        per = lines_per_file()
+        first, second = int(located.group(1)), located.group(2)
+        line = first if second is None else first * per + int(second)
+        require(line != 0, "an unknown location is omitted")
+        require(second is None or int(second) < per, f"a location's line must be below {per}")
+        require(text[located.start() + 1:] == location_text(line), f"a location must be written {location_text(line)}")
+        text = text[:located.start()]
     at = 0
     results = []
     names = []
@@ -255,7 +292,7 @@ def read_instruction(text):
         require(t != "", "an empty type is omitted")
     require(at == len(text), f"unexpected text at column {at + 1}: {text[at:]!r}")
     ins = {"op": op, "type": t, "text": s, "immediate": k, "descriptor": x,
-           "results": results, "operands": operands, "targets": targets}
+           "results": results, "operands": operands, "targets": targets, "line": line}
     if names:
         expected = result_names(ins)
         require(names == expected, f"results must be written {' '.join(expected)}")
@@ -326,8 +363,8 @@ def read_loop(text):
     return loop
 
 
-def format_function(record):
-    """The text of one function record."""
+def format_function(record, locations=False):
+    """The text of one function record, with each instruction's location where locations."""
     header = "function " + atom(record["symbol"])
     header += "(" + ", ".join(atom(p["name"], ":") + ": " + atom(p["type"]) for p in record["parameters"]) + ")"
     header += " -> " + atom(record["return"])
@@ -338,13 +375,13 @@ def format_function(record):
         header += " effects=" + atom(record["effects"])
     lines = [header + " {"]
     for slot in record["slots"]:
-        lines.append("  " + instruction_text(slot))
+        lines.append("  " + instruction_text(slot, locations))
     for block in record["blocks"]:
         head = atom(block["label"], ":") + ":"
         if block["handler"] != "":
             head += " handler=" + atom(block["handler"])
         lines.append(head)
-        lines.extend("  " + instruction_text(i) for i in block["operations"])
+        lines.extend("  " + instruction_text(i, locations) for i in block["operations"])
     for key in record["check_targets"]:
         lines.append(f"cold {atom(key)} -> {atom(record['check_targets'][key])}")
     for loop in record["loops"]:
@@ -437,16 +474,17 @@ def parse_function(text):
 
 
 def from_snapshot(function):
-    """The record of one function of an inspection snapshot (tools/inspect_compiler.py)."""
+    """The record of one function of an inspection snapshot (tools/inspect_compiler.py), which
+    holds no locations."""
     return {
         "symbol": function["symbol"],
         "parameters": [{"name": p["name"], "type": p["representation"]} for p in function["parameters"]],
         "return": function["return_representation"],
         "coroutine": function["recursion"]["coroutine"],
         "effects": function["effects"],
-        "slots": [dict(i, operands=[dict(a) for a in i["operands"]]) for i in function["slots"]],
+        "slots": [dict(i, operands=[dict(a) for a in i["operands"]], line=0) for i in function["slots"]],
         "blocks": [{"label": b["label"], "handler": b["handler"],
-                    "operations": [dict(i, operands=[dict(a) for a in i["operands"]]) for i in b["operations"]]}
+                    "operations": [dict(i, operands=[dict(a) for a in i["operands"]], line=0) for i in b["operations"]]}
                    for b in function["blocks"]],
         "check_targets": dict(function["check_targets"]),
         "loops": [{"kind": lp["kind"], "mode": lp["mode"], "head": lp["head"], "body": lp["body"],
@@ -495,6 +533,7 @@ def to_ifn(record):
 
     def instruction(ins):
         i = ir.Ins(ins["op"], ins["type"], ins["text"])
+        i.line = ins["line"]
         i.k = ins["immediate"]
         i.x = ins["descriptor"]
         i.r = list(ins["results"])
@@ -535,7 +574,7 @@ def from_ifn(fn):
 
     def instruction(i):
         return {"op": i.op, "type": i.t, "text": i.s, "immediate": i.k, "descriptor": i.x, "results": list(i.r),
-                "operands": [{"value": a.v, "type": a.t} for a in i.a], "targets": list(i.b)}
+                "operands": [{"value": a.v, "type": a.t} for a in i.a], "targets": list(i.b), "line": i.line}
 
     f = fn.f
     return {
@@ -629,15 +668,15 @@ def verify_errors(text, eh=False):
 
 
 def roundtrip_errors(record):
-    """Why a record does not survive print and parse, or []."""
+    """Why a record, its locations too, does not survive print and parse, or []."""
     try:
-        text = format_function(record)
+        text = format_function(record, True)
         parsed = parse_function(text)
     except TextError as error:
         return [f"{record.get('symbol', '?')}: {error}"]
     if parsed != record:
         return [f"{record['symbol']}: the parsed record differs from the printed one"]
-    if format_function(parsed) != text:
+    if format_function(parsed, True) != text:
         return [f"{record['symbol']}: printing the parsed record gives another text"]
     return []
 
@@ -647,6 +686,7 @@ def main():
     parser.add_argument("mode", choices=("print", "check", "json", "verify"))
     parser.add_argument("path", type=Path)
     parser.add_argument("--function", default="", help="print: only functions whose symbol contains this")
+    parser.add_argument("--locations", action="store_true", help="print: each instruction's source location")
     args = parser.parse_args()
     try:
         source = args.path.read_text(encoding="utf-8")
@@ -657,7 +697,7 @@ def main():
             if problems:
                 print("\n".join(problems), file=sys.stderr)
                 return 1
-            sys.stdout.write("\n".join(format_function(r) for r in records))
+            sys.stdout.write("\n".join(format_function(r, args.locations) for r in records))
             return 0
         records = parse_functions(source)
         if args.mode == "verify":
@@ -670,7 +710,7 @@ def main():
         if args.mode == "json":
             print(json.dumps(records, indent=1))
             return 0
-        printed = "\n".join(format_function(r) for r in records)
+        printed = "\n".join(format_function(r, True) for r in records)
         if printed != source:
             print(f"typed_ir_text: {args.path} is not in the printed form", file=sys.stderr)
             return 1
