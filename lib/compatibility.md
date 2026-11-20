@@ -769,9 +769,11 @@ Making an object of a class that leaves an abstract method raises CPython's `Typ
   ([test](../tests/errors/classes/abc_pop_keyword.py)), and `update()` takes pairs from a
   list, tuple, set or frozenset: another iterable object is read as a mapping (`keys()`).
 - `Sequence`'s `in`, `index()` and `count()` and the views' `in` test identity, then equality,
-  as CPython's do ([test](../tests/programs/classes/abc_identity.py)). A number has no identity
-  here, so a NaN item equals no value, as in a list
-  ([NaN identity](../docs/language/compatibility.md#numbers)).
+  as CPython's do ([test](../tests/programs/classes/abc_identity.py)). Numbers compare by value,
+  so a NaN item equals no value, as in a list
+  ([NaN identity](../docs/language/compatibility.md#numbers)); a number searched for among
+  strings or containers, or one of those among numbers, is a compile-time error
+  ([test](../tests/errors/classes/abc_values_other_type.py)).
 - `reversed()` of a `Mapping` is a compile-time error, where CPython's `__reversed__ = None`
   raises `TypeError` ([test](../tests/errors/classes/abc_mapping_reversed.py)); `Set._hash()`
   is not provided.

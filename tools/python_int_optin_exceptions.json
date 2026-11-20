@@ -658,22 +658,6 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
-      "case": "tests/programs/upstream/upstream_iter_classes.py",
-      "mode": "jit",
-      "category": "unsupported-identity",
-      "diagnostic": "lib/operator.py:176: error: 'is' between ints is not supported in python-int modules yet (compiling operator.indexOf(IteratingSequenceClass, int) for the call at tests/programs/upstream/upstream_iter_classes.py:359)",
-      "reason": "operator.indexOf tests integer identity before equality; is between promoting ints is explicitly unsupported.",
-      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
-    },
-    {
-      "case": "tests/programs/upstream/upstream_iter_classes.py",
-      "mode": "aot",
-      "category": "unsupported-identity",
-      "diagnostic": "lib/operator.py:176: error: 'is' between ints is not supported in python-int modules yet (compiling operator.indexOf(IteratingSequenceClass, int) for the call at tests/programs/upstream/upstream_iter_classes.py:359)",
-      "reason": "operator.indexOf tests integer identity before equality; is between promoting ints is explicitly unsupported.",
-      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
-    },
-    {
       "case": "tests/programs/classes/class_const_module.py",
       "mode": "jit",
       "category": "unsupported-inference",

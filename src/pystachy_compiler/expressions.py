@@ -4021,9 +4021,10 @@ def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False,
     # operation has of those unions; others are made the unions, the left one at its edge
     c0 = n.kids[0]
     c1 = n.kids[1]
-    if n.s == "or" and c0.kind == "cmp" and c0.s == "is" and c1.kind == "cmp" and c1.s == "==" and c0.kids[0].kind == "name" and c0.kids[1].kind == "name" and c1.kids[0].kind == "name" and c1.kids[1].kind == "name" and c0.kids[0].s == c1.kids[0].s and c0.kids[1].s == c1.kids[1].s and self.isnum(self.static_type(c0.kids[0])) and self.isnum(self.static_type(c0.kids[1])):
-        # x is y or x == y, the identity-or-equality test, on numbers: x == y (numbers have no
-        # identity here; see the deviation about NaN)
+    if n.s == "or" and c0.kind == "cmp" and c0.s == "is" and c1.kind == "cmp" and c1.s == "==" and c0.kids[0].kind == "name" and c0.kids[1].kind == "name" and c1.kids[0].kind == "name" and c1.kids[1].kind == "name" and c0.kids[0].s == c1.kids[0].s and c0.kids[1].s == c1.kids[1].s and (self.isnum(self.static_type(c0.kids[0])) or self.static_type(c0.kids[0]) == BIG) and (self.isnum(self.static_type(c0.kids[1])) or self.static_type(c0.kids[1]) == BIG):
+        # x is y or x == y, the identity-or-equality test, on numbers, promoting ints too (whose
+        # 'is' alone is not supported: gen_big_compare): x == y (numbers have no identity here;
+        # see the deviation about NaN)
         return Val(self.cond(c1), "bool") if ascond else self.expr(c1, want, resultsoft=resultsoft)
     st = self.static(n.kids[0])
     if st >= 0:

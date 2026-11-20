@@ -539,10 +539,7 @@ class ItemsView:
         except KeyError:
             return False
         else:
-            # Pystachy port: value in (v,), which tests v is value and then v == value, as
-            # CPython's v is value or v == value does, also for numbers, whose 'is' Pystachy
-            # does not compile (an unboxed number keeps no identity: compatibility.md)
-            return value in (v,)
+            return v is value or v == value
 
     def __iter__(self):
         for key in self._mapping:
@@ -619,7 +616,7 @@ class ValuesView:  # Pystachy port: was ValuesView(MappingView, Collection)
     def __contains__(self, value):
         for key in self._mapping:
             v = self._mapping[key]
-            if value in (v,):  # Pystachy port: see ItemsView.__contains__
+            if v is value or v == value:
                 return True
         return False
 
@@ -749,7 +746,7 @@ class Sequence(Collection):  # Pystachy port: was Sequence(Reversible, Collectio
 
     def __contains__(self, value):
         for v in self:
-            if value in (v,):  # Pystachy port: see ItemsView.__contains__
+            if v is value or v == value:
                 return True
         return False
 
@@ -775,14 +772,14 @@ class Sequence(Collection):  # Pystachy port: was Sequence(Reversible, Collectio
                 v = self[i]
             except IndexError:
                 break
-            if value in (v,):  # Pystachy port: see ItemsView.__contains__
+            if v is value or v == value:
                 return i
             i += 1
         raise ValueError
 
     def count(self, value):
         'S.count(value) -> integer -- return number of occurrences of value'
-        return sum(1 for v in self if value in (v,))  # Pystachy port: see ItemsView.__contains__
+        return sum(1 for v in self if v is value or v == value)
 
 
 class MutableSequence(Sequence):
