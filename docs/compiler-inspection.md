@@ -143,6 +143,24 @@ These are cache keys, so repeated identical calls appear once. Identities are
 local to each attempt. On failure, the map contains only completed selections
 and the diagnostic context gives the rejected request when available.
 
+## Annotated source
+
+`tools/annotate_ir.py` shows a program as Cython's annotate view does: each source line,
+then the typed-IR instructions that carry its line, each followed by the LLVM lines that
+lowering emitted for it. A line's heading counts its runtime calls (LLVM calls of `pys_`
+functions) and joins its instructions' [effects](typed-ir.md#effects).
+
+```sh
+python3 tools/annotate_ir.py tools/inspection_examples/score_samples.py
+python3 tools/annotate_ir.py PROGRAM.py --html /tmp/annotated.html
+```
+
+`--html` writes one self-contained page whose lines are shaded by their runtime calls, and
+`--json` the records. The hosted compiler compiles the program once in a worker, with line
+tables and the IR check; the program is not run. The typed IR is what lowering prints, and the
+LLVM IR is lowering's output before LLVM optimizes it. An instruction with no line of its own
+(line 0) is shown with the one before it. Only the program's own file is annotated.
+
 ## Reading the report accurately
 
 - **Locations:** diagnostics retain the compiler's file and line directly.
