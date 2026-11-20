@@ -218,7 +218,7 @@ def gen_utag(self, t: str) -> int:
 
 def gen_ubox(self, v: Val, m: str, u: str) -> str:
     # v, of member type m, as a box of union u (a class's object that may be None: null)
-    b = self.rt("pys_ubox", "ptr", [f"i64 {self.utag(m)}", "i64 " + self.to_slot(Val(v.v, m), False, True)])
+    b = self.rt("pys_ubox", "ptr", [f"i64 {self.utag(m)}", "i64 " + self.to_slot(Val(v.v, m), False, True)], t=u)
     if m not in self.classes or v.v in self.nn:
         return b
     return self.select(self.ptr_cmp('==', v, Val('null', 'None')).v, Val('null', u), Val(b, u))

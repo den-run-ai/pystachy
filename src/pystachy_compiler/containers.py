@@ -158,8 +158,8 @@ def gen_none_container(self, e: Node) -> Val:
             self.err(f"can't multiply sequence by non-int of type '{tname(n.t)}'")
         return Val(self.rt("pys_list_mul", "ptr", [f"ptr {xs.v}", f"i64 {n.v}"]), xs.t)
     if e.kind == "list":
-        r = self.rt("pys_list_new", "ptr", [f"i64 {len(e.kids)}"])
         t = self.ctype("list", [NONE_ITEM])
+        r = self.rt("pys_list_new", "ptr", [f"i64 {len(e.kids)}"], t=t)
         for _ in e.kids:
             self.list_write("list.append", [Val(r, t), Val("0", "*" + NONE_ITEM)])
         return Val(r, t)
@@ -173,7 +173,7 @@ def gen_none_container(self, e: Node) -> Val:
         ks.append(k)
     if self.key_problem(kt) != "":
         self.err(self.key_problem(kt))
-    r = self.rt("pys_dict_new", "ptr", [f"i64 {self.key_kind(kt, True)}", f"i64 {len(ks)}"])
+    r = self.rt("pys_dict_new", "ptr", [f"i64 {self.key_kind(kt, True)}", f"i64 {len(ks)}"], t=self.ctype("dict", [kt, NONE_ITEM]))
     for k in ks:
         self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(self.store_key(k, kt)), "i64 0"], self.key_fx(kt))
     return Val(r, self.ctype("dict", [kt, NONE_ITEM]))
@@ -243,11 +243,11 @@ def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = Fa
         self.globs[gi].t = self.ctype("frozenset", [et])
         load.t = self.globs[gi].t
     items = [self.set_coerce(v, et) for v in items]
-    r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"])
+    r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"], t=self.ctype("set", [et]))
     for v in items:
         self.set_store(r, v, et)
     if folded or (len(items) > 2 and folds(mk("tuple", "", n.line, n.kids))):
-        c = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"])
+        c = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"], t=self.ctype("set", [et]))
         self.rt("pys_set_update_list", "void", [f"ptr {c}", f"ptr {self.rt('pys_set_list', 'ptr', [f'ptr {r}'])}"], self.key_fx(et))
         r = c
         if const:
@@ -260,7 +260,7 @@ def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = Fa
             self.incoming(ph, r, l1)
             r = self.phi(ph)
         if not folded:
-            m = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"])
+            m = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"], t=self.ctype("set", [et]))
             self.rt("pys_set_update", "void", [f"ptr {m}", f"ptr {r}"], self.key_fx(et))
             r = m
     return Val(r, self.ctype("frozenset" if folded else "set", [et]))
@@ -353,7 +353,7 @@ def gen_star_display(self, n: Node, want: str) -> Val:
             # (a list of other items, an int's where they are int | str: each converted)
             item = made_var("__pys_item", n.line)
             parts[i] = self.listcomp(mk("listcomp", "", n.line, [item, item, self.vnode(parts[i])]), self.ctype("list", [et]))
-    r = self.rt("pys_list_new_atomic" if atomic_list(self.ctype("list", [et])) else "pys_list_new", "ptr", [f"i64 {len([b for b in lists if not b])}"])
+    r = self.rt("pys_list_new_atomic" if atomic_list(self.ctype("list", [et])) else "pys_list_new", "ptr", [f"i64 {len([b for b in lists if not b])}"], t=self.ctype("list", [et]))
     for i in range(len(parts)):
         if lists[i]:
             self.rt("pys_list_extend", "void", [f"ptr {r}", f"ptr {parts[i].v}"])
@@ -416,7 +416,7 @@ def gen_set_rekind(self, v: Val, et: str) -> Val:
     t = self.ctype(set_base(v.t), [et])
     if self.set_kind(selem(v.t)) == self.set_kind(et):
         return Val(v.v, t)
-    r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"])
+    r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"], t=self.ctype("set", [et]))
     self.rt("pys_set_update", "void", [f"ptr {r}", f"ptr {v.v}"], self.key_fx(et))
     return Val(r, t)
 
@@ -602,7 +602,7 @@ def gen_set_new(self, name: str, args: list[Node], want: str, resultsoft: bool =
             return Val(self.rt("pys_set_new", "ptr", ["i64 0"]), EMPTYFS)
         if w == "":
             self.err(f"cannot infer the type of an empty {name}; add a type annotation ({'s: set[T] = set()' if not fz else 'f: frozenset[T] = frozenset()'})")
-        return Val(self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(w))}"]), w)
+        return Val(self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(w))}"], t=self.ctype("set", [selem(w)])), w)
     v = self.siter(args[0], selem(w) if w != "" else "", f"{name}()", resultsoft)
     it = self.iter_elem(v.t)
     t = self.ctype(name, [selem(w) if w != "" else "None" if it == NONE_ITEM else self.none_items(it)])  # (set([None, None]): set[None])
@@ -610,7 +610,7 @@ def gen_set_new(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return Val(v.v, t)  # (frozenset(f) of a frozenset is f; an AbstractSet's value may be a set, and is copied)
     if is_set(v.t):
         return Val(self.rt("pys_set_copy", "ptr", [f"ptr {v.v}"]), t)
-    r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(t))}"])
+    r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(t))}"], t=self.ctype("set", [selem(t)]))
     self.supdate(r, v, selem(t))
     return Val(r, t)
 
@@ -816,8 +816,8 @@ def gen_fromkeys(self, args: list[Node], want: str, resultsoft: bool = False) ->
         K = "dyn"
         v = self.coerce(v, "dyn")
     if is_dict(xs.t):
-        return Val(self.rt("pys_dict_fromkeys_dict", "ptr", [f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
-    return Val(self.rt("pys_dict_fromkeys", "ptr", [f"i64 {self.key_kind(K, True)}", f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
+        return Val(self.rt("pys_dict_fromkeys_dict", "ptr", [f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K), t), t)
+    return Val(self.rt("pys_dict_fromkeys", "ptr", [f"i64 {self.key_kind(K, True)}", f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K), t), t)
 
 def gen_affix_any(self, tup: Val, m: str, av: list[str], base: str = "str") -> Val:
     # s.startswith((a, b, ...), start, end) (or endswith), as CPython's loop over the tuple: each
@@ -1084,7 +1084,7 @@ def gen_int_any_lookup(self, d: Val, k: Val, get: bool) -> str:
     self.cbr(self.num_cmp(">=", Val(e, "int"), Val("0" if get else "-1", "int")).v, fast, slow)
     self.place(fast)
     value = self.rt("pys_dict_val", "i64", [f"ptr {d.v}", f"i64 {e}"]) if get else self.scalar("add", [Val(e, "int"), Val("1", "int")])
-    ph = Ins("phi", "int", "")
+    ph = Ins("phi", "*" + targs(d.t)[1] if get and is_dict(d.t) else "int", "")  # (a value's packed slot, or a found flag)
     self.incoming(ph, value, self.cur)
     self.br(end)
     self.place(slow)

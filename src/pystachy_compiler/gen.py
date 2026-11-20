@@ -788,6 +788,7 @@ from src.pystachy_compiler.emission import (
     gen_ret_ as emission_ret_,
     gen_returned_none as emission_returned_none,
     gen_rt as emission_rt,
+    gen_instantiate as emission_instantiate,
     gen_list_get as emission_list_get,
     gen_list_len as emission_list_len,
     gen_list_write as emission_list_write,
@@ -2947,8 +2948,11 @@ class Gen:
     def number_casts(self) -> None:
         return emission_number_casts(self)
 
-    def rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
-        return emission_rt(self, name, ret, args, x)
+    def rt(self, name: str, ret: str, args: list[str], x: str = "", t: str = "") -> str:
+        return emission_rt(self, name, ret, args, x, t)
+
+    def instantiate(self, fn: IFn) -> None:
+        emission_instantiate(self, fn)
 
     def list_len(self, o: Val) -> str:
         return emission_list_len(self, o)

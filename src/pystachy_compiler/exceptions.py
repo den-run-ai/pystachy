@@ -473,7 +473,7 @@ def gen_bind_as(self, name: str, e: Val, t: str) -> None:
     # one), it gets a variable of its own for the clause (the end of which unbinds both, see
     # unbind, as CPython deletes the name). Not a module's global that a function reads, which
     # would not see the exception
-    v = e if t == "exc" else Val(self.rt("pys_exc_obj", "ptr", [f"ptr {e.v}"]), t)
+    v = e if t == "exc" else Val(self.rt("pys_exc_obj", "ptr", [f"ptr {e.v}"], t=t), t)
     self.nn[v.v] = True
     had = self.ltype[name] if name in self.ltype else self.gtypes[name] if self.is_global(name) and name in self.gtypes else ""
     other = False

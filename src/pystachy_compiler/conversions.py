@@ -294,7 +294,7 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
     if is_fn(v.t) and is_callable(unopt(t)):
         return Val(self.to_callable(v, unopt(t)).v, t)  # (a function where a Callable is expected)
     if is_sopt(t) and v.t == unopt(t):
-        return Val(self.rt("pys_box", "ptr", ["i64 " + self.to_slot(v, False, True)]), t).identity(v)  # representation-only boxing
+        return Val(self.rt("pys_box", "ptr", ["i64 " + self.to_slot(v, False, True)], t=t), t).identity(v)  # representation-only boxing
     if v.t == "frozenset[dyn]" and is_fset(unopt(t)) and self.fset_unboxes(selem(unopt(t))):
         # a frozenset of Any values where a frozenset[T] or an AbstractSet[T] is expected: no code
         # changes it, so it crosses as a tuple does, a new frozenset of its elements, each checked
@@ -302,11 +302,11 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         # Any values does not: a copy would not see what its other holders add
         et = selem(unopt(t))
         dt = self.dyn_class_type(et) if et in self.classes else self.dyn_type(et)
-        return Val(self.rt("pys_set_unbox", "ptr", [f"ptr {v.v}", f"ptr {dt}", f"i64 {self.key_kind(et)}"]), t)
+        return Val(self.rt("pys_set_unbox", "ptr", [f"ptr {v.v}", f"ptr {dt}", f"i64 {self.key_kind(et)}"], t=self.ctype("set", [et])), t)
     if v.t == EMPTYFS and is_fset(unopt(t)):
         # frozenset() that nothing typed, where a frozenset[T] or an AbstractSet[T] is expected:
         # an empty one of T's (a new object: CPython's is one object, which only `is` tells)
-        return Val(self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(unopt(t)))}"]), t)
+        return Val(self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(unopt(t)))}"], t=self.ctype("set", [selem(unopt(t))])), t)
     if self.reboxes(v.t, t):
         # a tuple with an int where t holds an int | None (also deeper): a new tuple, of boxes
         return self.tuple_([self.coerce(self.tget(v, i), targs(t)[i], what) for i in range(len(targs(t)))])

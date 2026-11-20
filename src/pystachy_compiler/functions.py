@@ -174,6 +174,7 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     self.selfcls = sel
     self.xtry = tried
     self.number_casts()  # (after its last value: gen_cast)
+    self.instantiate(self.fn)
     self.fn.n = self.n
     self.fn.otherbinds = None  # the binding index is needed only while building this function
     self.fns.append(self.fn)

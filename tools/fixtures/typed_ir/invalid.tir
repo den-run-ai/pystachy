@@ -278,6 +278,33 @@ entry:
   ret.none
 }
 
+; ---- a runtime call's instance of its signature: one type for each of its type variables (S its
+; receiver, which binds what no other operand did of T, K and V to what that holds), and the
+; signature's own LLVM type
+
+function @a_runtime_call_with_receivers_of_two_types(r: set[int], s: set[str], o: set[int]) -> None {
+entry:
+  ; expected-error {{rt set.union_more operand 1 needs set[int], got set[str]}}
+  rt set.union_more (set[int] %a0, set[str] %a1, set[int] %a2) : None
+  ret.none
+}
+
+function @a_runtime_call_with_a_result_of_another_type(d: dict[str,int], k: str) -> None {
+entry:
+  %t3 = slot.pack(str %a1) : *str
+  ; expected-error {{rt dict.getitem result needs *int, got *str}}
+  %t4 = rt dict.getitem (dict[str,int] %a0, *str %t3) : *str
+  ret.none
+}
+
+function @a_runtime_result_variable_of_another_llvm_type(n: int) -> None {
+entry:
+  %t2 = slot.pack(int %a0) : *int
+  ; expected-error {{rt ubox result needs the LLVM type ptr of R, got int}}
+  %t3 = rt ubox (int 1, *int %t2) : int
+  ret.none
+}
+
 ; ---- functions the verifier accepts
 
 function @accepted_views(xs: list[int], s: str) -> opt[str] {
@@ -289,6 +316,11 @@ entry:
   mem.store(&list[int] %ys.3, list[int] %t9)
   %t10 = rt box (*T %t4) : %ptr
   %t11 = ptr.cmp == (opt[int] %t10, None null) : bool
+  %t17 = rt list.new (int 0) : list[str]
+  %t18 = slot.pack(str %a1) : *str
+  rt list.append (list[str] %t17, *str %t18) : None
+  %t19 = rt dict.new (int 1, int 0) : dict[str,int]
+  %t20 = rt dict.has (dict[str,int] %t19, *str %t18) : bool
   cbr(bool %t8) -> L12, L13
 L12:
   ret(opt[str] %a1)

@@ -7,9 +7,9 @@ stable. It keeps one state per block, not a product of whole-function execution 
 from __future__ import annotations
 from src.pystachy_compiler.dataflow import forward_fixpoint, live_values
 from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, slot_register
-from src.pystachy_compiler.specs import BIG
+from src.pystachy_compiler.specs import BIG, RUNTIME
 from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join, union_tags
-from src.pystachy_compiler.utils import gelem, is_gen, is_opt, is_union, targs, umembers
+from src.pystachy_compiler.utils import gelem, is_gen, is_opt, is_union, rt_generic, rtsig, targs, umembers
 
 
 def proof_number(v: str, start: int, limit: int) -> int:
@@ -246,6 +246,7 @@ class UnionProof:
         # have the same type; share its domain only within this proof invocation.
         self.domains: dict[str, list[str]] = {}
         self.native: dict[str, str] = {}
+        self.sigs: dict[str, list[str]] = {}  # (runtime_type: each runtime function's signature, rtsig)
         self.memtypes: dict[str, str] = {}
         self.declaredtypes: dict[str, str] = {}  # (declared(), by value)
         self.defs: dict[str, Ins] = {}
@@ -367,7 +368,7 @@ class UnionProof:
         for b in fn.blocks:
             for i in b.code:
                 if (i.op == "rt" and len(i.r) == 1) or i.op == "list.load":
-                    self.native["%t" + str(i.r[0])] = self.runtime_type(i, i.t)
+                    self.native["%t" + str(i.r[0])] = self.runtime_type(i, i.t, 0)
                 if i.op == "rt" and i.s == "vtuple.get" and len(i.r) == 1 and len(i.a) == 2:
                     # A tuple[U, ...]'s item at an index, which pys_vtuple_get checks against its
                     # length: a box of that union, as an item slot's (below) or a list's (list.get)
@@ -463,7 +464,8 @@ class UnionProof:
             if not bits and i.a[0].v in slots and i.a[1].v.startswith("%"):
                 vals[i.a[1].v] = True
 
-    def runtime_type(self, i: Ins, t: str) -> str:
+    def runtime_type(self, i: Ins, t: str, at: int) -> str:
+        # what an rt op's (or a list.load's) result (at 0) or operand at-1 of type t holds
         if len(i.a) == 0:
             return t
         receiver = self.native.get(i.a[0].v, "")
@@ -477,6 +479,14 @@ class UnionProof:
             return targs(receiver)[0 if t == "*K" else 1]
         if (receiver.startswith("list[") or receiver.startswith("set[") or receiver.startswith("frozenset[") or receiver.startswith("aset[")) and t == "*T":
             return targs(receiver)[0]
+        if i.op == "rt" and t.startswith("*") and i.s in RUNTIME:
+            # (a packed slot of a type that Gen.instantiate gave in place of its signature's
+            # variable: the item it holds, as the rules above read a variable's)
+            if i.s not in self.sigs:
+                self.sigs[i.s] = rtsig(i.s)
+            sig = self.sigs[i.s]
+            if at < len(sig) and rt_generic(sig[at]):
+                return t[1:]
         return t
 
     def typebase(self, k: str, t: str) -> None:
@@ -834,7 +844,7 @@ class UnionProof:
                 operand = a[j]
                 transport = (op == "phi" or op == "select" or op == "slot.pack" or op == "slot.unpack" or op == "mem.load" or op == "mach.load" or op == "cast") or (op == "rt" and ((i.s == "ubox" and j == 1) or (i.s == "box" and j == 0)))
                 if not transport:
-                    t = self.runtime_type(i, operand.t) if op == "rt" else operand.t
+                    t = self.runtime_type(i, operand.t, j + 1) if op == "rt" else operand.t
                     if op == "gen.yield" and j == 0 and is_gen(self.fn.f.ret):
                         # (the word a suspension yields is its value as the generator's element
                         # type, gen_slots, which its consumer's slot.unpack reads)
