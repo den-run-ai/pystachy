@@ -42,17 +42,22 @@ default ("", [], 0 or false) is omitted.
 
 One instruction is one line:
 
-    [RESULT ... = ] op [TEXT] [k=INT] [x=DESCRIPTOR] [(TYPE VALUE, ...)] [-> LABEL, ...] [: TYPE] [loc([FILE:]LINE)]
+    [RESULT ... = ] op [OPERATOR] [NAME=VALUE ...] [(TYPE VALUE, ...)] [-> LABEL, ...] [: TYPE] [loc([FILE:]LINE)]
 
     %t12 = num.cmp < (int %t10, int %t11) : bool
     ~%t6 %t7 %t8 = ovf + (int %t4, int %t5) : int
-    %xs.2 = slot xs : list[int]
+    %xs.2 = slot name=xs : list[int]
+    %t11 = rt entry=repr descriptor=Li (*T %t10, # @s.2) : str
+    %t8 = field.addr index=1 (Point %t7) : *int
     cbr(bool %t12) -> L13, L9
 
 A result is written as operands name it: %tN, or a slot's register (ir.slot_register). A ~
 marks a temporary of the op's lowering (OP_TEMPS), which no operand names; printing and parsing
-read those, and slot registers, from the compiler. TEXT is the op's Ins.s: its operator, runtime
-entry, callee, error or variable.
+read those, and slot registers, from the compiler. The fields Ins.s, Ins.k and Ins.x follow the
+op's name, in that order, each by the name its row of the operation table gives it (specs.OPS:
+s:entry, k:index), but an operator, which selects the op's computation (num.cmp's <), is written
+bare, first. A field that holds its default ("" or 0) is omitted, and one that the op's row
+does not name is written s=, k= or x=, so that a record the verifier rejects still prints.
 
 An instruction's location is the line of the statement it implements (Ins.line). A record
 holds it as the compiler numbers lines, a file's index times diagnostics.LINES plus the line,
@@ -184,16 +189,20 @@ def read_operands(text, at):
         at = expect(text, at, ", ")
 
 
+FIELD = re.compile(r" ([a-z]+)=")
+
+
 def text_atom(value):
-    """An op's text, after its name: an atom, quoted where it would read as a field or a separator."""
+    """An op's operator, after its name: an atom, quoted where it would read as a named field or a
+    separator."""
     written = atom(value)
-    if written == value and (value in ("->", ":") or value.startswith(("k=", "x="))):
+    if written == value and (value in ("->", ":") or FIELD.match(" " + value)):
         return json.dumps(value, ensure_ascii=False)
     return written
 
 
 def read_text_atom(text, at):
-    """(the op's text at `at`, the position after it), written as text_atom writes it."""
+    """(the op's operator at `at`, the position after it), written as text_atom writes it."""
     if text.startswith('"', at):
         try:
             value, end = DECODER.raw_decode(text, at)
@@ -204,8 +213,29 @@ def read_text_atom(text, at):
         end, depth = scan_bare(text, at)
         require(end > at and depth == 0, f"expected an atom at column {at + 1}")
         value = text[at:end]
-    require(text[at:end] == text_atom(value), f"text {value!r} must be written {text_atom(value)}")
+    require(text[at:end] == text_atom(value), f"operator {value!r} must be written {text_atom(value)}")
     return value, end
+
+
+# The fields of an instruction record that an instruction writes, in order: Ins.s, Ins.k, Ins.x
+FIELD_KEYS = (("s", "text"), ("k", "immediate"), ("x", "descriptor"))
+# the name of the field that selects an op's computation, which an instruction writes bare
+OPERATOR = "operator"
+NAMED = {}
+
+
+def named_fields(op):
+    """The names that op's row of the operation table gives its fields ({"s": "entry"}), read on
+    first use; {} for an op the table lacks."""
+    if op not in NAMED:
+        ops = compiler()[1].OPS
+        NAMED[op] = {f[0]: f[2:] for f in ops[op].split("|")[4].split() if f != "t"} if op in ops else {}
+    return NAMED[op]
+
+
+def row_fields(op):
+    """What op's row names, for a message: entry (s), hole (k), or none."""
+    return ", ".join(f"{name} ({field})" for field, name in named_fields(op).items()) or "none"
 
 
 def slot_name(text, immediate, number):
@@ -252,18 +282,20 @@ def instruction_text(ins, locations=False):
         require(all(isinstance(r, int) and not isinstance(r, bool) for r in ins["results"]), "result numbers must be integers")
         parts.append(" ".join(result_names(ins)) + " = ")
     parts.append(ins["op"])
+    names = named_fields(ins["op"])
     fielded = False
-    if ins["text"] != "":
-        parts.append(" " + text_atom(ins["text"]))
-        fielded = True
-    if ins["immediate"] != 0:
-        parts.append(f" k={ins['immediate']}")
-        fielded = True
-    if ins["descriptor"] != "":
-        parts.append(" x=" + atom(ins["descriptor"]))
+    for field, key in FIELD_KEYS:
+        value = ins[key]
+        if value == (0 if field == "k" else ""):
+            continue
+        name = names.get(field, field)
+        if name == OPERATOR:
+            parts.append(" " + text_atom(value))
+        else:
+            parts.append(f" {name}=" + (str(value) if field == "k" else atom(value)))
         fielded = True
     if ins["operands"]:
-        # (a space after a field, so that a text such as "<" does not run into the list)
+        # (a space after a field, so that an operator such as "<" does not run into the list)
         parts.append((" (" if fielded else "(") + ", ".join(operand_text(a) for a in ins["operands"]) + ")")
     if ins["targets"]:
         parts.append(" -> " + ", ".join(atom(label) for label in ins["targets"]))
@@ -304,21 +336,41 @@ def read_instruction(text):
     require(found is not None, "expected an operation name")
     op = found.group(0)
     at = found.end()
-    s = x = t = ""
-    k = 0
-    if text.startswith(" ", at) and not text.startswith((" k=", " x=", " (", " -> ", " : "), at):
-        s, at = read_text_atom(text, at + 1)
-        require(s != "", "an empty text is omitted")
-    if text.startswith(" k=", at):
-        number = re.compile(r"-?\d+").match(text, at + 3)
-        require(number is not None and int(number.group(0)) != 0 and str(int(number.group(0))) == number.group(0),
-                "k= needs a nonzero integer")
-        k, at = int(number.group(0)), number.end()
-    if text.startswith(" x=", at):
-        x, at = read_atom(text, at + 3)
-        require(x != "", "an empty descriptor is omitted")
+    given = named_fields(op)
+    fields = {"s": "", "k": 0, "x": ""}
+    read = []  # (the fields written so far, in order)
+    if text.startswith(" ", at) and not text.startswith((" (", " -> ", " : "), at) and not FIELD.match(text, at):
+        require(given.get("s") == OPERATOR, f"{op} has no operator to write bare: its row names {row_fields(op)}")
+        fields["s"], at = read_text_atom(text, at + 1)
+        require(fields["s"] != "", "an empty operator is omitted")
+        read.append("s")
+    while (named := FIELD.match(text, at)) is not None:
+        name = named.group(1)
+        field = next((f for f, n in given.items() if n == name), "")
+        if field == "":
+            # (a field the op's row does not name, by its letter)
+            require(name in fields, f"{op} has no field {name}: its row names {row_fields(op)}")
+            require(name not in given, f"{op} names its {name} {given.get(name)}: write "
+                                       + ("it bare" if given.get(name) == OPERATOR else f"{given.get(name)}="))
+            field = name
+        require(name != OPERATOR, f"{op} writes its {OPERATOR} bare, before its other fields")
+        require(field not in read, f"{op} field {name} is repeated")
+        later = [f for f in read if "skx".index(f) > "skx".index(field)]
+        require(not later, f"{op} field {name} must come before {given.get(later[0], later[0]) if later else ''}")
+        read.append(field)
+        at = named.end()
+        if field == "k":
+            number = re.compile(r"-?\d+").match(text, at)
+            require(number is not None and int(number.group(0)) != 0 and str(int(number.group(0))) == number.group(0),
+                    f"{name}= needs a nonzero integer")
+            fields["k"], at = int(number.group(0)), number.end()
+        else:
+            fields[field], at = read_atom(text, at)
+            require(fields[field] != "", f"an empty {name} is omitted")
+    s, k, x = fields["s"], fields["k"], fields["x"]
+    t = ""
     operands = []
-    fielded = s != "" or k != 0 or x != ""
+    fielded = len(read) > 0
     if text.startswith(" (" if fielded else "(", at):
         operands, at = read_operands(text, at + (1 if fielded else 0))
     targets = []

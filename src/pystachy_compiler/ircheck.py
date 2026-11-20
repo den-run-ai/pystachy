@@ -134,8 +134,11 @@ def op_shape_error(i: Ins, entry: bool) -> str:
     if (m != n) if rule == OP_PER_OPERAND else (m != 0 and m != 2) if rule == OP_INVOKE else m != rule:
         return f"{op} with {m} labels, where the operation table has {OPS[op].split('|')[3]}"
     fields = OP_FIELDS[op]
-    if (i.t != "" and fields & OP_T == 0) or (i.s != "" and fields & OP_S == 0) or (i.k != 0 and fields & OP_K == 0) or (i.x != "" and fields & OP_X == 0):
-        return f"{op} sets a field outside the operation table's {OPS[op].split('|')[4] or 'none'}"
+    field = "t" if i.t != "" and fields & OP_T == 0 else "s" if i.s != "" and fields & OP_S == 0 else "k" if i.k != 0 and fields & OP_K == 0 else "x" if i.x != "" and fields & OP_X == 0 else ""
+    if field != "":
+        # (the row's fields, by their names: t, s:operator)
+        named = ", ".join(OPS[op].split("|")[4].split())
+        return f"{op} sets {field}, where its row of the operation table names {named or 'no field'}"
     return ""
 
 
@@ -862,16 +865,17 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
 
 def gen_verify_gen(self, fn: IFn, b: Blk, i: Ins, j: int) -> None:
     # a generator op (docs/internals.md#generators), past its row's shape and types: gen.start
-    # ends the entry block of a generator function (IFn.coro) and names it; gen.yield (k 0 or 1)
-    # and gen.ret suspend one, with the %ptr of a promoting int after the slot in a program that
-    # opts in to them (specs.GENVALP), and in identity-tracking code a scalar or optional numeric
-    # gen.yield also with its dyn identity companion; gen.promise without an operand is its own
-    # promise
+    # ends the entry block of a generator function (IFn.coro) and names it; gen.yield (cleanup 0
+    # or 1) and gen.ret suspend one, with the %ptr of a promoting int after the slot in a program
+    # that opts in to them (specs.GENVALP), and in identity-tracking code a scalar or optional
+    # numeric gen.yield also with its dyn identity companion; gen.promise without an operand is
+    # its own promise
     own = i.op == "gen.start" or i.op == "gen.yield" or i.op == "gen.ret" or (i.op == "gen.promise" and len(i.a) == 0)
     if own and not fn.coro:
         self.bad_ir(fn, b, f"{i.op} outside a generator function")
     if i.k < 0 or i.k > 1:
-        self.bad_ir(fn, b, f"{i.op} with extra metadata")
+        # (only gen.yield's row names k, its cleanup: the others' is reported as outside their rows)
+        self.bad_ir(fn, b, f"{i.op} with cleanup {i.k}, where it is 0 or 1")
     if i.op == "gen.start" and b is not fn.blocks[0]:
         self.bad_ir(fn, b, "gen.start must end the entry block, with the generator's name and its first block")
     hi = len(i.a) == 2 and int_program()

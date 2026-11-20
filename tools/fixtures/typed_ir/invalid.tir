@@ -23,14 +23,21 @@ L1:
 
 function @a_field_outside_the_row() -> None {
 entry:
-  ; expected-error {{ret.none sets a field outside the operation table's none}}
+  ; expected-error {{ret.none sets k, where its row of the operation table names no field}}
   ret.none k=1
+}
+
+function @a_field_the_row_does_not_name(n: int) -> None {
+entry:
+  ; expected-error {{num.cmp sets k, where its row of the operation table names t, s:operator}}
+  %t1 = num.cmp < k=1 (int %a0, int 1) : bool
+  ret.none
 }
 
 function @entry_storage_in_a_block() -> None {
 entry:
   ; expected-error {{slot in a block, where entry storage belongs among the slots}}
-  %x.1 = slot x : int
+  %x.1 = slot name=x : int
   ret.none
 }
 
@@ -125,6 +132,14 @@ L1:
   ret.none
 }
 
+function @a_cleanup_a_yield_lacks() -> gen[int] coroutine {
+entry:
+  ; expected-error {{gen.yield with cleanup 2, where it is 0 or 1}}
+  ~%t1 ~%t2 = gen.yield cleanup=2 (%slot 0) -> L3
+L3:
+  ret.none
+}
+
 ; ---- blocks, terminators and the values operands name
 
 function @an_unknown_op() -> None {
@@ -187,7 +202,7 @@ entry:
 ; a view of specs.TYPE_VIEWS; a *T is an address or a packed slot, as its definition makes it
 
 function @a_value_read_at_another_type(n: int) -> None {
-  %y.2 = slot y : float
+  %y.2 = slot name=y : float
 entry:
   ; expected-error {{mem.store operand 1 reads %a0 as float, but it is int}}
   mem.store(*float %y.2, float %a0)
@@ -202,10 +217,10 @@ entry:
 }
 
 function @an_address_read_as_a_packed_slot() -> None {
-  %x.1 = slot x : int
+  %x.1 = slot name=x : int
 entry:
   ; expected-error {{rt operand 0 reads the address %x.1 as a packed slot}}
-  %t2 = rt box (*T %x.1) : %ptr
+  %t2 = rt entry=box (*T %x.1) : %ptr
   ret.none
 }
 
@@ -218,9 +233,9 @@ entry:
 }
 
 function @machine_bits_read_at_two_types(n: int) -> opt[int] {
-  %s.1 = slot s : str
+  %s.1 = slot name=s : str
 entry:
-  %t2 = rt box (*T %a0) : %ptr
+  %t2 = rt entry=box (*T %a0) : %ptr
   mem.store(*str %s.1, str %t2)
   ; expected-error {{ret operand 0 reads %t2 as opt[int], where mem.store operand 1 reads it as str}}
   ret(opt[int] %t2)
@@ -229,13 +244,13 @@ entry:
 ; ---- functions the verifier accepts
 
 function @accepted_views(xs: list[int], s: str) -> opt[str] {
-  %ys.3 = slot ys : list[int]
+  %ys.3 = slot name=ys : list[int]
 entry:
   %t4 ~%t5 ~%t6 ~%t7 = list.load(list[int] %a0, int 0) : *int
   %t8 = num.cmp < (int %t4, int 10) : bool
-  %t9 = rt list.new (int 3) : list[T]
+  %t9 = rt entry=list.new (int 3) : list[T]
   mem.store(*list[int] %ys.3, list[int] %t9)
-  %t10 = rt box (*T %t4) : %ptr
+  %t10 = rt entry=box (*T %t4) : %ptr
   %t11 = ptr.cmp == (opt[int] %t10, None null) : bool
   cbr(bool %t8) -> L12, L13
 L12:
@@ -251,7 +266,7 @@ entry:
   cbr(bool %t5) -> L6, L7
 L6:
   ~%t8 %t9 %t10 = ovf + (int %a0, int 1) : int
-  check "OverflowError: integer overflow" (bool %t10) -> L7
+  check message="OverflowError: integer overflow" (bool %t10) -> L7
 L7:
   %t11 = phi(int %a0, int %t9) -> entry, L6 : int
   %t12 = list.len(list[int] %a1) : int
@@ -262,6 +277,6 @@ L14:
 L15:
   ret(int 0)
 L16:
-  raise OverflowError (str @s.1, str @s.2)
+  raise exception=OverflowError (str @s.1, str @s.2)
 cold "OverflowError: integer overflow" -> L16
 }
