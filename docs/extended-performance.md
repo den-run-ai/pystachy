@@ -152,6 +152,6 @@ licenses and documented adaptations, are measured separately in [pyperformance r
 
 No measurement of a current compiler is recorded here: run the suite on the revisions you
 compare. A prototype snapshot at `3542d63` (10 October 2026, CPython 3.12.14, raw samples not
-retained) is on [this page as of alpha.4](https://github.com/den-run-ai/pystachy/blob/9c8bc74648aa7c7e6a1b9d8f9dbbfeb1f2908ad3/docs/extended-performance.md#measured-observations).
+retained) is on [this page as of v0.1.0-alpha.4](https://github.com/den-run-ai/pystachy/blob/9c8bc74648aa7c7e6a1b9d8f9dbbfeb1f2908ad3/docs/extended-performance.md#measured-observations).
 It predates, among other changes, the string-hash cache of
 [#99](https://github.com/den-run-ai/pystachy/pull/99), so its rows do not describe later builds.

@@ -57,7 +57,7 @@ described [below](#unchanged-cpython-files).
 | 🧪 `tomllib` | Adapted CPython: typed namespace state and [dynamic payloads/callbacks](../docs/dynamic-any.md#admission-and-containment) | `loads()` (also with `parse_float`) and `TOMLDecodeError`, with CPython's results and messages: tables, arrays, strings, numbers, booleans and datetimes, as dynamic values that a program narrows with `isinstance()` or annotations | No `load()`, which reads a binary file; see [limits](compatibility.md#tomllib) |
 | 🟡 `csv` | Subset implementation | Reader/writer, dict reader/writer, dialects and registry | Eager reading; reader fields are strings; no `Sniffer` |
 | 🟢 `html`, `html.entities` | Adapted CPython | `escape`, `unescape`, HTML4 and HTML5 entity tables | No configurable integer digit limit |
-| 🟢 `html.parser` | Adapted CPython | Incremental HTMLParser with typed subclass callbacks | ASCII name case conversion; see [API scope](compatibility.md#html-and-htmlparser) |
+| 🟢 `html.parser` | Adapted CPython, with its base class from adapted `_markupbase` | Incremental HTMLParser with typed subclass callbacks | ASCII name case conversion; see [API scope](compatibility.md#html-and-htmlparser) |
 | 🟡 `urllib.parse` | Adapted CPython | String quoting, query parsing/encoding and cached URL parsing/joining | Three codecs; no bytes or result properties |
 
 ### Binary data and encodings
@@ -255,6 +255,14 @@ may use one, an imaginary literal or a read of the builtin `complex`; programs d
 Its division, power, `abs()` and hash call runtime.c's ports of CPython 3.13's. See
 [complex numbers](../docs/language/semantics.md#complex-numbers).
 
+`_pystachy_bytearray.py` holds the class of `bytearray` objects, after CPython 3.13's
+`Objects/bytearrayobject.c`. A module whose code may read the builtin name `bytearray` imports the
+class from it, as if the module had written that import, so programs need not import it.
+`bytearray(source, ...)` calls the module's `_new`, and reading, assigning or deleting a slice
+calls the class's `_getslice`, `_setslice` or `_delslice`. The buffer is a `bytes` that only this
+module holds and writes in place, so what it hands out is a copy. See
+[bytearray](../docs/language/compatibility.md#bytearray).
+
 `_pystachy_json_any.py` holds `json.loads()` and `json.dumps()` of `Any` values: the decoder builds
 `Any`'s containers with `json`'s scanner, and the encoder walks `Any` values as CPython's does. The
 compiler loads it for a program that has `json` and a module that opts in to
@@ -268,6 +276,24 @@ formats its messages and `%`-style formats with it (the compiler formats a liter
 itself). `_pystachy_time.py` gives `time.strftime()` of `time.localtime()` (or `time.gmtime()`)
 of a time, through the C library, for `logging`'s `asctime`; Pystachy's `time` module has no
 `localtime()` or `strftime()`. Programs do not import either.
+
+`string`, `argparse` and `ctypes` each import a private helper.
+`_pystachy_string.py` has `_string`'s `formatter_parser()` and `formatter_field_name_split()`,
+returning lists, for `string.Formatter`: `string` imports it where `import _string` fails, as it
+does in Pystachy ([`string`](compatibility.md#string)). `_argparse_help.py` formats `argparse`'s
+usage, help and version text as CPython 3.13 lays them out, at the width that `COLUMNS` gives
+(80 without it). `_pystachy_ctypes.py` copies native memory for `ctypes.string_at()` through
+`ffi.bytes_at()`.
+
+`_pystachy_re_specialized.py` holds no [generated regex matchers](../docs/re-specialization.md):
+`re` imports the first module of that name, so one that `tools/re_specialize.py` writes, beside
+the program or on `PYSTACHY_PATH`, takes its place. With this one, every pattern runs on `re`'s
+interpreter.
+
+`_pystachy_cache.py` gives the native compiler its program-cache lock, file hashes and the set
+of signals the process ignores, through runtime primitives that the compiler accepts in this file
+only. The CPython-hosted compiler does without it. It is one of the compiler's own sources
+(`COMPILER_SOURCES` in `src/pystachy_compiler/driver.py`), not a module for programs.
 
 `_pystachy_bytescan.py` provides a bounded byte-span helper for native parsers.
 It finds either of two delimiter bytes or a byte below a threshold, returning the

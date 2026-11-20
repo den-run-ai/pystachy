@@ -196,6 +196,14 @@ class NeedHandlers(Rejoin):
     pass
 
 
+class TupleBoxes(Rejoin):
+    # An isinstance(x, tuple) test of an Any value was compiled for a tuple's box alone, and the
+    # program boxes objects of a NamedTuple class, which pass that test and have another layout
+    # (#1581): the program is compiled again with the test that accepts them, which leaves x an
+    # Any value (Gen.ntboxes)
+    pass
+
+
 class ClassBoxes(Rejoin):
     # A module that opts in to dynamic Any read its classes as typed class objects (type[C]) and
     # the program did not compile so, or stored an Any value where a class object's type was
