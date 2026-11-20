@@ -36,7 +36,7 @@ from src.pystachy_compiler.specs import (
 )
 from src.pystachy_compiler.patterns import unsupported_match, unsupported_reason
 from src.pystachy_compiler.syntax import Node, mk, names_in, starred_target
-from src.pystachy_compiler.unions import float_returns, float_site, float_takes
+from src.pystachy_compiler.unions import ANNTYPES, ann_returns, ann_site, ann_takes
 from src.pystachy_compiler.utils import (
     is_clsval,
     bool_for_int,
@@ -789,15 +789,17 @@ def gen_stmt_main(self, n: Node) -> None:
         if len(n.kids) == 3:
             t = self.mapping_ann(t, n.kids[2])  # (x: dict[K, V] = defaultdict(...): the defaultdict's)
         if n.kids[0].kind == "name":
-            if t == "float" and len(self.hints) > 0:
-                # (a float variable that was given an int holds both: a join's type, see float_takes)
+            if t in ANNTYPES and len(self.hints) > 0:
+                # (a float variable that was given an int holds both, as an int or str one that
+                # was given an enum member does: a join's type, see ann_takes)
                 t = self.hints.get("global:" + n.kids[0].s if self.is_global(n.kids[0].s) else f"{self.fnkey(self.curfn)}|{n.kids[0].s}", t)
             self.declare(n.kids[0].s, t)
         if len(n.kids) == 3:
             v = self.expr(n.kids[2], t)
             # (x: T | None = <a T> knows x holds a T, see narrowed. An int for a float variable or
-            # field is the store's to take or reject: its join, see join_hint)
-            takes = t == "float" and float_takes(v.t) and (n.kids[0].kind == "name" or n.kids[0].kind == "attr")
+            # field, an enum member for an int or str one, is the store's to take or reject: its
+            # join, see join_hint)
+            takes = t in ANNTYPES and ann_takes(self, t, v.t) and (n.kids[0].kind == "name" or n.kids[0].kind == "attr")
             self.assign(n.kids[0], v if takes or (n.kids[0].kind == "name" and ((is_opt(t) and self.widens(v.t, t)) or (is_union(unopt(t)) and (self.widens(v.t, t) or self.boxes(v.t, t))))) else self.coerce(v, t))
         if self.modlevel:
             self.ann_reads(n.kids[1])  # (module code's, which CPython evaluates after the value)
@@ -975,13 +977,14 @@ def gen_stmt_main(self, n: Node) -> None:
                     if not joined:
                         self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
                     v = Val("undef", self.ret)
-            if float_site(self.ret) and float_takes(v.t) and float_returns(self.curfn):
-                # (-> float that returns an int, as CPython does: the return's join, see join_hint;
-                # a dataclass field's default_factory returns what the field holds: the field's)
+            if ann_site(self.ret) and ann_takes(self, self.ret, v.t) and ann_returns(self.curfn):
+                # (-> float that returns an int, -> int or -> str that returns an enum member, as
+                # CPython does: the return's join, see join_hint; a dataclass field's
+                # default_factory returns what the field holds: the field's)
                 if self.curfn.synthetic:
-                    was = self.join_at("float:field", self.field_key(self.classes[self.curfn.cls], self.curfn.name[:-8]), self.ret)
+                    was = self.join_at("ann:field", self.field_key(self.classes[self.curfn.cls], self.curfn.name[:-8]), self.ret)
                 else:
-                    was = self.join_at("float:return", f"return:{self.curfn.node.line}", self.ret)
+                    was = self.join_at("ann:return", f"return:{self.curfn.node.line}", self.ret)
                 v = self.coerce(v, self.ret)
                 self.join_at(was[0], was[1], was[2])
             else:

@@ -1,0 +1,7 @@
+2 6 <Color.GREEN: 2> 3
+2 20 Color True 7 70 int False
+6 24
+4 6 3 8
+<Perm.R: 4> 4 <Perm.R|X: 5>
+<Color.BLUE: 3> 5 13 3
+[exit 0]

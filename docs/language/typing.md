@@ -173,7 +173,9 @@ There is no implicit `int` to `float` conversion: an `int` given where an annota
 `float` stays an `int`, as in CPython. A variable, a field or a return annotated `float`
 then [holds an `int | float`](#int-values-in-float-locations), and a function is
 [compiled for an `int` argument](#int-arguments-for-float-parameters) of a `float` parameter.
-A `float` item of a container takes no `int`: write `1.0`, or convert explicitly.
+A `float` item of a container takes no `int`: write `1.0`, or convert explicitly. In the
+same way, a member of an `IntEnum`, `IntFlag` or `StrEnum` class given where `int` or `str` is
+annotated [stays the member](#enum-members-in-int-and-str-locations).
 Arithmetic and numeric list searches may mix integers and floats. Equality also compares
 closed builtin value trees with different layouts: numbers, strings, `None`, and lists, dicts
 or tuples of these, including optional and union members. Each operand keeps its own layout;
@@ -663,6 +665,51 @@ against the location's type where it is unboxed, as [dynamic `Any`](../dynamic-a
 describes: it does not widen the location. In a module that opts in to
 [promoting ints](../python-int.md#storage-boundaries) the union's ints are 64-bit, and
 arithmetic on it that could yield an `int` is rejected.
+
+### Enum members in `int` and `str` locations
+
+A member of an `IntEnum` or `IntFlag` class is also an `int` in CPython, and a `StrEnum`
+member a `str`. Where `int` or `str` is annotated, such a member is held as it is, so its
+class, `repr()`, `type()` and `isinstance()` stay CPython's:
+
+```python
+from enum import IntEnum
+
+
+class Color(IntEnum):
+    RED = 1
+
+
+def bump(n: int) -> int:
+    return n + 1
+
+
+def same(n: int) -> int:
+    return n
+
+
+level: int = Color.RED
+print(bump(Color.RED), repr(same(Color.RED)), repr(level), level + 1)  # 2 <Color.RED: 1> <Color.RED: 1> 2
+```
+
+A function with such a parameter is compiled for the member's class, as one with a `float`
+parameter is [for an `int`](#int-arguments-for-float-parameters); its `-> int` or `-> str`
+result is then what its returns give. A variable, a field or a return annotated `int` or `str`
+that is given a member becomes an `int | Color` (or a `str | Shade`), as an
+[`int` makes a `float` location](#int-values-in-float-locations) a union, in the same places
+and passes. Tests: [parameters](../../tests/programs/library/lib_enum_int_param.py),
+[stores](../../tests/programs/library/lib_enum_int_store.py),
+[records](../../tests/programs/library/lib_enum_int_records.py) and
+[`StrEnum`](../../tests/programs/library/lib_enum_str_store.py).
+
+The member then supports what its class supports here (see the [enum limits](../../lib/compatibility.md#enum)):
+a method of `int` or `str` it lacks is an error that names the call or the store, and so is a
+method call on the union, which needs narrowing first. Its `.value` there compiles the code as
+annotated. Items of containers (`list[int]`), a conditional expression of a member and an
+`int`, unions such as `int | None`, parameter defaults and the cases listed above for `float`
+still reject a member ([test](../../tests/errors/library/lib_enum_int_list.py)), and so does
+an `int` location in a module that opts in to
+[promoting ints](../python-int.md#storage-boundaries).
 
 ## Mixed scalar and container unions
 

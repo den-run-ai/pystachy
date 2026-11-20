@@ -1,0 +1,6 @@
+light <Shade.LIGHT: 'light'> light True True
+'other' False
+LIGHT! HI! <Shade.DARK: 'dark'> 'x'
+<Shade.DARK: 'dark'> 'plain' <Shade.LIGHT: 'light'>
+<Shade.DARK: 'dark'> True [dark] 4 darker True
+[exit 0]

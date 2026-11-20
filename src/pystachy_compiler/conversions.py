@@ -333,6 +333,13 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         hint = " (an AbstractSet value is a set or a frozenset: make one of it, set(x) or frozenset(x))"
     if is_fn(t) and is_fn(v.t):
         hint = " (each function is a type of its own: a variable, a list's items or a dict's values hold one function)"
+    if (t == "int" or t == "str") and v.t in self.classes and self.enum_builtin(v.t) == t:
+        # (a member where only a variable, a field, a parameter or a return annotated int or str
+        # holds it as it is, as their union: unions.member_takes)
+        hint = f" (a member of {short(v.t)} is held as it is by a variable, field, parameter or return annotated {t}, not here: use its .value)"
+    if t == BIG and v.t in self.classes and self.enum_builtin(v.t) == "int":
+        # (where ints promote, a member is held as no int: docs/python-int.md)
+        hint = f" (a member of {short(v.t)} is no promoting int: use its .value)"
     if hint == "" and self.curfn.ll in self.guessed:
         hint = f" (perhaps because {self.guessed[self.curfn.ll]})"
     self.err(f"expected {typestr(t)}, got {typestr(v.t)}{hint}")

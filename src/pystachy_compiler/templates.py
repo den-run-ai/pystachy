@@ -15,7 +15,7 @@ from src.pystachy_compiler.specs import (
     TEMPLATE_RETAINED,
 )
 from src.pystachy_compiler.syntax import Node, mentions, mk
-from src.pystachy_compiler.unions import float_takes
+from src.pystachy_compiler.unions import ANNTYPES, ann_takes
 from src.pystachy_compiler.utils import (
     clone,
     elem,
@@ -841,17 +841,19 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
         missing = {a: self.classes[cmpfields].ftypes[a] for a in self.classes[cmpfields].ftypes if a not in actual.ftypes and a not in actual.methods}
         if g.cmprebind == "":
             comparison_missing(g.node.kids[2], comparison_aliases(g.node.kids[2], f.params[1]), missing)
-    late = [j for j in range(len(ts)) if j < len(f.ptypes) and f.ptypes[j] == "float" and float_takes(ts[j])]
+    late = [j for j in range(len(ts)) if j < len(f.ptypes) and f.ptypes[j] in ANNTYPES and ts[j] != f.ptypes[j] and ann_takes(self, f.ptypes[j], ts[j])]
     if len(late) > 0 and cmpfields == "":
-        # an int for a float parameter (see int_for_float): in this instance's own copy of the
-        # def the parameter has no annotation, so its body may bind it again, as a template's
+        # an int for a float parameter, an enum member for an int or str one (see ann_param): in
+        # this instance's own copy of the def the parameter has no annotation, so its body may
+        # bind it again, as a template's
         g.node = clone(f.node)
         for par in g.node.kids[0].kids:
             if par.kind == "param" and par.s in [f.params[j] for j in late]:
                 par.kids[0] = mk("noann", "", f.node.line, [])
-        if g.ret == "float" and not f.gen:
-            # -> float: what this instance returns may be its int, which CPython returns as it
-            # is; its returns decide (the annotation again, where it calls itself before one)
+        if g.ret in ANNTYPES and not f.gen:
+            # -> float, -> int or -> str: what this instance returns may be its int or member,
+            # which CPython returns as it is; its returns decide (the annotation again, where it
+            # calls itself before one)
             g.ret = ""
             g.infer = True
     g.ikey = key
@@ -869,8 +871,13 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     self.retainers[who] = self.retainers.get(who, 0) + size
     maybe = [f.params[j] for j in range(len(ts)) if ts[j] in self.classes and f.params[j] not in g.nnp and self.dispatches(f, f.params[j])]
     why = f", where {' and '.join(maybe)} may be None: only a new object or self is known not to be None, which decides isinstance(), hasattr() and 'is None' at compile time" if len(maybe) > 0 else ""
-    if len(late) > 0 and cmpfields == "":
-        why += f", which passes an int for the float parameter {' and '.join([f.params[j] for j in late])}: pass a float, as in 1.0 or float(x), to compile it as annotated"
+    nums = [f.params[j] for j in late if f.ptypes[j] == "float"]
+    if len(nums) > 0 and cmpfields == "":
+        why += f", which passes an int for the float parameter {' and '.join(nums)}: pass a float, as in 1.0 or float(x), to compile it as annotated"
+    for j in late if cmpfields == "" else []:
+        if f.ptypes[j] != "float":
+            # (an enum member for an int or str parameter: ann_param)
+            why += f", which passes a member of {short(ts[j]) if ts[j] in self.classes else typestr(ts[j])} for the {f.ptypes[j]} parameter {f.params[j]}: pass its .value to compile it as annotated"
     args = ", ".join(ts[1:] if f.clo >= 0 or takes_self(f) else ts) if size <= 256 else f"<{len(ts)} arguments, {size} type bytes>"  # (a closure's env, a method's self aside)
     self.making.append(f"compiling {who}({args}) for the call at {where(self.line)}{why}")
     self.template_bytes += size

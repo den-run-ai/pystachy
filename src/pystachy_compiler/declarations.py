@@ -52,7 +52,7 @@ from src.pystachy_compiler.specs import (
     VTUPLE_ITEMS,
 )
 from src.pystachy_compiler.syntax import Node, has_kind, has_value_return, mentions, mk, other_return
-from src.pystachy_compiler.unions import field_home, float_site
+from src.pystachy_compiler.unions import ANNTYPES, ann_site, field_home
 from src.pystachy_compiler.utils import (
     holds_no_object,
     is_clsval,
@@ -1706,8 +1706,8 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         f.ret = ""  # (-> Box: decided by its first return, as an unannotated one is)
     elif d.kids[1].kind != "noann":
         f.ret = self.typeof(d.kids[1])
-        if f.ret == "float" and len(self.hints) > 0:
-            f.ret = self.hints.get(f"return:{d.line}", f.ret)  # (it returned an int too: a join's type, see float_returns)
+        if f.ret in ANNTYPES and len(self.hints) > 0:
+            f.ret = self.hints.get(f"return:{d.line}", f.ret)  # (it returned an int or a member too: a join's type, see ann_returns)
     elif cls != "" and (d.s == "__len__" or d.s == "__hash__") and has_value_return(d.kids[2]):
         # bool is also a legal length or hash; infer it so an explicit obj.__len__()
         # keeps returning bool while len(obj) converts it to int (and so hash()).
@@ -1865,12 +1865,12 @@ def gen_init_after(self, ci: ClassInfo, name: str) -> bool:
 
 def field_ann(self, ci: ClassInfo, name: str, a: Node) -> str:
     # the type that annotation a in class ci's body gives its field name: where that is float and
-    # an earlier pass stored an int in the field, their union (a join's type, as if annotated:
-    # see float_takes)
+    # an earlier pass stored an int in the field (or int or str and an enum member), their union
+    # (a join's type, as if annotated: see ann_takes)
     t = self.vtype(a)
-    if t == "float":
-        ci.ffloat[name] = True
-    return self.hints.get(self.field_key(ci, name), t) if t == "float" and len(self.hints) > 0 else t
+    if t in ANNTYPES:
+        ci.fann[name] = True
+    return self.hints.get(self.field_key(ci, name), t) if t in ANNTYPES and len(self.hints) > 0 else t
 
 def gen_add_field(self, ci: ClassInfo, name: str, t: str) -> None:
     if name in ci.methods and ci.methods[name].prop:
@@ -2538,9 +2538,9 @@ def gen_scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dic
                 t = "" if t == "None" or why != "" else t  # (f() that returns None: a field has a value type)
                 if t == "" and why == "" and ci.origin in self.cnts:
                     why = f"field '{name}' of namedtuple {short(ci.name)} given {'None' if given == 'None' else 'a value whose type cannot be inferred'} is not supported (the call that makes an object types its fields)"
-                if k == "annassign" and t == "float":
-                    ci.ffloat[name] = True  # (annotated float: an int it is given may widen it too, see float_takes)
-                jh = self.hints.get(f"field:{self.stable(ci.name)}.{name}", "") if (k == "assign" or name in ci.ffloat) and len(self.hints) > 0 else ""
+                if k == "annassign" and t in ANNTYPES:
+                    ci.fann[name] = True  # (annotated float, int or str: what it is given may widen it too, see ann_takes)
+                jh = self.hints.get(f"field:{self.stable(ci.name)}.{name}", "") if (k == "assign" or name in ci.fann) and len(self.hints) > 0 else ""
                 if jh != "":
                     t = jh  # (a join's type: as if annotated, see join_hint)
                     why = ""
@@ -3754,8 +3754,8 @@ def gen_setfield_store(self, o: Val, p: Val, name: str, v: Val) -> None:
                 raise Rejoin()  # layout discovery is not a failed comparison body
     what = f"the value assigned to field '{name}' ({typestr(p.t)})" if is_opt(v.t) else ""
     # (a value of another type than an inferred field's may widen it, and an int a field's that
-    # is annotated float: join_hint)
-    was = self.join_at("field" if name in self.field_root(ci, name).fguess else "float:field" if float_site(p.t) and name in field_home(self, ci, name).ffloat else "", self.field_key(ci, name), p.t)
+    # is annotated float, an enum member one annotated int or str: join_hint)
+    was = self.join_at("field" if name in self.field_root(ci, name).fguess else "ann:field" if ann_site(p.t) and name in field_home(self, ci, name).fann else "", self.field_key(ci, name), p.t)
     cv = self.coerce(v, p.t, what)
     self.join_at(was[0], was[1], was[2])
     self.identity_field(ci, p.t, True)  # (dynamic.py)

@@ -832,6 +832,54 @@
       "diagnostic": "tests/programs/inference/object_union_none_operand.py:29: error: unsupported operand types for +=: the results of M | int's members (M, int) have no union (a promoting int joins no other result: docs/python-int.md); narrow it with isinstance() first",
       "reason": "An in-place += on an int | M variable joins the object's result with a promoting int in a closed union; only scalar int-or-None promotion is supported.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/library/lib_enum_int_param.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/library/lib_enum_int_param.py:53: error: expected int, got Color (a member of Color is no promoting int: use its .value)",
+      "reason": "A location annotated int that is given an IntEnum or IntFlag member holds an int | member union, but where ints promote it holds promoting ints, which no union with an object holds: the member is rejected, as before.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/library/lib_enum_int_param.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/library/lib_enum_int_param.py:53: error: expected int, got Color (a member of Color is no promoting int: use its .value)",
+      "reason": "A location annotated int that is given an IntEnum or IntFlag member holds an int | member union, but where ints promote it holds promoting ints, which no union with an object holds: the member is rejected, as before.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/library/lib_enum_int_records.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/library/lib_enum_int_records.py:24: error: expected int, got Color (a member of Color is no promoting int: use its .value)",
+      "reason": "A location annotated int that is given an IntEnum or IntFlag member holds an int | member union, but where ints promote it holds promoting ints, which no union with an object holds: the member is rejected, as before.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/library/lib_enum_int_records.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/library/lib_enum_int_records.py:24: error: expected int, got Color (a member of Color is no promoting int: use its .value)",
+      "reason": "A location annotated int that is given an IntEnum or IntFlag member holds an int | member union, but where ints promote it holds promoting ints, which no union with an object holds: the member is rejected, as before.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/library/lib_enum_int_store.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/library/lib_enum_int_store.py:26: error: expected int, got Color (a member of Color is no promoting int: use its .value)",
+      "reason": "A location annotated int that is given an IntEnum or IntFlag member holds an int | member union, but where ints promote it holds promoting ints, which no union with an object holds: the member is rejected, as before.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/library/lib_enum_int_store.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/library/lib_enum_int_store.py:26: error: expected int, got Color (a member of Color is no promoting int: use its .value)",
+      "reason": "A location annotated int that is given an IntEnum or IntFlag member holds an int | member union, but where ints promote it holds promoting ints, which no union with an object holds: the member is rejected, as before.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     }
   ]
 }

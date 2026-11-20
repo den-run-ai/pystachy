@@ -7,7 +7,7 @@ from src.pystachy_compiler.names import short
 from src.pystachy_compiler.frames import Frame
 from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, tmpname, one_num, value_definitions
 from src.pystachy_compiler.specs import BIGOPT, CHECKED, EMPTYFS, LIST_READS, LIST_WRITES, NARROWED, PATH_OPS, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS
-from src.pystachy_compiler.unions import FLOATAT
+from src.pystachy_compiler.unions import FLOATAT, MEMBERAT
 from src.pystachy_compiler.utils import (
     RtFn,
     elem,
@@ -73,6 +73,11 @@ def gen_err(self, msg: str) -> None:
         # (an error of a pass after a join of a location annotated float, which may come of the
         # union it holds now: float_takes)
         msg += f" (note: what is annotated float and was given an int at {self.hints[FLOATAT]} holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)"
+    if MEMBERAT in self.hints:
+        # (and of one annotated int or str, given an enum member: ann_takes)
+        at = self.hints[MEMBERAT].split("|")
+        kept = "an int" if at[1] == "int" else "a str"
+        msg += f" (note: what is annotated {at[1]} and was given a member of {short(at[2])} at {at[0]} holds {at[1]} | {short(at[2])}, as CPython's does; its .value there keeps it {kept})"
     if "opt[" in msg or "union[" in msg:
         msg = optnames(unionnames(msg))
     for name in self.recursive:
