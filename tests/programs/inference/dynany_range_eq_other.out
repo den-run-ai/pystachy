@@ -1,0 +1,23 @@
+int False False True True
+str False False True True
+list False False True True
+tuple False False True True
+NoneType False False True True
+float False False True True
+bool False False True True
+dict False False True True
+complex False False True True
+range(1, 10, 2) True True False False
+range(1, 11, 2) True True False False
+range(0, 3) False False True True
+range(0, 0) False False True True
+Same.__eq__
+Same.__eq__
+Same.__eq__
+Same.__eq__
+True True False False
+True 4 1 True True False
+True True False False False
+r False False
+TypeError
+[exit 0]

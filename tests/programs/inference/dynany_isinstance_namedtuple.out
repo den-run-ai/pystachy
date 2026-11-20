@@ -1,0 +1,21 @@
+P True True True True True
+P: equals (1, 2): True, hashes as it: True, P(x=1, y=2) -
+R True True True False True
+R: equals (1, 2): False, hashes as it: False, R(a=1, b='b') -
+tuple True True True False True
+tuple: equals (1, 2): True, hashes as it: True, (1, 2) [2, 1, 2, 3, 1, 1, True, (1, 2, 9), (1,)]
+single True True True False True
+tuple: equals (1, 2): False, hashes as it: False, (3,) [1, 3, 3, 3, 3, 0, False, (3, 9), (3,)]
+plain False False False False False
+no tuple None
+none False False False False True
+no tuple None
+list False True False False False
+no tuple None
+str False False False False False
+no tuple None
+int False False True False False
+no tuple None
+[P(x=1, y=2), R(a=1, b='b'), (1, 2), (3,)]
+[True, False, False, False] True 1 b
+[exit 0]

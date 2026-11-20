@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "description": "Size of the executable that `pystachy build` makes from README.md's first program, built twice; each executable's stdout is compared with CPython's",
+  "measured_utc": "2026-11-20T04:04:14Z",
+  "source_sha256": "a7b8abd9c2d171f1dfcbc918914f95c926e4e4fcdfee4c0c1f2943bf66761c7a",
+  "output": "2,000,000 customers, mean wait 9.07\n",
+  "compiler": "pystachy v0.6.0-rc.2 (commit 299d12ad5b2a4446088a5c0565fa25eb258c5a94)",
+  "llvm": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+  "python": "3.13.18",
+  "host": {
+    "system": "Linux",
+    "machine": "x86_64",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz"
+  },
+  "command": "pystachy build checkout.py -o checkout",
+  "builds": [
+    {
+      "executable_bytes": 174784,
+      "executable_sha256": "fab9f89e9c437afd06f3a87e9900a278cf3a3a7022d382d79057911ed4004aa9",
+      "output_matches_cpython": true
+    },
+    {
+      "executable_bytes": 174784,
+      "executable_sha256": "fab9f89e9c437afd06f3a87e9900a278cf3a3a7022d382d79057911ed4004aa9",
+      "output_matches_cpython": true
+    }
+  ]
+}

@@ -69,9 +69,9 @@ Additional costs and measurements:
 
 - **Promoting ints** keep checked-int64 speed while values fit in 64 bits; recorded
   big-value workloads ran at 0.83–1.31× CPython's speed ([measurements](python-int.md#measurements)).
-- **Catchable recursion limits** add a depth check to calls that can recur. In the alpha.4
-  release's instruction counts, recursion accounting and the native stack check cost
-  pyperformance's `generators` 18.2% and `barnes_hut` 11.2% over alpha.3
+- **Catchable recursion limits** add a depth check to calls that can recur. In
+  v0.1.0-alpha.4's instruction counts, recursion accounting and the native stack check cost
+  pyperformance's `generators` 18.2% and `barnes_hut` 11.2% over v0.1.0-alpha.3
   ([per-benchmark counts](../bench/pyperformance/README.md#alpha3-to-alpha4),
   [release notes](releases/v0.1.0-alpha.4.md#performance-and-remaining-risks)).
 - **Opt-ins are per module, but some policies are program-wide:** once a module opts in to

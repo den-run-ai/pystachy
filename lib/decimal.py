@@ -991,7 +991,9 @@ class Decimal:
             else:
                 b *= 10 ** (other._exp - self._exp)
             q, r = divmod(a, b)
-            if q < 10 ** context._prec:
+            # (2 ** bits exceeds q, so a quotient of no more bits than the precision is below
+            # 10 ** prec without that power, which has MAX_PREC digits at that precision)
+            if q.bit_length() <= context._prec or q < 10 ** context._prec:
                 return _dec(sign, q, 0), _dec(self._sign, r, ideal)
         raise InvalidOperation("[<class 'decimal.DivisionImpossible'>]")
 

@@ -20,7 +20,8 @@ data repair.
 - Executables ran 2.4 to 72 times faster than CPython across 13 benchmark programs;
   the Performance table below gives a sample.
 - `pystachy build` produces an executable that needs neither Python nor LLVM. The
-  example below builds to 138 kB on Linux x86-64.
+  example below builds to [175 kB](https://github.com/den-run-ai/pystachy/blob/main/bench/results/readme-checkout-size-v0.6.0-rc.2-2026-11-20.json)
+  on Linux x86-64.
 - Source stays ordinary Python that CPython also runs, with dataclasses, generators,
   closures, generics and [much of the standard library](https://github.com/den-run-ai/pystachy/blob/main/docs/stdlib.md#library-support-at-a-glance).
 - More than 2,900 test programs must match CPython 3.13's output in both JIT and AOT
