@@ -1686,10 +1686,10 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         # A closed numeric body cannot observe an internal alias and returns at most
         # one object. Its copies may carry nullable provenance until that return;
         # ordinary bodies must materialize the shared object before copying it. A
-        # call's private result slot that a lone assignment stores (IFn.idmove) is
+        # call's private result slot that a lone assignment stores (IFn.build.idmove) is
         # no alias: the store takes its object, boxed or not, as a return does.
-        moved = (self.fn.idmove and v.idexact and ".box." not in v.idslot) or (self.fn.idpass and ".box." in v.idslot)
-        b = self.dyn_id_held(v).v if self.fn.numeric_only or moved else self.dyn_id_box(v).v
+        moved = (self.fn.build.idmove and v.idexact and ".box." not in v.idslot) or (self.fn.build.idpass and ".box." in v.idslot)
+        b = self.dyn_id_held(v).v if self.fn.build.numeric_only or moved else self.dyn_id_box(v).v
     elif v.lit and (v.t == unopt(t) or (v.t == "int" and unopt(t) == BIG) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))) and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))):
         # store_name can retain t until a pending type join restarts compilation to widen
         # it. A provisional int slot may receive a float literal: its LLVM hex bits
@@ -1740,7 +1740,7 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
     # box the slot holds now, which is v's object as an Any value, and the stores into the slot so
     # far (dyn_id_held)
     local = slot.startswith("%") and ".box." in slot
-    if self.fn.scalar_reads:
+    if self.fn.build.scalar_reads:
         # A proven scalar arithmetic consumer uses only the payload. Its subtree has
         # no stores or user calls, so it cannot publish an alias or observe this object.
         # Ordinary reads still snapshot, and every store still updates its box.
@@ -1921,16 +1921,16 @@ def gen_lazy_fields(self, f: FnInfo, body: list[Node]) -> None:
         bits[names[j]] = 1 << j
     for j in range(len(movers)):
         bits[movers[j]] = 1 << (len(names) + j)
-    lazy_block(body, bits, 0, 0, 0, fn.lazylines, fn.lazymasks, True)
+    lazy_block(body, bits, 0, 0, 0, fn.build.lazylines, fn.build.lazymasks, True)
     for x in names + movers:
-        fn.movebit[x] = bits[x]
+        fn.build.movebit[x] = bits[x]
     for x in names:
-        fn.lazyobj[x] = keys[x][: keys[x].find(".")]
-        fn.lazyfield[x] = keys[x][keys[x].find(".") + 1:]
-        fn.lazybit[x] = bits[x]
-        fn.lazyflag[x] = self.alloca("bool", "")  # (false where the function begins)
-    fn.lazyreads = [st for st in reads if st.kids[0].s in fn.lazyobj]
-    fn.lazywbs = [st for st in wbs if st.kids[1].s in fn.lazyobj and st.kids[0].kids[0].s == fn.lazyobj[st.kids[1].s] and st.kids[0].s == fn.lazyfield[st.kids[1].s]]
+        fn.build.lazyobj[x] = keys[x][: keys[x].find(".")]
+        fn.build.lazyfield[x] = keys[x][keys[x].find(".") + 1:]
+        fn.build.lazybit[x] = bits[x]
+        fn.build.lazyflag[x] = self.alloca("bool", "")  # (false where the function begins)
+    fn.build.lazyreads = [st for st in reads if st.kids[0].s in fn.build.lazyobj]
+    fn.build.lazywbs = [st for st in wbs if st.kids[1].s in fn.build.lazyobj and st.kids[0].kids[0].s == fn.build.lazyobj[st.kids[1].s] and st.kids[0].s == fn.build.lazyfield[st.kids[1].s]]
 
 
 def gen_id_move(self, e: Node) -> bool:
@@ -1941,22 +1941,22 @@ def gen_id_move(self, e: Node) -> bool:
     # then hand x's object on as it is, boxed or not, as a return does: no other binding holds
     # it afterwards, so a copy (dyn_id_store) or an argument (pcoerce) needs no box
     fn = self.fn
-    n = fn.idstmt
+    n = fn.build.idstmt
     if e.kind != "name":
         return False
     x = e.s
-    if n is None or x not in fn.movebit or x not in self.idbox or ".box." not in self.idbox[x] or x in self.cells or x in self.compvars:
+    if n is None or x not in fn.build.movebit or x not in self.idbox or ".box." not in self.idbox[x] or x in self.cells or x in self.compvars:
         return False
     if n.kind != "assign" and n.kind != "annassign" and n.kind != "expr" and n.kind != "return":
         return False
-    if n.line not in fn.lazylines:
+    if n.line not in fn.build.lazylines:
         return False
     out = -1
-    ns = fn.lazylines[n.line]
+    ns = fn.build.lazylines[n.line]
     for j in range(len(ns)):
         if ns[j] is n:
-            out = fn.lazymasks[n.line][2 * j + 1]
-    if (out & fn.movebit[x]) != 0:
+            out = fn.build.lazymasks[n.line][2 * j + 1]
+    if (out & fn.build.movebit[x]) != 0:
         return False
     path: list[Node] = []
     if not id_path(n, e, path):
@@ -2075,15 +2075,15 @@ def gen_id_stmt(self, n: Node) -> None:
     # statement n, where a function has lazy field locals or moves: its barrier first
     # (lazy_barrier), and the statement for id_move while it compiles
     fn = self.fn
-    if len(fn.lazyobj) > 0:
+    if len(fn.build.lazyobj) > 0:
         self.line = n.line
         self.lazy_barrier(n)
-    held = fn.idstmt
-    fn.idstmt = n
+    held = fn.build.idstmt
+    fn.build.idstmt = n
     try:
         self.stmt_main(n)
     finally:
-        fn.idstmt = held
+        fn.build.idstmt = held
 
 
 def gen_lazy_barrier(self, n: Node) -> None:
@@ -2093,17 +2093,17 @@ def gen_lazy_barrier(self, n: Node) -> None:
     if self.term or self.lazy_inert(n):
         return
     mask = -1
-    if n.line in fn.lazylines:
-        ns = fn.lazylines[n.line]
+    if n.line in fn.build.lazylines:
+        ns = fn.build.lazylines[n.line]
         for j in range(len(ns)):
             if ns[j] is n:
-                mask = fn.lazymasks[n.line][2 * j]
-    for x in [y for y in fn.lazyobj]:
-        if (mask & fn.lazybit[x]) == 0:
-            self.mem_store(Val(fn.lazyflag[x], "&bool"), Val("false", "bool"))
+                mask = fn.build.lazymasks[n.line][2 * j]
+    for x in [y for y in fn.build.lazyobj]:
+        if (mask & fn.build.lazybit[x]) == 0:
+            self.mem_store(Val(fn.build.lazyflag[x], "&bool"), Val("false", "bool"))
         elif x not in self.idbox or self.ltype.get(x, "") not in ["int", "float"]:
             # (read later, but no store has given it a slot yet: no sharing starts from here)
-            del fn.lazyobj[x]
+            del fn.build.lazyobj[x]
         else:
             self.lazy_resolve(x)
 
@@ -2115,16 +2115,16 @@ def gen_lazy_resolve(self, x: str) -> None:
     t = self.ltype.get(x, "")
     if self.term or x not in self.idbox or (t != "int" and t != "float"):
         return
-    o = fn.lazyobj[x] if x in fn.lazyobj else ""
+    o = fn.build.lazyobj[x] if x in fn.build.lazyobj else ""
     if o == "" or o not in self.ltype or self.ltype[o] not in self.classes:
         return
-    flag = Val(fn.lazyflag[x], "&bool")
+    flag = Val(fn.build.lazyflag[x], "&bool")
     ci = self.classes[self.ltype[o]]
     res = self.label()
     end = self.label()
     self.cbr(self.mem_load(flag).v, res, end)
     self.place(res)
-    slot = Val(self.fgep(self.mem_load(Val(self.lreg[o], "&" + self.ltype[o])), ci.fbox[fn.lazyfield[x]]), "&" + DYN)
+    slot = Val(self.fgep(self.mem_load(Val(self.lreg[o], "&" + self.ltype[o])), ci.fbox[fn.build.lazyfield[x]]), "&" + DYN)
     held = self.mem_load(slot)
     v = self.mem_load(Val(self.lreg[x], "&" + t))
     box = self.rt("pys_dyn_int_box", "ptr", [f"i64 {v.v}", f"ptr {held.v}"]) if t == "int" else self.rt("pys_dyn_float_box", "ptr", [f"double {v.v}", f"ptr {held.v}"])
@@ -2142,18 +2142,18 @@ def gen_lazy_store(self, o: Val, box: str, name: str) -> bool:
     # and the local shares the field's object. True where the write-back wrote the slot
     fn = self.fn
     obj = o
-    wb = fn.lazywb if fn.lazywb != "" and fn.lazyfield.get(fn.lazywb, "") == name and fn.lazywb in self.idbox else ""
+    wb = fn.build.lazywb if fn.build.lazywb != "" and fn.build.lazyfield.get(fn.build.lazywb, "") == name and fn.build.lazywb in self.idbox else ""
     old = self.mem_load(Val(box, "&" + DYN))
     keep = Val("false", "bool")
     if wb != "":
-        keep = self.mem_load(Val(fn.lazyflag[wb], "&bool"))  # (x already is the field's object)
-    for y in fn.lazyflag:
-        oy = fn.lazyobj.get(y, "")
-        if y == wb or fn.lazyfield.get(y, "") != name or y not in self.idbox or oy == "" or self.ltype.get(oy, "") not in self.classes:
+        keep = self.mem_load(Val(fn.build.lazyflag[wb], "&bool"))  # (x already is the field's object)
+    for y in fn.build.lazyflag:
+        oy = fn.build.lazyobj.get(y, "")
+        if y == wb or fn.build.lazyfield.get(y, "") != name or y not in self.idbox or oy == "" or self.ltype.get(oy, "") not in self.classes:
             continue
         if name not in self.classes[self.ltype[oy]].fbox:
             continue
-        flag = Val(fn.lazyflag[y], "&bool")
+        flag = Val(fn.build.lazyflag[y], "&bool")
         on = self.mem_load(flag)
         same = self.ptr_cmp("==", self.mem_load(Val(self.lreg[oy], "&" + self.ltype[oy])), Val(obj.v, obj.t))
         cond = Val(self.scalar("and", [on, same]), "bool")
@@ -2165,7 +2165,7 @@ def gen_lazy_store(self, o: Val, box: str, name: str) -> bool:
         return False
     mine = self.mem_load(Val(self.idbox[wb], "&" + DYN))
     self.mem_store(Val(box, "&" + DYN), Val(self.select(keep.v, old, mine), DYN))
-    self.mem_store(Val(fn.lazyflag[wb], "&bool"), Val("true", "bool"))
+    self.mem_store(Val(fn.build.lazyflag[wb], "&bool"), Val("true", "bool"))
     return True
 
 
@@ -2173,21 +2173,21 @@ def gen_lazy_assign(self, n: Node) -> bool:
     # assignment statement n where it reads a field into a lazy local (x = o.f) or writes one
     # back (o.f = x), compiled so; False where it is not one (or no longer may be)
     fn = self.fn
-    if fn.lazyoff > 0:
+    if fn.build.lazyoff > 0:
         return False
-    if len([st for st in fn.lazyreads if st is n]) > 0:
+    if len([st for st in fn.build.lazyreads if st is n]) > 0:
         x = n.kids[0].s
-        if x not in fn.lazyobj or self.dyn_widened(x):
+        if x not in fn.build.lazyobj or self.dyn_widened(x):
             return False
-        t = self.lazy_field(fn.lazyobj[x], fn.lazyfield[x], n.line)
+        t = self.lazy_field(fn.build.lazyobj[x], fn.build.lazyfield[x], n.line)
         if t == "" or self.ltype.get(x, t) != t or x in self.nonevars:
             return False
-        held = fn.scalar_reads
-        fn.scalar_reads = True  # (the field's object, without the snapshot that boxes it)
+        held = fn.build.scalar_reads
+        fn.build.scalar_reads = True  # (the field's object, without the snapshot that boxes it)
         try:
             v = self.expr(n.kids[1], t)
         finally:
-            fn.scalar_reads = held
+            fn.build.scalar_reads = held
         src = self.joinsrc
         self.joinsrc = n.kids[1]
         if n.s == "local-retype":
@@ -2196,26 +2196,26 @@ def gen_lazy_assign(self, n: Node) -> bool:
             self.assign(n.kids[0], v)
         self.joinsrc = src
         if x in self.idbox and self.ltype.get(x, "") == t and not self.term:
-            self.mem_store(Val(fn.lazyflag[x], "&bool"), Val("true", "bool"))
+            self.mem_store(Val(fn.build.lazyflag[x], "&bool"), Val("true", "bool"))
         return True
-    if len([st for st in fn.lazywbs if st is n]) > 0:
+    if len([st for st in fn.build.lazywbs if st is n]) > 0:
         x = n.kids[1].s
         t = self.ltype.get(x, "")
         # A barrier can retire a candidate before its first binding. Its flag slot
         # remains, but later barriers no longer track it: never restart sharing.
-        if x not in fn.lazyobj or x not in fn.lazyflag or x not in self.idbox or (t != "int" and t != "float") or self.plain_field(n.kids[0]) != t:
+        if x not in fn.build.lazyobj or x not in fn.build.lazyflag or x not in self.idbox or (t != "int" and t != "float") or self.plain_field(n.kids[0]) != t:
             return False
-        held = fn.scalar_reads
-        fn.scalar_reads = True  # (x's number: lazy_store gives the field x's object)
+        held = fn.build.scalar_reads
+        fn.build.scalar_reads = True  # (x's number: lazy_store gives the field x's object)
         try:
             v = self.expr(n.kids[1], t)
         finally:
-            fn.scalar_reads = held
-        fn.lazywb = x
+            fn.build.scalar_reads = held
+        fn.build.lazywb = x
         try:
             self.assign(n.kids[0], v)
         finally:
-            fn.lazywb = ""
+            fn.build.lazywb = ""
         return True
     return False
 
@@ -2224,14 +2224,14 @@ def gen_lazy_while(self, n: Node) -> None:
     # a while statement: no sharing starts in a loop whose test may run code, which no barrier
     # precedes on the way back to it
     fn = self.fn
-    off = len(fn.lazyobj) > 0 and not self.lazy_test(n.kids[0])
+    off = len(fn.build.lazyobj) > 0 and not self.lazy_test(n.kids[0])
     if off:
-        fn.lazyoff += 1
+        fn.build.lazyoff += 1
     try:
         self.while_(n)
     finally:
         if off:
-            fn.lazyoff -= 1
+            fn.build.lazyoff -= 1
 
 
 def gen_dyn_union_box(self, v: Val) -> Val:

@@ -3721,7 +3721,7 @@ def gen_setfield_store(self, o: Val, p: Val, name: str, v: Val) -> None:
     self.mem_store(Val(p.v, "&" + p.t), cv)
     if name in ci.fbox and (numeric_identity(p.t) or p.t == NONEVAR):
         box = self.fgep(o, ci.fbox[name])
-        if len(self.fn.lazyflag) == 0 or not self.lazy_store(o, box, name):
+        if len(self.fn.build.lazyflag) == 0 or not self.lazy_store(o, box, name):
             self.dyn_id_store(box, v, p.t)
     if name in ci.fflag:
         self.mem_store(Val(self.fgep(o, ci.fflag[name]), "&bool"), Val("true", "bool"))
