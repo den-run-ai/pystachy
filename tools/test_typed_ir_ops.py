@@ -16,8 +16,8 @@ import typed_ir_ops
 from src.pystachy_compiler import specs
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val
-from src.pystachy_compiler.ircheck import OpTypes, op_shape_error, op_type_error
-from src.pystachy_compiler.symbols import FnInfo
+from src.pystachy_compiler.ircheck import OpTypes, op_shape_error, op_type_error, value_types
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.syntax import Node
 
 
@@ -200,6 +200,96 @@ class TypeCheckTests(unittest.TestCase):
                 with redirect_stderr(errors), self.assertRaises(SystemExit):
                     Gen().verify(function(code), False)
                 self.assertIn(expected, errors.getvalue())
+
+
+def made(op, t, r, operands=(), s=""):
+    """An op that defines value %t<r>."""
+    i = typed(op, t, list(operands), s)
+    i.r = [r]
+    return i
+
+
+def slot(name, t, r):
+    i = Ins("slot", t, name)
+    i.r = [r]
+    return i
+
+
+class ValueTypeTests(unittest.TestCase):
+    """An operand reads its value at its definition's type or by a view (specs.TYPE_VIEWS)."""
+
+    def error(self, code, params=(), slots=(), mod="", classes=()):
+        fn = function(code)
+        fn.n = 64
+        fn.f.params = [f"p{j}" for j in range(len(params))]
+        fn.f.ptypes = list(params)
+        fn.f.mod = mod
+        fn.slots = list(slots)
+        g = Gen()
+        for name, base in classes:
+            g.classes[name] = ClassInfo(name, Node("class", name, 1))
+            g.classes[name].base = base
+        errors = StringIO()
+        try:
+            with redirect_stderr(errors):
+                value_types(g, fn)
+        except SystemExit:
+            return errors.getvalue().split(": ")[-1].strip()
+        return ""
+
+    def test_each_view_is_admitted(self):
+        classes = (("Base", ""), ("Derived", "Base"))
+        for view, code, params, slots in (
+                ("machine", [typed("mach.load", "int", [("%a0", "%ptr")])], ["str"], ()),
+                ("machine", [typed("mach.store", "", [("%x.1", "%ptr"), ("0", "int")])], (), [slot("x", "int", 1)]),
+                ("bits", [made("rt", "%ptr", 1, [("%a0", "*T")], "box"), typed("ret", "", [("%t1", "opt[int]")])], ["int"], ()),
+                ("bits", [made("rt", "%ptr", 1, [], "x"), typed("mem.load", "int", [("%t1", "*int")])], (), ()),
+                ("instance", [made("rt", "list[T]", 1, [("3", "int")], "list.new"), typed("list.len", "int", [("%t1", "list[str]")])], (), ()),
+                ("instance", [typed("mem.load", "list[str]", [("%x.1", "*list[str]")])], (), [slot("x", "list[?]", 1)]),
+                ("instance", [typed("rt", "int", [("%a0", "S")], "dict.len")], ["dict[str,int]"], ()),
+                ("alias", [typed("ret", "", [("%a0", "bytes")])], ["str"], ()),
+                ("alias", [typed("slot.pack", "%slot", [("%a0", "tuple[int,str]")])], ["tuple[bool,str]"], ()),
+                ("int slot", [made("list.load", "*int", 1, [("%a0", "list[int]"), ("0", "int")]), typed("ret", "", [("%t1", "int")])],
+                 ["list[int]"], ()),
+                ("optional", [typed("ret", "", [("%a0", "opt[str]")])], ["str"], ()),
+                ("optional", [typed("rt", "str", [("%a0", "list[str]")], "str.join")], ["list[opt[str]]"], ()),
+                ("class", [typed("ret", "", [("%a0", "Base")])], ["Derived"], ()),
+                ("class", [typed("ret", "", [("%a0", "Derived")])], ["Base"], ()),
+                ("runtime bool", [made("rt", "bool", 1, [], "eq"), typed("num.cmp", "bool", [("%t1", "int"), ("0", "int")], "!=")], (), ()),
+                ("method", [typed("ptr.cmp", "bool", [("%a0", "Base"), ("null", "None")], "==")], ["fn[m:Base.f]"], ())):
+            with self.subTest(view=view, params=params):
+                self.assertEqual(self.error(code, params, slots, classes=classes), "")
+        self.assertEqual(self.error([typed("ret", "", [("%a0", "Base")])], ["str"], mod="_pystachy_copy", classes=classes), "")
+
+    def test_other_readings_are_rejected(self):
+        classes = (("Base", ""), ("Derived", "Base"), ("Other", ""))
+        for code, params, slots, expected in (
+                ([typed("ret", "", [("%a0", "float")])], ["int"], (), "ret operand 0 reads %a0 as float, but it is int"),
+                ([typed("list.len", "int", [("%a0", "list[str]")])], ["list[int]"], (), "list.len operand 0 reads %a0 as list[str], but it is list[int]"),
+                ([typed("ret", "", [("%a0", "Other")])], ["Base"], (), "ret operand 0 reads %a0 as Other, but it is Base"),
+                ([typed("ret", "", [("%a0", "int+")])], ["int"], (), "ret operand 0 reads %a0 as int+, but it is int"),
+                ([typed("ret", "", [("%a0", "opt[int]")])], ["int"], (), "ret operand 0 reads %a0 as opt[int], but it is int"),
+                ([typed("ret", "", [("%a0", "Base")])], ["str"], (), "ret operand 0 reads %a0 as Base, but it is str"),
+                ([typed("slot.pack", "%slot", [("%a0", "tuple[int,str]")])], ["tuple[str,str]"], (),
+                 "slot.pack operand 0 reads %a0 as tuple[int,str], but it is tuple[str,str]"),
+                ([typed("mach.load", "int", [("%a0", "%ptr")])], ["int"], (), "mach.load operand 0 reads %a0 as %ptr, but it is int"),
+                ([typed("slot.unpack", "str", [("%a0", "%slot")])], ["str"], (), "slot.unpack operand 0 reads %a0 as %slot, but it is str"),
+                ([made("rt", "%slot", 1, [], "x"), typed("ret", "", [("%t1", "str")])], (), (), "ret operand 0 reads %t1 as str, but it is %slot"),
+                ([made("rt", "list[T]", 1, [], "list.new"), typed("ret", "", [("%t1", "dict[str,int]")])], (), (),
+                 "ret operand 0 reads %t1 as dict[str,int], but it is list[T]"),
+                ([typed("rt", "%ptr", [("%x.1", "*T")], "box")], (), [slot("x", "int", 1)], "rt operand 0 reads the address %x.1 as a packed slot"),
+                ([made("list.load", "*int", 1, [("%a0", "list[int]"), ("0", "int")]), typed("mem.load", "int", [("%t1", "*int")])], ["list[int]"], (),
+                 "mem.load operand 0 reads %t1, a packed slot, as an address"),
+                ([made("rt", "%ptr", 1, [], "x"), typed("mem.store", "", [("%s.2", "*str"), ("%t1", "str")]), typed("ret", "", [("%t1", "list[int]")])],
+                 (), [slot("s", "str", 2)], "ret operand 0 reads %t1 as list[int], where mem.store operand 1 reads it as str")):
+            with self.subTest(expected=expected):
+                self.assertEqual(self.error(code, params, slots, classes=classes), expected)
+
+    def test_a_value_its_definition_types_loosely_is_read_at_related_types(self):
+        classes = (("Base", ""), ("Derived", "Base"))
+        code = [made("rt", "%ptr", 1, [], "x"), typed("ptr.cmp", "bool", [("%t1", "opt[Base]"), ("null", "None")], "=="),
+                typed("ret", "", [("%t1", "Derived")])]
+        self.assertEqual(self.error(code, classes=classes), "")
 
 
 class ShapeCheckTests(unittest.TestCase):
