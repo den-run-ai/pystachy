@@ -3,9 +3,14 @@
 # clang, opt, lli, llc, llvm-link and llvm-as over one shared libLLVM that holds the host's target
 # alone, from LLVM's release sources.
 #
-#   tools/llvm_toolchain.sh build OUT   fetch, configure, build, check and pack OUT/NAME.tar.xz
-#   tools/llvm_toolchain.sh check DIR   check the toolchain directory DIR (its bin holds the tools)
-#   tools/llvm_toolchain.sh name        print NAME, pystachy-llvm-VERSION-linux-ARCH
+#   tools/llvm_toolchain.sh build OUT          fetch, configure, build, check and pack OUT/NAME.tar.xz
+#   tools/llvm_toolchain.sh compile OUT I N    compile slice I of N of the object files into OUT/objects
+#   tools/llvm_toolchain.sh check DIR          check the toolchain directory DIR (its bin holds the tools)
+#   tools/llvm_toolchain.sh name               print NAME, pystachy-llvm-VERSION-linux-ARCH
+#
+# Compiling is most of a build, so it can be shared: N machines each run compile for one slice, and
+# build then finds every object in the LLVM_TOOLCHAIN_OBJECTS directory that holds theirs and only
+# links, checks and packs. The LLVM toolchain workflow does this. compile needs ninja.
 #
 # The archive runs wherever the C and C++ libraries are at least as new as the build host's. For a
 # portable one, build in an old distribution: docs/llvm-toolchain.md uses the manylinux_2_28 image
@@ -18,6 +23,9 @@
 #   LLVM_TOOLCHAIN_WORK      the source and build directory (default OUT/work; several GiB)
 #   LLVM_TOOLCHAIN_JOBS      parallel jobs (default: the CPU count)
 #   LLVM_TOOLCHAIN_BUILD     CMAKE_BUILD_TYPE (default Release; MinSizeRel is smaller and compiles slower)
+#   LLVM_TOOLCHAIN_OBJECTS   a directory of compiled objects to reuse and add to (build: none by
+#                            default; compile: OUT/objects). It must be used at one path, with one
+#                            source and build directory: an object's key is its compile command
 #   LLVM_TOOLCHAIN_GLIBC, LLVM_TOOLCHAIN_GLIBCXX   check: the newest symbol versions the binaries
 #                            may need (2.28 and 3.4.25 for manylinux_2_28); unset, they are reported
 set -eu
@@ -152,7 +160,40 @@ EOF
   echo "ok: $dir"
 }
 
-build() {
+# The compiler launcher of the object store $1, for the command in the other arguments. If the
+# same command ran before, its object and dependency file are copied from the store; otherwise it
+# runs and they are kept. The key is the command and its directory with LLVM_TOOLCHAIN_STAMP, which
+# prepare derives from the compilers' versions and the source archive's hash.
+launch() {
+  store=$1
+  shift
+  object=
+  depfile=
+  previous=
+  for argument in "$@"; do
+    case "$previous" in
+      -o) object=$argument ;;
+      -MF) depfile=$argument ;;
+    esac
+    previous=$argument
+  done
+  [ -n "$object" ] || fail "launch: no -o in: $*"
+  key=$store/$(printf '%s\n' "${LLVM_TOOLCHAIN_STAMP:?}" "$PWD" "$@" | sha256sum | cut -d' ' -f1)
+  if [ -f "$key.o" ]; then
+    if [ -n "$depfile" ]; then cp "$key.d" "$depfile"; fi
+    cp "$key.o" "$object"
+    return
+  fi
+  "$@"
+  # The object goes last and by rename, so a key that has an object has its dependency file too.
+  if [ -n "$depfile" ]; then cp "$depfile" "$key.d"; fi
+  cp "$object" "$key.o.$$"
+  mv "$key.o.$$" "$key.o"
+}
+
+# Fetch and check the sources, then configure the build in OUT ($1). Sets out, work, jobs, src,
+# stage and generator; $objects names the object store, or is empty.
+prepare() {
   mkdir -p "$1"
   out=$(cd "$1" && pwd)
   work=${LLVM_TOOLCHAIN_WORK:-$out/work}
@@ -176,6 +217,14 @@ build() {
 
   generator="Unix Makefiles"
   if command -v ninja > /dev/null 2>&1; then generator=Ninja; fi
+  launcher=
+  if [ -n "$objects" ]; then
+    mkdir -p "$objects"
+    launcher="$ROOT/tools/llvm_toolchain.sh;launch;$(cd "$objects" && pwd)"
+    LLVM_TOOLCHAIN_STAMP=$(printf '%s\n' "$SHA256" "$("${CC:-cc}" --version | sed 1q)" "$("${CXX:-c++}" --version | sed 1q)" \
+      | sha256sum | cut -d' ' -f1)
+    export LLVM_TOOLCHAIN_STAMP
+  fi
   # One target and one shared libLLVM for every tool; clang's own libraries are linked into clang,
   # where unused code is discarded. No optional host library is used, so the result needs only the
   # C and C++ libraries. The static analyzer, ARC migration and plugins are not built. Release is
@@ -183,6 +232,7 @@ build() {
   cmake -S "$src/llvm" -B "$work/build" -G "$generator" \
     -DCMAKE_BUILD_TYPE="$BUILD" \
     -DCMAKE_C_FLAGS_RELEASE="-O2 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG" \
+    -DCMAKE_C_COMPILER_LAUNCHER="$launcher" -DCMAKE_CXX_COMPILER_LAUNCHER="$launcher" \
     -DCMAKE_INSTALL_PREFIX="$stage" \
     -DLLVM_ENABLE_PROJECTS=clang \
     -DLLVM_TARGETS_TO_BUILD="$TARGET" \
@@ -196,6 +246,26 @@ build() {
     -DLLVM_INCLUDE_DOCS=OFF -DLLVM_INCLUDE_UTILS=OFF \
     -DCLANG_ENABLE_STATIC_ANALYZER=OFF -DCLANG_ENABLE_ARCMT=OFF -DCLANG_PLUGIN_SUPPORT=OFF \
     -DCLANG_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_DOCS=OFF
+}
+
+# Compile slice $2 of $3 of the object files that the distribution is linked from, and what
+# they need first (LLVM's table generators and their output), into the object store.
+compile() {
+  case "$2$3" in *[!0-9]*) fail "compile: I and N are numbers, not '$2' and '$3'" ;; esac
+  [ "$2" -lt "$3" ] || fail "compile: slice $2 is not below $3"
+  objects=${LLVM_TOOLCHAIN_OBJECTS:-$1/objects}
+  prepare "$1"
+  [ "$generator" = Ninja ] || fail "compile needs ninja"
+  ninja -C "$work/build" -t inputs install-distribution-stripped | grep '\.o$' | LC_ALL=C sort > "$work/objects.txt"
+  awk -v i="$2" -v n="$3" '(NR - 1) % n == i' "$work/objects.txt" > "$work/slice.txt"
+  [ -s "$work/slice.txt" ] || fail "slice $2 of $3 is empty"
+  echo "slice $2 of $3: $(wc -l < "$work/slice.txt") of $(wc -l < "$work/objects.txt") object files"
+  xargs ninja -C "$work/build" -j "$jobs" < "$work/slice.txt"
+}
+
+build() {
+  objects=${LLVM_TOOLCHAIN_OBJECTS:-}
+  prepare "$1"
   rm -rf "$stage"
   cmake --build "$work/build" --target install-distribution-stripped --parallel "$jobs"
 
@@ -235,7 +305,9 @@ build() {
 
 case "${1:-}" in
   build) [ $# -eq 2 ] || fail "usage: llvm_toolchain.sh build OUT"; build "$2" ;;
+  compile) [ $# -eq 4 ] || fail "usage: llvm_toolchain.sh compile OUT I N"; compile "$2" "$3" "$4" ;;
   check) [ $# -eq 2 ] || fail "usage: llvm_toolchain.sh check DIR"; check "$2" ;;
   name) echo "$NAME" ;;
-  *) fail "usage: llvm_toolchain.sh build OUT | check DIR | name" ;;
+  launch) shift; launch "$@" ;;
+  *) fail "usage: llvm_toolchain.sh build OUT | compile OUT I N | check DIR | name" ;;
 esac

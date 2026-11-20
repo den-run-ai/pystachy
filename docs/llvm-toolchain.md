@@ -56,9 +56,26 @@ compressed debug sections.
 
 ## Build
 
-The build compiles 2,368 files, which took 33 minutes on four cores: longer than the
-15-minute limit on workflow jobs ([PR budget](testing.md#pr-budget)), so no workflow runs it.
-Build in the pinned image, from the repository root:
+Compiling the 2,364 object files takes about two CPU-hours, 40% of it for clang's 594: 33
+minutes on four cores, against a 15-minute limit on workflow jobs
+([PR budget](testing.md#pr-budget)). The
+[LLVM toolchain workflow](../.github/workflows/llvm-toolchain.yml) therefore shares the
+compiling among jobs. It runs on manual dispatch and when the recipe changes on `main`:
+
+1. Eight `compile` jobs each run `tools/llvm_toolchain.sh compile OUT I 8`. It builds LLVM's
+   table generators, which every job needs, then compiles every eighth object file of the
+   distribution into `OUT/objects`.
+2. `package` downloads the eight sets into one directory and runs `build` with
+   `LLVM_TOOLCHAIN_OBJECTS` naming it. `build` finds each object compiled, links, runs the
+   check below and packs the archive, which the job uploads with its `.sha256`.
+3. `bootstrap` extracts the archive, runs the check and `make` with it, and runs two corpus
+   areas in JIT and AOT.
+
+An object is kept under a hash of its compile command, the compilers' versions and the source
+archive's hash, and is reused only under that key, so every job mounts the checkout at `/src`.
+`build` compiles an object that no slice compiled: a wrong slice costs time, not the result.
+
+On one machine `build` does all of it. Build in the pinned image, from the repository root:
 
 ```sh
 docker run --rm -v "$PWD:/src" -w /src \
@@ -96,10 +113,10 @@ checks the recipe's pins and the check's refusals.
 
 ## Measured
 
-These are measurements of 19 November 2026, built in the image above on a shared 4-CPU
-x86-64 host. They are not rerun by CI. The `-O2` archive (SHA-256 `b61cb774…5526929e`) comes
-from the recipe at commit `7fde2da2`; the `MinSizeRel` one (`212abbe8…89948fbc`) from
-`a4b2fd18`, whose LLVM settings for that build type are the same.
+These are measurements of 19 and 20 November 2026, built in the image above on a shared
+4-CPU x86-64 host. They are not rerun by CI. The `-O2` archive (SHA-256 `b61cb774…5526929e`)
+comes from one `build` of the recipe at commit `7fde2da2`; the `MinSizeRel` one
+(`212abbe8…89948fbc`) from `a4b2fd18`, whose LLVM settings for that build type are the same.
 
 | | `-O2` (default) | `MinSizeRel` | Ubuntu 18.1.3 |
 |---|---:|---:|---:|
@@ -114,8 +131,15 @@ from the recipe at commit `7fde2da2`; the `MinSizeRel` one (`212abbe8…89948fbc
 each figure is the median of three interleaved rounds. The bootstrap and corpus times are
 single runs with four workers on Ubuntu 24.04.
 
-With each built archive selected by `PYSTACHY_LLVM` on Ubuntu 24.04, `make` reached the
-compiler's and the runtime's fixed points and `make test` passed all 5,395 cases (8,784
+The shared build was run as the workflow runs it, each job alone in a fresh container on the
+four cores. The `compile` job of slice 0 took 5.7 minutes: half a minute to unpack and
+configure, 1.4 minutes for the table generators and 3.8 minutes for its 296 objects. The other
+slices' own objects took 3.2 to 3.8 minutes. `package` took 1.9 minutes: it found 2,360
+objects compiled, assembled the other four and gave an `-O2` archive of the same size
+(`364462a2…94aafc98`).
+
+With each of the three archives selected by `PYSTACHY_LLVM` on Ubuntu 24.04, `make` reached
+the compiler's and the runtime's fixed points and `make test` passed all 5,395 cases (8,784
 JIT and AOT runs). Every binary needs at most glibc 2.27 and `GLIBCXX_3.4.22`, and
 `tools/linux_abi.py --max-glibc 2.28` reports no violation.
 

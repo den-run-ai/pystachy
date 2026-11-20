@@ -1100,6 +1100,12 @@ and on relevant `main` pushes; no check requires it; [reading coverage](#reading
 does the [Variants workflow](../.github/workflows/variants.yml), which
 [configuration variants](#configuration-variants) describes.
 
+The [LLVM toolchain workflow](../.github/workflows/llvm-toolchain.yml) runs manually and when
+its recipe changes on `main`, apart from PR CI; no check requires it. Compiling LLVM and clang
+takes about two CPU-hours, so eight jobs each compile one slice of the object files and a ninth
+links, checks and packs them: each stays within the job limit
+([minimal LLVM toolchain](llvm-toolchain.md#build)).
+
 Every job, including release jobs, has a time limit of at most 15 minutes. Release preparation
 waits at most ten minutes for its exact-commit CI evidence. Expensive new checks must fit the
 existing PR budget or run in the full matrix; keep the job and time ceilings unchanged.
