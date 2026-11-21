@@ -1,0 +1,18 @@
+{
+  "note": "Local and published commit metadata differ. Equal Git tree IDs verify identical tracked file contents and modes; the benchmark JSON retains the original measured local commit identities.",
+  "baseline": {
+    "local_commit": "0ec827ac34837cc917627e1ce594c484db6e9227",
+    "published_commit": "0ec827ac34837cc917627e1ce594c484db6e9227",
+    "tree": "165fadd2f153404ce2619dee5b0983ae223e7ed8"
+  },
+  "initial_candidate": {
+    "local_commit": "c53f29e24e22f378d6c2fc9ac492fac4bca10cb4",
+    "published_commit": "c4639ec11c641f76a2d47824b216c961d6945fad",
+    "tree": "595a337a57e4fe89be7ccc1a36ca549035826c1d"
+  },
+  "measured_candidate": {
+    "local_commit": "5cc4fd5ad64cf5e7ede2a7586047ba6266a6e8f4",
+    "published_commit": "570d918e338313ed4b91c17d573c4ae53fbd137b",
+    "tree": "e2097d04809228e7dc972ef5e67502e4e2335a03"
+  }
+}
