@@ -34,7 +34,9 @@ pystachy build squares.py -o squares
 
 Each execution prints `285`. `run` compiles and executes the program with JIT;
 `build` produces a native executable you can run again without compiling. This
-example does not need Python at runtime once built.
+example does not need Python at runtime once built. `pystachy --help` lists every
+command; settings such as the optimization level are
+[environment variables](internals.md#environment-variables), not options.
 
 From a source checkout, use `./pystachy` after `make`, or replace `pystachy` with
 `python3 -m pystachy` to use the hosted compiler before bootstrapping.
