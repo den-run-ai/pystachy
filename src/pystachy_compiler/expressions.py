@@ -1,5 +1,6 @@
 """Expressions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.builtin_bases import BARITH, BCMP, BIN, BITEM, BITER, BREV, BTRUTH
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrow_type, narrows, search_type
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
@@ -8,10 +9,14 @@ from src.pystachy_compiler.dynamic import boxed_list_items, comparison_container
 from src.pystachy_compiler.frames import FmtArgs, IterArg
 from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname, one_num
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
-from src.pystachy_compiler.names import ENUMCLASSES, short
+from src.pystachy_compiler.names import ENUMCLASSES, NESTED, own_name, short
 from src.pystachy_compiler.patterns import pattern_expr, pattern_static
-from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
+from src.pystachy_compiler.reflection import VARS_USES, has_hook, hook_missing, hook_of, hook_read, hook_reads, refl_annotated, refl_body, refl_fold, refl_reflective
 from src.pystachy_compiler.specs import (
+    ABC_BASES,
+    ABC_METHODS,
+    ABC_NOMINAL,
+    ABC_TYPING,
     BIG,
     BIGOPT,
     STR_HEADER_SIZE,
@@ -35,6 +40,7 @@ from src.pystachy_compiler.specs import (
     PYBUILTINS,
     BYTEARRAYC,
     BYTEARRAYS,
+    CABCS,
     RANGEC,
     RANGES,
     REFL,
@@ -47,8 +53,10 @@ from src.pystachy_compiler.specs import (
 )
 from src.pystachy_compiler.syntax import Node, comp_names, made_var, mk, names_in
 from src.pystachy_compiler.union_arithmetic import unarith
+from src.pystachy_compiler.unions import field_value
 from src.pystachy_compiler.utils import (
     holds_no_object,
+    packed_item,
     is_clsval,
     clsof,
     opaque_class,
@@ -70,6 +78,7 @@ from src.pystachy_compiler.utils import (
     is_aset,
     is_dict,
     is_fn,
+    is_fset,
     is_gen,
     is_kw,
     is_list,
@@ -321,8 +330,8 @@ def gen_static(self, n: Node) -> int:
         t = self.static_type(n.kids[1], True)
         if t == "dyn" or (t in self.classes and self.classes[t].tag > 0):
             return -1  # the concrete class may add attributes beyond the static type
-        if t != "" and (self.refl_prop_in(t, n.kids[2].s) or self.reference_union(t)):
-            return -1  # (a property's getter, or the union's member, decides: reflection.py)
+        if t != "" and (self.refl_prop_in(t, n.kids[2].s) or hook_of(self, t) != 0 or self.reference_union(t)):
+            return -1  # (a property's getter, a class's __getattr__ or the union's member decides: reflection.py)
         h = self.has(t, n.kids[2].s) if t != "" else -1
         return 1 if h == -1 and self.knownobj(n.kids[1]) else max(h, -1)
     if k == "call" and n.kids[0].kind == "name" and n.kids[0].s == "isinstance" and not self.bound("isinstance") and len(n.kids) == 3:
@@ -380,6 +389,24 @@ def gen_knownobj(self, n: Node) -> bool:
     # is n a template's parameter whose argument is an object known not to be None (see nnp)
     return n.kind == "name" and n.s in self.curfn.nnp and self.static_type(n) in self.classes
 
+def nested_owner(self, t: str, a: str) -> str:
+    # class t, or the base of it, whose body nests a class named a that no class attribute of
+    # it holds (an enum class, or one of a dataclass or a NamedTuple: Loader's nested_classes,
+    # which the program reads as C.a), or ""
+    c = t
+    while c in self.classes:
+        if self.classes[c].node.line in NESTED and a in NESTED[self.classes[c].node.line]:
+            return c
+        c = self.classes[c].base
+    return ""
+
+
+def nested_hint(self, t: str, a: str) -> str:
+    # (an error's) how the program reads class a that class t's body nests, if nested_owner finds it
+    c = nested_owner(self, t, a)
+    return f": {short(c)}.{a}, a class nested in its body, is read as {short(c)}.{a} here (an enum class, or one nested in a dataclass or NamedTuple, is no class attribute)" if c != "" else ""
+
+
 def gen_has(self, t: str, a: str) -> int:
     # hasattr(x, a) for x of static type t: 1 or 0; for an object's own attribute -1 (true
     # unless it is None), or -2 for a field __init__ may leave unassigned (its flag says).
@@ -406,13 +433,15 @@ def gen_has(self, t: str, a: str) -> int:
         if a in ci.methods and ci.methods[a].prop:
             self.err(f"hasattr() of property '{a}' is not supported: read it in a try/except AttributeError block")
         if a in ["__abstractmethods__", "_abc_impl", "__slots__", "__class_getitem__", "__orig_bases__", "__parameters__"] and self.iterabc_derived(t):
-            self.err(f"hasattr() of '{a}' on an object of a class deriving from collections.abc's Iterator or Iterable is not supported (ABCMeta gives it attributes of its own)")
+            self.err(f"hasattr() of '{a}' on an object of a class deriving from a class of collections.abc is not supported (ABCMeta gives it attributes of its own)")
         if opaque_class(ci, self.libdir) and self.curfn.mod != ci.mod and a not in ci.methods and (a in ci.ftypes or a in HASATTR["obj"].split() or a in ["__orig_bases__", "__parameters__", "__type_params__"]):
             return 0  # (the module's own fields: CPython's object has none, nor a __dict__ or the attributes of a Python class)
         if a in ci.fflag and t + "." + a not in self.cvars:
             return -2
         if a in ci.methods or a in ci.ftypes:
             return -1
+        if nested_owner(self, t, a) != "":
+            return -1  # (a class its body nests, which no class attribute holds: Loader's nested_classes)
         if t in self.nts:
             self.err(f"hasattr() of '{a}' on a NamedTuple is not supported")
         if (a == "__dict__" or a == "__weakref__") and ci.slotlimit:
@@ -523,14 +552,9 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return r
     if c.kind == "call" and len(c.kids) == 2 and c.kids[0].kind == "name" and c.kids[0].s == "type" and c.kids[1].kind == "None" and not self.bound("type"):
         return self.isnone(t)
-    abc = self.typing_ref(c) if c.kind == "attr" or (c.kind == "name" and c.s not in self.classes and self.imported(c.s) != "") else ""
-    if abc == "Sequence" or abc == "MutableSequence" or abc == "Mapping" or abc == "MutableMapping":
-        # (collections.abc's: str, bytes and tuple, also a NamedTuple, are Sequences, list is a mutable one)
-        if abc.endswith("Mapping"):
-            return 1 if is_dict(t) else -2 if self.dict_object(t) else 0
-        if is_list(t) or (abc == "Sequence" and (t == "str" or t == "bytes" or is_tuple(t) or is_vtuple(t))):
-            return 1
-        return -2 if abc == "Sequence" and (t in self.nts or t == RANGEC) else 0  # (a range is a Sequence too)
+    abc = self.cabc_ref(c)
+    if abc != "":
+        return self.cabc_isinst(t, abc)  # (a class of collections.abc)
     if c.kind != "name":
         return -1
     while c.s in self.taliases and self.alias_kept(c.s):
@@ -577,6 +601,8 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return 1
     if c.s == "dict" and self.dict_object(t):
         return -2  # (unless it is None)
+    if self.bkind(t) != "" and self.bkind(t) == c.s:
+        return -2  # (an object of a class deriving from it, unless it is None: builtin_bases.py)
     if is_aset(t) and (c.s == "set" or c.s == "frozenset"):
         self.err(f"isinstance() of an AbstractSet value and {c.s} is not supported: the value is a set or a frozenset, which its type does not tell")
     if t == EMPTYFS and (c.s == "set" or c.s == "frozenset"):
@@ -597,6 +623,147 @@ def gen_isinst(self, t: str, c: Node) -> int:
     if c.s in "bytearray memoryview complex range slice type".split():
         return 0
     return -1
+
+def gen_cabc_ref(self, c: Node) -> str:
+    # the class of collections.abc that isinstance()'s or issubclass()'s second argument c names:
+    # collections.abc's name of it, typing's (AbstractSet for Set; typing.Set is set's), or a class
+    # of lib's module of them (CABCS, whose own code tests them); "" for another expression
+    if c.kind == "name" and c.s.startswith(CABCS + "$"):
+        k = c.s[len(CABCS) + 1 :]
+        return k if k in ABC_BASES else ""
+    if not (c.kind == "attr" or (c.kind == "name" and c.s not in self.classes and self.imported(c.s) != "")):
+        return ""
+    p = self.imported_ref(c)
+    k = p[p.rfind(".") + 1 :]
+    if p.startswith("collections.abc.") or p.startswith("_collections_abc."):
+        return k if (k in ABC_BASES or k in ABC_METHODS or k in ABC_NOMINAL) and k != "Buffer" else ""
+    if p.startswith("typing.") and "." not in p[7:]:
+        return ABC_TYPING[k] if k in ABC_TYPING else k if k in ABC_METHODS and k != "Buffer" else ""
+    return ""
+
+def gen_cabc_isinst(self, t: str, k: str) -> int:
+    # isinstance(x, k) for x of static type t (no union, no optional: isinst splits them), k a
+    # class of collections.abc (abc_ref), as isinst's results. CPython's ABCMeta answers by the
+    # classes registered with k (its module registers the builtin types), by k's __subclasshook__,
+    # which looks for k's methods (ABC_METHODS), and by derivation from k: a builtin type's answer
+    # is CPython's, a class's is cabc_exact's for each class an object of t may be of
+    if self.bkind(t) != "":
+        # (an object of a class deriving from list or dict answers as the builtin's objects do,
+        # unless it is None: builtin_bases.py rejects classes deriving from it and the special
+        # methods that would change the answer)
+        r = self.cabc_isinst("list[?]" if self.bkind(t) == "list" else "dict[?,?]", k)
+        return -2 if r == 1 else r
+    if t in self.classes:
+        rs = [self.cabc_exact(x, k) for x in self.refl_concrete(t) if x in self.classes]
+        if len(rs) > 0 and len([r for r in rs if r != 1]) == 0:
+            return -2  # (unless it is None)
+        return 0 if len([r for r in rs if r != 0]) == 0 else -1
+    if t == "int" or t == "bool" or t == "float" or t == BIG or t == "None" or t == "exc":
+        return 1 if k == "Hashable" else 0
+    if t == "exctype" or is_clsval(t) or is_fn(t) or is_callable(t):
+        return 1 if k == "Hashable" or k == "Callable" else 0  # (a class object, a function, a method)
+    if is_gen(t):
+        return 1 if k == "Generator" or k == "Iterator" or k == "Iterable" or k == "Hashable" else 0
+    if t == "str" or t == "bytes":
+        return 1 if k in ["Hashable", "Iterable", "Reversible", "Sized", "Container", "Collection", "Sequence"] or (k == "ByteString" and t == "bytes") else 0
+    if is_list(t):
+        return 1 if k in ["Iterable", "Reversible", "Sized", "Container", "Collection", "Sequence", "MutableSequence"] else 0
+    if is_tuple(t) or is_vtuple(t):
+        return 1 if k in ["Hashable", "Iterable", "Reversible", "Sized", "Container", "Collection", "Sequence"] else 0
+    if is_dict(t):
+        return 1 if k in ["Iterable", "Reversible", "Sized", "Container", "Collection", "Mapping", "MutableMapping"] else 0
+    if is_aset(t) and (k == "MutableSet" or k == "Hashable"):
+        self.err(f"isinstance() of an AbstractSet value and {k} is not supported: the value is a set or a frozenset, which its type does not tell")
+    if is_set(t) or t == EMPTYFS:
+        if k == "MutableSet" or k == "Hashable":
+            return 1 if (k == "Hashable") == (is_fset(t) or t == EMPTYFS) else 0
+        return 1 if k in ["Iterable", "Sized", "Container", "Collection", "Set"] else 0
+    return -1
+
+def gen_cabc_issub(self, a: Node, k: str, kn: Node) -> Val:
+    # issubclass(a, k), k (node kn) a class of collections.abc: a builtin class answers as its
+    # values do (cabc_isinst), a class object as each class it may be does (cabc_exact): by a test
+    # of which it is where they answer differently
+    v = self.expr(a, "")
+    self.isinst_reads(kn)
+    b = self.refl_builtin_class(v.t)
+    if b != "":
+        reps = {"int": "int", "float": "float", "bool": "bool", "str": "str", "bytes": "bytes", "list": "list[int]", "tuple": "tuple[int]",
+                "dict": "dict[int,int]", "set": "set[int]", "frozenset": "frozenset[int]", "object": "int", "type": "type[object]"}
+        r: int = -1
+        if b[7:] in reps:
+            r = self.cabc_isinst(reps[b[7:]], k)
+        if r < 0:
+            self.err(f"issubclass() of {b[7:]} and {k} is not supported")
+        return Val("true" if r == 1 else "false", "bool")
+    t = unopt(v.t)
+    c = clsof(t) if is_clsval(t) else ""
+    if c not in self.classes:
+        self.err(f"issubclass() of {typestr(v.t)} and {k} is not supported: its first argument is a class of the program here")
+    v = self.unwrap(v, "TypeError: issubclass() arg 1 must be a class")
+    xs = [x for x in self.refl_concrete(c) if x in self.classes]
+    rs = [self.cabc_exact(x, k) for x in xs]
+    if len([r for r in rs if r < 0]) > 0:
+        self.err(f"issubclass() of {short(c)} and {k} is not supported: a class attribute stands for one of {k}'s methods")
+    if len([r for r in rs if r != rs[0]]) == 0:
+        return Val("true" if len(rs) > 0 and rs[0] == 1 else "false", "bool")
+    res = "false"
+    for i in range(len(xs)):
+        if rs[i] == 1:
+            hit = self.ptr_cmp("==", v, Val(self.refl_record(xs[i]), v.t)).v
+            res = hit if res == "false" else self.scalar("or", [Val(res, "bool"), Val(hit, "bool")])
+    return Val(res, "bool")
+
+def gen_cabc_exact(self, c: str, k: str) -> int:
+    # isinstance(x, k) for x an object of exactly class c (of the program or of lib), k a class of
+    # collections.abc: 1 or 0, as CPython's ABCMeta answers for the class c stands for or is (the
+    # builtin classes lib's stand for, as CPython registers them; lib's views, which derive from
+    # the ABCs in CPython), else by k's methods that c has, or by c's deriving from lib's k
+    # (CABCS); -1 where c binds such a name to a class attribute, whose value decides
+    o = self.classes[c].origin if self.classes[c].origin != "" else c
+    if o == RANGEC:
+        return 1 if k in ["Hashable", "Iterable", "Reversible", "Sized", "Container", "Collection", "Sequence"] else 0
+    if o == BYTEARRAYC:
+        return 1 if k in ["Iterable", "Reversible", "Sized", "Container", "Collection", "Sequence", "MutableSequence", "ByteString"] else 0
+    if self.dict_class(o) and not lib_file(self.line, self.libdir):
+        # (dicts in CPython; lib's own code tests what they are here, as dict_object's callers do)
+        return 1 if k in ["Iterable", "Reversible", "Sized", "Container", "Collection", "Mapping", "MutableMapping"] else 0
+    if o.startswith(ITERS + "$"):
+        return 1 if k == "Iterator" or k == "Iterable" or k == "Hashable" else 0
+    if c in self.nts:
+        return 1 if k in ["Hashable", "Iterable", "Reversible", "Sized", "Container", "Collection", "Sequence"] else 0
+    if o == "collections$deque" and lib_source(self.classes[o].node.line, self.libdir, "collections/__init__.py") and (k == "Sequence" or k == "MutableSequence"):
+        return 1
+    if o == CABCS + "$KeysView" or o == CABCS + "$ItemsView":
+        if k == "Set" or k == "MappingView":
+            return 1  # (CPython's derive from MappingView and Set)
+    if o == CABCS + "$ValuesView" and k == "MappingView":
+        return 1
+    nominal = CABCS + "$" + k in self.classes and (self.derives(c, CABCS + "$" + k) or self.derives(o, CABCS + "$" + k))
+    if k in ABC_NOMINAL or k not in ABC_METHODS:
+        return 1 if nominal else 0
+    r = self.cabc_methods(c, ABC_METHODS[k])
+    return 1 if nominal else r
+
+def gen_cabc_methods(self, c: str, names: list[str]) -> int:
+    # CPython's _check_methods(c, *names) for exactly class c: 1 where its class or a base defines
+    # each of names as a method, 0 where one is missing, or None (__hash__ = None, which a class
+    # that defines __eq__ without __hash__ has, and a dataclass whose __eq__ @dataclass writes);
+    # -1 where a class attribute of another value is one of them
+    ci = self.classes[c]
+    for m in names:
+        if m in ci.ftypes and m not in ci.methods:
+            if ci.ftypes[m] == "None":
+                return 0
+            return -1
+        if m == "__hash__":
+            if self.unhashable(c) or (self.is_dc(c) and "no-eq" not in ci.dcopts and "frozen" not in ci.dcopts and "unsafe_hash" not in ci.dcopts and "__hash__" not in ci.methods):
+                return 0
+            if self.hash_kind(c) == "":
+                return 0
+        elif m not in ci.methods:
+            return 0
+    return 1
 
 def gen_dict_class(self, t: str) -> bool:
     # is t one of lib/collections' mappings, defaultdict, OrderedDict and Counter, or a
@@ -623,6 +790,8 @@ def gen_class_matches(self, c: str, t: Node) -> bool:
     # isinstance's type expression, for an exact ordinary class rather than a static upper bound.
     if t.kind == "tuple" or (t.kind == "binop" and t.s == "|"):
         return any([self.class_matches(c, x) for x in t.kids])
+    if self.cabc_ref(t) != "":
+        return self.cabc_exact(c, self.cabc_ref(t)) == 1  # (an object of exactly c: not its subclasses')
     if t.kind == "name" and t.s in self.classes:
         return self.derives(c, t.s)
     return self.isinst(c, t) in [1, -2]
@@ -701,6 +870,8 @@ def gen_truth(self, v: Val) -> str:
         return self.dyn_truth(v)  # (dynamic.py)
     if v.t == EMPTYFS:
         return "false"  # (frozenset() that nothing typed: empty)
+    if self.bdecays(v.t, BTRUTH):
+        v = self.bview(v, True)  # (None, or the builtin container it derives from: builtin_bases.py)
     if is_union(unopt(v.t)):
         return self.uop(v, "truth").v
     t = v.t
@@ -902,13 +1073,13 @@ def gen_seq_index(self, n: Node, msg: str, recv: Val | None = None, recvnone: st
     # object, as an arithmetic operand does not, so its variable and field reads need no
     # identity snapshot. The sequence's own item read keeps its identity (list_read).
     fn = self.fn
-    held = fn.scalar_reads
+    held = fn.build.scalar_reads
     if not held and self.idhere() and n.kind != "int" and self.scalar_read_index(n):
-        fn.scalar_reads = True
+        fn.build.scalar_reads = True
     try:
         return self.ival(n, msg, True, recv, recvnone)
     finally:
-        fn.scalar_reads = held
+        fn.build.scalar_reads = held
 
 
 def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
@@ -1045,9 +1216,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         return self.arith(n.s, self.expr(n.kids[0], unopt(b.t) if is_dict(unopt(b.t)) else ""), b)
     if k == "binop":
         scalar_fn = self.fn
-        scalar_held = scalar_fn.scalar_reads
+        scalar_held = scalar_fn.build.scalar_reads
         if not scalar_held and self.idhere() and self.scalar_read_value(n):
-            scalar_fn.scalar_reads = True
+            scalar_fn.build.scalar_reads = True
         try:
             if n.s == "&" and (wraps(n.kids[0]) or wraps(n.kids[1])) and not self.int_policy(n.line):
                 return self.masked(n, want, resultsoft)
@@ -1065,20 +1236,20 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             ab = operand_pair(self, n.s, a, ka[0], b, kb[0] if len(kb) > 0 else "")
             return self.arith(n.s, ab[0], ab[1])
         finally:
-            scalar_fn.scalar_reads = scalar_held
+            scalar_fn.build.scalar_reads = scalar_held
     if k == "unary":
         return self.unary(n)
     if k == "boolop":
         return self.boolop(n, False, want, resultsoft)
     if k == "cmp":
         scalar_fn = self.fn
-        scalar_held = scalar_fn.scalar_reads
+        scalar_held = scalar_fn.build.scalar_reads
         if not scalar_held and self.idhere() and self.scalar_read_value(n):
-            scalar_fn.scalar_reads = True
+            scalar_fn.build.scalar_reads = True
         try:
             return self.compare(n)
         finally:
-            scalar_fn.scalar_reads = scalar_held
+            scalar_fn.build.scalar_reads = scalar_held
     if k == "ifexp":
         return self.ifexp(n, want, resultsoft)
     if k == "call":
@@ -1132,15 +1303,15 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             return self.class_attr(n.kids[0], n.s)
         if c in self.classes and n.s == "__name__":
             self.class_ready(n.kids[0])
-            return Val(self.sconst(short(c)), "str")  # (C.__name__, and cls.__name__ in a class method)
+            return Val(self.sconst(own_name(c)), "str")  # (C.__name__, and cls.__name__ in a class method: a nested class's last part)
         if metadata:
             self.class_ready(n.kids[0])
             return Val(self.sconst(self.refl_type_name(c, n.s)), "str")
         if c in self.classes and self.classes[c].exc != "" and (n.s == "__qualname__" or n.s == "__module__"):
             # (an exception class's, as its class object's: runtime.c's pys_exc_name, pys_exc_module)
             self.class_ready(n.kids[0])
-            q = self.exc_disp(c)
-            return Val(self.sconst(short(c) if n.s == "__qualname__" else q[: q.rfind(".")] if "." in q else "__main__"), "str")
+            q = self.exc_disp(c)  # (its module's name, then its __qualname__, short(c))
+            return Val(self.sconst(short(c) if n.s == "__qualname__" else q[: len(q) - len(short(c)) - 1] if len(q) > len(short(c)) else "__main__"), "str")
         if c in self.classes:
             self.no_class_attr(c, n.s)
         o = self.expr(n.kids[0], "")
@@ -1210,7 +1381,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                             f = cc.methods[mn]
                             name = f.node.pyname if f.node.pyname != "" else mn
                             subname = self.sconst(name if n.s == "__name__" else self.qualname(f))
-                            qn = self.select(matches, Val(subname, '%ptr'), Val(qn, '%ptr'))
+                            qn = self.select(matches, Val(subname, 'str'), Val(qn, 'str'))
                     done = self.cur
                     self.br(end)
                     self.place(end)
@@ -1241,7 +1412,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if unopt(o.t) == "exctype" and (n.s == "__name__" or n.s == "__qualname__" or n.s == "__module__"):
             # (an exception class's class object: its name, qualified name and module)
             o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{n.s}'")
-            fn = "pys_exc_module" if n.s == "__module__" else "pys_exc_name"  # (no class is nested: its __qualname__ is its __name__)
+            fn = "pys_exc_module" if n.s == "__module__" else "pys_exc_qualname" if n.s == "__qualname__" else "pys_exc_name"
             return Val(self.rt(fn, "ptr", [f"ptr {o.v}"]), "str")
         if is_clsval(unopt(o.t)) and (n.s == "__name__" or n.s == "__qualname__" or n.s == "__module__"):
             return self.class_value_name(o, n.s)  # (an ordinary class's class object: class_values.py)
@@ -1254,6 +1425,14 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if o.t == "file" and (n.s == "closed" or n.s == "name" or n.s == "mode"):
             r = self.rt(f"pys_file_{n.s}", "i64" if n.s == "closed" else "ptr", [f"ptr {o.v}"])
             return self.num_cmp('!=', Val(r, "int"), Val('0', "int")) if n.s == "closed" else Val(r, "str")
+        ev = self.enum_view_class(o.t)
+        if ev != "" and n.s not in self.classes[o.t].ftypes and n.s not in self.classes[o.t].methods and n.s in self.classes[ev].fdefault:
+            # (an enum class as a value, its EnumType object, held by a variable, a field or a class
+            # attribute: a member, an alias or another class attribute of the class its type names,
+            # read as C.name reads it once the object has been evaluated)
+            return self.class_attr(mk("name", ev, n.line, []), n.s)
+        if has_hook(self, o.t) and hook_missing(self, o.t, n.s):
+            return hook_read(self, o, n.s)  # (its class's __getattr__: reflection.py)
         bm = self.method_value(o, n.s)
         if bm.t != "":
             return bm
@@ -1261,6 +1440,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             self.fn_attr_read(o, n.s)
         self.glue_field(o, n.s)
         self.fieldcmp = n is self.cmpnode  # (o.f is None: see none_field)
+        if hook_reads(self, o.t, n.s):
+            pk = ""  # (a read that may call __getattr__: a call, as a property's is, and no path)
         plive = pk != "" and pk in self.narrowed and self.path_type(pk, {}, "") != ""
         pcall = self.pcall
         pmark = self.path_mark()
@@ -1279,7 +1460,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "index":
         return self.index(n, want)
     if k == "slice":
-        o = self.expr(n.kids[0], "")
+        o = self.bdecay(self.expr(n.kids[0], ""), BITEM)  # (a list subclass's slice is a list's: builtin_bases.py)
         if o.t == RANGEC:
             # a range object's slice: the range of those items (lib/_pystachy_range.py's _slice,
             # of the bounds given, a bool as an int, else None)
@@ -1324,6 +1505,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if (k == "list" or k == "tuple") and len([x for x in n.kids if x.kind == "starred"]) > 0:
         return self.star_display(n, want)  # ([a, *xs], (a, *xs))
     if k == "list":
+        if self.bkind(unopt(want)) == "list" and "?" not in self.bbase(unopt(want)):
+            want = self.bbase(unopt(want))  # (a display is a list, typed as the list that the class expected there derives from: builtin_bases.py)
         et = elem(want) if is_list(want) and "?" not in want else ""
         soft = n is self.soft  # (an operand of ==: as its items are, see compare)
         if et == "" and not soft and self.dyn_policy(n.line) and self.dyn_mixed(n.kids, n.kids):
@@ -1400,11 +1583,13 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             constant = self.list_const(n, items, lty)
             if constant.v != "":
                 return constant
-        r = self.rt("pys_list_new_atomic" if atomic_list(lty) else "pys_list_new", "ptr", [f"i64 {len(items)}"])
+        r = self.rt("pys_list_new_atomic" if atomic_list(lty) else "pys_list_new", "ptr", [f"i64 {len(items)}"], t=lty)
         for v in items:
             self.list_store(Val(r, lty), v, "append")
         return Val(r, lty)
     if k == "dict":
+        if self.bkind(unopt(want)) == "dict" and "?" not in self.bbase(unopt(want)):
+            want = self.bbase(unopt(want))  # (a display is a dict, typed as the dict that the class expected there derives from: builtin_bases.py)
         kv = targs(want) if is_dict(want) and "?" not in want else ["", ""]
         soft = n is self.soft
         if kv[1] == "" and not soft and self.dyn_policy(n.line) and (self.dyn_mixed([n.kids[i] for i in range(0, len(n.kids), 2)], n.kids) or self.dyn_mixed([n.kids[i] for i in range(1, len(n.kids), 2)], n.kids)):
@@ -1491,7 +1676,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 self.making.pop()
         if self.key_problem(kv[0]) != "":
             self.err(self.key_problem(kv[0]))
-        r = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", f"i64 {len(ks)}"])
+        r = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", f"i64 {len(ks)}"], t=self.ctype("dict", kv))
         for i in range(len(ks)):
             self.dict_put(Val(r, self.ctype("dict", kv)), ks[i], self.key_slot(ks[i]), vs[i], kv)
         return Val(r, self.ctype("dict", kv))
@@ -1560,7 +1745,7 @@ def gen_class_attr(self, cn: Node, a: str) -> Val:
     identity = numeric_identity(t) and self.class_identity(ci)
     self.identity_field(ci, t, False)  # (dynamic.py)
     if is_const(ci.fdefault[a]) and cn.s + "." + a not in self.cvars and not identity:
-        return self.coerce(self.expr(ci.fdefault[a], t), t)
+        return field_value(self, ci, a, self.expr(ci.fdefault[a], t))
     self.class_default(ci, a)
     v = Val(self.mload(t, ci.fglob[a]), t)
     if identity and self.idhere():
@@ -1619,7 +1804,7 @@ def gen_class_store(self, ci: ClassInfo, a: str, v: Val) -> None:
     # C.a = v through the class: its class variable's global
     self.class_default(ci, a)
     self.identity_field(ci, ci.ftypes[a], True)  # (dynamic.py)
-    self.mstore(ci.ftypes[a], self.coerce(v, ci.ftypes[a]).v, ci.fglob[a])
+    self.mstore(ci.ftypes[a], field_value(self, ci, a, v).v, ci.fglob[a])
     if numeric_identity(ci.ftypes[a]) and self.class_identity(ci):
         self.dyn_id_store(ci.fglob[a] + ".box", v, ci.ftypes[a])
 
@@ -1638,7 +1823,7 @@ def gen_no_class_attr(self, c: str, a: str) -> None:
         self.err(f"method '{short(c)}.{a}' cannot be used as a value (call it)")
     if a in ci.fields:
         self.err(f"type object '{short(c)}' has no attribute '{a}' (its objects have the field '{a}')")
-    self.err(f"type object '{short(c)}' has no attribute '{a}'")
+    self.err(f"type object '{short(c)}' has no attribute '{a}'" + nested_hint(self, c, a))
 
 def gen_class_ready(self, cn: Node) -> ClassInfo:
     # the class that name cn reads (C.a, C.m(...)), checked where its class statement may not
@@ -2788,7 +2973,7 @@ def gen_dict_merge(self, n: Node, want: str) -> Val:
                 pairs.append(self.expr(n.kids[i + 1], ""))
             i += 2
             continue
-        v = self.expr(x.kids[0], want if is_dict(want) and r.t == "" else r.t)
+        v = self.bdecay(self.expr(x.kids[0], want if is_dict(want) and r.t == "" else r.t), BITER)  # ({**o}: a dict subclass's items, builtin_bases.py)
         self.line = x.line
         if is_kw(v.t) and r.t == "" and len([k for k in keys if k.kind != "str"]) == 0:
             if not kw:
@@ -2803,7 +2988,7 @@ def gen_dict_merge(self, n: Node, want: str) -> Val:
             v = self.unwrap(v, "TypeError: 'NoneType' object is not a mapping")
             if r.t == "":
                 kv = targs(v.t)
-                r = Val(self.rt("pys_dict_new_atomic" if atomic_dict(v.t) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", "i64 0"]), v.t)
+                r = Val(self.rt("pys_dict_new_atomic" if atomic_dict(v.t) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", "i64 0"], t=v.t), v.t)
                 for j in range(0, len(pairs), 2):
                     ks = self.to_slot(self.store_key(pairs[j], kv[0]))
                     self.dict_store(r.v, ks, self.list_hold(pairs[j + 1], kv[1]), kv)
@@ -2851,7 +3036,7 @@ def gen_list_const(self, n: Node, vals: list[Val], t: str) -> Val:
         d.items = [Val(v.v, v.t) for v in vals]
         self.consts.append(d)
         self.lconsts[key] = d.name
-    return Val(self.rt("pys_list_from_const", "ptr", [f"ptr {self.lconsts[key]}", f"i64 {len(vals)}"]), t)
+    return Val(self.rt("pys_list_from_const", "ptr", [f"ptr {self.lconsts[key]}", f"i64 {len(vals)}"], t=t), t)
 
 def gen_vtuple_make(self, vals: list[Val], t: str) -> Val:
     # Already evaluated and coerced homogeneous items. Keep their native types,
@@ -2874,7 +3059,7 @@ def gen_vtuple_make(self, vals: list[Val], t: str) -> Val:
 def gen_vtuple_item(self, o: Val, index: Val) -> Val:
     et = targs(o.t)[0]
     kind = self.list_id_kind(self.ctype("list", [et]))
-    if kind != 0 and not self.fn.scalar_reads:
+    if kind != 0 and not self.fn.build.scalar_reads:
         box = self.rt("pys_vtuple_get_identity", "ptr", [f"ptr {o.v}", f"i64 {index.v}", f"i64 {kind}"])
         if is_opt(et):
             value = self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {o.v}", f"i64 {index.v}"]), et)
@@ -2945,7 +3130,7 @@ def gen_stack_tuple(self, vals: list[Val]) -> Val:
     i = Ins("slot", t, "")
     i.k = 2
     i.r = one_num(self.n)
-    self.fn.slots.append(i)
+    self.slot(i)
     p = f"%stk.{self.n}"
     for j in range(len(vals)):
         self.tput(Val(p, t), j, vals[j])
@@ -3157,7 +3342,7 @@ def gen_probe_type(self, n: Node) -> str:
     return t
 
 def gen_tget(self, v: Val, i: int) -> Val:
-    item = Ins("tuple.load", "%slot", targs(v.t)[i])
+    item = Ins("tuple.load", "*" + packed_item(targs(v.t)[i]), targs(v.t)[i])
     item.k = i
     item.a = [v]
     self.put(item, 2)
@@ -3173,19 +3358,20 @@ def gen_tget(self, v: Val, i: int) -> Val:
     return value
 
 def gen_tslot(self, v: Val, k: int) -> Val:
-    # slot k of tuple v, past its items: a promoting int item's Mpz word, as an int (tslots)
+    # slot k of tuple v, past its items: a promoting int item's Mpz word, which no type describes,
+    # read as an int by a bits cast (tslots)
     w = Ins("tuple.load", "%slot", BIG)
     w.k = k
     w.a = [v]
     self.put(w, 2)
-    return self.from_slot(tmpname(w.r[1]), "int")
+    return self.cast(Val(tmpname(w.r[1]), "%slot"), "int", "bits")
 
 def gen_tstore(self, v: Val, index: int, slot: str) -> None:
     # slot index of tuple v (an item's, or past them a promoting int item's Mpz word: tslots)
     ts = targs(v.t)
     item = Ins("tuple.store", "", ts[index] if index < len(ts) else BIG)
     item.k = index
-    item.a = [v, Val(slot, "%slot")]
+    item.a = [v, Val(slot, "*" + packed_item(ts[index]) if index < len(ts) else "%slot")]
     self.put(item, 1)
 
 def gen_tput(self, v: Val, index: int, x: Val) -> None:
@@ -3247,6 +3433,10 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
                 self.raise_("TypeError", self.sconst(error))
                 return Val("undef", "int")
             n = mk("index", "", n.line, [self.vnode(o), self.vnode(index)])
+    if self.bkind(o.t) == "dict" and "__missing__" in self.classes[o.t].methods and "__getitem__" not in self.classes[o.t].methods:
+        return self.bmissing(o, n.kids[1])  # (dict's lookup, then __missing__: builtin_bases.py)
+    if self.bdecays(o.t, BITEM):
+        o = self.bview(o)  # (o[i] of a class deriving from a builtin container, as the container's: builtin_bases.py)
     t = unopt(o.t)
     sub = "TypeError: 'NoneType' object is not subscriptable"  # (once the index is evaluated)
     if t == "dyn":
@@ -3387,7 +3577,7 @@ def gen_list_read(self, o: Val, i: Val) -> Val:
     # Both operands have run, and o is not None. Check the current length: unsigned
     # comparison also sends every negative index to the runtime's normalization and errors.
     # No call or allocation separates this check from the existing inline list.load.
-    if self.list_id_kind(o.t) != 0 and not self.fn.scalar_reads:
+    if self.list_id_kind(o.t) != 0 and not self.fn.build.scalar_reads:
         return self.list_item(o, i)
     if o.t != "list[int]" or "listfast" not in self.opts:
         return self.list_value(o, i.v, self.list_get("list.get", [o, i]))
@@ -3396,7 +3586,7 @@ def gen_list_read(self, o: Val, i: Val) -> Val:
     done = self.label()
     length = self.list_len(o)
     self.cbr(self.int_ucmp('<', Val(i.v, "int"), Val(length, "int")).v, fast, slow)
-    ph = Ins("phi", "%slot", "")
+    ph = Ins("phi", "*int", "")
     self.place(fast)
     read = Ins("list.load", "*int", "")
     read.a = [o, i]
@@ -3477,6 +3667,10 @@ def gen_obj_iterator(self, v: Val, none: str, missing: str, name: str = "__iter_
     # name "__reversed__", reversed(v): only the list its __reversed__ returns the iterator of. v
     # None raises none ("Kind: text"); missing is the error where v's class does not define
     # __iter__ (CPython iterates by __getitem__ then, which is not supported)
+    if self.bdecays(v.t, BITER if name == "__iter__" else BREV):
+        # (an object of a class deriving from a builtin container, which leaves iteration to
+        # it: the container itself, as its items are read where it stands: builtin_bases.py)
+        return self.as_list(self.unwrap(self.bview(v), none), "iter") if not is_list(self.bbase(v.t)) else self.unwrap(self.bview(v), none)
     ms = self.classes[v.t].methods
     if name not in ms and "__getitem__" in ms:
         self.err(f"iterating over {short(v.t)} by its __getitem__ is not supported (CPython calls __getitem__(0), __getitem__(1), ... until IndexError): define __iter__")
@@ -3659,8 +3853,8 @@ def gen_numeric_phi(self, result: Val, values: list[Val], edges: list[str]) -> V
     if len(values) == 2 and values[0].idslot != "" and values[0].idslot == values[1].idslot and values[0].idgen == values[1].idgen and self.idstores.get(values[0].idslot, 0) == values[0].idgen:
         # x = x if flag else x keeps the binding's slot without a selected pointer.
         result.identity(values[0])
-        result.idheld = self.mem_load(Val(result.idslot, "*dyn")).v
-        result.idversion = self.mem_load(Val(result.idcounter, "*int")).v if result.idcounter != "" else ""
+        result.idheld = self.mem_load(Val(result.idslot, "&dyn")).v
+        result.idversion = self.mem_load(Val(result.idcounter, "&int")).v if result.idcounter != "" else ""
         return result
     selected: list[Val] = []
     here = self.blk
@@ -3684,17 +3878,17 @@ def gen_numeric_phi(self, result: Val, values: list[Val], edges: list[str]) -> V
                 v.idheld = box
                 v.idcounter = self.alloca("int", "")
                 v.idversion = "0"
-                self.mem_store(Val(v.idslot, "*dyn"), Val(box, "dyn"))
-                self.mem_store(Val(v.idcounter, "*int"), Val("0", "int"))
+                self.mem_store(Val(v.idslot, "&dyn"), Val(box, "dyn"))
+                self.mem_store(Val(v.idcounter, "&int"), Val("0", "int"))
                 block.code.append(last)
                 break
         selected.append(v)
     self.blk = here
     self.cur = cur
     self.term = term
-    slot = Ins("phi", "*dyn", "")
+    slot = Ins("phi", "&dyn", "")
     held = Ins("phi", "dyn", "")
-    counter = Ins("phi", "*int", "")
+    counter = Ins("phi", "&int", "")
     version = Ins("phi", "int", "")
     for j in range(len(selected)):
         self.incoming(slot, selected[j].idslot, edges[j])
@@ -3883,9 +4077,10 @@ def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False,
     # operation has of those unions; others are made the unions, the left one at its edge
     c0 = n.kids[0]
     c1 = n.kids[1]
-    if n.s == "or" and c0.kind == "cmp" and c0.s == "is" and c1.kind == "cmp" and c1.s == "==" and c0.kids[0].kind == "name" and c0.kids[1].kind == "name" and c1.kids[0].kind == "name" and c1.kids[1].kind == "name" and c0.kids[0].s == c1.kids[0].s and c0.kids[1].s == c1.kids[1].s and self.isnum(self.static_type(c0.kids[0])) and self.isnum(self.static_type(c0.kids[1])):
-        # x is y or x == y, the identity-or-equality test, on numbers: x == y (numbers have no
-        # identity here; see the deviation about NaN)
+    if n.s == "or" and c0.kind == "cmp" and c0.s == "is" and c1.kind == "cmp" and c1.s == "==" and c0.kids[0].kind == "name" and c0.kids[1].kind == "name" and c1.kids[0].kind == "name" and c1.kids[1].kind == "name" and c0.kids[0].s == c1.kids[0].s and c0.kids[1].s == c1.kids[1].s and (self.isnum(self.static_type(c0.kids[0])) or self.static_type(c0.kids[0]) == BIG) and (self.isnum(self.static_type(c0.kids[1])) or self.static_type(c0.kids[1]) == BIG):
+        # x is y or x == y, the identity-or-equality test, on numbers, promoting ints too (whose
+        # 'is' alone is not supported: gen_big_compare): x == y (numbers have no identity here;
+        # see the deviation about NaN)
         return Val(self.cond(c1), "bool") if ascond else self.expr(c1, want, resultsoft=resultsoft)
     st = self.static(n.kids[0])
     if st >= 0:
@@ -4367,8 +4562,7 @@ def gen_declining_call(self, f: FnInfo, me: Val, arg: Val, direct: bool, decl: l
         return r
     clear = Ins("mach.store", "", "")  # (mstore, before the code of the call)
     clear.a = [Val(self.decl_flag(), "%ptr"), Val("false", "bool")]
-    if self.source_lines.enabled:
-        clear.line = self.line
+    clear.line = self.line
     blk.code.insert(at, clear)
     decl.append(True)
     return r
@@ -4646,12 +4840,12 @@ def gen_class_members(self, t: str) -> list[str]:
     return ms
 
 def gen_cmp_object(self, v: Val) -> Val:
-    # operand v of inherit_cmp as the object a union of classes' box holds (class_members), still
-    # of the union's type, which cmp_alts tells apart by the object's class; v otherwise. Each
-    # member's object is read where the box's tag proves the member, as union_arithmetic splits
-    # a union (a payload read that no tag test proves is no typed read). The union holds None as
-    # a null box (A | B | None is union[A,B]): None then, a null object, unless v is known not
-    # to be None
+    # operand v of inherit_cmp as the object a union of classes' box holds (class_members), read
+    # as the union by an object cast (specs.CAST_KINDS: no union op may read it), which cmp_alts
+    # tells apart by the object's class with member casts; v otherwise. Each member's object is
+    # read where the box's tag proves the member, as union_arithmetic splits a union (a payload
+    # read that no tag test proves is no typed read). The union holds None as a null box
+    # (A | B | None is union[A,B]): None then, a null object, unless v is known not to be None
     ms = self.class_members(v.t)
     if len(ms) == 0:
         return v
@@ -4676,7 +4870,7 @@ def gen_cmp_object(self, v: Val) -> Val:
         if miss != "":
             self.place(miss)
     self.place(end)
-    r = Val(self.phi(ph), v.t)
+    r = self.cast(Val(self.phi(ph), "%ptr"), v.t, "object")
     if not maybe:
         self.nn[r.v] = True
     return r
@@ -4685,14 +4879,14 @@ def gen_cmp_alts(self, v: Val) -> list[Val]:
     # what inherit_cmp tells operand v apart as: None where v may be None, then an object of each
     # class it may be of (cmp_kinds); v alone where it is no class's object, or one class's and
     # known not to be None. The object of a union of classes (cmp_object) is one of each class
-    # its members may be of
+    # its members may be of, which a member cast reads it as
     ms = self.class_members(v.t)
     if len(ms) > 0:
         alts: list[Val] = [Val("null", "None")] if v.v not in self.nn else []
         for m in ms:
             for c in self.cmp_kinds(m):
                 if len([x for x in alts if x.t == c]) == 0:
-                    alts.append(Val(v.v, c))
+                    alts.append(self.cast(v, c, "member"))
         return alts
     if v.t not in self.classes:
         return [v]
@@ -4891,14 +5085,14 @@ def gen_concrete_cmp(self, op: str, a: Val, b: Val, stage: int = 0, decl: list[b
             # scalar fields. Reuse exact number or string comparison of the payloads.
             ak = self.enum_builtin(a.t)
             bk = self.enum_builtin(b.t)
-            x = self.mem_load(Val(self.fgep(a, self.classes[a.t].fpos[" enum " + ak]), "*" + ak)) if ak != "" else a
-            y = self.mem_load(Val(self.fgep(b, self.classes[b.t].fpos[" enum " + bk]), "*" + bk)) if bk != "" else b
+            x = self.mem_load(Val(self.fgep(a, self.classes[a.t].fpos[" enum " + ak]), "&" + ak)) if ak != "" else a
+            y = self.mem_load(Val(self.fgep(b, self.classes[b.t].fpos[" enum " + bk]), "&" + bk)) if bk != "" else b
             return self.cmp2(op, x, y)
         if lhs.t == COMPLEXC and self.enum_intlike(rhs.t) and op in ["==", "!="]:
             # An enum's own comparison may decline before complex accepts its int
             # payload. These concrete pairs exclude None before reading that field;
             # the library method cannot use isinstance(enum_member, int) here.
-            value = self.mem_load(Val(self.fgep(rhs, self.classes[rhs.t].fpos[" enum int"]), "*int"))
+            value = self.mem_load(Val(self.fgep(rhs, self.classes[rhs.t].fpos[" enum int"]), "&int"))
             return self.complex_cmp(op, lhs, value)
         if self.cmp_method(lhs.t, m, rhs.t) == "":
             why = f"{m}() of {shown(lhs.t)} cannot compare an operand of type {typestr(rhs.t)}"
@@ -5327,6 +5521,11 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         if error != "" and a.infer_from == "" and b.infer_from == "":
             self.raise_("TypeError", self.sconst(error))
             return Val("undef", "int")
+    if len(self.bsubn) > 0 and (op == "+" or op == "*" or op == "|"):
+        # (xs + ys and xs * n of a list subclass's object, d | m of a dict subclass's, make a
+        # plain list or dict: builtin_bases.py)
+        a = self.bdecay(a, BARITH)
+        b = self.bdecay(b, BARITH)
     if a.t == "int" and b.t == "int" and a.lit and b.lit and dynamic_program():
         folded = folded_int(op, a.v, b.v)
         if folded != "":
@@ -5373,10 +5572,10 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
             return Val(self.rt(FRT[op], "double", [f"double {x.v}", f"double {y.v}"]), "float")
     seq = a.t == "str" or a.t == "bytes" or is_list(a.t)
     if op == "+" and seq and a.t == b.t:
-        return Val(self.rt("pys_str_add" if a.t == "str" else "pys_bytes_add" if a.t == "bytes" else "pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"]), a.t)
+        return Val(self.rt("pys_str_add" if a.t == "str" else "pys_bytes_add" if a.t == "bytes" else "pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"], t=a.t if is_list(a.t) else ""), a.t)
     lw = self.wider(a.t, b.t) if op == "+" and is_list(a.t) and is_list(b.t) else ""
     if lw != "" and self.widens_items(a.t, lw) and self.widens_items(b.t, lw):
-        return Val(self.rt("pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"]), lw)  # (a new list of the items of both)
+        return Val(self.rt("pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"], t=lw), lw)  # (a new list of the items of both)
     if op == "*" and seq and b.t == "int":
         return Val(self.rt("pys_str_mul" if a.t == "str" else "pys_bytes_mul" if a.t == "bytes" else "pys_list_mul", "ptr", [f"ptr {a.v}", f"i64 {b.v}"]), a.t)
     if op == "*" and seq and b.t in self.classes and "__index__" in self.classes[b.t].methods:
@@ -5620,6 +5819,10 @@ def gen_compare(self, n: Node) -> Val:
         # [] == xs, {} in ds, [None] == xs: an empty display, or one of None, takes its type
         # from the other side (it has nothing to evaluate first)
         b = self.expr(n.kids[1], "")
+        if ops[0] == "in" or ops[0] == "not in" or ops[0] in BCMP:
+            # (an object of a class deriving from a builtin container, compared or searched as
+            # that container where its class leaves it the method: builtin_bases.py)
+            b = self.bdecay(b, BIN if ops[0] == "in" or ops[0] == "not in" else [BCMP[ops[0]][1]])
         w = b.t
         if ops[0] == "in" or ops[0] == "not in":
             w = elem(b.t) if is_list(b.t) else targs(b.t)[0] if is_dict(b.t) else ""
@@ -5676,6 +5879,8 @@ def gen_compare(self, n: Node) -> Val:
         return self.dict_view_has(ops[0], self.dict_view(n.kids[1]), a, n.kids[1].kids[0].kids[0])
     if len(ops) == 1:
         w = a.t
+        if (ops[0] == "==" or ops[0] == "!=") and self.bdecays(a.t, [BCMP[ops[0]][0]]):
+            w = unopt(self.bview(a).t)  # (o == []: the display is the builtin container's: builtin_bases.py)
         rhs = n.kids[1]
         if (ops[0] == "in" or ops[0] == "not in") and unopt(a.t) == "str" and rhs.kind == "list" and 0 < len(rhs.kids) <= 8 and all(e.kind == "str" or e.kind == "None" for e in rhs.kids):
             # A short list of string/None literals cannot escape or run user code.
@@ -6035,6 +6240,15 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         if error != "" and a.infer_from == "" and b.infer_from == "":
             self.raise_("TypeError", self.sconst(error))
             return Val("undef", "bool")
+    if len(self.bsubn) > 0 and op != "is" and op != "is not":
+        # (an object of a class deriving from a builtin container compares, and is searched,
+        # as that container where the class defines no method for it: builtin_bases.py)
+        if op == "in" or op == "not in":
+            b = self.bdecay(b, BIN)
+        else:
+            ab = self.bcompared(op, a, b)
+            a = ab[0]
+            b = ab[1]
     if a.t == "dyn" or b.t == "dyn":
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":
@@ -6076,7 +6290,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             ev = b if a.t == COMPLEXC else a
             cx = a if a.t == COMPLEXC else b
             if ev.v in self.nn:
-                return self.complex_cmp(op, cx, self.mem_load(Val(self.fgep(ev, self.classes[o].fpos[" enum int"]), "*int")))
+                return self.complex_cmp(op, cx, self.mem_load(Val(self.fgep(ev, self.classes[o].fpos[" enum int"]), "&int")))
             lnull = self.label()
             lval = self.label()
             lend = self.label()
@@ -6086,7 +6300,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             self.incoming(ph, self.ptr_cmp(op, cx, Val('null', 'None')).v, self.cur)
             self.br(lend)
             self.place(lval)
-            ecr = self.complex_cmp(op, cx, self.mem_load(Val(self.fgep(ev, self.classes[o].fpos[" enum int"]), "*int")))
+            ecr = self.complex_cmp(op, cx, self.mem_load(Val(self.fgep(ev, self.classes[o].fpos[" enum int"]), "&int")))
             self.incoming(ph, ecr.v, self.cur)
             self.br(lend)
             self.place(lend)

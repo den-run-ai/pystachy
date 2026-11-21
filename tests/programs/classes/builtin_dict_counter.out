@@ -1,0 +1,3 @@
+3 0 5 False None [('the', 3), ('and', 2)] 8
+5 0 [('dog', 5), ('the', 3), ('and', 2)] ['and', 'bat', 'cat', 'dog', 'hat', 'the'] True
+[exit 0]

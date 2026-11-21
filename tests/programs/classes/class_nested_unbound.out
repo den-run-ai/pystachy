@@ -1,0 +1,6 @@
+sibling: name 'Outer' is not defined
+body: name 'Outer' is not defined
+Kind.A Kind.A 1
+Kind.A Kind.A 1
+0 0 0 True 1
+[exit 0]

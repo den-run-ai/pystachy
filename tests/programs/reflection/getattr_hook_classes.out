@@ -1,0 +1,12 @@
+Settings(name='s', values={'port': 80}, hits=2) 80 -1 2 s
+True 80 True
+1 101 101 True True 101
+5 101
+80 -1
+AttributeError: 'NoneType' object has no attribute 'port'
+KeyError: 'nope'
+80 1 True True False
+80 1 False
+port
+data
+[exit 0]

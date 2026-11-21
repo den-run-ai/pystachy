@@ -1,5 +1,5 @@
-# A class of an imported module that Pystachy leaves uncompiled (for its Iterable[int] field or a
-# nested class) still runs its body when the module is imported, as CPython does: a builtin
+# A class of an imported module that Pystachy leaves uncompiled (for its Iterable[int] field), or
+# a nested class, still runs its body when the module is imported, as CPython does: a builtin
 # operation there that raises makes the import raise, before the module's code after the class
 # runs. Here 1 // 0, a missing key, int("x"), an index in a display, a method's default value and
 # the body of a nested class raise. defmods/calm.py's classes raise nothing, and Pystachy evaluates

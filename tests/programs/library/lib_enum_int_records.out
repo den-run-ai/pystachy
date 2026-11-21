@@ -1,0 +1,3 @@
+Pt(x=<Color.RED: 1>, y=0) <Color.RED: 1> Pt(x=1, y=<Color.GREEN: 2>) 1
+Cfg(level=<Color.GREEN: 2>) <Color.GREEN: 2> Cfg(level=5) True
+[exit 0]

@@ -1,0 +1,62 @@
+; A module's class declarations give the verifier its classes, which the class view of an
+; operand's type relates (specs.TYPE_VIEWS): an operand may read an object of a class as a class
+; derived from it, as one of its bases, as object, or as a class derived from a base that has a
+; common derived class with it (its overlaps), and as no other class. A function list declares no
+; class, so without the module each reading below is an error. Check with
+;   python3 tools/typed_ir_text.py verify tools/fixtures/typed_ir/classes.tir
+
+module {
+  class Base tagged
+  class Both base=Storage roles=[Reader] tagged
+  class Derived base=Base tagged
+  class Failure base=ValueError
+  class Other
+  class Reader overlaps=[Storage] tagged
+  class Storage overlaps=[Reader] tagged
+}
+
+; ---- readings the class view admits
+
+function @a_derived_class_read_as_its_base(d: Derived) -> Base {
+entry:
+  ret(Base %a0)
+}
+
+function @a_base_read_as_a_class_derived_from_it(b: Base) -> Derived {
+entry:
+  ret(Derived %a0)
+}
+
+function @a_class_read_as_its_secondary_base(b: Both) -> Reader {
+entry:
+  ret(Reader %a0)
+}
+
+function @a_class_read_as_one_it_overlaps(s: Storage) -> Reader {
+entry:
+  ret(Reader %a0)
+}
+
+function @a_class_read_as_object(d: Derived) -> object {
+entry:
+  ret(object %a0)
+}
+
+function @a_class_read_as_a_builtin_exception_its_base_derives_from(f: Failure) -> Exception {
+entry:
+  ret(Exception %a0)
+}
+
+; ---- readings it rejects
+
+function @an_unrelated_class(o: Other) -> Base {
+entry:
+  ; expected-error {{ret operand 0 reads %a0 as Base, but it is Other}}
+  ret(Base %a0)
+}
+
+function @a_class_of_another_hierarchy(d: Derived) -> Both {
+entry:
+  ; expected-error {{ret operand 0 reads %a0 as Both, but it is Derived}}
+  ret(Both %a0)
+}

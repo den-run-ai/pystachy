@@ -1,0 +1,9 @@
+print Can't instantiate abstract class Half without an implementation for abstract methods 'f', 'g'
+str Can't instantiate abstract class Half without an implementation for abstract methods 'f', 'g'
+repr Can't instantiate abstract class Half without an implementation for abstract methods 'f', 'g'
+format Can't instantiate abstract class Half without an implementation for abstract methods 'f', 'g'
+hash Can't instantiate abstract class Half without an implementation for abstract methods 'f', 'g'
+isinstance Can't instantiate abstract class Half without an implementation for abstract methods 'f', 'g'
+module Can't instantiate abstract class Half without an implementation for abstract methods 'f', 'g'
+3 True
+[exit 0]

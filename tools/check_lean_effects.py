@@ -10,7 +10,7 @@ from collections import deque
 from pathlib import Path
 import sys
 
-from check_lean_boundary import OP_KEYS, require
+from check_lean_boundary import instruction_fields, require
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -57,7 +57,7 @@ class Summaries(dict):
             return True
         last = op["operands"][-1] if op.get("operands") else {}
         value = last.get("value")
-        return last.get("type") == "*dyn" and (
+        return last.get("type") == "&dyn" and (
             value in slots or value == "null" or (value == IDENTITY_RETURN and caller in self.exempt))
 
 
@@ -164,7 +164,7 @@ def local_writes(function, identity_slot=False, tagged=lambda cls: False):
     operations = [op for block in function["blocks"] for op in block["operations"]]
     require(isinstance(function.get("slots", []), list), "invalid effect function slots")
     for op in operations + function.get("slots", []):
-        require(isinstance(op, dict) and set(op) == OP_KEYS, "invalid effect instruction fields")
+        require(instruction_fields(op), "invalid effect instruction fields")
         require(all(isinstance(op[key], str) for key in ("op", "text", "descriptor")),
                 "invalid effect instruction name")
         require(isinstance(op["results"], list) and all(type(number) is int for number in op["results"]),
@@ -241,7 +241,7 @@ cycle cannot conceal a write reachable elsewhere in the cycle.
                 if isinstance(op, dict) and op.get("op") == "call" and op.get("text") in returners:
                     last = op["operands"][-1] if op.get("operands") else {}
                     value = last.get("value") if isinstance(last, dict) else None
-                    if not (isinstance(last, dict) and last.get("type") == "*dyn"
+                    if not (isinstance(last, dict) and last.get("type") == "&dyn"
                             and (value in own or value in (IDENTITY_RETURN, "null"))):
                         unverified.add(op["text"])
                     elif value == IDENTITY_RETURN:

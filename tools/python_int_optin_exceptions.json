@@ -18,6 +18,38 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/classes/float_field_int.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/float_field_int.py:38: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/classes/float_field_int.py:34 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
+      "reason": "A location annotated float that is given an int holds a closed int | float union, whose int payload stays fixed-width; arithmetic on it that can yield a promoting int is rejected, as for inferred numeric unions.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/float_field_int.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/float_field_int.py:38: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/classes/float_field_int.py:34 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
+      "reason": "A location annotated float that is given an int holds a closed int | float union, whose int payload stays fixed-width; arithmetic on it that can yield a promoting int is rejected, as for inferred numeric unions.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/float_field_plain.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/float_field_plain.py:88: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/classes/float_field_plain.py:7 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
+      "reason": "A location annotated float that is given an int holds a closed int | float union, whose int payload stays fixed-width; arithmetic on it that can yield a promoting int is rejected, as for inferred numeric unions.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/float_field_plain.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/float_field_plain.py:88: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/classes/float_field_plain.py:7 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
+      "reason": "A location annotated float that is given an int holds a closed int | float union, whose int payload stays fixed-width; arithmetic on it that can yield a promoting int is rejected, as for inferred numeric unions.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/containers/sum_objects.py",
       "mode": "jit",
       "category": "unsupported-storage",
@@ -437,7 +469,7 @@
       "case": "tests/programs/language/flow_locals.py",
       "mode": "jit",
       "category": "unsupported-storage",
-      "diagnostic": "tests/programs/language/flow_locals.py:18: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float",
+      "diagnostic": "tests/programs/language/flow_locals.py:18: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/language/flow_locals.py:20 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
       "reason": "Control-flow locals join promoting-int and float results into a closed union whose representation is not supported.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
@@ -445,7 +477,7 @@
       "case": "tests/programs/language/flow_locals.py",
       "mode": "aot",
       "category": "unsupported-storage",
-      "diagnostic": "tests/programs/language/flow_locals.py:18: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float",
+      "diagnostic": "tests/programs/language/flow_locals.py:18: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/language/flow_locals.py:20 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
       "reason": "Control-flow locals join promoting-int and float results into a closed union whose representation is not supported.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
@@ -498,6 +530,38 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/numbers/float_return_int.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/numbers/float_return_int.py:86: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/numbers/float_return_int.py:75 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
+      "reason": "A location annotated float that is given an int holds a closed int | float union, whose int payload stays fixed-width; arithmetic on it that can yield a promoting int is rejected, as for inferred numeric unions.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/float_return_int.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/numbers/float_return_int.py:86: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/numbers/float_return_int.py:75 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
+      "reason": "A location annotated float that is given an int holds a closed int | float union, whose int payload stays fixed-width; arithmetic on it that can yield a promoting int is rejected, as for inferred numeric unions.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/float_var_int.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/numbers/float_var_int.py:69: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/numbers/float_var_int.py:7 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
+      "reason": "A location annotated float that is given an int holds a closed int | float union, whose int payload stays fixed-width; arithmetic on it that can yield a promoting int is rejected, as for inferred numeric unions.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/float_var_int.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/numbers/float_var_int.py:69: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/numbers/float_var_int.py:7 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
+      "reason": "A location annotated float that is given an int holds a closed int | float union, whose int payload stays fixed-width; arithmetic on it that can yield a promoting int is rejected, as for inferred numeric unions.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/reflection/reflect_dataclasses.py",
       "mode": "jit",
       "category": "unsupported-storage",
@@ -658,22 +722,6 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
-      "case": "tests/programs/upstream/upstream_iter_classes.py",
-      "mode": "jit",
-      "category": "unsupported-identity",
-      "diagnostic": "lib/operator.py:176: error: 'is' between ints is not supported in python-int modules yet (compiling operator.indexOf(IteratingSequenceClass, int) for the call at tests/programs/upstream/upstream_iter_classes.py:359)",
-      "reason": "operator.indexOf tests integer identity before equality; is between promoting ints is explicitly unsupported.",
-      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
-    },
-    {
-      "case": "tests/programs/upstream/upstream_iter_classes.py",
-      "mode": "aot",
-      "category": "unsupported-identity",
-      "diagnostic": "lib/operator.py:176: error: 'is' between ints is not supported in python-int modules yet (compiling operator.indexOf(IteratingSequenceClass, int) for the call at tests/programs/upstream/upstream_iter_classes.py:359)",
-      "reason": "operator.indexOf tests integer identity before equality; is between promoting ints is explicitly unsupported.",
-      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
-    },
-    {
       "case": "tests/programs/classes/class_const_module.py",
       "mode": "jit",
       "category": "unsupported-inference",
@@ -783,6 +831,54 @@
       "category": "unsupported-storage",
       "diagnostic": "tests/programs/inference/object_union_none_operand.py:29: error: unsupported operand types for +=: the results of M | int's members (M, int) have no union (a promoting int joins no other result: docs/python-int.md); narrow it with isinstance() first",
       "reason": "An in-place += on an int | M variable joins the object's result with a promoting int in a closed union; only scalar int-or-None promotion is supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/library/lib_enum_int_param.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/library/lib_enum_int_param.py:53: error: expected int, got Color (a member of Color is no promoting int: use its .value)",
+      "reason": "A location annotated int that is given an IntEnum or IntFlag member holds an int | member union, but where ints promote it holds promoting ints, which no union with an object holds: the member is rejected, as before.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/library/lib_enum_int_param.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/library/lib_enum_int_param.py:53: error: expected int, got Color (a member of Color is no promoting int: use its .value)",
+      "reason": "A location annotated int that is given an IntEnum or IntFlag member holds an int | member union, but where ints promote it holds promoting ints, which no union with an object holds: the member is rejected, as before.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/library/lib_enum_int_records.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/library/lib_enum_int_records.py:24: error: expected int, got Color (a member of Color is no promoting int: use its .value)",
+      "reason": "A location annotated int that is given an IntEnum or IntFlag member holds an int | member union, but where ints promote it holds promoting ints, which no union with an object holds: the member is rejected, as before.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/library/lib_enum_int_records.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/library/lib_enum_int_records.py:24: error: expected int, got Color (a member of Color is no promoting int: use its .value)",
+      "reason": "A location annotated int that is given an IntEnum or IntFlag member holds an int | member union, but where ints promote it holds promoting ints, which no union with an object holds: the member is rejected, as before.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/library/lib_enum_int_store.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/library/lib_enum_int_store.py:26: error: expected int, got Color (a member of Color is no promoting int: use its .value)",
+      "reason": "A location annotated int that is given an IntEnum or IntFlag member holds an int | member union, but where ints promote it holds promoting ints, which no union with an object holds: the member is rejected, as before.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/library/lib_enum_int_store.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/library/lib_enum_int_store.py:26: error: expected int, got Color (a member of Color is no promoting int: use its .value)",
+      "reason": "A location annotated int that is given an IntEnum or IntFlag member holds an int | member union, but where ints promote it holds promoting ints, which no union with an object holds: the member is rejected, as before.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     }
   ]

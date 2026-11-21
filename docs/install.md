@@ -137,6 +137,12 @@ Source builds need **Python 3.11+** to bootstrap and `make`, in addition to LLVM
 There are no pip dependencies for building or running the compiler. Ordinary AOT programs
 run without Python; compiling new programs still requires LLVM.
 
+The compiler runs under CPython 3.11 to 3.15, including the free-threaded 3.14t and 3.15t,
+and emits the same IR for itself and its runtime under each: compiled programs keep CPython
+3.13's semantics whichever interpreter runs the compiler. A daily workflow checks that IR, a
+sample of programs and the [FFI](ffi.md) under each
+([other CPython versions](testing.md#other-cpython-versions)).
+
 ## Ubuntu 24.04 (x86-64 or ARM64)
 
 ```sh
@@ -230,7 +236,9 @@ program with `PYSTACHY_JIT_CODEGEN=0`. On Linux, `pystachy run` builds its
 
 On other Linux distributions, install LLVM 18, Python 3.11+ and `make` using the system
 package manager, then run `tools/setup.sh --check`. The script does not configure package
-repositories or replace the system Python.
+repositories or replace the system Python. Where no LLVM 18 package exists,
+[`tools/llvm_toolchain.sh`](llvm-toolchain.md) builds the six tools the compiler runs from
+LLVM's sources, for glibc 2.28 or later.
 
 ### Other LLVM releases
 

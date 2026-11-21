@@ -1,0 +1,16 @@
+5 3 ['depth'] []
+5 10 ['depth', 'level', 'depth', 'level']
+9 40 49 ['depth', 'level', 'depth', 'level']
+c cfg 5 ['depth', 'level', 'depth', 'level']
+4 5 ['depth', 'level', 'depth', 'level', 'area', 'area']
+12 ['depth', 'level', 'depth', 'level', 'area', 'area']
+ValueError: boom asked
+AttributeError: private _hidden
+KeyError: 'broken'
+['depth', 'level', 'depth', 'level', 'area', 'area', 'boom', '_hidden']
+4 []
+6 10 ['depth', 'level']
+[1, 2, 3] [1, 2, 3] 2
+[9] 2
+1 2
+[exit 0]

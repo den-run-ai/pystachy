@@ -1,0 +1,3 @@
+c/d.py ../x.py . 3 [('/a/b', '.'), ('/a/b/c/d.py', 'c/d.py'), ('/a/x.py', '../x.py')] /a/b
+../x.py 3 False
+[exit 0]

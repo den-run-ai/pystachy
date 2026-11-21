@@ -1,0 +1,5 @@
+[<Planet.MERCURY: 1>, <Planet.VENUS: 2>, <Planet.EARTH: 3>] 3 7 km (1, 2.5) 7 km
+mercury 14 earth/km Planet.EARTH Planet.EARTH False
+[<Count.A: 1>, <Count.C: 3>, <Count.D: 10>, <Count.G: 11>] 2 3 10 True 11 ['A', 'C', 'D', 'E', 'F', 'G', 'H']
+[<Color.RED: 'red'>, <Color.GREEN: 'g'>] True dark dark 3 x
+[exit 0]

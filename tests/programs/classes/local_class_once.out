@@ -1,0 +1,8 @@
+[9.0, 5.0, 0.0] 6.0 1.0 Square 4
+True True True report.<locals>.Square
+25.0 Pair(a=1, b=2) Pair(a=1, b=5) ('a', 'b')
+2 True False
+16.0 [1.0, 9.0]
+26.0
+[1, 2]
+[exit 0]

@@ -128,7 +128,21 @@ print(family_read(None), family_read(Box(1)), family_read(Box("text")))
 def store(address, value, typ):
     return {"op": "mem.store", "type": "", "text": "", "immediate": 0, "descriptor": "",
             "results": [], "targets": [],
-            "operands": [{"value": address, "type": "*" + typ}, {"value": value, "type": typ}]}
+            "operands": [{"value": address, "type": "&" + typ}, {"value": value, "type": typ}]}
+
+
+def retarget_payload(function, payload, typ):
+    """Make dyn.payload read typ, keeping its packed slot and its readers' operands that slot's
+    type (as the compiler gives them): the mutation stays well formed, and only its tag is wrong."""
+    payload["text"] = typ
+    if payload["type"].startswith("*"):
+        payload["type"] = "*" + typ
+    value = f"%t{payload['results'][-1]}"
+    for block in function["blocks"]:
+        for op in block["operations"]:
+            for operand in op["operands"]:
+                if operand["value"] == value and operand["type"].startswith("*"):
+                    operand["type"] = "*" + typ
 
 
 def instruction(op, typ="", text="", results=(), operands=(), targets=(), descriptor=""):
@@ -158,7 +172,7 @@ class SnapshotFixture(unittest.TestCase):
         if completed.returncode:
             raise AssertionError(completed.stdout + completed.stderr)
         cls.snapshot_path = output / "typed-after.json"
-        cls.snapshot = json.loads(cls.snapshot_path.read_text())
+        cls.snapshot = check_lean_boundary.read_snapshot(cls.snapshot_path, check_lean_boundary.MAX_PROGRAM_BYTES)[0]
 
     def selected(self, name="narrowed_float"):
         snapshot = copy.deepcopy(self.snapshot)
@@ -532,7 +546,7 @@ class ProvedCheckerTests(SnapshotFixture):
         block["operations"].insert(index, {
             "op": "mem.load", "type": "dyn", "text": "", "immediate": 0, "descriptor": "",
             "results": [9999], "targets": [],
-            "operands": [{"value": f"%value.box.{number}", "type": "*dyn"}]})
+            "operands": [{"value": f"%value.box.{number}", "type": "&dyn"}]})
         payload["operands"][0]["value"] = "%t9999"
         self.assertFalse(self.check(self.normalized(snapshot)))
 
@@ -544,7 +558,7 @@ class ProvedCheckerTests(SnapshotFixture):
 
         def wrong_tag(function):
             _, _, payload = self.operation(function, "dyn.payload")
-            payload["text"] = "bool"
+            retarget_payload(function, payload, "bool")
             _, _, unpack = self.operation(function, "slot.unpack")
             unpack["type"] = "bool"
         self.rejected_mutation(wrong_tag)
@@ -771,7 +785,7 @@ class StateGuardTests(SnapshotFixture):
             with self.subTest(function=name):
                 snapshot, function = self.selected(name)
                 _, _, payload = self.operation(function, "dyn.payload")
-                payload["text"] = wrong_tag
+                retarget_payload(function, payload, wrong_tag)
                 _, _, unpack = self.operation(function, "slot.unpack")
                 unpack["type"] = wrong_tag
                 self.assertFalse(self.check(self.normalized(snapshot, name)))
@@ -872,7 +886,7 @@ class ClassAndIntTests(SnapshotFixture):
     def test_a_base_class_test_does_not_prove_a_subclass_read(self):
         def read_subclass(snapshot, function):
             _, _, payload = self.operation(function, "dyn.payload")
-            payload["text"] = "Sub"
+            retarget_payload(function, payload, "Sub")
             _, _, unpack = self.operation(function, "slot.unpack")
             unpack["type"] = "Sub"
         self.assertFalse(self.mutated("boundary_class", read_subclass))
@@ -890,8 +904,9 @@ class ClassAndIntTests(SnapshotFixture):
             block, index, payload = self.operation(function, "dyn.payload")
             # Add a well-shaped bool projection under the existing int-or-bool
             # guard. Even an unused read must satisfy its exact tag obligation.
-            block["operations"].insert(index, {**copy.deepcopy(payload),
-                                              "text": "bool", "results": [9030, 9031]})
+            read = {**copy.deepcopy(payload), "results": [9030, 9031]}
+            retarget_payload({"blocks": []}, read, "bool")
+            block["operations"].insert(index, read)
         self.assertFalse(self.mutated("boundary_int", read_as_bool))
 
     def test_int_payload_cannot_be_reannotated_as_a_pointer(self):
@@ -1151,6 +1166,38 @@ class SnapshotHeaderTests(unittest.TestCase):
         for change, error in (({"status": "partial"}, Unsupported), ({"schema_version": 2}, ValueError)):
             with self.subTest(change=change), self.assertRaises(error):
                 check_all({**header, **change})
+
+
+class EraseCastsTests(unittest.TestCase):
+    """read_snapshot's functions have no casts (erase_casts): an operand that reads one reads the
+    value that it, and any cast it reads, casts."""
+
+    @staticmethod
+    def op(name, results, operands, typ="", text=""):
+        return {"op": name, "type": typ, "text": text, "immediate": 0, "descriptor": "", "results": results,
+                "operands": [{"value": value, "type": t} for value, t in operands], "targets": []}
+
+    def function(self, *operations):
+        return {"symbol": "@f", "blocks": [{"label": "entry", "handler": "", "operations": list(operations)}]}
+
+    def test_a_chain_of_casts_reads_its_first_operand(self):
+        function = self.function(
+            self.op("mach.load", [1], [("%a0", "%ptr")], "%ptr"),
+            self.op("cast", [2], [("%t1", "%ptr")], "union[A,B]", "object"),
+            self.op("cast", [3], [("%t2", "union[A,B]")], "A", "member"),
+            self.op("ptr.cmp", [4], [("%t3", "A"), ("null", "None")], "bool", "=="),
+            self.op("ret", [], [("%t4", "bool")]))
+        operations = check_lean_boundary.erase_casts(function)["blocks"][0]["operations"]
+        self.assertEqual([o["op"] for o in operations], ["mach.load", "ptr.cmp", "ret"])
+        self.assertEqual(operations[1]["operands"], [{"value": "%t1", "type": "A"}, {"value": "null", "type": "None"}])
+
+    def test_a_malformed_cast_or_a_cycle_is_rejected(self):
+        for operations, message in (
+                ([self.op("cast", [2], [("%a0", "%ptr"), ("%a1", "%ptr")], "str", "bits")], "invalid cast"),
+                ([self.op("cast", [2], [("%t3", "%ptr")], "str", "bits"), self.op("cast", [3], [("%t2", "str")], "%ptr", "bits")],
+                 "a cycle of casts")):
+            with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
+                check_lean_boundary.erase_casts(self.function(*operations))
 
 
 

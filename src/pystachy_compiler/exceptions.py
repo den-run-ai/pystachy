@@ -15,7 +15,7 @@ from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.frames import Exit
 from src.pystachy_compiler.ir import Data, Ins, Try, Val, tmpname
 from src.pystachy_compiler.symbols import FnInfo
-from src.pystachy_compiler.names import owner, short
+from src.pystachy_compiler.names import own_name, owner, short
 from src.pystachy_compiler.specs import (
     BIG,
     BIGOPT,
@@ -29,6 +29,7 @@ from src.pystachy_compiler.specs import (
     is_excname,
 )
 from src.pystachy_compiler.syntax import NOKIDS, Node, has_kind, mk
+from src.pystachy_compiler.unions import field_value
 from src.pystachy_compiler.utils import (
     is_const,
     is_opt,
@@ -208,7 +209,7 @@ def gen_try_(self, n: Node) -> None:
             fx.conts.append(self.label())
             self.br(fx.entry)
             self.place(fx.conts[-1])
-            self.throw(Val(self.mload('%ptr', sl), "exc"))
+            self.throw(Val(self.mload('exc', sl), "exc"))
         else:
             self.exits.append(Exit("handler", old, outer))  # (a break or return in F drops the exception)
             self.excs.append(e)
@@ -473,17 +474,17 @@ def gen_bind_as(self, name: str, e: Val, t: str) -> None:
     # one), it gets a variable of its own for the clause (the end of which unbinds both, see
     # unbind, as CPython deletes the name). Not a module's global that a function reads, which
     # would not see the exception
-    v = e if t == "exc" else Val(self.rt("pys_exc_obj", "ptr", [f"ptr {e.v}"]), t)
+    v = e if t == "exc" else Val(self.rt("pys_exc_obj", "ptr", [f"ptr {e.v}"], t=t), t)
     self.nn[v.v] = True
     had = self.ltype[name] if name in self.ltype else self.gtypes[name] if self.is_global(name) and name in self.gtypes else ""
     other = False
     if had == "":
-        names = self.fn.otherbinds
+        names = self.fn.build.otherbinds
         if names is None:
             names = {}
             node = self.curfn.node
             other_bindings(node.kids if node.kind == "block" else node.kids[2].kids, names)
-            self.fn.otherbinds = names
+            self.fn.build.otherbinds = names
         other = name in names
     if (had != "" and had != t) or other:
         f = self.global_reader(name) if self.modlevel else ""
@@ -550,7 +551,7 @@ def gen_landing(self, l: str, slot: str, mark: Val) -> Val:
     self.put(i, 2)
     self.term = True
     self.place(j)
-    x = self.mload('%ptr', slot)
+    x = self.mload('exc', slot)
     if not self.rtmode:
         active = self.mload("int", self.fn.gdepth) if self.fn.gdepth != "" else self.fn.rdepth
         self.fn.landed = self.fn.landed or self.fn.gdepth == ""
@@ -908,7 +909,7 @@ def gen_exc_str_args(self, msg: str) -> str:
     if msg.startswith("@s."):
         return self.sconst("''") if self.strvals[int(msg[3:])] == "" else "null"
     empty = self.num_cmp('==', Val(self.mload('int', msg), "int"), Val("0", "int"))  # (its length in bytes)
-    return self.select(empty.v, Val(self.sconst("''"), "%ptr"), Val("null", "%ptr"))
+    return self.select(empty.v, Val(self.sconst("''"), "str"), Val("null", "str"))
 
 def gen_exc_value(self, name: str, vals: list[Val]) -> Val:
     # the exception name(*vals) of a builtin class name (pys_exc_new): str(e), and what repr(e)
@@ -1020,7 +1021,7 @@ def gen_exit_member(self, v: Val) -> list[Val]:
     if len(ks) == 0:
         return [Val("false", "bool"), Val("0", "int")]
     if self.enum_intlike(v.t):
-        return [Val("true", "bool"), self.mem_load(Val(self.fgep(v, self.classes[v.t].fpos[" enum int"]), "*int"))]
+        return [Val("true", "bool"), self.mem_load(Val(self.fgep(v, self.classes[v.t].fpos[" enum int"]), "&int"))]
     end = self.label()
     isint = Ins("phi", "bool", "")
     status = Ins("phi", "int", "")
@@ -1031,7 +1032,7 @@ def gen_exit_member(self, v: Val) -> list[Val]:
         self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.classes[k].tag), "int")).v, hit, miss)
         self.place(hit)
         member = Val(v.v, k)
-        st = self.mem_load(Val(self.fgep(member, self.classes[k].fpos[" enum int"]), "*int"))
+        st = self.mem_load(Val(self.fgep(member, self.classes[k].fpos[" enum int"]), "&int"))
         self.incoming(isint, "true", self.cur)
         self.incoming(status, st.v, self.cur)
         self.br(end)
@@ -1254,7 +1255,7 @@ def gen_class_defaults(self, o: Val) -> None:
             identity = fl in ci.fbox and numeric_identity(t)
             if not is_const(ci.fdefault[fl]) or identity:
                 self.class_default(h, fl)  # (compiled before the class statement runs)
-            v = Val(self.mload(t, h.fglob[fl]), t) if fl in h.fglob else self.coerce(self.expr(ci.fdefault[fl], t), t)
+            v = Val(self.mload(t, h.fglob[fl]), t) if fl in h.fglob else field_value(self, ci, fl, self.expr(ci.fdefault[fl], t))
             if identity:
                 self.dyn_id_read(v, h.fglob[fl] + ".box")
             self.setfield(o, self.field(o, fl), fl, v)
@@ -1407,7 +1408,7 @@ def gen_super_own_init(self, args: list[Node]) -> Val:
     self.cbr(good.v, done, bad)
     self.place(bad)
     actual = mk("attr", "__name__", line, [self.vnode(second)]) if class_receiver else self.vnode(self.refl_type_attr(self.vnode(second), "__name__"))
-    expected = mk("attr", "__name__", line, [self.vnode(first)]) if exception_type else mk("str", short(named), line, [])
+    expected = mk("attr", "__name__", line, [self.vnode(first)]) if exception_type else mk("str", own_name(named), line, [])
     message = mk("str", "super(type, obj): obj (" + ("type " if class_receiver else "instance of "), line, [])
     for part in [actual, mk("str", ") is not an instance or subtype of type (", line, []), expected, mk("str", ").", line, [])]:
         message = mk("binop", "+", line, [message, part])
@@ -1426,6 +1427,12 @@ def gen_super_call(self, sc: Node, m: str, args: list[Node], based: bool = False
     # (super(C, self), in a method of class C, is super(): C as the loader qualifies it, m$C in
     # module m, and read as the module's name, not a local's)
     same = len(sc.kids) == 3 and sc.kids[1].kind == "name" and sc.kids[1].s == cls and self.globread(cls) and sc.kids[2].kind == "name" and sc.kids[2].s == me0
+    if cls != "" and self.bkind(cls) != "":
+        # super().m(args) in a method of a class deriving from a builtin container: the
+        # container's own m, on the object as that container (builtin_bases.py)
+        if (len(sc.kids) > 1 and not same) or me0 == "" or read:
+            self.err(f"super() in a class that derives from {self.bkind(cls)} is only supported as super().method(...) in an instance method (super({short(cls)}, self) is super())")
+        return self.bsuper(self.expr(mk("name", me0, sc.line, []), "") if captured is None else captured, m, args)
     ordinary = cls in self.classes and self.classes[cls].tag > 0
     if ordinary and len(sc.kids) == 3 and sc.kids[1].kind == "name" and sc.kids[1].s in self.classes and self.derives(cls, sc.kids[1].s) and self.globread(sc.kids[1].s) and sc.kids[2].kind == "name" and sc.kids[2].s == me0:
         same = True
@@ -1807,7 +1814,7 @@ def gen_exc_call(self, c: Val, args: list[Node], how: int = 0) -> Val:
     self.cbr(self.scalar_cmp('eq', Val(fp, '%ptr'), Val('null', '%ptr')), l2, l1)
     self.place(l1)
     i = Ins("icall", "exc", "")
-    i.a = [Val(fp, "env")] + [v for v in vals if v.t != "None"]  # (an argument that is None is not passed)
+    i.a = [Val(fp, "%ptr")] + [v for v in vals if v.t != "None"]  # (its code; an argument that is None is not passed)
     if dynamic_program():
         if not self.idhere() and any(numeric_identity(v.t) for v in vals):
             self.identity_event("call of an exception class value")  # (it may be one of tracking code: dynamic.py)

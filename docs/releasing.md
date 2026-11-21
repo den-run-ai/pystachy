@@ -169,6 +169,8 @@ It checks artifact hashes, loads both tested images, pushes architecture-specifi
 containing `-` is a prerelease and never advances Docker's `latest` tag. Newer stable
 versions advance both `latest` pointers after the GitHub release is published; publishing
 an older stable version cannot move them backwards. Publication jobs are serialized.
+Releases named `llvm-toolchain-*` hold the [minimal LLVM toolchain](llvm-toolchain.md#publish):
+they are not Pystachy versions and are never latest.
 
 If publication fails before the draft GitHub release becomes public, a retry may complete
 the draft only for its original source commit. An existing Docker version tag is accepted

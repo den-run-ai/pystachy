@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import copy
-import json
 import os
 from pathlib import Path
 import subprocess
@@ -10,6 +9,7 @@ import sys
 import tempfile
 import unittest
 
+import check_lean_boundary as boundary
 import check_lean_int
 from check_lean_storage import DEFAULT_CHECKER, MIN, check_all
 
@@ -87,7 +87,7 @@ def compile_snapshot(program, output, paths=()):
         cwd=ROOT, env=environment, text=True, capture_output=True, timeout=60)
     if completed.returncode:
         raise AssertionError(completed.stdout + completed.stderr)
-    return json.loads((output / "typed-after.json").read_text())
+    return boundary.read_snapshot((output / "typed-after.json"), boundary.MAX_PROGRAM_BYTES)[0]
 
 
 def selected(snapshot, symbol):
