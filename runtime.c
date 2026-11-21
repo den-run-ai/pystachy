@@ -51,6 +51,16 @@
 #include <unistd.h>
 #include <unwind.h>
 #include <utime.h>
+/* Before 2.33, glibc's libc.so exports __xstat, __lxstat, __fxstat and __fxstatat, and stat,
+   lstat, fstat and fstatat only come from libc_nonshared.a: a linker adds that archive, but a JIT
+   (the JIT runner, lli) resolves symbols from the process alone. Call what libc.so exports, as
+   the headers' inline definitions do. 2.33 removed _STAT_VER with the wrappers. */
+#ifdef _STAT_VER
+#define stat(path, buf) __xstat(_STAT_VER, path, buf)
+#define lstat(path, buf) __lxstat(_STAT_VER, path, buf)
+#define fstat(fd, buf) __fxstat(_STAT_VER, fd, buf)
+#define fstatat(fd, path, buf, flag) __fxstatat(_STAT_VER, fd, path, buf, flag)
+#endif
 
 /* Research counters are compiled out of ordinary runtimes. These count requests
    through C helpers, not physical memory traffic: generated LLVM/runtime.py copy

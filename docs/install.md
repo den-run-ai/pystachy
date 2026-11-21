@@ -305,9 +305,16 @@ extensions need a matching interpreter ABI, and the explicit embedding bridge ne
 libpython and its Python packages. Applications may also need external libraries and
 resource files.
 
-The Linux archives retain a **glibc 2.39+** support baseline. `manylinux_2_28` is a
-feasible follow-up build target, not a compatibility tag for the current Ubuntu-built
-compiler. The [30 October 2026 portability audit](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/linux-portability.md)
+The Linux archives retain a **glibc 2.39+** support baseline: they are built on Ubuntu
+24.04, and their compiler imports glibc 2.38 symbols. Source builds also work on glibc 2.28.
+The daily [manylinux workflow](../.github/workflows/manylinux.yml) builds the compiler in the
+`manylinux_2_28` image (AlmaLinux 8) with that distribution's LLVM 22, checks that the compiler,
+an AOT program and an extension module need no glibc symbol newer than 2.28, and runs corpus
+areas in JIT and AOT ([older glibc](testing.md#older-glibc)). There, the system's libm gives
+other last digits than the corpus records for a few `pow`, `log2` and `statistics` results, in
+CPython as in Pystachy. JIT with LLVM 18.1.8 on that system lets some exceptions escape their
+handlers: use a newer LLVM there. `manylinux_2_28` is not yet a compatibility tag for the
+published archives. The [30 October 2026 portability audit](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/linux-portability.md)
 records the v0.1.0-alpha.3 artifact measurements and older-sysroot/toolchain requirements.
 An older native baseline and compiler packages with a pinned toolchain are tracked
 in [#998](https://github.com/den-run-ai/pystachy/issues/998).

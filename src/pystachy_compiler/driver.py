@@ -391,12 +391,18 @@ def runtime_c_snapshot(source: str, directory: str) -> str:
     return "\n".join(out)
 
 
+# runtime.c is compiled as PIE on Linux whatever clang's default (Ubuntu's: PIE; RHEL's: static):
+# the JIT places code anywhere, so the runtime must reach libc's data (stdout) through the GOT, not
+# a 32-bit displacement. macOS compiles position-independent code by default.
+RUNTIME_PIE = " -fPIE" if PLATFORM == "linux" else ""
+
+
 def runtime_c_key(source: str, paths: list[str], times: list[str], strip: str) -> str:
     # Preprocessing captures included headers, environment include paths and
     # target macros. Compile those exact bytes, rather than reopening headers.
     # No Pystachy executable, hosted source, runtime.py or typed-IR option belongs
     # here: they do not produce this C bitcode. Bump the schema for recipe changes.
-    identity = ["runtime-c-v2", PLATFORM, "-O2 -fexceptions -x cpp-output", strip]
+    identity = ["runtime-c-v2", PLATFORM, "-O2 -fexceptions" + RUNTIME_PIE + " -x cpp-output", strip]
     identity = identity + [os.path.realpath(p) for p in paths[:2]] + times[:2]
     return fnv("\n".join(identity) + "\n" + source)
 
@@ -1181,7 +1187,7 @@ def main() -> None:
             modules = f"{q(rcb)} {q(rpb)}"
             sanitize = f"{tc[0]} -O2 -emit-llvm -c -x ir {q(rpl)} -o {q(rpb)} -Wno-override-module -Wno-unused-command-line-argument{cflags} -mllvm -asan-with-comdat=0 -fexceptions && "
         cstarted = timing_start()
-        cbuild = f"{tc[0]} -O2 -S -emit-llvm -x c {q(rcc)} -o {q(rll)} -Wno-unused-command-line-argument{cflags}{ctorflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)}"
+        cbuild = f"{tc[0]} -O2{RUNTIME_PIE} -S -emit-llvm -x c {q(rcc)} -o {q(rll)} -Wno-unused-command-line-argument{cflags}{ctorflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)}"
         ccached = ""
         cline = ""
         chit = False
@@ -1191,7 +1197,7 @@ def main() -> None:
             # original path so diagnostics and instrumentation stay unchanged.
             pre = tmp + "/runtime.i"
             perr = tmp + "/runtime-preprocess.err"
-            prepared = timed_sh("runtime.c_preprocess", f"{tc[0]} -O2 -E -x c {q(rcc)} -o {q(pre)} -fexceptions 2> {q(perr)}")
+            prepared = timed_sh("runtime.c_preprocess", f"{tc[0]} -O2{RUNTIME_PIE} -E -x c {q(rcc)} -o {q(pre)} -fexceptions 2> {q(perr)}")
             if prepared == 0 and os.path.getsize(perr) == 0 and [stat3(p) for p in paths[:2]] == times[:2]:
                 f = open(pre, "r", encoding=RAW, newline="")
                 captured = runtime_c_snapshot(f.read(), tmp)
@@ -1206,7 +1212,7 @@ def main() -> None:
                     # build may replace/prune the entry at any point. A missing,
                     # unreadable or malformed entry is a miss, not a build error.
                     chit = timed_sh("runtime.c_cache_read", f"(test -f {q(ccached)} && test ! -L {q(ccached)} && cp {q(ccached)} {q(rcb)} && {tc[3]} -passes=verify -disable-output {q(rcb)}) 2> /dev/null") == 0
-                    cbuild = f"{tc[0]} -O2 -S -emit-llvm -x cpp-output {q(pre)} -o {q(rll)} -Wno-unused-command-line-argument -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)}"
+                    cbuild = f"{tc[0]} -O2{RUNTIME_PIE} -S -emit-llvm -x cpp-output {q(pre)} -o {q(rll)} -Wno-unused-command-line-argument -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)}"
         code = 0 if chit else timed_sh("runtime.c", sanitize + cbuild)
         if code == 0:
             code = timed_sh("runtime.link_optimize", f"{tc[2]} {modules} -o {q(lnk)} && {tc[3]} -O2 {q(lnk)} -o {q(part)}")
@@ -1245,7 +1251,7 @@ def main() -> None:
             f.write(RTSO)
             f.close()
             xp = f"{rts}.x.{os.getpid()}.{own}"
-            useso = partso if timed_sh("runtime.shared_link", f"{{ printf '#!/bin/sh\\n' > {q(xp)} && chmod +x {q(xp)} && {q(xp)} && {tc[0]} -shared -fPIC -O2 -x c {q(rso)} -x none {q(useo)} -o {q(partso)} -Wl,-Bsymbolic -lm -ldl -Wno-unused-command-line-argument{ccflags}; }} 2> /dev/null") == 0 else ""
+            useso = partso if timed_sh("runtime.shared_link", f"{{ printf '#!/bin/sh\\n' > {q(xp)} && chmod +x {q(xp)} && {q(xp)} && {tc[0]} -shared -fPIC -O2 -x c {q(rso)} -x none {q(useo)} -o {q(partso)} -Wl,-Bsymbolic -lm -ldl -lpthread -Wno-unused-command-line-argument{ccflags}; }} 2> /dev/null") == 0 else ""
             sh(f"rm -f {q(xp)}")
     # pystachy ext links two more C files, compiled as runtime.c is and cached beside it by the same
     # rules: pyembed.c (CPython in the process, hosting an extension module: its stdio hooks) and
@@ -1390,6 +1396,9 @@ def main() -> None:
         link = f"{llvm}llvm-link {q(program)} {q(glue[0][2])} -o {q(lnk)} && {llvm}llvm-link --only-needed {q(lnk)} {q(usebc if aotrt[1] == '' else aotrt[1])} -o {q(bc)}"
     libs = "".join([" " + (q(x) + " " + q("-Wl,-rpath," + x[: x.rfind("/")]) if "/" in x else q("-l:" + x)) for x in LIBS if x != "-"])  # (libpython)
     libs += " -ldl" if len(LINKDL) > 0 or embed or cmd == "ext" else ""  # (dlopen, dlsym: @ffi.extern, pyembed.c)
+    # runtime.c's pthread calls (stack_floor's pthread_getattr_np, _thread.stack_size): before glibc
+    # 2.34 they are libpthread's; from 2.34 libpthread.a is empty and this links nothing
+    libs += " -lpthread" if PLATFORM == "linux" else ""
     if code != 0:
         if msg == "":
             msg = "cannot build the runtime (install LLVM 18 on Linux or LLVM 20 on macOS; see PYSTACHY_LLVM, PYSTACHY_CFLAGS)"
@@ -1548,13 +1557,13 @@ def main() -> None:
                 # LLVM IR passes: using the whole-program AOT pipeline here can
                 # change floating-point results and allocation behavior.
                 cachecode = sh(f"{{ {llvm}clang -O2 -Xclang -disable-llvm-passes -mllvm -profile-guided-section-prefix=false -fPIC -c {q(bc)} -o {q(obj)}"
-                               + f" && {llvm}clang --ld-path=/usr/bin/ld {q(obj)} {q(useo)} -o {q(pcout)} -lm -ldl -Wl,-t > {q(pclink)}; }} 2> {q(pcerror)}")
+                               + f" && {llvm}clang --ld-path=/usr/bin/ld {q(obj)} {q(useo)} -o {q(pcout)} -lm -ldl -lpthread -Wl,-t > {q(pclink)}; }} 2> {q(pcerror)}")
                 if cachecode == 0 and pub and cached_run.link_inputs(pclink, obj, useo):
                     # The first link discovers inputs; snapshot them before the
                     # final link, then require the same resolution and contents.
                     # Recording newly discovered CRT/archive files only after
                     # their consuming link could publish against newer bytes.
-                    cachecode = sh(f"{llvm}clang --ld-path=/usr/bin/ld {q(obj)} {q(useo)} -o {q(pcout)} -lm -ldl -Wl,-t > {q(pclink2)} 2> {q(pcerror)}")
+                    cachecode = sh(f"{llvm}clang --ld-path=/usr/bin/ld {q(obj)} {q(useo)} -o {q(pcout)} -lm -ldl -lpthread -Wl,-t > {q(pclink2)} 2> {q(pcerror)}")
                     if cachecode == 0 and cached_run.same_link_inputs(pclink, pclink2) and cached_run.link_inputs(pclink2, obj, useo):
                         pcexe = program_cache.publish(pcroot, pccontext, pcout)
                     if pcexe != "":

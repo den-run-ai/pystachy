@@ -237,6 +237,28 @@ It reports diagnostic differences separately from valid Python that Pystachy can
 Current boundaries are in [syntax checks](language/semantics.md#syntax-errors). Earlier test
 counts and syntax-survey results are retained as [historical snapshots](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/archive/verification-snapshots.md).
 
+## Older glibc
+
+Verification runs on Ubuntu 24.04 (glibc 2.39). `tools/manylinux_check.sh`, run in the
+`manylinux_2_28` image (AlmaLinux 8: glibc 2.28, GCC 8's `libgcc_s`, a C compiler that builds
+non-PIE executables by default), bootstraps the compiler with the LLVM of `PYSTACHY_LLVM`, runs
+`tools/linux_abi.py --max-glibc 2.28` over the compiler, an AOT program and an extension module
+it builds, and runs corpus areas in JIT and AOT:
+
+```sh
+docker run --rm -v "$PWD:/src" -w /src -e PYSTACHY_LLVM=/usr/bin \
+  quay.io/pypa/manylinux_2_28_x86_64@sha256:d086f64cddcace250ef0f0073583c51b8298159303290a730c9f59bd91edfd2c \
+  sh -c 'dnf -y -q install clang llvm && tools/manylinux_check.sh'
+```
+
+The default areas leave out four cases whose output differs there for reasons of the system,
+not the compiler: `exec_signal` (its `/bin/sh` is bash, whose job message names the line), and
+`float_power_rounding`, `lib_statistics` and `upstream_math_testfiles`, whose last digits come
+from libm, as CPython's do on the same system. The
+[manylinux workflow](../.github/workflows/manylinux.yml) runs the script daily, on demand and
+on relevant `main` pushes, with AlmaLinux 8's LLVM 22 on x86-64. LLVM 18.1.8's JIT lets some
+exceptions escape their handlers there, so the workflow does not use it.
+
 ## Compiler coverage
 
 `make coverage` measures which statements and branches of `src/pystachy_compiler/` the
@@ -1147,6 +1169,9 @@ existing PR budget or run in the full matrix; keep the job and time ceilings unc
 
 Lint also runs the optional [communication buffer/completion probe](../examples/comm/README.md)
 with the hosted compiler, JIT/AOT, GC stress and a sanitized standalone C probe.
+
+The [manylinux workflow](../.github/workflows/manylinux.yml) also runs apart from PR CI;
+[older glibc](#older-glibc) describes it.
 
 Contributions use the [contribution-rights policy](../CONTRIBUTING.md#contribution-rights)
 without DCO certification. The existing submission bot sends a one-time,
