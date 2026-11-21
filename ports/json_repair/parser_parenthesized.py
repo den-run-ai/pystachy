@@ -1,5 +1,3 @@
-# pystachy: dynamic-any
-
 from .utils.constants import STRING_DELIMITERS
 
 def parenthesized_is_explicit_tuple(parser) -> bool:

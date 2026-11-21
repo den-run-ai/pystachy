@@ -1,0 +1,393 @@
+int +1 3
+int 1+ 3
+int -1.5 0.5
+int *2 4
+int 2* 4
+int /2 1.0
+int //2 1
+int %2 0
+int +'s' TypeError unsupported operand type(s) for +: 'int' and 'str'
+int 's'+ TypeError can only concatenate str (not "int") to str
+int +[9] TypeError unsupported operand type(s) for +: 'int' and 'list'
+int neg -2
+int pos 2
+float +1 3.5
+float 1+ 3.5
+float -1.5 1.0
+float *2 5.0
+float 2* 5.0
+float /2 1.25
+float //2 1.0
+float %2 0.5
+float +'s' TypeError unsupported operand type(s) for +: 'float' and 'str'
+float 's'+ TypeError can only concatenate str (not "float") to str
+float +[9] TypeError unsupported operand type(s) for +: 'float' and 'list'
+float neg -2.5
+float pos 2.5
+bool +1 2
+bool 1+ 2
+bool -1.5 -0.5
+bool *2 2
+bool 2* 2
+bool /2 0.5
+bool //2 0
+bool %2 1
+bool +'s' TypeError unsupported operand type(s) for +: 'bool' and 'str'
+bool 's'+ TypeError can only concatenate str (not "bool") to str
+bool +[9] TypeError unsupported operand type(s) for +: 'bool' and 'list'
+bool neg -1
+bool pos 1
+none +1 TypeError unsupported operand type(s) for +: 'NoneType' and 'int'
+none 1+ TypeError unsupported operand type(s) for +: 'int' and 'NoneType'
+none -1.5 TypeError unsupported operand type(s) for -: 'NoneType' and 'float'
+none *2 TypeError unsupported operand type(s) for *: 'NoneType' and 'int'
+none 2* TypeError unsupported operand type(s) for *: 'int' and 'NoneType'
+none /2 TypeError unsupported operand type(s) for /: 'NoneType' and 'int'
+none //2 TypeError unsupported operand type(s) for //: 'NoneType' and 'int'
+none %2 TypeError unsupported operand type(s) for %: 'NoneType' and 'int'
+none +'s' TypeError unsupported operand type(s) for +: 'NoneType' and 'str'
+none 's'+ TypeError can only concatenate str (not "NoneType") to str
+none +[9] TypeError unsupported operand type(s) for +: 'NoneType' and 'list'
+none neg TypeError bad operand type for unary -: 'NoneType'
+none pos TypeError bad operand type for unary +: 'NoneType'
+str +1 TypeError can only concatenate str (not "int") to str
+str 1+ TypeError unsupported operand type(s) for +: 'int' and 'str'
+str -1.5 TypeError unsupported operand type(s) for -: 'str' and 'float'
+str *2 aa
+str 2* aa
+str /2 TypeError unsupported operand type(s) for /: 'str' and 'int'
+str //2 TypeError unsupported operand type(s) for //: 'str' and 'int'
+str %2 TypeError not all arguments converted during string formatting
+str +'s' as
+str 's'+ sa
+str +[9] TypeError can only concatenate str (not "list") to str
+str neg TypeError bad operand type for unary -: 'str'
+str pos TypeError bad operand type for unary +: 'str'
+list +1 TypeError can only concatenate list (not "int") to list
+list 1+ TypeError unsupported operand type(s) for +: 'int' and 'list'
+list -1.5 TypeError unsupported operand type(s) for -: 'list' and 'float'
+list *2 [1, 2, 'a', 1, 2, 'a']
+list 2* [1, 2, 'a', 1, 2, 'a']
+list /2 TypeError unsupported operand type(s) for /: 'list' and 'int'
+list //2 TypeError unsupported operand type(s) for //: 'list' and 'int'
+list %2 TypeError unsupported operand type(s) for %: 'list' and 'int'
+list +'s' TypeError can only concatenate list (not "str") to list
+list 's'+ TypeError can only concatenate str (not "list") to str
+list +[9] [1, 2, 'a', 1, 2, 'a']
+list neg TypeError bad operand type for unary -: 'list'
+list pos TypeError bad operand type for unary +: 'list'
+dict +1 TypeError unsupported operand type(s) for +: 'dict' and 'int'
+dict 1+ TypeError unsupported operand type(s) for +: 'int' and 'dict'
+dict -1.5 TypeError unsupported operand type(s) for -: 'dict' and 'float'
+dict *2 TypeError unsupported operand type(s) for *: 'dict' and 'int'
+dict 2* TypeError unsupported operand type(s) for *: 'int' and 'dict'
+dict /2 TypeError unsupported operand type(s) for /: 'dict' and 'int'
+dict //2 TypeError unsupported operand type(s) for //: 'dict' and 'int'
+dict %2 TypeError unsupported operand type(s) for %: 'dict' and 'int'
+dict +'s' TypeError unsupported operand type(s) for +: 'dict' and 'str'
+dict 's'+ TypeError can only concatenate str (not "dict") to str
+dict +[9] TypeError unsupported operand type(s) for +: 'dict' and 'list'
+dict neg TypeError bad operand type for unary -: 'dict'
+dict pos TypeError bad operand type for unary +: 'dict'
+int + int 4
+int < int False True
+int == int True False
+int + float 4.5
+int < float True True
+int == float False True
+int + bool 3
+int < bool TypeError '<' not supported between instances of 'int' and 'NoneType'
+int == bool False True
+int + none TypeError unsupported operand type(s) for +: 'int' and 'NoneType'
+int < none TypeError '<' not supported between instances of 'int' and 'NoneType'
+int == none False True
+int + str TypeError unsupported operand type(s) for +: 'int' and 'str'
+int < str TypeError '<' not supported between instances of 'int' and 'str'
+int == str False True
+int + list TypeError unsupported operand type(s) for +: 'int' and 'list'
+int < list TypeError '<' not supported between instances of 'int' and 'NoneType'
+int == list False True
+int + dict TypeError unsupported operand type(s) for +: 'int' and 'dict'
+int < dict TypeError '<' not supported between instances of 'int' and 'NoneType'
+int == dict False True
+float + int 4.5
+float < int False False
+float == int False True
+float + float 5.0
+float < float False True
+float == float True False
+float + bool 3.5
+float < bool TypeError '<' not supported between instances of 'float' and 'NoneType'
+float == bool False True
+float + none TypeError unsupported operand type(s) for +: 'float' and 'NoneType'
+float < none TypeError '<' not supported between instances of 'float' and 'NoneType'
+float == none False True
+float + str TypeError unsupported operand type(s) for +: 'float' and 'str'
+float < str TypeError '<' not supported between instances of 'float' and 'str'
+float == str False True
+float + list TypeError unsupported operand type(s) for +: 'float' and 'list'
+float < list TypeError '<' not supported between instances of 'float' and 'NoneType'
+float == list False True
+float + dict TypeError unsupported operand type(s) for +: 'float' and 'dict'
+float < dict TypeError '<' not supported between instances of 'float' and 'NoneType'
+float == dict False True
+bool + int 3
+bool < int True True
+bool == int False True
+bool + float 3.5
+bool < float True True
+bool == float False True
+bool + bool 2
+bool < bool TypeError '<' not supported between instances of 'bool' and 'NoneType'
+bool == bool True False
+bool + none TypeError unsupported operand type(s) for +: 'bool' and 'NoneType'
+bool < none TypeError '<' not supported between instances of 'bool' and 'NoneType'
+bool == none False True
+bool + str TypeError unsupported operand type(s) for +: 'bool' and 'str'
+bool < str TypeError '<' not supported between instances of 'bool' and 'str'
+bool == str False True
+bool + list TypeError unsupported operand type(s) for +: 'bool' and 'list'
+bool < list TypeError '<' not supported between instances of 'bool' and 'NoneType'
+bool == list False True
+bool + dict TypeError unsupported operand type(s) for +: 'bool' and 'dict'
+bool < dict TypeError '<' not supported between instances of 'bool' and 'NoneType'
+bool == dict False True
+none + int TypeError unsupported operand type(s) for +: 'NoneType' and 'int'
+none < int TypeError '<' not supported between instances of 'NoneType' and 'int'
+none == int False True
+none + float TypeError unsupported operand type(s) for +: 'NoneType' and 'float'
+none < float TypeError '<' not supported between instances of 'NoneType' and 'float'
+none == float False True
+none + bool TypeError unsupported operand type(s) for +: 'NoneType' and 'bool'
+none < bool TypeError '<' not supported between instances of 'NoneType' and 'NoneType'
+none == bool False True
+none + none TypeError unsupported operand type(s) for +: 'NoneType' and 'NoneType'
+none < none TypeError '<' not supported between instances of 'NoneType' and 'NoneType'
+none == none True False
+none + str TypeError unsupported operand type(s) for +: 'NoneType' and 'str'
+none < str TypeError '<' not supported between instances of 'NoneType' and 'str'
+none == str False True
+none + list TypeError unsupported operand type(s) for +: 'NoneType' and 'list'
+none < list TypeError '<' not supported between instances of 'NoneType' and 'NoneType'
+none == list False True
+none + dict TypeError unsupported operand type(s) for +: 'NoneType' and 'dict'
+none < dict TypeError '<' not supported between instances of 'NoneType' and 'NoneType'
+none == dict False True
+str + int TypeError can only concatenate str (not "int") to str
+str < int TypeError '<' not supported between instances of 'str' and 'int'
+str == int False True
+str + float TypeError can only concatenate str (not "float") to str
+str < float TypeError '<' not supported between instances of 'str' and 'float'
+str == float False True
+str + bool TypeError can only concatenate str (not "bool") to str
+str < bool TypeError '<' not supported between instances of 'str' and 'NoneType'
+str == bool False True
+str + none TypeError can only concatenate str (not "NoneType") to str
+str < none TypeError '<' not supported between instances of 'str' and 'NoneType'
+str == none False True
+str + str aa
+str < str False True
+str == str True False
+str + list TypeError can only concatenate str (not "list") to str
+str < list TypeError '<' not supported between instances of 'str' and 'NoneType'
+str == list False True
+str + dict TypeError can only concatenate str (not "dict") to str
+str < dict TypeError '<' not supported between instances of 'str' and 'NoneType'
+str == dict False True
+list + int TypeError can only concatenate list (not "int") to list
+list < int TypeError '<' not supported between instances of 'list' and 'int'
+list == int False True
+list + float TypeError can only concatenate list (not "float") to list
+list < float TypeError '<' not supported between instances of 'list' and 'float'
+list == float False True
+list + bool TypeError can only concatenate list (not "bool") to list
+list < bool TypeError '<' not supported between instances of 'list' and 'NoneType'
+list == bool False True
+list + none TypeError can only concatenate list (not "NoneType") to list
+list < none TypeError '<' not supported between instances of 'list' and 'NoneType'
+list == none False True
+list + str TypeError can only concatenate list (not "str") to list
+list < str TypeError '<' not supported between instances of 'list' and 'str'
+list == str False True
+list + list [1, 2, 'a', 1, 2, 'a']
+list < list TypeError '<' not supported between instances of 'list' and 'NoneType'
+list == list True False
+list + dict TypeError can only concatenate list (not "dict") to list
+list < dict TypeError '<' not supported between instances of 'list' and 'NoneType'
+list == dict False True
+dict + int TypeError unsupported operand type(s) for +: 'dict' and 'int'
+dict < int TypeError '<' not supported between instances of 'dict' and 'int'
+dict == int False True
+dict + float TypeError unsupported operand type(s) for +: 'dict' and 'float'
+dict < float TypeError '<' not supported between instances of 'dict' and 'float'
+dict == float False True
+dict + bool TypeError unsupported operand type(s) for +: 'dict' and 'bool'
+dict < bool TypeError '<' not supported between instances of 'dict' and 'NoneType'
+dict == bool False True
+dict + none TypeError unsupported operand type(s) for +: 'dict' and 'NoneType'
+dict < none TypeError '<' not supported between instances of 'dict' and 'NoneType'
+dict == none False True
+dict + str TypeError unsupported operand type(s) for +: 'dict' and 'str'
+dict < str TypeError '<' not supported between instances of 'dict' and 'str'
+dict == str False True
+dict + list TypeError unsupported operand type(s) for +: 'dict' and 'list'
+dict < list TypeError '<' not supported between instances of 'dict' and 'NoneType'
+dict == list False True
+dict + dict TypeError unsupported operand type(s) for +: 'dict' and 'dict'
+dict < dict TypeError '<' not supported between instances of 'dict' and 'NoneType'
+dict == dict True False
+int < 3 True True False False False
+int < 2.5 True True
+int < 'm' TypeError '<' not supported between instances of 'int' and 'str'
+float < 3 True True False False False
+float < 2.5 False True
+float < 'm' TypeError '<' not supported between instances of 'float' and 'str'
+bool < 3 True True False False False
+bool < 2.5 True True
+bool < 'm' TypeError '<' not supported between instances of 'bool' and 'str'
+none < 3 TypeError '<' not supported between instances of 'NoneType' and 'int'
+none < 2.5 TypeError '<' not supported between instances of 'NoneType' and 'float'
+none < 'm' TypeError '<' not supported between instances of 'NoneType' and 'str'
+str < 3 TypeError '<' not supported between instances of 'str' and 'int'
+str < 2.5 TypeError '<' not supported between instances of 'str' and 'float'
+str < 'm' True False
+list < 3 TypeError '<' not supported between instances of 'list' and 'int'
+list < 2.5 TypeError '<' not supported between instances of 'list' and 'float'
+list < 'm' TypeError '<' not supported between instances of 'list' and 'str'
+dict < 3 TypeError '<' not supported between instances of 'dict' and 'int'
+dict < 2.5 TypeError '<' not supported between instances of 'dict' and 'float'
+dict < 'm' TypeError '<' not supported between instances of 'dict' and 'str'
+int 'a' in TypeError argument of type 'int' is not iterable
+int 2 in TypeError argument of type 'int' is not iterable
+int int in TypeError argument of type 'int' is not iterable
+int str in TypeError argument of type 'int' is not iterable
+int none in TypeError argument of type 'int' is not iterable
+float 'a' in TypeError argument of type 'float' is not iterable
+float 2 in TypeError argument of type 'float' is not iterable
+float int in TypeError argument of type 'float' is not iterable
+float str in TypeError argument of type 'float' is not iterable
+float none in TypeError argument of type 'float' is not iterable
+bool 'a' in TypeError argument of type 'bool' is not iterable
+bool 2 in TypeError argument of type 'bool' is not iterable
+bool int in TypeError argument of type 'bool' is not iterable
+bool str in TypeError argument of type 'bool' is not iterable
+bool none in TypeError argument of type 'bool' is not iterable
+none 'a' in TypeError argument of type 'NoneType' is not iterable
+none 2 in TypeError argument of type 'NoneType' is not iterable
+none int in TypeError argument of type 'NoneType' is not iterable
+none str in TypeError argument of type 'NoneType' is not iterable
+none none in TypeError argument of type 'NoneType' is not iterable
+str 'a' in True False False
+str 2 in TypeError 'in <string>' requires string as left operand, not int
+str int in TypeError 'in <string>' requires string as left operand, not int
+str str in True
+str none in TypeError 'in <string>' requires string as left operand, not NoneType
+list 'a' in True False False
+list 2 in True False False
+list int in True
+list str in True
+list none in False
+dict 'a' in True False False
+dict 2 in False True False
+dict int in False
+dict str in True
+dict none in False
+int int 2
+int float 2.0
+int abs 2
+int round 2
+int round1 2
+int ord TypeError ord() expected string of length 1, but int found
+int chr 
+int str 2 2
+int bool True
+float int 2
+float float 2.5
+float abs 2.5
+float round 2
+float round1 2.5
+float ord TypeError ord() expected string of length 1, but float found
+float chr TypeError 'float' object cannot be interpreted as an integer
+float str 2.5 2.5
+float bool True
+bool int 1
+bool float 1.0
+bool abs 1
+bool round 1
+bool round1 1
+bool ord TypeError ord() expected string of length 1, but bool found
+bool chr 
+bool str True True
+bool bool True
+none int TypeError int() argument must be a string, a bytes-like object or a real number, not 'NoneType'
+none float TypeError float() argument must be a string or a real number, not 'NoneType'
+none abs TypeError bad operand type for abs(): 'NoneType'
+none round TypeError type NoneType doesn't define __round__ method
+none round1 TypeError type NoneType doesn't define __round__ method
+none ord TypeError ord() expected string of length 1, but NoneType found
+none chr TypeError 'NoneType' object cannot be interpreted as an integer
+none str None None
+none bool False
+str int ValueError invalid literal for int() with base 10: 'a'
+str float ValueError could not convert string to float: 'a'
+str abs TypeError bad operand type for abs(): 'str'
+str round TypeError type str doesn't define __round__ method
+str round1 TypeError type str doesn't define __round__ method
+str ord 97
+str chr TypeError 'str' object cannot be interpreted as an integer
+str str a 'a'
+str bool True
+list int TypeError int() argument must be a string, a bytes-like object or a real number, not 'list'
+list float TypeError float() argument must be a string or a real number, not 'list'
+list abs TypeError bad operand type for abs(): 'list'
+list round TypeError type list doesn't define __round__ method
+list round1 TypeError type list doesn't define __round__ method
+list ord TypeError ord() expected string of length 1, but list found
+list chr TypeError 'list' object cannot be interpreted as an integer
+list str [1, 2, 'a'] [1, 2, 'a']
+list bool True
+dict int TypeError int() argument must be a string, a bytes-like object or a real number, not 'dict'
+dict float TypeError float() argument must be a string or a real number, not 'dict'
+dict abs TypeError bad operand type for abs(): 'dict'
+dict round TypeError type dict doesn't define __round__ method
+dict round1 TypeError type dict doesn't define __round__ method
+dict ord TypeError ord() expected string of length 1, but dict found
+dict chr TypeError 'dict' object cannot be interpreted as an integer
+dict str {'a': 1, 'b': 2} {'a': 1, 'b': 2}
+dict bool True
+digits int 42
+digits float 42.0
+digits abs TypeError bad operand type for abs(): 'str'
+digits round TypeError type str doesn't define __round__ method
+digits round1 TypeError type str doesn't define __round__ method
+digits ord TypeError ord() expected a character, but string of length 2 found
+digits chr TypeError 'str' object cannot be interpreted as an integer
+digits str 42 '42'
+digits bool True
+char int ValueError invalid literal for int() with base 10: 'x'
+char float ValueError could not convert string to float: 'x'
+char abs TypeError bad operand type for abs(): 'str'
+char round TypeError type str doesn't define __round__ method
+char round1 TypeError type str doesn't define __round__ method
+char ord 120
+char chr TypeError 'str' object cannot be interpreted as an integer
+char str x 'x'
+char bool True
+neg int -7
+neg float -7.0
+neg abs 7
+neg round -7
+neg round1 -7
+neg ord TypeError ord() expected string of length 1, but int found
+neg chr ValueError chr() arg not in range(0x110000)
+neg str -7 -7
+neg bool True
+total 7.5 15.0 True
+count 7 7
+label abc 3
+ZeroDivisionError division by zero
+3.5 True True [1, 2.5, 1, 2.5]
+pq! pqpq True
+TypeError unsupported operand type(s) for +: 'int' and 'str'
+8 True
+[exit 0]

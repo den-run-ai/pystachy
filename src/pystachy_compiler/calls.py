@@ -127,8 +127,10 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
             vals = [self.expr(a.kids[0] if a.kind == "kw" else a, "") for a in args[1:]]
             self.wrap_names(w, args[1:], vals, "update_wrapper")
             return w
-        if (f.s == "json$loads" or f.s == "json$dumps" or f.s == "json$_raw_decode") and self.dyn_policy(n.line) and self.lib_fn(f, f.s):
-            r = self.json_any(f.s, args, want, resultsoft)  # (of Any values: #779)
+        if (f.s == "json$loads" or f.s == "json$dumps" or f.s == "json$_raw_decode") and (self.dyn_policy(n.line) or f.s == "json$dumps") and self.lib_fn(f, f.s):
+            # (of Any values: #779. dumps() of a value that is already Any's is the dynamic
+            # encoder's in a module that does not opt in too: an opt-in module's result)
+            r = self.json_any(f.s, args, want, resultsoft, self.dyn_policy(n.line))
             if r is not None:
                 return r
         if self.lib_fn(f, "_pystachy_bytescan$scan") and len(args) == 6 and not any([a.kind == "kw" for a in args]):
@@ -912,6 +914,9 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         return self.kw_method(o, m, args)
     if o.t == "dyn":
         return self.dyn_method(o, m, args)  # (its box's type's: dynamic.py)
+    if self.value_union(self.rec_type(o.t)):
+        # (a closed value union's: its member's method, by the tag, unions.py)
+        return self.uvalue_method(Val(o.v, self.rec_type(o.t)).identity(o), m, args, want, resultsoft)
     if is_opt(o.t):
         o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
     if is_union(o.t):

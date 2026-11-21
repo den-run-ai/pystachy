@@ -5,7 +5,7 @@ from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrow_type, narrows, search_type
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import DYNPRAGMA, LINES, dynamic_program, int_lists, shown, where
-from src.pystachy_compiler.dynamic import boxed_list_items, comparison_container_pair, comparison_invalid, comparison_property_type
+from src.pystachy_compiler.dynamic import boxed_list_items, comparison_builtin, comparison_container_pair, comparison_invalid, comparison_property_type
 from src.pystachy_compiler.frames import FmtArgs, IterArg
 from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname, one_num
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
@@ -1086,6 +1086,12 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     self.line = n.line
     want = self.rec_type(want)
     k = n.kind
+    sites = self.curfn.inert_sites
+    if sites is not None and (k == "binop" or k == "cmp") and n in sites:
+        if not self.scalar_read_value(n):
+            self.identity_event(f"hinted call of {self.curfn.name}()")
+        if self.drying == 0:
+            sites[n] = True
     if k == "superbound":
         # Bound arm of a nullable super call, already split from its own-object method.
         return self.super_call(n.kids[0], n.s, n.kids[2:], own_bound=True, captured=self.expr(n.kids[1], ""))
@@ -3385,6 +3391,79 @@ def gen_tput(self, v: Val, index: int, x: Val) -> None:
         return
     self.tstore(v, index, self.to_slot(x, BIG in targs(v.t)[index]))  # (a tuple of promoting ints, as its type's item: kept)
 
+def gen_usub_items(self, t: str) -> list[str]:
+    # the item types of closed union t's members that an index selects from: a list's, a
+    # dict's values' and a str's (its characters)
+    items: list[str] = []
+    for m in umembers(t):
+        if is_list(m):
+            items.append(elem(m))
+        elif is_dict(m):
+            items.append(targs(m)[1])
+        elif m == "str":
+            items.append("str")
+    return items
+
+def gen_unone(self, o: Val, msg: str, kind: str = "TypeError") -> Val:
+    # closed union value o, which raises msg (a TypeError, or kind) where it is None, as the union it holds.
+    # A branch tests it, as utest's does, not a check: nullcheck removes a check that an equal
+    # value's test dominates, and the tag's read then has no test of its own box to prove it.
+    if not is_opt(o.t):
+        return o
+    bad = self.label()
+    arm = self.label()
+    self.cbr(self.ptr_cmp('==', o, Val('null', 'None')).v, bad, arm)
+    self.place(bad)
+    self.raise_(kind, self.sconst(msg))
+    self.place(arm)
+    return Val(o.v, unopt(o.t)).identity(o)
+
+def gen_usubscript(self, n: Node, o: Val) -> Val:
+    # o[k] for a closed union o of builtin values (numbers, strs, lists and dicts, as a
+    # recursive alias's value is, which may be None): k is evaluated once, then the member that
+    # the box's tag names is indexed as a value of its own type is. A member whose type takes no
+    # such index raises CPython's TypeError there, and a dict whose keys are of another type its
+    # KeyError: the errors CPython raises for that object. The result is one of the members'
+    # items, which a recursive alias's own type holds (doc["rows"][0]["id"] needs no narrowing).
+    t = unopt(o.t)
+    index = self.expr(n.kids[1], "")
+    kt = index.t
+    if kt not in ["int", "bool", "str", BIG]:
+        self.err(f"indexing a closed union value ({typestr(o.t)}) with {typestr(kt)} is not supported: narrow the value with isinstance() first, or index it with an int or a str")
+    rt = self.union_type(self.usub_items(t))
+    if rt.startswith("!"):
+        self.err(f"indexing a closed union value ({typestr(o.t)}) is not supported ({rt[1:]}): narrow it with isinstance() first")
+    o = self.unone(o, "'NoneType' object is not subscriptable")
+    end = self.label()
+    ph = Ins("phi", rt, "")
+    tag = self.mload('int', o.v)
+    members = umembers(t)
+    for i in range(len(members)):
+        m = members[i]
+        nxt = self.label() if i + 1 < len(members) else ""
+        if nxt != "":
+            arm = self.label()
+            self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(m)), "int")).v, arm, nxt)
+            self.place(arm)
+        bad = comparison_invalid("[]", m, kt)
+        if bad == "" and not (is_list(m) or is_dict(m) or m == "str"):
+            bad = f"'{tname(m)}' object is not subscriptable"
+        if bad != "":
+            self.raise_("TypeError", self.sconst(bad))
+        elif is_dict(m) and (targs(m)[0] == "str") != (kt == "str"):
+            self.raise_("KeyError", self.repr(index).v, self.sconst("KeyError"))  # (no key of that type)
+        else:
+            item = self.uget(Val(o.v, t), m)
+            # (a sequence's index as an int: a bool's, or a promoting int's, bigints.py)
+            at = self.as_int(index) if kt == "bool" or (kt == BIG and not is_dict(m)) else index
+            r = self.subscript(mk("index", "", n.line, [self.vnode(item), self.vnode(at)]), item)
+            self.incoming(ph, self.coerce(r, rt).v, self.cur)
+            self.br(end)
+        if nxt != "":
+            self.place(nxt)
+    self.place(end)
+    return Val(self.phi(ph), rt)
+
 def gen_indexed_ord(self, n: Node) -> Val | None:
     # Code point of an indexed str. Runtime mode indexes bytes, and comparison
     # methods have their own error path for invalid indexing.
@@ -3441,6 +3520,8 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
     sub = "TypeError: 'NoneType' object is not subscriptable"  # (once the index is evaluated)
     if t == "dyn":
         return self.dyn_getitem(o, self.expr(n.kids[1], "dyn"))  # (its box's type's: dynamic.py)
+    if self.value_union(t) and n.kids[1].kind != "slice" and len(self.usub_items(t)) > 0:
+        return self.usubscript(n, o)  # (the member its tag names: below)
     if t in ["fn[b:list]", "fn[b:dict]", "fn[b:tuple]", "fn[b:set]", "fn[b:frozenset]"]:
         self.err(f"{t[5:-1]}[...] as a value is not supported (only annotations may name a type: a type alias is a module-level name = {t[5:-1]}[...] that nothing else binds)")
     if is_kw(t) and n.kids[1].kind == "str":
@@ -5850,7 +5931,7 @@ def gen_compare(self, n: Node) -> Val:
     if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and n.kids[1].kind == "attr" and self.dotted(n.kids[1]) == "os.environ":
         # name in os.environ: whether the variable is set
         name = self.coerce(a, "str", "the name tested in os.environ")
-        value = Val(self.rt("pys_getenv", "ptr", [f"ptr {name.v}", "ptr null"]), "opt[str]")
+        value = Val(self.rt("pys_getenv", "ptr", [f"ptr {name.v}", "ptr null"], "", "opt[str]"), "opt[str]")
         return self.ptr_cmp("!=" if ops[0] == "in" else "==", value, Val("null", "None"))
     if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and self.iterator_call(n.kids[1]) and n.kids[1].kids[0].s == "range":
         # x in range(...): arithmetic, as CPython's range.__contains__ does for ints; an int |
@@ -6441,12 +6522,18 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             members = (umembers(unopt(a.t)) if is_union(unopt(a.t)) else [unopt(a.t)]) + (umembers(unopt(b.t)) if is_union(unopt(b.t)) else [unopt(b.t)])
             if all(is_list(t) or is_dict(t) or t in self.classes for t in members):
                 return self.ucmp(op, a, b)  # compare original pointers under member-tag guards
+            if self.uidentity(a.t, b.t):
+                return self.ucmp(op, a, b)  # (... and a number or str is no object, list or dict)
         if (op == "==" or op == "!=") and self.ueq_type(a.t) and self.ueq_type(b.t):
             return self.uequal(op, a, b)
         if (op == "==" or op == "!=") and any([x.t == COMPLEXC or (is_union(unopt(x.t)) and COMPLEXC in umembers(unopt(x.t))) for x in [a, b]]):
             return self.complex_ueq(op, a, b)
         if op in ["<", "<=", ">", ">="] and not is_opt(a.t) and not is_opt(b.t) and self.uorders(a.t, b.t):
             return self.ucmp(op, a, b)  # (each member's ordering: union splitting)
+        if op in ["<", "<=", ">", ">="] and self.uvalue_orders(a.t, b.t):
+            return self.uorder(op, a, b)  # (a closed value union's: its members', or CPython's TypeError)
+        if (op == "in" or op == "not in") and self.value_union(b.t) and (comparison_builtin(unopt(a.t)) != "" or self.value_union(a.t)):
+            return self.ucontains(op, a, b)  # (in the list, dict or str it holds)
         # (a set's or dict's keys that are a union of classes compared by identity, of whose
         # members a's are: runtime.c compares the objects the boxes hold, #1452)
         kt = selem(b.t) if is_set(b.t) else targs(b.t)[0] if is_dict(b.t) else ""

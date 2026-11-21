@@ -85,6 +85,25 @@ def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool],
     return False
 
 
+def inert_input_sites(n: Node, inputs: list[str], sites: dict[Node, bool], builtin_range: bool) -> bool:
+    # Every explicit read must be an immediate operand of a primitive calculation, comparison
+    # or a builtin range loop. Callee emission validates the chosen operations at these sites.
+    if n.kind == "name":
+        return n.s not in inputs and n.s not in ["locals", "vars", "eval", "exec", "dir"]
+    if n.kind in ["def", "lambda", "class", "subclass", "genexpr", "listcomp", "setcomp", "dictcomp", "asynccomp"]:
+        return False
+    if n.kind == "for" and builtin_range:
+        it = n.kids[1]
+        if it.kind == "call" and it.kids[0].kind == "name" and it.kids[0].s == "range" and any(a.kind == "name" and a.s in inputs for a in it.kids[1:]):
+            sites[n] = False
+            return all(inert_input_sites(a, inputs, sites, builtin_range) for a in it.kids[1:] if a.kind != "name" or a.s not in inputs) and all(inert_input_sites(k, inputs, sites, builtin_range) for k in n.kids if k is not it)
+    direct = (n.kind == "binop" and n.s in ["+", "-", "*", "/"]) or (n.kind == "cmp" and all(op in ["==", "!=", "<", "<=", ">", ">="] for op in n.s.split(",")))
+    if direct and any(a.kind == "name" and a.s in inputs for a in n.kids):
+        sites[n] = False
+        return all(inert_input_sites(a, inputs, sites, builtin_range) for a in n.kids if a.kind != "name" or a.s not in inputs)
+    return all(inert_input_sites(a, inputs, sites, builtin_range) for a in n.kids)
+
+
 def numeric_aliases(n: Node, out: dict[str, bool]) -> None:
     # Names whose object (rather than only numeric payload) can be the expression's value.
     if n.kind == "name":

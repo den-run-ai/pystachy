@@ -1,0 +1,53 @@
+'a, é'
+'aé'
+'a☆é'
+TypeError: sequence item 2: expected str instance, NoneType found
+TypeError: sequence item 2: expected str instance, NoneType found
+TypeError: sequence item 2: expected str instance, NoneType found
+TypeError: sequence item 1: expected str instance, NoneType found
+TypeError: sequence item 1: expected str instance, NoneType found
+TypeError: sequence item 1: expected str instance, NoneType found
+TypeError: sequence item 0: expected str instance, NoneType found
+TypeError: sequence item 0: expected str instance, NoneType found
+TypeError: sequence item 0: expected str instance, NoneType found
+', 🐍'
+'🐍'
+'☆🐍'
+TypeError: sequence item 2: expected str instance, NoneType found
+TypeError: sequence item 2: expected str instance, NoneType found
+TypeError: sequence item 2: expected str instance, NoneType found
+TypeError: sequence item 1: expected str instance, NoneType found
+TypeError: sequence item 1: expected str instance, NoneType found
+TypeError: sequence item 1: expected str instance, NoneType found
+'z'
+'z'
+'z'
+'z'
+'z'
+'z'
+TypeError: sequence item 0: expected str instance, NoneType found
+TypeError: sequence item 0: expected str instance, NoneType found
+TypeError: sequence item 0: expected str instance, NoneType found
+', 🐍'
+'🐍'
+'☆🐍'
+''
+''
+''
+''
+''
+''
+'a'
+'a'
+'a'
+TypeError: sequence item 2: expected str instance, NoneType found
+TypeError: sequence item 2: expected str instance, NoneType found
+TypeError: sequence item 2: expected str instance, NoneType found
+w0/w1/w2/w3/w4/w5/w6/w7/w8/w9/w10/w11|w0w1w2w3w4w5w6w7w8w9w10w11|w0<>w1<>w2<>w3<>w4<>w5<>w6<>w7<>w8<>w9<>w10<>w11
+|w0w1w2w3w4w5w6w7w8w9w10w11|
+w11|w11|w0<>w1<>w2<>w3<>w4<>w5<>w6<>w7<>w8<>w9<>w10<>w11
+w3|w3w4w5w6w7w8w9w10w11|w0<>w1<>w2<>w3
+w9/w10|w9w10w11|w0<>w1<>w2<>w3<>w4<>w5<>w6<>w7<>w8<>w9<>w10
+w0/w1/w2/w3/w4/w5/w6/w7/w8/w9/w10/w11|w0w1w2w3w4w5w6w7w8w9w10w11|w0<>w1<>w2<>w3<>w4<>w5<>w6<>w7<>w8<>w9<>w10<>w11
+|w7w8w9w10w11|w0<>w1<>w2
+[exit 0]

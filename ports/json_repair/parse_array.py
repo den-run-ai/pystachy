@@ -1,7 +1,7 @@
-# pystachy: dynamic-any
-# Pystachy port: specialize schema-free parsing; recursive values use dynamic Any.
+# Pystachy port: schema-free parsing fills the parser's list of JSON values.
 from typing import Any
 
+from . import json_parser
 from .utils.constants import STRING_DELIMITERS
 from .utils.json_context import ContextValues
 from .utils.object_comparer import ObjectComparer
@@ -19,7 +19,7 @@ def parse_array(
     array_is_object_value = self.context.current == ContextValues.OBJECT_VALUE
     closed_before_parent_member = False
 
-    arr: list[Any] = []
+    arr = json_parser._new_array()
     with self.context.enter(ContextValues.ARRAY):
         while True:
             self.skip_whitespace_and_comments(skip_bare_slashes=True)

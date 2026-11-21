@@ -1,0 +1,129 @@
+'0' 1 10 0
+'-0' 2 10 0
+'+0' 2 10 0
+'7' 1 10 7
+'-7' 2 10 -7
+'+7' 2 10 7
+'+-7' 3 10 ValueError "invalid literal for int() with base 10: '+-7'" 45
+'--7' 3 10 ValueError "invalid literal for int() with base 10: '--7'" 45
+'+ 7' 3 10 ValueError "invalid literal for int() with base 10: '+ 7'" 45
+'- 7' 3 10 ValueError "invalid literal for int() with base 10: '- 7'" 45
+'' 0 10 ValueError "invalid literal for int() with base 10: ''" 42
+' ' 1 10 ValueError "invalid literal for int() with base 10: ' '" 43
+'+' 1 10 ValueError "invalid literal for int() with base 10: '+'" 43
+'-' 1 10 ValueError "invalid literal for int() with base 10: '-'" 43
+'_' 1 10 ValueError "invalid literal for int() with base 10: '_'" 43
+'1_2' 3 10 12
+'_12' 3 10 ValueError "invalid literal for int() with base 10: '_12'" 45
+'12_' 3 10 ValueError "invalid literal for int() with base 10: '12_'" 45
+'1__2' 4 10 ValueError "invalid literal for int() with base 10: '1__2'" 46
+'1_2_3' 5 10 123
+' 12 ' 4 10 12
+'\t\n12\r\x0b\x0c' 7 10 12
+'1 2' 3 10 ValueError "invalid literal for int() with base 10: '1 2'" 45
+'12\x00' 3 10 ValueError "invalid literal for int() with base 10: '12\\x00'" 48
+'12 \x00' 4 10 ValueError "invalid literal for int() with base 10: '12 \\x00'" 49
+'12\x00 ' 4 10 ValueError "invalid literal for int() with base 10: '12\\x00 '" 49
+'\x0012' 3 10 ValueError "invalid literal for int() with base 10: '\\x0012'" 48
+'\x00' 1 10 ValueError "invalid literal for int() with base 10: '\\x00'" 46
+'12\x1c' 3 10 ValueError "invalid literal for int() with base 10: '12\\x1c'" 48
+'12.0' 4 10 ValueError "invalid literal for int() with base 10: '12.0'" 46
+'1e3' 3 10 ValueError "invalid literal for int() with base 10: '1e3'" 45
+'0x1f' 4 10 ValueError "invalid literal for int() with base 10: '0x1f'" 46
+'1f' 2 10 ValueError "invalid literal for int() with base 10: '1f'" 44
+'\xb2' 1 10 ValueError "invalid literal for int() with base 10: '\xb2'" 43
+'0' 1 0 0
+'00' 2 0 0
+'0_0' 3 0 0
+'-00' 3 0 0
+'07' 2 0 ValueError "invalid literal for int() with base 0: '07'" 43
+'0_7' 3 0 ValueError "invalid literal for int() with base 0: '0_7'" 44
+'007' 3 0 ValueError "invalid literal for int() with base 0: '007'" 44
+'10' 2 0 10
+'0x1F' 4 0 31
+'0X_1f' 5 0 31
+'0x_' 3 0 ValueError "invalid literal for int() with base 0: '0x_'" 44
+'0x' 2 0 ValueError "invalid literal for int() with base 0: '0x'" 43
+'0x__1' 5 0 ValueError "invalid literal for int() with base 0: '0x__1'" 46
+'0_x1' 4 0 ValueError "invalid literal for int() with base 0: '0_x1'" 45
+'-0b101' 6 0 -5
+'+0o17' 5 0 15
+'0B_1_0' 6 0 2
+'0b2' 3 0 ValueError "invalid literal for int() with base 0: '0b2'" 44
+'0o8' 3 0 ValueError "invalid literal for int() with base 0: '0o8'" 44
+'0xg' 3 0 ValueError "invalid literal for int() with base 0: '0xg'" 44
+'0b' 2 0 ValueError "invalid literal for int() with base 0: '0b'" 43
+'0o' 2 0 ValueError "invalid literal for int() with base 0: '0o'" 43
+' 0x10 ' 6 0 16
+'0x 10' 5 0 ValueError "invalid literal for int() with base 0: '0x 10'" 46
+'1_000' 5 0 1000
+'0b1\x00' 4 0 ValueError "invalid literal for int() with base 0: '0b1\\x00'" 48
+'\u0660\u0661\u0662' 3 0 ValueError "invalid literal for int() with base 0: '\u0660\u0661\u0662'" 44
+'\u0660\u0667' 2 0 ValueError "invalid literal for int() with base 0: '\u0660\u0667'" 43
+'0b1' 3 36 397
+'0x' 2 36 33
+'0o7' 3 36 871
+'0b1' 3 2 1
+'0b1' 3 16 177
+'0x1' 3 2 ValueError "invalid literal for int() with base 2: '0x1'" 44
+'0x1' 3 16 1
+'0o7' 3 8 7
+'0o7' 3 16 ValueError "invalid literal for int() with base 16: '0o7'" 45
+'2' 1 2 ValueError "invalid literal for int() with base 2: '2'" 42
+'1_0' 3 2 2
+'g' 1 16 ValueError "invalid literal for int() with base 16: 'g'" 43
+'G' 1 17 16
+'z' 1 36 35
+'Z' 1 35 ValueError "invalid literal for int() with base 35: 'Z'" 43
+'zZ' 2 36 1295
+'-zz' 3 36 -1295
+'12' 2 3 5
+'13' 2 3 ValueError "invalid literal for int() with base 3: '13'" 43
+'10' 2 1 ValueError 'int() base must be >= 2 and <= 36, or 0' 39
+'10' 2 37 ValueError 'int() base must be >= 2 and <= 36, or 0' 39
+'10' 2 -1 ValueError 'int() base must be >= 2 and <= 36, or 0' 39
+'x' 1 1 ValueError 'int() base must be >= 2 and <= 36, or 0' 39
+'' 0 99 ValueError 'int() base must be >= 2 and <= 36, or 0' 39
+'_0b1' 4 2 ValueError "invalid literal for int() with base 2: '_0b1'" 45
+'0b_1' 4 2 1
+'0b__1' 5 2 ValueError "invalid literal for int() with base 2: '0b__1'" 46
+'0_b1' 4 2 ValueError "invalid literal for int() with base 2: '0_b1'" 45
+'\u0663\u0664' 2 10 34
+'-\u0967\u0968\u0969' 4 10 -123
+'\uff11\uff12\uff13' 3 10 123
+'\xa012\u2003' 4 10 12
+'1\uff123' 3 10 123
+'\U0001d7d7\U0001d7d6' 2 10 98
+'\u0663_\u0664' 3 10 34
+'\u0663\u0664x' 3 10 ValueError "invalid literal for int() with base 10: '\u0663\u0664x'" 45
+'\xe9' 1 10 ValueError "invalid literal for int() with base 10: '\xe9'" 43
+'12\xe9' 3 10 ValueError "invalid literal for int() with base 10: '12\xe9'" 45
+'1\xa02' 3 10 ValueError "invalid literal for int() with base 10: '1\\xa02'" 48
+'\u0663\x00' 2 10 ValueError "invalid literal for int() with base 10: '\u0663\\x00'" 47
+'\u0663\u0664\u0663\u0664\u0663\u0664' 6 10 343434
+'xxxxxxxxxxxxxx' 250 10 ValueError "invalid literal for int() with base 10: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" 240
+'\'"\'"\'"\'"\'"\'"\'"' 240 10 ValueError 'invalid literal for int() with base 10: \'\\\'"\\\'"\\\'"\\\'"\\\'"\\\'"\\\'"\\\'"\\\'"\\\'"\\' 240
+'\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9' 300 10 ValueError "invalid literal for int() with base 10: '\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9\xe9" 240
+'\uff46' 1 16 ValueError "invalid literal for int() with base 16: '\uff46'" 43
+'\u0667\u0667' 2 8 63
+'\u0668' 1 8 ValueError "invalid literal for int() with base 8: '\u0668'" 42
+'00000000000000' 4300 10 0
+'00000000000000' 4301 10 ValueError 'Exceeds the limit (4300 digits) for integer string conversion: value has' 140
+'00000000000000' 4300 10 7
+'00000000000000' 4301 16 7
+'00000000000000' 4301 32 7
+'00000000000000' 4301 3 ValueError "invalid literal for int() with base 3: '00000000000000000000000000000000" 239
+'0b000000000000' 4303 0 1
+'00000000000000' 4302 10 ValueError "invalid literal for int() with base 10: '0000000000000000000000000000000" 240
+'00000000000000' 4302 10 ValueError "invalid literal for int() with base 10: '0000000000000000000000000000000" 240
+'00000000000000' 4303 10 ValueError "invalid literal for int() with base 10: '0000000000000000000000000000000" 240
+'00000000000000' 4302 10 ValueError 'Exceeds the limit (4300 digits) for integer string conversion: value has' 140
+'00000000000000' 4303 10 ValueError 'Exceeds the limit (4300 digits) for integer string conversion: value has' 140
+'00000000000000' 4301 10 12
+' -000000000000' 4302 10 0
+'00000000000000' 4301 10 ValueError 'Exceeds the limit (4300 digits) for integer string conversion: value has' 140
+'00000000000000' 4300 0 0
+'00000000000000' 4301 0 ValueError 'Exceeds the limit (4300 digits) for integer string conversion: value has' 140
+'00000000000000' 4301 0 ValueError 'Exceeds the limit (4300 digits) for integer string conversion: value has' 140
+'00000000000000' 4299 0 ValueError "invalid literal for int() with base 0: '00000000000000000000000000000000" 239
+[exit 0]

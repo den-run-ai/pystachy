@@ -177,13 +177,22 @@ CALLS: dict[str, str] = {
 # find_sub(h, n, st, en) is the first index of n in h[st:en], or -1 (memmem, linear in glibc).
 # fail(kind, msg) raises builtin exception kind (a str literal) with message msg, as pys_raise
 # does: for those a raise statement cannot give a message to (UnicodeDecodeError's constructor
-# takes the parts of its message).
+# takes the parts of its message). mul_hi(a, b) is the high 64 bits of the 128-bit product of two
+# 64-bit patterns as unsigned ints (wrap_mul gives the low ones), and urem_wide(hi, lo, d) the
+# remainder of the 128-bit hi:lo by d: the two of (a * b) % d where the product passes 64 bits.
+# float_bits(x) and bits_float(i) give a float's IEEE 754 bits as an int and the float of such
+# bits; fma(x, y, z) is x * y + z rounded once and sqrt(x) the square root with no domain check
+# (a NaN below zero): LLVM's llvm.fma.f64 and llvm.sqrt.f64. fdiv(x, y) is x / y as IEEE 754
+# divides, an inf or a NaN for a zero y: the subset's / raises ZeroDivisionError there.
 RTL: dict[str, str] = {
     "byte": "str,int:int", "str_new": "int:str", "str_put": "str,int,int:None", "str_done": "str:str",
     "copy": "str,int,str,int,int:None", "wrap_add": "int,int:int", "wrap_sub": "int,int:int",
-    "wrap_mul": "int,int:int", "shl": "int,int:int", "lshr": "int,int:int", "null": "str:bool",
+    "wrap_mul": "int,int:int", "shl": "int,int:int", "lshr": "int,int:int", "ashr": "int,int:int", "null": "str:bool",
     "same": "str,int,str,int,int:bool", "find_byte": "str,int,int,int:int", "udiv": "int,int:int",
     "urem": "int,int:int", "mul_ovf": "int,int:bool", "find_sub": "str,str,int,int:int", "fail": "str,str:None",
+    "sdiv": "int,int:int", "srem": "int,int:int", "ctlz": "int:int", "ctpop": "int:int",
+    "mul_hi": "int,int:int", "udiv_wide": "int,int,int:int", "urem_wide": "int,int,int:int", "float_bits": "float:int", "bits_float": "int:float",
+    "fma": "float,float,float:float", "sqrt": "float:float", "fdiv": "float,float:float",
 }
 STR_HEADER_SIZE = 24  # offsetof(Str, s), checked against runtime.c and both CPython glues by rt-abi
 TBAA_LEN = 3
@@ -571,6 +580,25 @@ for _k in "basename dirname split splitext isabs abspath expanduser".split():
     NONEARG["os.path." + _k] = NONEARG["os.fspath"]  # (posixpath's take os.fspath() of the path first)
 NONEARG["os.path.normpath"] = "_path_normpath: path should be string, bytes or os.PathLike, not NoneType"  # (posix's, in C)
 OPTARG: list[str] = "str repr ascii bool input min max sys.exit exit quit".split()
+# builtins of one value that a closed value union's value splits by its tag (Gen.usplit), and
+# the member types each takes: another member raises CPython's TypeError (NONEARG's, of its type)
+UCALLS: dict[str, list[str]] = {"int": ["int", "float", "bool", "str"], "float": ["int", "float", "bool", "str"],
+                                "abs": ["int", "float", "bool"], "round": ["int", "float", "bool"], "ord": ["str"],
+                                "chr": ["int", "bool"]}
+# the methods of CPython 3.13's str, list, dict, int (bool's too) and float: a closed union's
+# member of another type raises AttributeError for one (Gen.uvalue_method), where one the
+# compiler lacks (utils.has_method) is rejected instead
+PYMETHODS: dict[str, list[str]] = {
+    "str": ("capitalize casefold center count encode endswith expandtabs find format format_map index isalnum isalpha isascii "
+            "isdecimal isdigit isidentifier islower isnumeric isprintable isspace istitle isupper join ljust lower lstrip maketrans "
+            "partition removeprefix removesuffix replace rfind rindex rjust rpartition rsplit rstrip split splitlines startswith "
+            "strip swapcase title translate upper zfill").split(),
+    "list": "append clear copy count extend index insert pop remove reverse sort".split(),
+    "dict": "clear copy fromkeys get items keys pop popitem setdefault update values".split(),
+    "int": "as_integer_ratio bit_count bit_length conjugate from_bytes is_integer to_bytes".split(),
+    "float": "as_integer_ratio conjugate fromhex hex is_integer".split(),
+}
+PYMETHODS["bool"] = PYMETHODS["int"]
 # what those return (for None itself, which always raises)
 NONERET: dict[str, str] = {"len": "int", "int": "int", "float": "float", "ord": "int", "os.system": "int", "os.path.exists": "bool"}
 # builtins whose own code (not CALLS) takes a str, list, dict or tuple
@@ -830,7 +858,7 @@ TYPE_VIEWS: dict[str, str] = {
     "instance": "D or U holds an empty container's placeholder (list[?], or opt[None] for a local first assigned None) or a runtime type variable (T K V S U R) that no binding replaced (Gen.instantiate), in an rt op's result or operand or where no class has its name: each stands for one type",
     "alias": "one object by two types: a str and a bytes, an exc and its exctype, a recursive alias rec[A] and A's definition, a set, a frozenset and an AbstractSet, a fixed tuple and a keyword record (kw[...]), a generator with and without its return type; inside brackets an int and an int+, and inside a tuple's a bool read as an int",
     "int slot": "an int read as a packed slot *int, which holds its value, and back",
-    "optional": "D read as opt[D] of a reference D, None as any reference or opt[...], or opt[U] as U",
+    "optional": "D read as opt[D] of a reference D, None as any reference or opt[...], or opt[U] as U where the closed-union proof shows the value not None (ircheck.optional_reads)",
     "class": "a class read as a class derived from it, as one of its bases or as a class derived from a base that has a common derived class with it; a closed union read as one with a common member",
     "runtime bool": "an rt op's bool result, which the runtime ABI passes as an int, read as an int; an int read as an rt op's bool operand",
     "method": "a bound method fn[m:C.f] or fn[d:f:C] read as its receiver C, and back; a closure fn[c:...] read as its env",
@@ -1040,7 +1068,7 @@ for _j in range(len(FX)):
 # bool without a default)
 NARROWED: list[str] = [
     "dict.bkey_get", "dict.bkey_pop", "dict.bkey_pop_default", "dict.bkey_setdefault", "dict.get", "dict.items", "dict.pop",
-    "dict.pop_default", "dict.setdefault", "m.floats", "m.prod_int", "sum.int_float",
+    "dict.pop_default", "dict.setdefault", "m.floats", "m.prod_int", "sum.int", "sum.int_float",
 ]
 RUNTIME: dict[str, str] = {
     # Explicit arbitrary-precision integers. Handles are immutable atomic objects;
@@ -1214,10 +1242,10 @@ RUNTIME: dict[str, str] = {
     "str.get": "str:S,int|R A|", "str.slice": "str:S,int,int|A|", "str.slice_step": "str:S,int,int,int|R A|", "str.add": "str:S,str|A|", "str.mul": "str:S,int|R A|",
     "str.iadd": "str:S,str,int|A|",  # (s += t of a str local, appending in place to the str it owns: Gen.str_append)
     "str.cat": "str:int,str,str,str,str,str,str,str,str|A|",  # (the first n of eight strs: Gen.concat)
-    "str.contains": "bool:S,str|R|", "str.join": "str:S,list[str]|R A rL|", "str.split": "list[str]:S,str,int|R A|",
+    "str.contains": "bool:S,str|R|", "str.join": "str:S,list[str]|R A rL|", "str.split": "list[str]:S,opt[str],int|R A|",
     "str.join_slice": "str:S,list[str],int,int|R A rL|",
-    "str.split_first": "str:S,str,int|R A|",  # (s.split(sep, n)[0]: Gen.index)
-    "str.rsplit": "list[str]:S,str,int|R A|", "str.splitlines": "list[str]:S,bool|R A|", "str.strip": "str:S,str|A|",
+    "str.split_first": "str:S,opt[str],int|R A|",  # (s.split(sep, n)[0]: Gen.index)
+    "str.rsplit": "list[str]:S,opt[str],int|R A|", "str.splitlines": "list[str]:S,bool|R A|", "str.strip": "str:S,str|A|",
     "str.lstrip": "str:S,str|A|", "str.rstrip": "str:S,str|A|", "str.startswith": "bool:S,str,int,int|R|",
     "str.endswith": "bool:S,str,int,int|R|", "str.find": "int:S,str,int,int|R|", "str.rfind": "int:S,str,int,int|R|",
     "str.count": "int:S,str,int,int|R|", "str.index": "int:S,str,int,int|R|", "str.rindex": "int:S,str,int,int|R|",
@@ -1237,7 +1265,7 @@ RUNTIME: dict[str, str] = {
     "bytes.scan": "int:bytes,int,int,int,int,int|R|",  # internal bounded delimiter/control-byte scan
     "unicode_error_str": "str:int,str,str,int,int,str|R A|",
     "bytes.hex": "str:str|R A|", "bytes.hex_sep": "str:str,str,int,int|R A|", "bytes.maketrans": "str:str,str|R A|",
-    "bytes.translate": "str:str,str,str|R A|", "bytes.fromhex": "str:str|R A|", "bytes.from_list": "str:list[int]|R A rL|",
+    "bytes.translate": "str:str,opt[str],opt[str]|R A|", "bytes.fromhex": "str:str|R A|", "bytes.from_list": "str:list[int]|R A rL|",
     "bytes.zeros": "str:int|R A|", "bytes.join": "str:str,list[str]|R A rL|", "bytes.split": "list[str]:str,str,int|R A|",
     "bytes.rsplit": "list[str]:str,str,int|R A|", "bytes.strip": "str:str,str|R A|", "bytes.lstrip": "str:str,str|R A|",
     "bytes.rstrip": "str:str,str|R A|", "bytes.startswith": "bool:str,str,int,int|R|", "bytes.endswith": "bool:str,str,int,int|R|",
@@ -1257,6 +1285,8 @@ RUNTIME: dict[str, str] = {
     "f2i": "int:float|R|", "round": "int:float|R|", "round_n": "float:float,int|R|", "round_int": "int:int,int|R|", "floor": "int:float|R|",
     "ceil": "int:float|R|", "int.str": "int:str,int|R A|", "float.str": "float:str|R A|", "float.hex": "str:float|A|",
     "float.is_integer": "bool:float||", "int.bit_length": "int:int||", "int.bit_count": "int:int||", "fabs": "float:float||fabs",
+    "fma": "float:float,float,float||llvm.fma.f64", "sqrt": "float:float||llvm.sqrt.f64",
+    "ctlz": "int:int,%i1||llvm.ctlz.i64", "ctpop": "int:int||llvm.ctpop.i64",
     "ovf.sadd": "%ovf:int,int||llvm.sadd.with.overflow.i64", "ovf.ssub": "%ovf:int,int||llvm.ssub.with.overflow.i64",
     "ovf.smul": "%ovf:int,int||llvm.smul.with.overflow.i64",
     "m.sqrt": "float:float|R|", "m.sin": "float:float|R|", "m.cos": "float:float|R|", "m.tan": "float:float|R|",
@@ -1300,7 +1330,7 @@ RUNTIME: dict[str, str] = {
     "path_splitext": "tuple[str,str]:str|A|", "path_isabs": "bool:str||", "path_normpath": "str:str|R A|",
     "path_abspath": "str:str|R A I|", "path_relpath": "str:str,str|R A I|", "path_expanduser": "str:str|R A I|",
     "path_commonprefix": "str:list[str]|R A rL|",
-    "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|R A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
+    "realpath": "str:str|R A I|", "getenv": "R:str,opt[str]|R A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
     "environ_set": "None:str,str|R A I|", "environ_pop": "str:str,str|R A I|",
     "environ_get": "str:str|R A I|", "environ_del": "None:str|R A I|", "makedirs": "None:str,int,bool|R A I|",
     "set_inheritable": "None:int,int|R A I|",
@@ -1328,7 +1358,7 @@ RUNTIME: dict[str, str] = {
     "exc.new": "exc:str,str,str|A|", "exc.exit": "exc:int,str,str|A|", "exc.detail": "exc:exc,str||", "throw": "None:exc|R N|",
     "exc.user": "exc:%ptr|A|", "exc.obj": "R:exc||", "exc.id": "%ptr:exc||", "exc.ostr": "str:%ptr|U|", "exc.orepr": "str:%ptr|U|",
     "exc.brepr": "str:%ptr,str|A|", "exc.cls": "str:%ptr|A|", "exc.name": "str:exc|A|", "exc.qualname": "str:exc|A|", "exc.type": "str:exc|A|",
-    "exc.setcause": "None:exc,exc|wO|", "exc.cause": "exc:exc|rO|", "exc.errcls": "str:int|A|",
+    "exc.setcause": "None:exc,opt[exc]|wO|", "exc.cause": "opt[exc]:exc|rO|", "exc.errcls": "str:int|A|",
     # exception classes as values: class objects (runtime.c's exceptions)
     "exc.proto": "exc:str,%ptr|A I|", "exc.canon": "exc:exc|A I|", "exc.sub": "int:exc,exc,str||", "exc.module": "str:exc|A|", "exc.setmodule": "None:%ptr,str|R I|",
     "exc.ctor": "%ptr:exc,%ptr||", "exc.make": "exc:exc,int,str,str,int,int|R A|",
@@ -1343,14 +1373,14 @@ RUNTIME: dict[str, str] = {
     "init": "None:%i32,%ptr,%ptr,%ptr,int|A I|", "finish": "None:|U|", "exit_hook": "None:%ptr|I|", "frameaddress": "%ptr:%i32||llvm.frameaddress.p0",
     # files and the standard streams
     "write": "None:str,int|R I rF wF|", "input": "str:str|R A I rF wF|", "input_lost": "None:|R I|",
-    "open": "file:str,str,str,str,int|R A I rF|", "std": "file:int||",
+    "open": "file:str,str,opt[str],opt[str],int|R A I rF|", "std": "file:int||",
     "file.read": "str:S,int|R A I rF wF|", "file.readline": "str:S|R A I rF wF|", "file.readlines": "list[str]:S|R A I rF wF|",
     "file.write": "int:S,str|R A I rF wF|", "file.put": "None:S,str|R A I rF wF|",
     "file.writelines": "None:S,list[str]|R A I rL rF wF|",
     "file.flush": "None:S|R I rF wF|", "file.close": "None:S|R I rF wF|", "file.drop": "None:S|R I rF wF|",
     "file.closed": "bool:S|rF|", "file.name": "str:S|A rF|", "file.mode": "str:S|A rF|", "file.fileno": "int:S|R I rF|",
     # lib/_pystachy_bfile.py's binary files (__pys_bfile_*): a file of a binary mode, its reads and writes of bytes
-    "bopen": "file:str,str,str,str,str,int|R A I rF|", "bfile.read": "bytes:file,int|R A I rF wF|",
+    "bopen": "file:str,str,opt[str],opt[str],opt[str],int|R A I rF|", "bfile.read": "bytes:file,int|R A I rF wF|",
     "bfile.readline": "bytes:file,int|R A I rF wF|", "bfile.write": "int:file,bytes|R A I rF wF|",
     "bfile.seek": "int:file,int,int|R A I rF wF|", "bfile.tell": "int:file|R A I rF wF|", "bfile.truncate": "int:file,int|R A I rF wF|",
     "bfile.isatty": "int:file|I rF|", "bfile.seekable": "int:file|I rF|",

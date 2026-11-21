@@ -1,0 +1,22 @@
+{"rows": [7, "two", 3.5, null, true, [7, {"k": [1, 2]}]], "n": 7, "t": [7, "\u00e9"], "big": 4611686018427387904}
+{"big":4611686018427387904,"n":7,"rows":[7,"two",3.5,null,true,[7,{"k":[1,2]}]],"t":[7,"\u00e9"]}
+{"rows": [7, "two", 3.5, null, true, [7, {"k": [1, 2]}]], "n": 7, "t": [7, "é"], "big": 4611686018427387904}
+[7, "two", 3.5, null, true, [7, {"k": [1, 2]}]] [7, "\u00e9"] 4611686018427387904
+[3, {"k": [1, 2]}]
+int 1000
+float 0.1
+str "a\"b"
+bool false
+none null
+eval obj
+eval ascii
+eval sort
+{"big": 4611686018427387904, "n": 1, "rows": [1, "two", 3.5, null, true, [1, {"k": [1, 2]}]], "t": [1, "é"]}
+[7, "two", 3.5, null, true, [7, {"k": [1, 2]}], "later"]
+ValueError Circular reference detected
+TypeError Object of type Point is not JSON serializable
+ValueError Out of range float values are not JSON compliant: nan
+[1.5, NaN, Infinity]
+{"a": [1, 2.5, null, "\u00e9"], "b": {}} [1, "x"] {"a": [1, {"b": null}]}
+["x", "y"] "s" 3 null [true]
+[exit 0]

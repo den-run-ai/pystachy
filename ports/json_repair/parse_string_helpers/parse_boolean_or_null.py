@@ -1,5 +1,3 @@
-# pystachy: dynamic-any
-
 LITERAL_VALUES: dict[str, bool | None] = {
     "true": True,
     "false": False,

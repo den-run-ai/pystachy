@@ -329,10 +329,12 @@ An op that makes a packed slot gives it its type: `slot.pack`, a list read, a tu
 type: a box's payload bits, a raw identity word, a word that a runtime call returns as an
 `int`, which `slot.unpack` then reads through `%slot`. A value whose definition gives only a
 machine type, a runtime type variable or a placeholder is read at related types by every
-operand that names its own. The views that narrow (`bits` of a runtime call's word, `opt[U]`
-read as `U`, a derived class, other union members) take the frontend's word for a test before
-them: they are the casts that MLIR would write as ops, and the fourth table's kinds of `cast`
-write some of them so.
+operand that names its own. Of the views that narrow, `opt[U]` read as `U` needs a proof: with
+`PYSTACHY_IRCHECK=1` the closed-union proof must show the value not `None` where it is read (see
+[reads of optional values](#reads-of-optional-values)). The others (`bits` of a runtime call's
+word, a derived class, other union members) take the frontend's word for a test before them:
+they are the casts that MLIR would write as ops, and the fourth table's kinds of `cast` write
+some of them so.
 
 Some result numbers only name an intermediate LLVM value of their operation's lowering:
 `ovf`'s `{i64, i1}` pair, the three addresses of `list.load`, the address of a `tuple.load`.
@@ -431,7 +433,7 @@ one, whatever block defines it.
 | `instance` | D or U holds an empty container's placeholder (list[?], or opt[None] for a local first assigned None) or a runtime type variable (T K V S U R) that no binding replaced (Gen.instantiate), in an rt op's result or operand or where no class has its name: each stands for one type |
 | `alias` | one object by two types: a str and a bytes, an exc and its exctype, a recursive alias rec[A] and A's definition, a set, a frozenset and an AbstractSet, a fixed tuple and a keyword record (kw[...]), a generator with and without its return type; inside brackets an int and an int+, and inside a tuple's a bool read as an int |
 | `int slot` | an int read as a packed slot *int, which holds its value, and back |
-| `optional` | D read as opt[D] of a reference D, None as any reference or opt[...], or opt[U] as U |
+| `optional` | D read as opt[D] of a reference D, None as any reference or opt[...], or opt[U] as U where the closed-union proof shows the value not None (ircheck.optional_reads) |
 | `class` | a class read as a class derived from it, as one of its bases or as a class derived from a base that has a common derived class with it; a closed union read as one with a common member |
 | `runtime bool` | an rt op's bool result, which the runtime ABI passes as an int, read as an int; an int read as an rt op's bool operand |
 | `method` | a bound method fn[m:C.f] or fn[d:f:C] read as its receiver C, and back; a closure fn[c:...] read as its env |
@@ -634,6 +636,27 @@ nonnullable union parameters can be proved by a bounded predecessor walk without
 dataflow states. Mutable slots, nullable sources, raw payload transport and unsupported
 control-flow shapes fall back to the general solver.
 
+<a id="reads-of-optional-values"></a>
+An operand that reads a value whose definition gives it `opt[U]`, of a reference `U`, at a type
+without `None` (the `optional` view that narrows; `ircheck.optional_reads`) needs the same
+proof that the value is not `None` there (`UnionProof.check_some`): a test of it against
+`None` on every path to the read, a test of the storage it was loaded from with no write
+between that may change it, or a store of a value that is never `None` (a constant's symbol,
+a value of a type without `None`). A `select` reads each value only where its condition
+selects it, and a `phi` on the edge it names; code that no path reaches needs nothing. The
+test may compare the reference or its machine word with null (`ptr.cmp`, or `scalar.cmp` of
+the `%ptr`s). An attribute path, such as `record.name` read again after `record.name is not
+None`, is a field of the object that a parameter, a local's slot or a global still holds: each
+`field.addr` of that field reads one storage key (`UnionProof.field_key`), which a store to the
+slot or the global forgets, as a store to a field of an object of a class that may be the same
+object, or a call that writes objects, does. A call writes a global's storage only with the
+`wG` effect, and an object's only with `wO`. The verifier runs the general solver for every
+function with such a read.
+[`optional.tir`](../tools/fixtures/typed_ir/optional.tir) holds the cases the proof admits and
+those it rejects. A runtime function's signature says `opt[T]` where it takes or returns
+`None` (`bopen`'s encoding, `exc.setcause`'s cause, `exc.cause`'s result), and `getenv`'s
+result is the call's `R`: a `str` where the default is one, else `opt[str]`.
+
 The finite worklist joins possible tags and common equalities until stable, without a path
 product or an iteration cutoff. Conditional facts survive boolean phis and short-circuit
 expressions and are dropped after their last possible use. Type-name domains have no
@@ -681,6 +704,12 @@ floating and pointer predicates. Verifiers reject mismatched operands, unsupport
 operators/conversions and extra metadata. These operations are pure; frontend guards
 retain responsibility for bounds, overflow and division checks. `select` also checks
 its boolean condition and matching result/value types.
+
+Runtime mode's wide primitives (`_rt.mul_hi`, `_rt.udiv_wide`, `_rt.urem_wide`) compute in `%i128`.
+`scalar.bin` and `scalar.cmp` accept that type, and `scalar.cast` only extends an `int`
+to it (`zext`) and truncates it back (`trunc`); no value of it is stored, selected or
+passed. `_rt.float_bits` and `_rt.bits_float` are the `bitcast` conversions between
+`float` and `int`.
 
 A masked expression that fits in 32 bits is computed in `%i32` operations and zero-extended
 (`gen_low32`): `x & y` with a constant from 0 to 2**32 - 1 on a side, a literal or a module's
@@ -1245,9 +1274,10 @@ Typed instruction coverage is complete for the LLVM backend. Further backend neu
 needs shared compiler/runtime layout definitions and a clearer separation of frontend
 elaboration from machine contracts. Operands still read values through the views of
 `TYPE_VIEWS`: precise result types for empty containers and for runtime calls that return
-untyped memory (`alloc`), and casts for the views that still narrow (a runtime call's word
-read through `bits`, `opt[U]` read as `U`, a derived class) would leave each value one type,
-as MLIR's are. WebAssembly GC, more general check elimination and a
+untyped memory (`alloc`), and casts for the views that still narrow unproved (a runtime
+call's word read through `bits`, a derived class) would leave each value one type, as MLIR's
+are; `opt[U]` read as `U` already needs a proof (see
+[reads of optional values](#reads-of-optional-values)). WebAssembly GC, more general check elimination and a
 Python-object representation backend are design possibilities, not supported modes.
 
 CPython extension modules **are supported** through `pystachy ext` and boundary wrappers.

@@ -13,12 +13,14 @@ without a type or precision) from CPython's own float formatting, which it repro
 
 usage: python3 tools/rtcheck.py [N] [SEED]   (N rounds of cases, default 5000)
 """
+import itertools
 import math
 import os
 import posixpath
 import random
 import re
 import sys
+import unicodedata
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path[:0] = [os.path.join(ROOT, "tools", "rt_cpython"), ROOT]
@@ -314,6 +316,10 @@ def fuzz_math():
         same("sum-float", bits(outcome(rt.pys_sum_float, xs, start)), bits(outcome(sum, xs, start)), (xs, start))
         same("sum-int-start", bits(outcome(rt.pys_sum_float_int, xs, a)),
              bits(outcome(lambda: float(sum(xs, a)))), (xs, a))
+        ns = [R.choice([0, 0, 0, 1, -1, a, c, num()]) for _ in range(R.randrange(9))]
+        same("any", outcome(rt.pys_any, ns), ("ok", int(any(ns))), (ns,))
+        same("all", outcome(rt.pys_all, ns), ("ok", int(all(ns))), (ns,))
+        same("sum-ints-float", bits(outcome(rt.pys_sum_int_float, ns, start)), bits(outcome(sum, ns, start)), (ns, start))
         for name, mine, ref in [("degrees", rt.pys_m_degrees, math.degrees), ("radians", rt.pys_m_radians, math.radians)]:
             same(name, bits(outcome(mine, start)), bits(outcome(ref, start)), (start,))
         other, rel, ab = real(), real(), real()
@@ -325,6 +331,64 @@ def fuzz_math():
         want = outcome(lambda: math.prod(ns, start=st))
         if fits(want):
             same("prod", outcome(rt.pys_m_prod_int, ns, st), want, (ns, st))
+
+
+def wide():
+    # an int for pow() and round(): the ends of the 64-bit range, small ones, anything between
+    k = R.randrange(6)
+    if k == 0:
+        return R.choice([0, 1, -1, 2, -2, MAXI, -MAXI - 1, MAXI - 1, -MAXI, 1 << 62, -(1 << 62), 10**18, -(10**18),
+                         5 * 10**18, -5 * 10**18, 5 * 10**18 + 1, -5 * 10**18 - 1])
+    if k == 1:
+        return R.randrange(-100, 101)
+    if k == 2:
+        return R.randrange(-MAXI - 1, MAXI + 1)
+    return R.randrange(-(1 << R.randrange(1, 64)), 1 << R.randrange(1, 64))
+
+
+def coords(n):
+    # coordinates for hypot and dist: around one exponent, among the subnormals, or anything
+    k = R.randrange(6)
+    if k == 0:
+        e = R.randrange(-1074, 1021)
+        return [math.ldexp(R.random() - 0.5, e + R.randrange(-3, 4)) for _ in range(n)]
+    if k == 1:
+        return [math.ldexp(R.random() - 0.5, R.randrange(-1074, -1015)) for _ in range(n)]
+    return [real() for _ in range(n)]
+
+
+def fuzz_numeric():
+    # hypot, dist and fma by their bits; pow(a, b, m), round(x, n) and the int sum where CPython's
+    # result is a 64-bit int (past it the compiled code raises OverflowError)
+    for _ in range(N):
+        x, y, z = real(), real(), real()
+        same("hypot", bits(outcome(rt.pys_m_hypot, x, y)), bits(outcome(math.hypot, x, y)), (x, y))
+        n = R.randrange(9)
+        p = coords(n)
+        q = coords(n if R.randrange(10) else R.randrange(9))
+        same("hypot-list", bits(outcome(rt.pys_m_hypot_list, p)), bits(outcome(math.hypot, *p)), (p,))
+        same("dist", bits(outcome(rt.pys_m_dist, p, q)), bits(outcome(math.dist, p, q)), (p, q))
+        if hasattr(math, "fma"):  # (Python 3.13)
+            same("fma", bits(outcome(rt.pys_m_fma, x, y, z)), bits(outcome(math.fma, x, y, z)), (x, y, z))
+        a, e, m = wide(), wide(), wide()
+        same("idiv", bits(outcome(rt.pys_idiv, a, m)), bits(outcome(lambda: a / m)), (a, m))
+        want = outcome(lambda: a // m)
+        if not fits(want):  # MIN // -1 overflows, but MIN % -1 is zero.
+            want = ("OverflowError", "integer result does not fit in 64 bits")
+        same("floordiv", outcome(rt.pys_floordiv, a, m), want, (a, m))
+        same("mod", outcome(rt.pys_mod, a, m), outcome(lambda: a % m), (a, m))
+        same("bit_length", outcome(rt.pys_int_bit_length, a), outcome(int.bit_length, a), (a,))
+        same("bit_count", outcome(rt.pys_int_bit_count, a), outcome(int.bit_count, a), (a,))
+        if R.randrange(3) == 0:
+            e = R.randrange(-5, 6)
+        same("powmod", outcome(rt.pys_powmod, a, e, m), outcome(pow, a, e, m), (a, e, m))
+        places = R.randrange(-22, 3)
+        want = outcome(round, a, places)
+        if fits(want):
+            same("round-int", outcome(rt.pys_round_int, a, places), want, (a, places))
+        ns = [wide() for _ in range(R.randrange(6))]
+        if all(-MAXI - 1 <= t <= MAXI for t in itertools.accumulate(ns, initial=e)):
+            same("sum-int", outcome(rt.pys_sum_int, ns, e), outcome(sum, ns, e), (ns, e))
 
 
 def real():
@@ -360,6 +424,22 @@ def mix(k):
     h = k & M64
     h = ((h ^ h >> 30) * 0xBF58476D1CE4E5B9) & M64
     return h ^ h >> 31
+
+
+def check_shifts():
+    for n in [-MAXI - 1, -1, *range(66), MAXI]:
+        operands = {0, 1, -1, MAXI, -MAXI - 1}
+        if 0 <= n < 64:
+            lo, hi = (-MAXI - 1) >> n, MAXI >> n
+            operands.update((lo - 1, lo, lo + 1, hi - 1, hi, hi + 1))
+        for a in operands:
+            if -MAXI - 1 <= a <= MAXI:
+                # Beyond 63 bits only zero fits; cap the reference shift to avoid a giant int.
+                want = outcome(lambda: a << min(n, 64))
+                if not fits(want):
+                    want = ("OverflowError", "integer result does not fit in 64 bits")
+                same("shl", outcome(rt.pys_shl, a, n), want, (a, n))
+                same("shr", outcome(rt.pys_shr, a, n), outcome(lambda: a >> n), (a, n))
 
 
 def fuzz_hash():
@@ -647,9 +727,8 @@ def fuzz_ascii():
 def fuzz_path():
     # os.path's string functions against posixpath's, which os.path is on POSIX: paths of
     # slashes, dots, names and "~", also of non-ASCII characters. abspath() and relpath() take
-    # the working directory and join() from CPython here, as they take runtime.c's when compiled
+    # the working directory from CPython here, as they take runtime.c's when compiled
     rt.pys_getcwd = lambda: b(os.getcwd())
-    rt.pys_path_join = lambda x, y: b(posixpath.join(u(x), u(y)))
     parts = ["/", "/", ".", ".", "..", "a", "b.c", "é", "€", "𝄞", "~", " ", "//", "x.y.z", ".h"]
 
     def path():
@@ -668,19 +747,95 @@ def fuzz_path():
         for name in "basename dirname split splitext isabs normpath abspath".split():
             same("path." + name, outcome(getattr(rt, "pys_path_" + name), b(p)), want(getattr(posixpath, name), p), (p,))
         same("path.relpath", outcome(rt.pys_path_relpath, b(p), b(q)), want(posixpath.relpath, p, q), (p, q))
+        same("path.join", outcome(rt.pys_path_join, b(p), b(q)), want(posixpath.join, p, q), (p, q))
         m = [path() for _ in range(R.randrange(4))] + [p + q for _ in range(R.randrange(2))]
         same("path.commonprefix", outcome(rt.pys_path_commonprefix, [b(x) for x in m]), want(posixpath.commonprefix, m), (m,))
 
 
+def fuzz_int_text():
+    # str(int) against CPython's, and int(str, base) against CPython's where its result fits in
+    # 64 bits: past them runtime.py raises OverflowError, once the str is found to be an int.
+    # The two steps that runtime.c keeps are CPython's here: the ASCII form of a str with other
+    # characters (a space for each Unicode space, a decimal digit's ASCII digit, and "?" for
+    # another character, where the text ends) and the ValueError, with 200 characters of the repr
+    def num_ascii(s):
+        out = ""
+        for ch in u(s):
+            d = unicodedata.decimal(ch, -1)
+            out += ch if ord(ch) < 128 else " " if ch.isspace() else str(d) if d >= 0 else "?"
+            if out[-1] == "?" and ch != "?":
+                break
+        return out
+
+    def badlit(s, base):
+        raise ValueError(b("invalid literal for int() with base %d: %.200s" % (base, repr(u(s)))))
+
+    rt.pys_num_ascii = num_ascii
+    rt.pys_int_badlit = badlit
+
+    def want(s, base):
+        r = outcome(int, u(s), base)
+        if r[0] == "ok" and not fits(r):
+            return ("OverflowError", "int() result does not fit in 64 bits")
+        return (r[0], b(r[1])) if isinstance(r[1], str) else r
+
+    def spell(v, base):
+        n, out = abs(v), ""
+        while n or not out:
+            out = "0123456789abcdefghijklmnopqrstuvwxyz"[n % base] + out
+            n //= base
+        return ("-" if v < 0 else "") + out
+
+    edge = [0, MAXI, MAXI - 1, -MAXI, -MAXI - 1, MAXI // 10, MAXI // 10 + 1]
+    for k in range(64):
+        edge += [10**k, 10**k - 1, 10**k + 1, -(10**k), 1 - 10**k, 1 << k, (1 << k) - 1, -(1 << k), -(1 << k) - 1]
+    edge = [v for v in edge if -MAXI - 1 <= v <= MAXI]
+    for v in edge + [R.randrange(-(10 ** R.randrange(1, 20)), 10 ** R.randrange(1, 20)) for _ in range(4 * N)]:
+        if -MAXI - 1 <= v <= MAXI:
+            same("str-int", outcome(rt.pys_str_int, v), ("ok", str(v)), (v,))
+    # the values around the 64-bit limits in every base: where the last digit that fits is found
+    for base in range(2, 37):
+        pre = {2: "0b", 8: "0o", 16: "0x"}.get(base, "")
+        for v in [MAXI, MAXI + 1, MAXI + 2, MAXI - 1, -MAXI - 1, -MAXI - 2, -MAXI, MAXI * base, MAXI * base + base - 1, (MAXI + 1) * base,
+                  (MAXI + 1) // base, (MAXI + 1) // base * base, 0, 1, base - 1, base, 1 << 64, (1 << 64) - 1, -(1 << 64)]:
+            d = spell(abs(v), base)
+            forms = [spell(v, base), spell(v, base).upper(), "+" + d, " " + spell(v, base) + "\n", "00000" + d]
+            if pre:
+                forms += [pre + d, "-" + pre + d, pre.upper() + "_" + d, pre + "__" + d, pre, pre + "_"]
+            for t in forms:
+                for given in [base, 0, 10, 36]:
+                    same("int-str", outcome(rt.pys_int_str, t, given), want(t, given), (t, given))
+    # the syntax: signs, prefixes, single underscores, whitespace, a NUL, and other characters
+    alphas = ["0123456789 _+-xXoObBaAfFzZ\t\n\x0b\x0c\r\x1c\x00.e", "0123456789_ ", "01_ -+xob",
+              "0123456789 _+-\u0660\u0669\u00a0\u2003\u00e9\uff11\U0001d7ce\U0001d7d9"]
+    for i in range(8 * N):
+        t = b("".join(R.choice(alphas[i % 4]) for _ in range(R.randrange(9 if i % 3 else 24))))
+        base = R.choice([10, 10, 10, 0, 0, 2, 8, 16, 36, 1, -1, 37, 3, 11, 35, R.randrange(-3, 40)])
+        same("int-str", outcome(rt.pys_int_str, t, base), want(t, base), (t, base))
+    # CPython's limit of 4300 digits: it counts digits alone, in a base that is no power of two,
+    # after the syntax is checked, but before a NUL ends the text
+    z = "0" * 4300
+    for t, base in [(z[1:] + "7", 10), (z + "7", 10), (z + "1", 16), ("0x" + z + "1", 0), ("0b" + z, 0), (z + "0", 32), ("-" + z[1:] + "_9", 10),
+                    (" " + z[1:] + "1 ", 10), (z + "7", 3), (z + "7x", 10), (z + "7\x00", 10), (z + "7 \x00", 10), (z + "7 \x00 ", 10), (z + "_", 10),
+                    ("1" * 4301, 10), ("1" * 4300, 10), ("1" * 4301, 2), ("0_" * 4301 + "0", 10), (z + "0", 0), (z + "1", 0), (z[1:] + "1", 0),
+                    (z + "\u0660", 8), ("9" * 30, 10), ("-" + "9" * 30, 10), ("0" + "9" * 30, 0), ("x" * 300, 10), ("\u00e9" * 300, 10), ("'" * 300, 10),
+                    ("12\x00", 10), ("12\x0034", 10), ("\x00", 10), ("", 10), ("_1", 10), ("1_", 10), ("1__2", 10), ("1_2", 10), ("0_7", 0), ("0_0", 0),
+                    ("00", 0), ("0", 0), ("-0", 0), ("+0_0", 0), ("0x_f", 0), ("0x_f", 16), ("0_x_f", 16), ("0x", 16), ("0x", 36), ("0b2", 0), ("0b1", 36)]:
+        same("int-str", outcome(rt.pys_int_str, b(t), base), want(b(t), base), (t[:30], len(t), base))
+
+
 fuzz_str()
 fuzz_path()
+fuzz_int_text()
 fuzz_unicode_classification()
 fuzz_unicode_case()
 fuzz_replace()
 fuzz_bytes()
 fuzz_search()
 fuzz_math()
+fuzz_numeric()
 fuzz_hash()
+check_shifts()
 fuzz_format()
 fuzz_malformed()
 fuzz_ascii()

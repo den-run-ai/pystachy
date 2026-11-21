@@ -68,8 +68,12 @@ slots contain these boxed values. The existing conservative collector scans
 those references. Descriptor strings use finite backward references for recursive
 edges; runtime traversal follows the descriptor alongside each value.
 
-`isinstance()` narrows local values and parameters before indexing, iteration,
-arithmetic or mutation. Narrowing preserves identity: two references to the same
+Indexing, `len()`, item assignment, loops, method calls, arithmetic, orderings,
+membership and `int()`/`float()` need no narrowing: they select the list, dict, str or
+number that the value holds and raise CPython's error for another member
+([operations on closed unions](language/typing.md#operations-on-closed-unions)).
+`isinstance()` narrows local values and parameters where one type is wanted, for a
+typed parameter or a dict key. Narrowing preserves identity: two references to the same
 parsed list see each other's changes. Existing typed containers remain invariant;
 an existing `list[int]` is not reinterpreted or implicitly copied into
 `list[JSONValue]`. Construct recursive storage explicitly or obtain it from
@@ -83,7 +87,7 @@ cycle markers. Runtime representation and comparison follow at most 512
 recursive alias edges before raising `RecursionError`; the edges are counted
 independently of the JSON codec's bound on nesting, and other reprs (a
 class's own `__repr__`, say) remain limited by the recursion limit and the native stack's floor. Ordering
-requires narrowing, and so does `==` on a union that holds a
+two values that may both be lists requires narrowing, and so does `==` on a union that holds a
 recursive alias beside members holding objects or sets. These are bounded
 builtin-value operations, not general user-defined dynamic dispatch.
 

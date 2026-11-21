@@ -18,7 +18,7 @@ the program's classes, functions the compiler writes once every class that is bo
 from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
 from src.pystachy_compiler.bigints import held
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, TupleBoxes, dynamic_file, dynamic_program, int_lists, int_program
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, TupleBoxes, dynamic_file, dynamic_program, int_lists, int_program, static_file
 from src.pystachy_compiler.frames import Reduce
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
@@ -74,6 +74,19 @@ def dyn_builtin_type(t: str) -> str:
 def gen_dyn_policy(self, line: int) -> bool:
     # does the module of source line line compile Any as dyn
     return dynamic_file(line // LINES)
+
+
+STATICMOD = "this module is marked '# pystachy: static', which holds no Any value"
+
+
+def gen_static_value(self, v: Val) -> Val:
+    # v, an expression's value, where the module being compiled is static (STATICFILES): an Any
+    # value, or a container or Callable of them, is an error there, at the line that makes it.
+    # Speculative typing (dry) reports nothing, and the compiler's own dispatchers, which other
+    # modules' operations ask for, are no module's code
+    if self.drying == 0 and not self.curfn.synthetic and static_file(self.line // LINES) and holds_dyn(v.t):
+        self.err(f"{STATICMOD}: this expression is one ({typestr(v.t)}). Give it a concrete type, or narrow it with isinstance() in a module without the marker")
+    return v
 
 
 def gen_identity_modules(self, mods: list[Mod]) -> None:
@@ -229,6 +242,16 @@ def gen_identity_call(self, f: FnInfo) -> None:
     here = self.fn_home(self.curfn)
     if (home in self.idhint) != (here in self.idhint):
         if all(self.identity_inert(t, [], True) for t in f.ptypes) and self.identity_inert(f.ret, [], True):
+            return
+        # A tracked direct call may pass raw numbers to a hinted scalar kernel. Its body
+        # must prove every input read before this compilation can finish (function_body).
+        if (home in self.idhint and here != "?" and here not in self.idoff and
+                (f.inert_sites is not None or f.ll not in self.compiled) and f.node.kind == "def" and
+                not f.synthetic and f.cls == "" and f.clo < 0 and not f.gen and not f.generic and
+                not f.inst and not f.infer and f.vararg < 0 and f.kwarg < 0 and
+                all(t in ["int", "float", "bool"] for t in f.ptypes) and self.identity_inert(f.ret, [], True)):
+            if f.inert_sites is None:
+                f.inert_sites = {}
             return
         self.identity_event(f"hinted call of {f.name}()")
     if home == "?" or here == "?" or (home in self.idoff) == (here in self.idoff):
@@ -1665,6 +1688,8 @@ def gen_dyn_xbody(self, c: str) -> None:
 def gen_dyn_box(self, v: Val) -> Val:
     # v as a dyn value (dyn_boxable says which values can be)
     t = self.rec_type(v.t)
+    if t != DYN and self.drying == 0 and not self.curfn.synthetic and static_file(self.line // LINES):
+        self.err(f"{STATICMOD}: a value of type {typestr(v.t)} would be boxed as one here (what takes it is annotated Any, in a module that opts in to dynamic Any)")
     if t == BIG:
         return box_big(self, v)
     if t == DYN:
@@ -5856,7 +5881,7 @@ def gen_dyn_sum(self, xs: Val, start: Val) -> Val:
     return self.dyn_sum_end(r)
 
 
-def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool) -> Val | None:
+def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool, policy: bool = True) -> Val | None:
     # json.loads(), json.dumps(), or the native _raw_decode adapter in an opt-in module:
     # dyn: lib's function of Any values (JSONANY, which the loader adds to a program that has such
     # a module and json) where the document is Any values, so that loads() decodes it into Any's
@@ -5864,10 +5889,23 @@ def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool)
     # None, json's own function of JSONValue. _raw_decode explicitly requests Any storage;
     # loads() where its result becomes Any storage (want
     # holds Any values); dumps() where its argument does, or is a list, dict or tuple display or a
-    # list or dict comprehension, which is then Any's
+    # list or dict comprehension, which is then Any's. A module that does not opt in (policy
+    # false) makes no Any value, but dumps() of one an opt-in module gave it is the same call:
+    # json's own function would check it against JSONValue, whose containers Any's are not
     q = JSONANY + "$" + name[name.find("$") + 1 :]
     if q not in self.funcs:
         return None
+    if not policy:
+        objs = [x for x in args if x.kind == "kw" and x.s == "obj"]
+        if len(args) == 0 or args[0].kind == "starred" or args[0].kind == "dstar" or (args[0].kind == "kw" and len(objs) != 1):
+            return None
+        first = args[0] if args[0].kind != "kw" else objs[0].kids[0]
+        # (a variable, an attribute, an item or a call's result: typed as json's parameter
+        # takes it, so that what is no Any value compiles as before, by json's own function)
+        if first.kind not in ["name", "attr", "index", "call"] or not holds_dyn(self.dry(first, self.funcs[name].ptypes[0])):
+            return None
+        self.add(Ins("init", "", JSONANY))
+        return self.call_fn(self.funcs[q], [], args, want, resultsoft=resultsoft)
     if name == "json$loads" or name == "json$_raw_decode":
         if name == "json$loads" and not holds_dyn(want):
             return None
