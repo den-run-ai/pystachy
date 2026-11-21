@@ -1,6 +1,6 @@
 """Declarations component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.utils import is_union, umembers
+from src.pystachy_compiler.utils import is_union, nullable_union_members, umembers
 from src.pystachy_compiler.analysis import READS_ONLY_FNS, attr_fills, attr_values, called_only, calls_init, local_names, nonexpr, only_reads_items, stmt_walrus
 from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrow_type, narrowed
 from src.pystachy_compiler.builtin_bases import BWORDS
@@ -1177,7 +1177,7 @@ def gen_optional(self, t: str) -> str:
         # (a union that holds a class's objects may be None, as the class's objects may; a complex
         # number beside scalars or containers is a scalar member, whose union is optional as an
         # int's is, and beside only objects and files a reference member: complex | C)
-        return t if self.reference_union(t) or len([m for m in umembers(t) if m in self.classes and m != COMPLEXC]) > 0 else self.ctype("opt", [t])
+        return t if nullable_union_members(umembers(t), self.classes) else self.ctype("opt", [t])
     if (t == "str" or t == "bytes" or t == "exc" or t == "exctype" or is_clsval(t) or self.isnum(t) or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_vtuple(t) or is_callable(t) or is_gen(t)) and "?" not in t:
         return self.ctype("opt", [t])
     return ""

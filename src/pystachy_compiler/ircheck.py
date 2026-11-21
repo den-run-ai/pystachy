@@ -875,7 +875,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         dynamic.run()
         for j in range(len(dynamic.bad)):
             self.bad_ir(fn, fn.blocks[at[dynamic.badblocks[j]]], dynamic.bad[j])
-    if (union_proofs or (machine_tags and has_machine_union_tag(fn))) and not simple_union_proof(fn, self.utags, at, succ, union_types):
+    if (union_proofs or (machine_tags and has_machine_union_tag(fn))) and not simple_union_proof(fn, self.utags, at, succ, union_types, self.classes):
         writes: dict[str, bool] = {}
         raises: dict[str, bool] = {}
         for b in fn.blocks:
@@ -885,7 +885,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     effects = self.opfx(i, fn.fa)
                     writes[key] = effects & (RAWW | FXBIT["wG"]) != 0
                     raises[key] = effects & FXBIT["R"] != 0
-        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs, self.tconstdata)
+        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs, self.tconstdata, self.classes)
         proof.run()
         for j in range(len(proof.bad)):
             self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])

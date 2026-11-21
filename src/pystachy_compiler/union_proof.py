@@ -8,8 +8,9 @@ from __future__ import annotations
 from src.pystachy_compiler.dataflow import forward_fixpoint, live_values
 from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, slot_register
 from src.pystachy_compiler.specs import BIG, RUNTIME
+from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join, union_tags
-from src.pystachy_compiler.utils import gelem, is_gen, is_opt, is_union, rt_generic, rtsig, targs, umembers
+from src.pystachy_compiler.utils import gelem, is_gen, is_opt, is_union, nullable_union_members, rt_generic, rtsig, targs, umembers
 
 
 def proof_number(v: str, start: int, limit: int) -> int:
@@ -70,7 +71,7 @@ def proof_origin(v: str, fn: IFn, definitions: list[Ins | None], origins: list[i
     return -1
 
 
-def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None = None, successors: list[list[str]] | None = None, types: dict[str, list[str]] | None = None) -> bool:
+def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None = None, successors: list[list[str]] | None = None, types: dict[str, list[str]] | None = None, classes: dict[str, ClassInfo] | None = None) -> bool:
     """Certify immutable parameter narrowing without allocating dataflow states.
 
     This is a sufficient proof, never a rejection rule. Unrecognized sources, mutable
@@ -78,10 +79,13 @@ def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None
     general solver. No fact comes from an operand's narrowed type annotation.
     """
     domains: dict[str, list[str]] = {} if types is None else types
+    class_types: dict[str, ClassInfo] = {} if classes is None else classes
     found = False
     for t in fn.f.ptypes:
         if is_union(t):
             ts = domains[t] if t in domains else umembers(t)
+            if nullable_union_members(ts, class_types):
+                return False
             for member in ts:
                 if member == "" or member == "None" or is_opt(member) or is_union(member):
                     return False
@@ -230,8 +234,9 @@ def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None
 
 
 class UnionProof:
-    def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None, raises: dict[str, bool] | None = None, declarations: list[Val] | None = None, consts: dict[str, Data] | None = None):
+    def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None, raises: dict[str, bool] | None = None, declarations: list[Val] | None = None, consts: dict[str, Data] | None = None, classes: dict[str, ClassInfo] | None = None):
         self.fn = fn
+        self.classes: dict[str, ClassInfo] = {} if classes is None else classes
         self.writes: dict[str, bool] = {} if writes is None else writes
         self.raises: dict[str, bool] = {} if raises is None else raises
         self.tags: dict[str, str] = {}
@@ -506,7 +511,7 @@ class UnionProof:
         elif t != "" and not t.startswith("%") and not t.startswith("*") and not t.startswith("&") and t != "#":
             ts = [u]
         if len(ts) > 0:
-            if is_opt(t) and "None" not in ts:
+            if (is_opt(t) or (is_union(u) and nullable_union_members(ts, self.classes))) and "None" not in ts:
                 ts.append("None")
             ts.sort()
             for v in ts:

@@ -786,12 +786,12 @@ class UnionProofTests(unittest.TestCase):
                 c = make_case()
                 calls = []
 
-                def observe(fn, tags, at, successors, types, calls=calls):
+                def observe(fn, tags, at, successors, types, classes, calls=calls):
                     self.assertIsNotNone(at)
                     self.assertIsNotNone(successors)
                     self.assertIsNotNone(types)
-                    cached = simple_union_proof(fn, tags, at, successors, types)
-                    self.assertEqual(cached, simple_union_proof(fn, tags))
+                    cached = simple_union_proof(fn, tags, at, successors, types, classes)
+                    self.assertEqual(cached, simple_union_proof(fn, tags, classes=classes))
                     self.assertFalse(cached)
                     calls.append(True)
                     return cached
@@ -815,12 +815,12 @@ class UnionProofTests(unittest.TestCase):
         c.b.code[-1].b = NOLABELS
         before = [(i, i.b, list(i.b)) for b in c.fn.blocks for i in b.code]
 
-        def observe(fn, tags, at, successors, types):
+        def observe(fn, tags, at, successors, types, classes):
             self.assertIs(successors[0], shared)
             self.assertIs(successors[1], shared)
             self.assertIs(successors[2], NOLABELS)
             self.assertEqual(successors, [["next", "next"], ["next", "next"], []])
-            return simple_union_proof(fn, tags, at, successors, types)
+            return simple_union_proof(fn, tags, at, successors, types, classes)
 
         with patch.object(ircheck, "simple_union_proof", side_effect=observe) as proof:
             c.g.verify(c.fn, False)
@@ -841,12 +841,12 @@ class UnionProofTests(unittest.TestCase):
             c.ret()
         before = [(i, i.b, list(i.b)) for b in c.fn.blocks for i in b.code]
 
-        def observe(fn, tags, at, successors, types, before=before):
+        def observe(fn, tags, at, successors, types, classes, before=before):
             self.assertEqual(successors[0], ["right", "left"])
             for _, labels, _ in before:
                 self.assertIsNot(successors[0], labels)
             self.assertIsNot(successors[0], NOLABELS)
-            return simple_union_proof(fn, tags, at, successors, types)
+            return simple_union_proof(fn, tags, at, successors, types, classes)
 
         with patch.object(ircheck, "simple_union_proof", side_effect=observe) as proof:
             c.g.verify(c.fn, False)
@@ -1381,6 +1381,35 @@ class UnionProofTests(unittest.TestCase):
                         with self.assertRaises(SystemExit):
                             c.g.verify(c.fn, False)
                         self.assertIn("union.tag needs a nonnull proof", errors.getvalue())
+
+    def test_implicit_null_domain_of_reference_union_boxes(self):
+        for typ, nullable in (("union[Left,Right]", True), ("union[Left,int]", True),
+                              ("union[_pystachy_complex$complex,Left]", True),
+                              ("union[_pystachy_complex$complex,int]", False),
+                              ("union[Left,file]", True), ("union[file,int]", False), (U, False)):
+            for guarded in (False, True):
+                for machine in (False, True):
+                    with self.subTest(typ=typ, guarded=guarded, machine=machine):
+                        c = Case("reference_union_box", [typ])
+                        for cls in ("Left", "Right", "_pystachy_complex$complex"):
+                            c.g.classes[cls] = ClassInfo(cls, Node("class", cls, 1))
+                        if guarded:
+                            nonnull = c.op("ptr.cmp", "bool", "!=", [("%a0", typ), ("null", "None")])
+                            c.op("cbr", a=[(nonnull, "bool")], b=["read", "exit"])
+                            c.block("read")
+                        c.op("mach.load" if machine else "union.tag", "int",
+                             a=[("%a0", "%ptr" if machine else typ)])
+                        c.ret()
+                        if guarded:
+                            c.block("exit")
+                            c.ret()
+                        if nullable and not guarded:
+                            errors = StringIO()
+                            with redirect_stderr(errors), self.assertRaises(SystemExit):
+                                c.g.verify(c.fn, False)
+                            self.assertIn("needs a nonnull proof for %a0", errors.getvalue())
+                        else:
+                            c.g.verify(c.fn, False)
 
     def test_standalone_box_requires_matching_tag_and_payload(self):
         for tag in ("float", "int"):
