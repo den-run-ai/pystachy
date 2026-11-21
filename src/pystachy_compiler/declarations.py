@@ -311,6 +311,13 @@ def gen_ann(self, n: Node) -> str:
         for t in ts:
             if t.startswith("!"):
                 return t
+        if base in ["pattern", "match"] and ts == ["str"]:
+            alias = self.imported_ref(n.kids[0])
+            if alias in ["typing.Pattern", "typing.Match"]:
+                # These typing aliases describe values made by the shipped re module.
+                cls = "re$" + alias[7:]
+                if cls in self.classes and lib_source(self.classes[cls].node.line, self.libdir, "re/__init__.py"):
+                    return cls
         if base == "list" and len(ts) == 1:
             return self.ctype("list", [ts[0]])
         if base == "dict" and len(ts) == 2:
