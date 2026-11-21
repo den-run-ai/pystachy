@@ -9,10 +9,11 @@ path tests for a subclass.
 """
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import where
+from src.pystachy_compiler.frames import IterArg
 from src.pystachy_compiler.ir import FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.syntax import Node, made_var, mentions, mk
-from src.pystachy_compiler.utils import elem, is_dict, is_list, targs, typestr, unopt
+from src.pystachy_compiler.utils import elem, is_dict, is_gen, is_list, targs, typestr, unopt
 
 # the builtin containers a class may derive from, each with the 8-byte words of its header
 # (runtime.c's List and Dict), which the object's struct starts with as hidden fields
@@ -331,9 +332,24 @@ def gen_bsuper(self, me: Val, m: str, args: list[Node]) -> Val:
             self.err(f"{kind}.__init__() takes at most one argument, an iterable of its items ({len(args)} given)")
         if len(args) == 1:
             self.bfill(me.t, "extend", args)
-            given = self.vnode(self.consume(args[0], ""))
-            self.method(self.bview(me), "clear", [])
-            self.method(self.bview(me), "extend", [given])
+            source = self.mapgen(args[0]) if self.is_mapcall(args[0]) else args[0]
+            if self.iterator_call(source):
+                item = made_var("__item", source.line)
+                source = mk("listcomp", "gen", source.line, [item, item, source])
+            if source.kind == "listcomp" and source.s == "gen":
+                # Capture the outer iterator before clearing, then append as each item arrives.
+                # A generator can observe the destination or raise after a partial fill.
+                target = self.bview(me)
+                clear = mk("attr", "clear", source.line, [self.vnode(target)])
+                self.listcomp(source, unopt(target.t), "", target.v, IterArg(mk("call", "", source.line, [clear])))
+            else:
+                value = self.consume(source, "")
+                given = self.vnode(value)
+                self.method(self.bview(me), "clear", [])
+                if is_gen(value.t):
+                    item = made_var("__item", source.line)
+                    given = mk("listcomp", "gen", source.line, [item, item, given])
+                self.method(self.bview(me), "extend", [given])
         else:
             self.method(self.bview(me, True), "clear", [])
         return Val("null", "None")
