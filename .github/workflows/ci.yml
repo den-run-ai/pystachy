@@ -168,11 +168,17 @@ jobs:
           wasm/build.sh runtime-wasm
           wasm/build.sh emitter
           node --no-warnings --test wasm/test_codemode.mjs
-          tests/run.sh "$PYSTACHY" "wasm wasm-tir" tests/programs/apps/ouro2_*.py \
-            tests/programs/runtime/rt_float_hex.py \
+          direct_cases=(tests/programs/apps/ouro2_*.py tests/programs/runtime/rt_float_hex.py
+                        tests/programs/strings/str_dict_hash.py tests/programs/language/varargs_tuple_lifetime.py)
+          routes=$(mktemp)
+          WASM_TIR_LOG="$routes" tests/run.sh "$PYSTACHY" "wasm wasm-tir" "${direct_cases[@]}" \
             tests/programs/inference/dynany_bound_methods.py \
             tests/programs/inference/dynany_identity_promote_generic.py \
             tests/programs/library/lib_argparse_python_int.py
+          # A matching recording through LLVM fallback must not mask lost direct coverage.
+          for source in "${direct_cases[@]}"; do
+            grep -Fxq "$source emitted" "$routes" || { cat "$routes"; exit 1; }
+          done
 
       # These hosted/native controls run sequentially after a short GC JIT group.
       # PRs use the second native JIT worker below; neither placement adds a job.

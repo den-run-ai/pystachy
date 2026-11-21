@@ -45,7 +45,11 @@ tests/run.sh ./pystachy wasm-tir tests/programs/apps/ouro2_*.py
 ```
 
 Each typed IR value is a WebAssembly local, and so is a slot that only loads and stores
-read. A function's blocks lie in order inside nested `block`s within a `loop`: a forward
+read. Fixed-size tuple temporaries use the reactor's 16-byte-aligned stack. A
+callee can recognize and copy a `*args` tuple before it escapes its caller.
+Only modules with tuple frames import the stack pointer.
+
+A function's blocks lie in order inside nested `block`s within a `loop`. A forward
 branch is a `br` to its target's label, and a backward branch sets the next block's index
 and continues the loop, whose `br_table` dispatches it. The emitter handles the operations
 of scalar code, runtime calls, direct calls, globals, class fields, tuples and list items,

@@ -8265,7 +8265,12 @@ static uintptr_t stack_mapping_bottom(uintptr_t here, uintptr_t page) {
 static void stack_floor_at(uintptr_t here, int mapped) {   /* (here: the caller's frame address) */
   uintptr_t lo = 0, hi = 0;
   (void)mapped;
-#if defined(__APPLE__)
+#if defined(__wasi__)
+  /* wasm-ld lays out the linear-memory stack shared with directly emitted frames. */
+  extern char __stack_low, __stack_high;
+  lo = (uintptr_t)&__stack_low;
+  hi = (uintptr_t)&__stack_high;
+#elif defined(__APPLE__)
   pthread_t self = pthread_self();
   size_t size = pthread_get_stacksize_np(self);
   hi = (uintptr_t)pthread_get_stackaddr_np(self);   /* (the highest address) */

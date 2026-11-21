@@ -58,7 +58,7 @@ def function(fn: IFn, closed: bool) -> Func:
         out.attrs["closed"] = ""
     out.cold = fn.cold
     for slot in fn.slots:
-        out.slots[slot_register(slot)] = slot.t
+        out.add_slot(slot_register(slot), slot.t, slot.k)
     for b in fn.blocks:
         if b.handler != "":
             raise Refused(f"block {b.label} has a handler (exceptions)")

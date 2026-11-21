@@ -118,7 +118,7 @@ runtime_wasm() {
   # the class dispatchers (env.pys_obj_*), which wasm/run.mjs supplies
   # shellcheck disable=SC2086
   "${LLVM}clang" --target=$TARGET --sysroot="$SYS" -mexec-model=reactor "$t/reactor.o" "$RT/runtime.o" "$RT/stubs.o" \
-    -o "$t/runtime.wasm" -Wl,--export-all -Wl,--allow-undefined-file=wasm/reactor.imports -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
+    -o "$t/runtime.wasm" -Wl,--export-all -Wl,--export=__stack_pointer -Wl,--allow-undefined-file=wasm/reactor.imports -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
   mv "$t/runtime.wasm" "$RT/runtime.wasm"
   rm -rf "$t"; trap - EXIT
 }

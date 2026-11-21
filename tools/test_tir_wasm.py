@@ -124,6 +124,55 @@ console.log(new DataView(memory.buffer).getBigInt64(0, true).toString());
                     result = subprocess.check_output(["node", "-e", script, str(path)], text=True, timeout=10)
                     self.assertEqual(result.strip(), "42")
 
+    @unittest.skipUnless(shutil.which("node"), "node runs the module")
+    def test_tuple_frames_share_and_restore_the_runtime_stack(self):
+        program = """module complete {
+}
+function @main.init() -> None kind=block {
+  %stk.1 = slot kind=2 : tuple[int,int,int]
+  %stk.2 = slot kind=2 : tuple[int]
+entry:
+  rt entry=on_stack (%ptr %stk.1) : int
+  rt entry=on_stack (%ptr %stk.2) : int
+  call callee=@inner : None
+  rt entry=on_stack (%ptr %stk.1) : int
+  ret
+}
+function @inner() -> None {
+  %stk.1 = slot kind=2 : tuple[int]
+entry:
+  rt entry=on_stack (%ptr %stk.1) : int
+  ret.none
+}
+"""
+        script = """
+const assert = require('node:assert/strict');
+const moduleBytes = require('node:fs').readFileSync(process.argv[1]);
+const memory = new WebAssembly.Memory({initial: 1});
+const sp = new WebAssembly.Global({value: 'i32', mutable: true}, 512);
+const seen = [];
+const instance = new WebAssembly.Instance(new WebAssembly.Module(moduleBytes), {
+  env: {memory, data: 128},
+  rt: {
+    __stack_pointer: sp,
+    pys_recursion_state: 0,
+    pys_recursion_stack_error() { throw Error('stack floor'); },
+    pys_on_stack(pointer) { seen.push([pointer, sp.value]); return 1n; },
+  },
+});
+instance.exports.init();
+assert.deepEqual(seen, [[480,480], [504,480], [464,464], [480,480]]);
+assert.equal(sp.value, 512);
+new DataView(memory.buffer).setBigInt64(16, 500n, true);
+assert.throws(instance.exports.init, /stack floor/);
+assert.equal(sp.value, 512);
+assert.equal(seen.length, 4);
+"""
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "frames.wasm"
+            path.write_bytes(emit(program))
+            subprocess.run(["node", "-e", script, str(path)], check=True, timeout=10)
+
     def test_refusals_name_what(self):
         cases = {
             HELLO.replace("entry=write", "entry=unknown"): "runtime entry unknown",

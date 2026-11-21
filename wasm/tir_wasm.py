@@ -25,8 +25,10 @@ build wasm/tir_wasm.py, from the repository root (it reads the compiler's RUNTIM
 import struct
 import sys
 
+from src.pystachy_compiler.machine_ir import WORD_READS
 from src.pystachy_compiler.specs import RTSYM, RUNTIME
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, lt, rtll, rtsig, rtsym, tslots
+from wasm.wasi_abi import LIBC_WRAPPERS
 
 I32 = 0x7F
 I64 = 0x7E
@@ -34,10 +36,6 @@ F64 = 0x7C
 VOID = 0x40
 
 
-# the C library's functions that RUNTIME declares with i64 lengths (wasm/wasm32_ir.py's SIZED)
-SIZED: list[str] = ["memcmp", "memchr", "memmem"]
-# machine_ir.WORD_READS: layout reads that load an object's word, by its index
-WORD_READS: dict[str, int] = {"union.tag": 0, "dyn.type": 0, "union.payload": 1, "union.raw": 1, "dyn.payload": 1, "dyn.raw": 1}
 # LLVM's ordered fcmp predicates and une, as WebAssembly's f64 comparisons
 FCMP_OPS: dict[str, int] = {"oeq": 0x61, "une": 0x62, "olt": 0x63, "ogt": 0x64, "ole": 0x65, "oge": 0x66}
 
@@ -80,8 +78,17 @@ class Func:
         self.ret = ""
         self.attrs: dict[str, str] = {}
         self.slots: dict[str, str] = {}
+        self.tuple_offsets: dict[str, int] = {}
+        self.frame_bytes = 0
         self.blocks: list[Block] = []
         self.cold: dict[str, str] = {}
+
+    def add_slot(self, name: str, t: str, kind: int) -> None:
+        if kind == 2:
+            self.tuple_offsets[name] = self.frame_bytes
+            self.frame_bytes += 8 * max(1, tslots(t))
+        else:
+            self.slots[name] = t
 
 
 class ClassDecl:
@@ -311,7 +318,7 @@ def parse(text: str) -> Module:
             if ins.op == "slot":
                 if len(fn.blocks) > 0:
                     raise Refused("a slot after the entry")
-                fn.slots[ins.res[0]] = ins.t
+                fn.add_slot(ins.res[0], ins.t, int(ins.fields.get("kind", "0")))
             else:
                 block.code.append(ins)
         else:
@@ -506,6 +513,8 @@ class Emitter:
         self.addr: dict[str, int] = {}
         self.relocs: list[int] = []
         self.recursion = False
+        self.stack_frames = False
+        self.frame_local = -1
         self.dispatch_local = -1
         # per function
         self.fn = Func("")
@@ -615,9 +624,8 @@ class Emitter:
         if key not in RUNTIME:
             raise Refused(f"runtime entry {key}")
         sym = rtsym(key)
-        if sym in SIZED:
-            sym = "pys_wasi_" + sym  # (wasm/wasi_stubs.c's, which take LP64's i64 lengths)
-        elif not sym.startswith("pys_"):
+        sym = LIBC_WRAPPERS.get(sym, sym)
+        if not sym.startswith("pys_"):
             raise Refused(f"runtime symbol {sym}")
         if sym not in self.imports:
             ll = [rtll(t) for t in rtsig(key)]
@@ -630,6 +638,9 @@ class Emitter:
     def collect_imports(self) -> None:
         # every runtime function the functions call, before function indexes are assigned
         for fn in self.m.funcs:
+            if fn.frame_bytes:
+                self.stack_frames = True
+                self.runtime("recursion.stack")
             for b in fn.blocks:
                 for i in b.code:
                     if i.op == "rt" and i.fields.get("entry", "").startswith("recursion."):
@@ -703,7 +714,15 @@ class Emitter:
         # push operand a as LLVM type ll
         v = a.v
         wt = wasm_type(ll)
-        if v.startswith("%"):
+        if v in self.fn.tuple_offsets:
+            if ll != "ptr":
+                raise Refused(f"tuple frame address {v} as {ll}")
+            self.get(self.frame_local)
+            offset = self.fn.tuple_offsets[v]
+            if offset:
+                self.i32c(offset)
+                self.op(0x6A)
+        elif v.startswith("%"):
             if v in self.fn.slots:
                 raise Refused(f"the address of slot {v} as a value")
             if v not in self.locals:
@@ -765,6 +784,7 @@ class Emitter:
                 self.local(f"%a{j}", I32)
         for s in fn.slots:
             self.local(s, wasm_type(value_ll(fn.slots[s])))
+        self.frame_local = self.scratch(I32) if fn.frame_bytes else -1
         self.bindex = {}
         for j in range(len(fn.blocks)):
             self.bindex[fn.blocks[j].label] = j
@@ -788,6 +808,8 @@ class Emitter:
                 self.inst(i)
         blocks = self.code
         self.code = bytearray()
+        if fn.frame_bytes:
+            self.enter_frame()
         if self.dispatch_local >= 0:
             self.op(0x03)
             self.op(VOID)
@@ -830,6 +852,33 @@ class Emitter:
         uleb(out, len(body))
         out.extend(body)
         return out
+
+    def enter_frame(self) -> None:
+        # Reserve an ABI-aligned frame on the reactor's linear-memory stack. Its
+        # pys_on_stack check must recognize *args tuples before a callee keeps them.
+        size = (self.fn.frame_bytes + 15) // 16 * 16
+        self.op(0x23)  # global.get rt.__stack_pointer (global 2)
+        uleb(self.code, 2)
+        self.op(0xAD)  # i64.extend_i32_u, so subtracting a large frame cannot wrap
+        self.op(0x23)  # global.get rt.pys_recursion_state
+        uleb(self.code, 1)
+        self.mem(0x29, 3, 16)  # native stack floor, including runtime call margin
+        self.i64c(size)
+        self.op(0x7C)
+        self.op(0x54)  # i64.lt_u
+        self.op(0x04)
+        self.op(VOID)
+        self.call_import(self.runtime("recursion.stack"), [])
+        self.op(0x00)
+        self.op(0x0B)
+        self.op(0x23)
+        uleb(self.code, 2)
+        self.i32c(size)
+        self.op(0x6B)  # i32.sub
+        self.op(0x22)  # local.tee frame
+        uleb(self.code, self.frame_local)
+        self.op(0x24)  # global.set rt.__stack_pointer
+        uleb(self.code, 2)
 
     def goto(self, label: str, extra_depth: int) -> None:
         # from block self.cur, to label: its phis' values (all read, then all set), then a br
@@ -948,12 +997,12 @@ class Emitter:
             self.i64c(int(kind))
             self.mem(0x37, 3, 0)
         elif op == "ret":
-            self.restore_depth()
+            self.restore_frame()
             if len(i.args) > 0:
                 self.push(i.args[0], value_ll(i.args[0].t))
             self.op(0x0F)
         elif op == "ret.none":
-            self.restore_depth()
+            self.restore_frame()
             if self.fn.ret == "dyn":
                 raise Refused("dynamic values")
             if self.fn.ret != "None":
@@ -1109,10 +1158,6 @@ class Emitter:
                 self.get(p)
                 self.push(v, ll)
                 self.mem(access(ll)[1], access(ll)[2], 8 * (k + 2))
-        elif op == "list.len":
-            self.address(i.args[0])
-            self.mem(0x29, 3, 0)
-            self.result(i, len(i.res) - 1, "int")
         elif op == "list.load":
             self.address(i.args[0])
             self.mem(0x28, 2, 16)  # (List.a: {len, cap, a})
@@ -1186,7 +1231,13 @@ class Emitter:
         else:
             raise Refused(f"runtime {key}")
 
-    def restore_depth(self) -> None:
+    def restore_frame(self) -> None:
+        if self.frame_local >= 0:
+            self.get(self.frame_local)
+            self.i32c((self.fn.frame_bytes + 15) // 16 * 16)
+            self.op(0x6A)
+            self.op(0x24)
+            uleb(self.code, 2)
         if self.depth_local >= 0:
             self.code.append(0x23)
             uleb(self.code, 1)
@@ -1443,7 +1494,7 @@ class Emitter:
         out = bytearray(b"\x00asm\x01\x00\x00\x00")
         section(out, 1, self.types.encode())
         imp = bytearray()
-        uleb(imp, 2 + len(self.import_order) + 1)
+        uleb(imp, 3 + len(self.import_order) + int(self.stack_frames))
         name_bytes(imp, "env")
         name_bytes(imp, "memory")
         imp.append(0x02)
@@ -1459,6 +1510,12 @@ class Emitter:
         imp.append(0x03)
         imp.append(I32)
         imp.append(0x00)
+        if self.stack_frames:
+            name_bytes(imp, "rt")
+            name_bytes(imp, "__stack_pointer")
+            imp.append(0x03)
+            imp.append(I32)
+            imp.append(0x01)  # mutable global shared with the reactor
         for sym in self.import_order:
             name_bytes(imp, "rt")
             name_bytes(imp, sym)
