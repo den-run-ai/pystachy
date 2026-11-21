@@ -308,15 +308,15 @@ print(c.step('abc'), c.pos)
         self.assertIn("", final.idoff)
         for fn in final.fns:
             if final.fn_home(fn.f) == "":
-                self.assertEqual(fn.lazyflag, {})
-                self.assertEqual(fn.lazybit, {})
+                self.assertEqual(fn.build.lazyflag, {})
+                self.assertEqual(fn.build.lazybit, {})
         for body in self.main_functions(final, ir).values():
             self.assertIsNone(BOXING.search(body))
             self.assertNotIn(".box.", body)
         # The same read/write-back shape still uses main's field-sharing optimization
         # in a module that tracks identity, rather than disabling that optimization.
         _, tracked = self.compile("# pystachy: dynamic-any\n" + source)
-        self.assertTrue(any(fn.lazyflag for fn in tracked[-1].fns if fn.f.ll == "@m.Cursor.step"))
+        self.assertTrue(any(fn.build.lazyflag for fn in tracked[-1].fns if fn.f.ll == "@m.Cursor.step"))
 
     def test_promoting_literals_and_chained_stores_follow_identity_scope(self):
         source = """# pystachy: python-int

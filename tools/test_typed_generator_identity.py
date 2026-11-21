@@ -185,7 +185,7 @@ class GeneratorIdentityVerifierTests(unittest.TestCase):
                 mutation(item)
                 error = StringIO()
                 with redirect_stderr(error), self.assertRaises(SystemExit):
-                    gen.verify_gen(fn, block, item, index)
+                    gen.verify(fn, False)
                 self.assertIn(message, error.getvalue())
                 checked.append(True)
             finally:
@@ -198,16 +198,20 @@ class GeneratorIdentityVerifierTests(unittest.TestCase):
         self.reject_mutation(lambda item: item.a.pop())
 
     def test_extra_identity_operand_is_rejected(self):
-        self.reject_mutation(lambda item: item.a.append(Val("null", "dyn")))
+        self.reject_mutation(lambda item: item.a.append(Val("null", "dyn")),
+                             message="gen.yield with 4 operands, where the operation table has 1-3")
 
     def test_identity_operand_must_have_box_type(self):
-        self.reject_mutation(lambda item: setattr(item.a[2], "t", "%ptr"))
+        self.reject_mutation(lambda item: setattr(item.a[2], "t", "%ptr"),
+                             message="gen.yield operand 2 needs dyn, got %ptr")
 
     def test_high_placeholder_must_have_pointer_type(self):
-        self.reject_mutation(lambda item: setattr(item.a[1], "t", "dyn"))
+        self.reject_mutation(lambda item: setattr(item.a[1], "t", "dyn"),
+                             message="gen.yield operand 1 needs %ptr, got dyn")
 
     def test_nonnumeric_payload_slot_is_rejected(self):
-        self.reject_mutation(lambda item: setattr(item.a[0], "t", "dyn"))
+        self.reject_mutation(lambda item: setattr(item.a[0], "t", "dyn"),
+                             message="gen.yield operand 0 needs %slot, got dyn")
 
     def test_nonnull_high_placeholder_is_rejected_without_wide_int(self):
         for promoting in [False, True]:
@@ -225,7 +229,8 @@ class GeneratorIdentityVerifierTests(unittest.TestCase):
     def test_optional_companion_and_null_high_are_checked(self):
         source = program(optional=True)
         self.reject_mutation(lambda item: item.a.pop(), source=source)
-        self.reject_mutation(lambda item: setattr(item.a[2], "t", "%ptr"), source=source)
+        self.reject_mutation(lambda item: setattr(item.a[2], "t", "%ptr"), source=source,
+                             message="gen.yield operand 2 needs dyn, got %ptr")
         self.reject_mutation(lambda item: setattr(item.a[1], "v", "%not_null"),
                              source=source, message="needs a null high placeholder")
 

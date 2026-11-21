@@ -1,0 +1,4 @@
+<enum 'Clean'> [<Clean.X: 1>]
+ValueError duplicate values found in <enum 'Gaps'>: C -> B
+ValueError duplicate values found in <flag 'Perm'>: BOTH -> RW
+[exit 0]

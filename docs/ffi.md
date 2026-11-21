@@ -506,6 +506,12 @@ Their checks and error messages are the comparison contract for native code;
 `tests/ffi/run.sh` compares both implementations. A program's own `ffi.py` or
 `ffi/` package takes precedence over the builtin module, as under CPython.
 
+`make test-ffi` uses the libpython of `PY`, and verification that of `.python-version`.
+`make python-versions PYTHONS="..."` runs the same suite with other interpreters. The daily
+[Python versions workflow](../.github/workflows/python-versions.yml) runs it with CPython 3.12,
+3.14 and 3.15 (embedding, and `abi3` modules), 3.14t (embedding) and 3.15t (embedding, and `abi3t`
+modules); see [other CPython versions](testing.md#other-cpython-versions).
+
 <a id="deviations"></a>
 ## Deviations from CPython and the twin
 

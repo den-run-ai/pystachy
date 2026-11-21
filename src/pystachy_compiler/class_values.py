@@ -181,10 +181,10 @@ def gen_class_value_box(self, v: Val) -> Val:
     return Val(self.phi(ph), "dyn")
 
 
-def boxed_class_record(self, box: Val) -> str:
+def boxed_class_record(self, box: Val, t: str = "%ptr") -> str:
     # A metatype box holds its record pointer in Dyn.v, the second i64 slot,
     # including on wasm32 where Dyn.t occupies only four bytes.
-    return self.mload("%ptr", self.maddr("int", box.v, "1"))
+    return self.mload(t, self.maddr("int", box.v, "1"))
 
 
 def gen_class_value_isa(self, v: Val, t: str) -> str:
@@ -218,7 +218,7 @@ def gen_class_value_unbox(self, v: Val, t: str) -> Val:
     if len(self.clsused) > 0:
         raise ClassBoxes()  # (the type may be inferred of a class a module read: that module's class box)
     self.guard(self.scalar("xor", [Val(self.class_value_isa(v, t), "bool"), Val("true", "bool")]), f"TypeError: expected {typestr(t)}")
-    return Val(boxed_class_record(self, v), t)
+    return Val(boxed_class_record(self, v, t), t)
 
 
 def gen_class_value_kinds(self, c: str) -> list[str]:
@@ -262,7 +262,7 @@ def gen_class_value_of(self, v: Val, known: bool) -> Val:
             if problem != "":
                 self.err(problem)
     # (an object of one of several classes without a common base, a union's: any class's)
-    return Val(self.refl_class_of(v, known).v, "type[" + (t if t in self.classes else "object") + "]")
+    return self.refl_class_of(v, known, "type[" + (t if t in self.classes else "object") + "]")
 
 
 def gen_class_value_type(self, v: Val, known: bool) -> Val:
@@ -280,7 +280,7 @@ def gen_class_value_type(self, v: Val, known: bool) -> Val:
     for leaf in self.refl_type_of(v, "__name__", known):
         if leaf.c in self.classes and self.class_value_problem(leaf.c) != "":
             self.err(self.class_value_problem(leaf.c))
-    return Val(self.refl_class_of(v, known).v, "type[object]")
+    return self.refl_class_of(v, known, "type[object]")
 
 
 def gen_class_value_objects(self, t: str) -> bool:

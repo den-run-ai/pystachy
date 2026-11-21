@@ -1,0 +1,15 @@
+0 1.5 0 0.0 True 1 1 0.5
+2.5 2.5 2.5 False
+0 0 True True
+4.0 1.5 1.3333333333333333
+5.5 3 3 3
+0.5 4 0.5
+Point(1, 2) 3 3 True True
+Point(1.5, 2) 3.5 3.5 False True
+Point3(1, 2.5, 3) 3.5 True False
+Point3(0.5, 0.25, 0.125) 0.75 False False
+Point(-1.0, 2.0) 3.0 1.0 False False
+1 2 1.5 2 2.5 True False
+0 3 3 True
+boom 3 1.5
+[exit 0]

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import copy
-import json
 import os
 from pathlib import Path
 import subprocess
@@ -94,7 +93,7 @@ class GeneratorStorageTests(unittest.TestCase):
                  "--output", str(output), "--typed-after-only", "--timeout", "60"],
                 cwd=ROOT, env=env, capture_output=True, text=True, timeout=70)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            snapshot = json.loads((output / "typed-after.json").read_text())
+            snapshot = boundary.read_snapshot((output / "typed-after.json"), boundary.MAX_PROGRAM_BYTES)[0]
         report, _ = storage.check_all(snapshot)
         self.assertEqual(report["status"], "accepted", report)
         self.assertEqual(report["totals"]["low_word_uses"], 34)
@@ -118,7 +117,7 @@ class GeneratorStorageTests(unittest.TestCase):
                  "--output", str(output), "--typed-after-only", "--timeout", "60"],
                 cwd=ROOT, env=env, capture_output=True, text=True, timeout=70)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            snapshot = json.loads((output / "typed-after.json").read_text())
+            snapshot = boundary.read_snapshot((output / "typed-after.json"), boundary.MAX_PROGRAM_BYTES)[0]
         report, _ = storage.check_all(snapshot)
         self.assertEqual(report["status"], "accepted", report)
         self.assertGreater(report["totals"]["low_word_uses"], 0)

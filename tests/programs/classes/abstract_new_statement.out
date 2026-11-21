@@ -1,0 +1,5 @@
+pick Can't instantiate abstract class Half without an implementation for abstract method 'f'
+s
+boom Can't instantiate abstract class Half without an implementation for abstract method 'f'
+statement Can't instantiate abstract class Half without an implementation for abstract method 'f'
+[exit 0]

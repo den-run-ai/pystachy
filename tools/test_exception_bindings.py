@@ -180,7 +180,7 @@ class BindingCompileTests(unittest.TestCase):
             stats["frames"].append(generator.fn)  # retain identities across local retries
             if legacy:
                 node = function.node
-                generator.fn.otherbinds = FullScan(node.kids if node.kind == "block" else node.kids[2].kids)
+                generator.fn.build.otherbinds = FullScan(node.kids if node.kind == "block" else node.kids[2].kids)
 
         def index(body, out):
             nonlocal index_depth
@@ -202,7 +202,7 @@ class BindingCompileTests(unittest.TestCase):
             current.append(generator.fn)
             try:
                 original_bind(generator, name, value, kind)
-                stats["queries"].append((generator.fn, generator.fn.otherbinds))
+                stats["queries"].append((generator.fn, generator.fn.build.otherbinds))
             finally:
                 current.pop()
 
@@ -251,7 +251,7 @@ class BindingCompileTests(unittest.TestCase):
                     # The empty index is complete, not a signal to scan again.
                     self.assertEqual(new["queries"][0][1], {})
                     self.assertTrue(all(index is new["queries"][0][1] for _, index in new["queries"]))
-                    self.assertTrue(all(frame.otherbinds is None for frame in new["frames"]))
+                    self.assertTrue(all(frame.build.otherbinds is None for frame in new["frames"]))
 
     def test_nested_template_compilation_keeps_the_outer_index(self):
         result, _, new = self.pair("""
@@ -284,7 +284,7 @@ class BindingCompileTests(unittest.TestCase):
         self.assertEqual(len(inner), 1)
         self.assertIs(outer[0], outer[1])
         self.assertIsNot(outer[0], inner[0])
-        self.assertTrue(all(frame.otherbinds is None for frame in new["frames"]))
+        self.assertTrue(all(frame.build.otherbinds is None for frame in new["frames"]))
 
     def test_local_retry_rebuilds_the_index_and_plain_functions_stay_lazy(self):
         result, _, new = self.pair("""
@@ -331,7 +331,7 @@ class BindingCompileTests(unittest.TestCase):
         self.assertEqual(result[0], 0, result[1])
         self.assertEqual(new["builds"], {"<module>": 1})
         self.assertIs(new["queries"][0][1], new["queries"][1][1])
-        self.assertTrue(all(frame.otherbinds is None for frame in new["frames"]))
+        self.assertTrue(all(frame.build.otherbinds is None for frame in new["frames"]))
 
     def test_existing_shadowing_and_cleanup_cases_keep_exact_ir(self):
         for name in ("exc_as_rebind", "exc_as_unbound", "exc_nested", "exc_finally_break",

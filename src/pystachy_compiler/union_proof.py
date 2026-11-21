@@ -7,9 +7,9 @@ stable. It keeps one state per block, not a product of whole-function execution 
 from __future__ import annotations
 from src.pystachy_compiler.dataflow import forward_fixpoint, live_values
 from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, slot_register
-from src.pystachy_compiler.specs import BIG
+from src.pystachy_compiler.specs import BIG, RUNTIME
 from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join, union_tags
-from src.pystachy_compiler.utils import gelem, is_gen, is_opt, is_union, targs, umembers
+from src.pystachy_compiler.utils import gelem, is_gen, is_opt, is_union, rt_generic, rtsig, targs, umembers
 
 
 def proof_number(v: str, start: int, limit: int) -> int:
@@ -246,6 +246,7 @@ class UnionProof:
         # have the same type; share its domain only within this proof invocation.
         self.domains: dict[str, list[str]] = {}
         self.native: dict[str, str] = {}
+        self.sigs: dict[str, list[str]] = {}  # (runtime_type: each runtime function's signature, rtsig)
         self.memtypes: dict[str, str] = {}
         self.declaredtypes: dict[str, str] = {}  # (declared(), by value)
         self.defs: dict[str, Ins] = {}
@@ -294,9 +295,10 @@ class UnionProof:
             t = fn.f.ptypes[n]
             v = "%a" + str(n)
             self.native[v] = t
-            if t.startswith("*"):
+            # (an address &T, or a packed slot *T, which this proof has always treated alike)
+            if t.startswith("&") or t.startswith("*"):
                 self.memtypes[v] = t[1:]
-            self.typebase(("MU:" if t.startswith("*") else "U:") + v, t[1:] if t.startswith("*") else t)
+            self.typebase(("MU:" if t.startswith("&") or t.startswith("*") else "U:") + v, t[1:] if t.startswith("&") or t.startswith("*") else t)
         for i in fn.slots:
             if i.k == 2:
                 # (a stack tuple's register is a tuple value, not storage that is loaded; its
@@ -336,8 +338,11 @@ class UnionProof:
                         self.roots[a.v] = a.v
                         self.native[a.v] = consts[a.v].text
                 if len(i.r) == 1:
-                    self.typebase(("MU:" if i.t.startswith("*") else "U:") + "%t" + str(i.r[0]), i.t[1:] if i.t.startswith("*") else i.t)
-                    if i.t.startswith("*") and i.op != "rt":
+                    # (an address, or the packed slot of a list read or a runtime call; a packed
+                    # slot that another op makes is a value, as its %slot type made it)
+                    held = i.t.startswith("&") or (i.t.startswith("*") and (i.op == "list.load" or i.op == "rt"))
+                    self.typebase(("MU:" if held else "U:") + "%t" + str(i.r[0]), i.t[1:] if held else i.t)
+                    if held and i.op != "rt":
                         self.memtypes["%t" + str(i.r[0])] = i.t[1:]
                 for j in range(len(i.a)):
                     v = i.a[j].v
@@ -363,7 +368,7 @@ class UnionProof:
         for b in fn.blocks:
             for i in b.code:
                 if (i.op == "rt" and len(i.r) == 1) or i.op == "list.load":
-                    self.native["%t" + str(i.r[0])] = self.runtime_type(i, i.t)
+                    self.native["%t" + str(i.r[0])] = self.runtime_type(i, i.t, 0)
                 if i.op == "rt" and i.s == "vtuple.get" and len(i.r) == 1 and len(i.a) == 2:
                     # A tuple[U, ...]'s item at an index, which pys_vtuple_get checks against its
                     # length: a box of that union, as an item slot's (below) or a list's (list.get)
@@ -398,7 +403,7 @@ class UnionProof:
                     if (i.op == "mach.addr" or i.op == "field.addr") and i.a[0].v in self.roots:
                         self.roots[r] = self.roots[i.a[0].v]
                     if "U:" + r in wanted:
-                        if (i.op == "phi" or i.op == "slot.pack" or i.op == "slot.unpack"):
+                        if (i.op == "phi" or i.op == "slot.pack" or i.op == "slot.unpack" or i.op == "cast"):
                             for a in i.a:
                                 wanted["U:" + a.v] = True
                         if i.op == "select":
@@ -439,7 +444,7 @@ class UnionProof:
 
     def transport_closure(self, i: Ins, vals: dict[str, bool], slots: dict[str, bool], bits: bool) -> None:
         r = "%t" + str(i.r[0]) if len(i.r) > 0 else ""
-        if (i.op == "phi" or i.op == "select" or i.op == "slot.pack") and (bits or (i.t == "int" or i.t == "%slot")):
+        if (i.op == "phi" or i.op == "select" or i.op == "slot.pack" or i.op == "cast") and (bits or (i.t == "int" or i.t == "%slot" or i.t.startswith("*"))):
             aa = i.a[1:] if i.op == "select" else i.a
             for a in aa:
                 if a.v in vals:
@@ -459,7 +464,8 @@ class UnionProof:
             if not bits and i.a[0].v in slots and i.a[1].v.startswith("%"):
                 vals[i.a[1].v] = True
 
-    def runtime_type(self, i: Ins, t: str) -> str:
+    def runtime_type(self, i: Ins, t: str, at: int) -> str:
+        # what an rt op's (or a list.load's) result (at 0) or operand at-1 of type t holds
         if len(i.a) == 0:
             return t
         receiver = self.native.get(i.a[0].v, "")
@@ -473,6 +479,14 @@ class UnionProof:
             return targs(receiver)[0 if t == "*K" else 1]
         if (receiver.startswith("list[") or receiver.startswith("set[") or receiver.startswith("frozenset[") or receiver.startswith("aset[")) and t == "*T":
             return targs(receiver)[0]
+        if i.op == "rt" and t.startswith("*") and i.s in RUNTIME:
+            # (a packed slot of a type that Gen.instantiate gave in place of its signature's
+            # variable: the item it holds, as the rules above read a variable's)
+            if i.s not in self.sigs:
+                self.sigs[i.s] = rtsig(i.s)
+            sig = self.sigs[i.s]
+            if at < len(sig) and rt_generic(sig[at]):
+                return t[1:]
         return t
 
     def typebase(self, k: str, t: str) -> None:
@@ -489,7 +503,7 @@ class UnionProof:
         ts: list[str] = []
         if is_union(u):
             ts = umembers(u)
-        elif t != "" and not t.startswith("%") and not t.startswith("*") and t != "#":
+        elif t != "" and not t.startswith("%") and not t.startswith("*") and not t.startswith("&") and t != "#":
             ts = [u]
         if len(ts) > 0:
             if is_opt(t) and "None" not in ts:
@@ -529,7 +543,7 @@ class UnionProof:
     def declared(self, v: str) -> str:
         # The type that value v's definition declares: a load's is that of its storage
         # (memtypes: a parameter's, a local's, a global's or a field's declaration), and a
-        # transport's (phi, select, slot.pack, slot.unpack) is the one its operands all declare
+        # transport's (phi, select, slot.pack, slot.unpack, cast) is the one its operands all declare
         # (declared_from), never the op's own annotation, which a narrower type could spell;
         # "" where that cannot be established. Else its definition's.
         if v not in self.declaredtypes:
@@ -546,7 +560,7 @@ class UnionProof:
             return "?"
         if d is not None and (d.op == "mem.load" or d.op == "mach.load"):
             return self.memtypes[d.a[0].v] if len(d.a) > 0 and d.a[0].v in self.memtypes else ""
-        if d is not None and (d.op == "phi" or d.op == "select" or d.op == "slot.pack" or d.op == "slot.unpack"):
+        if d is not None and (d.op == "phi" or d.op == "select" or d.op == "slot.pack" or d.op == "slot.unpack" or d.op == "cast"):
             if v in seen:
                 return "?"
             seen[v] = True
@@ -560,12 +574,12 @@ class UnionProof:
         return self.native.get(v, "")
 
     def box_select(self, i: Ins) -> bool:
-        # Is select i a machine pointer chosen between None and boxes made here (Gen.ubox's,
-        # for an object that may be None: null, else its box)? Its result is one of them, so
-        # it has their members and None though its own type names no union. Any other
-        # operand, a pointer of unknown provenance, leaves the result unknown as before.
-        if i.t != "%ptr":
-            return False
+        # Is each of select i's values None or a box made here, whatever the select's type? (Gen.ubox
+        # boxes an object that may be None so, in a select of the union's type: null, else its
+        # box.) Its result is one of them, so it has their members and None whatever its condition
+        # says of its object, a class whose domain has no None to select (a later read needs its
+        # own None test). Any other value, a pointer of unknown provenance, leaves the result to
+        # the select's own rule
         for a in i.a[1:]:
             d = self.defs[a.v] if a.v in self.defs else None
             if a.v != "null" and (d is None or d.op != "rt" or (d.s != "ubox" and d.s != "ubox_opt")):
@@ -587,7 +601,7 @@ class UnionProof:
             return k
         opaque = False
         if a.v in self.defs:
-            opaque = (self.defs[a.v].op == "phi" or self.defs[a.v].op == "select" or self.defs[a.v].op == "mem.load" or self.defs[a.v].op == "mach.load" or self.defs[a.v].op == "union.payload" or self.defs[a.v].op == "union.raw" or self.defs[a.v].op == "slot.pack")
+            opaque = (self.defs[a.v].op == "phi" or self.defs[a.v].op == "select" or self.defs[a.v].op == "mem.load" or self.defs[a.v].op == "mach.load" or self.defs[a.v].op == "union.payload" or self.defs[a.v].op == "union.raw" or self.defs[a.v].op == "slot.pack" or self.defs[a.v].op == "cast")
         if k not in s.d and (a.v not in self.bitsneeded or not opaque):
             t = self.native[a.v] if a.v in self.native else "int" if self.integer(a.v) else "?"
             s.set(k, [t])
@@ -654,7 +668,7 @@ class UnionProof:
                     del s.bt[v]
                 if v in s.bf:
                     del s.bf[v]
-        if (op != "phi" and op != "select" and op != "mem.load" and op != "mach.load" and op != "union.payload" and op != "union.raw" and op != "slot.pack"):
+        if (op != "phi" and op != "select" and op != "mem.load" and op != "mach.load" and op != "union.payload" and op != "union.raw" and op != "slot.pack" and op != "cast"):
             for n in i.r:
                 v = "%t" + str(n)
                 if v in self.bitsneeded:
@@ -757,6 +771,14 @@ class UnionProof:
                 s.copy("B:" + r, self.bits(s, a[0]))
             else:
                 s.set("B:" + r, [a[0].t])
+        elif op == "cast":
+            # (the value it reads, at another type: lowering erases it, and its uses read that value)
+            if "U:" + r in self.base or "U:" + a[0].v in s.d:
+                s.copy("U:" + r, self.box(s, a[0].v))
+            if r in self.bitsneeded:
+                s.copy("B:" + r, self.bits(s, a[0]))
+            if r in self.tagvals:
+                s.copy("T:" + r, self.tag(s, a[0].v))
         elif op == "slot.unpack":
             if "U:" + r in self.base:
                 if "U:" + a[0].v in s.d:
@@ -797,8 +819,6 @@ class UnionProof:
                     xt.cond(y, True)
                     s.boolean(r, xt, union_join(xf, yf))
         elif op == "select" and self.box_select(i):
-            # Either operand: the condition is an object's own None test, and a class type's
-            # domain has no None for it to select. A later read needs its own None test.
             s.set("U:" + r, union_tags(s.dom(self.box(s, a[1].v)), s.dom(self.box(s, a[2].v))))
         elif op == "select":
             yes = s.conditional(a[0].v, True)
@@ -823,9 +843,9 @@ class UnionProof:
         if checking:
             for j in range(len(a)):
                 operand = a[j]
-                transport = (op == "phi" or op == "select" or op == "slot.pack" or op == "slot.unpack" or op == "mem.load" or op == "mach.load") or (op == "rt" and ((i.s == "ubox" and j == 1) or (i.s == "box" and j == 0)))
+                transport = (op == "phi" or op == "select" or op == "slot.pack" or op == "slot.unpack" or op == "mem.load" or op == "mach.load" or op == "cast") or (op == "rt" and ((i.s == "ubox" and j == 1) or (i.s == "box" and j == 0)))
                 if not transport:
-                    t = self.runtime_type(i, operand.t) if op == "rt" else operand.t
+                    t = self.runtime_type(i, operand.t, j + 1) if op == "rt" else operand.t
                     if op == "gen.yield" and j == 0 and is_gen(self.fn.f.ret):
                         # (the word a suspension yields is its value as the generator's element
                         # type, gen_slots, which its consumer's slot.unpack reads)

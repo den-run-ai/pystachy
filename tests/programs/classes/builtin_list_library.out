@@ -1,0 +1,19 @@
+['3', '1', '2'] [3, 1, 2] 6 [3, 1, 2, 3, 1, 2]
+{0: 3, 1: 1, 2: 2} {3: 9, 1: 1, 2: 4} True
+3 1 [2]
+[2, 3] 1 [2, 3]
+[2, 2, 3] 2
+[2, 2, 3] True
+2 True 9 True
+Stack True
+[1, 2, 2]
+3 3 False True
+99 True
+[[], [0, 5], [1]] [[], [1], [0, 5]] [1] True 2 1
+[0, 2, 1] [5, 1]
+TypeError: unhashable type: 'Stack'
+['x', 'y'] ['z'] a:2 7:1 a 8 ['x', 'y', 'z'] Tagged
+['one', 'three'] 5 0 one | three
+0 False
+1.5 [1.5]
+[exit 0]

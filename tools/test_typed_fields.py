@@ -28,7 +28,7 @@ def fixture():
     return g
 
 
-def address(index=0, t="*int"):
+def address(index=0, t="&int"):
     i = Ins("field.addr", t, "")
     i.k = index
     i.a = [Val("%a0", "Box")]
@@ -45,7 +45,7 @@ def function(i):
 
 class TypedFieldTests(unittest.TestCase):
     def test_fields_flags_and_exact_lowering(self):
-        for index, t in enumerate(("*int", "*str", "*bool", "*bool")):
+        for index, t in enumerate(("&int", "&str", "&bool", "&bool")):
             with self.subTest(index=index):
                 g = fixture()
                 i = address(index, t)
@@ -60,16 +60,16 @@ class TypedFieldTests(unittest.TestCase):
         ci = g.classes["Box"]
         ci.fbox = {"value": 4}
         ci.nbox = 1
-        g.verify(function(address(4, "*dyn")), False)
+        g.verify(function(address(4, "&dyn")), False)
         g.fgep(Val("%a0", "Box"), 4)
-        self.assertEqual(g.fn.blocks[0].code[-1].t, "*dyn")
+        self.assertEqual(g.fn.blocks[0].code[-1].t, "&dyn")
         error = StringIO()
         with redirect_stderr(error), self.assertRaises(SystemExit):
-            g.verify(function(address(4, "*int")), False)
+            g.verify(function(address(4, "&int")), False)
         self.assertIn("declared member type", error.getvalue())
 
     def test_invalid_layout_index_type_shape_and_metadata(self):
-        cases = [("k", -1), ("k", 4), ("t", "int"), ("t", "*float"),
+        cases = [("k", -1), ("k", 4), ("t", "int"), ("t", "&float"), ("t", "*int"),
                  ("s", "value"), ("x", "int"), ("b", ["entry"]),
                  ("a", []), ("a", [Val("%a0", "opt[Box]")]),
                  ("a", [Val("%a0", "Missing")]),
@@ -97,7 +97,7 @@ class TypedFieldTests(unittest.TestCase):
     def test_field_addresses_keep_memory_effects(self):
         g = fixture()
         p = g.fgep(Val("%a0", "Box"), 1)
-        self.assertEqual(g.fn.blocks[0].code[-1].t, "*str")
+        self.assertEqual(g.fn.blocks[0].code[-1].t, "&str")
         load = Ins("mach.load", "%ptr", "")
         load.a = [Val(p, "%ptr")]
         store = Ins("mach.store", "", "")
@@ -144,12 +144,12 @@ class TypedFieldTests(unittest.TestCase):
                         same = g.fgep(Val("%a0", "Box"), 0)
                         other = g.fgep(Val("%a0", cls), index)
                         if native_store:
-                            g.mem_store(Val(p, "*int"), Val("41", "int"))
+                            g.mem_store(Val(p, "&int"), Val("41", "int"))
                         else:
                             g.mstore("int", "41", p)
                         g.mstore("str" if index == 1 else "int",
                                  "@text" if index == 1 else "99", other)
-                        result = g.mem_load(Val(same, "*int")).v if native_load else g.mload("int", same)
+                        result = g.mem_load(Val(same, "&int")).v if native_load else g.mload("int", same)
                         g.fn.n = g.n
                         vs = Values(g.fn, {"entry": []})
                         self.assertEqual(g.canon(vs, result), result if expected is None else expected)
@@ -166,7 +166,7 @@ class TypedFieldTests(unittest.TestCase):
                     self.assertFalse(i.op == "raw" and "getelementptr %C." in i.s)
                     if i.op == "field.addr":
                         captured.append(i)
-                        self.assertTrue(i.t.startswith("*"))
+                        self.assertTrue(i.t.startswith("&"))
                         self.assertIn(i.a[0].t, g.classes)
             lower(g, fn)
 

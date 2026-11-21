@@ -16,6 +16,7 @@ class SharedCompilerWorkflowTests(unittest.TestCase):
         for filename, consumer, runner in (
             ('variants.yml', 'variant', 'tools/variants.sh'),
             ('coverage.yml', 'runtime', 'tools/runtime_coverage.sh'),
+            ('python-versions.yml', 'python', 'tools/python_versions.sh "$TARGET" "$COMPILER" build/verify'),
         ):
             with self.subTest(workflow=filename):
                 jobs = workflow(filename)['jobs']
@@ -72,6 +73,25 @@ class SharedCompilerWorkflowTests(unittest.TestCase):
         self.assertNotIn('needs', coverage['hosted'])  # Hosted instrumentation stays independent.
         self.assertEqual(coverage['runtime-report']['needs'], 'runtime')
         self.assertEqual(coverage['hosted-report']['needs'], 'hosted')
+
+    def test_other_pythons_restore_with_the_pinned_one_and_cover_every_other_minor(self):
+        job = workflow('python-versions.yml')['jobs']['python']
+        steps = job['steps']
+        restore = next(i for i, s in enumerate(steps) if s.get('run', '').startswith('python3 tools/verification_bootstrap.py restore'))
+        target = next(i for i, s in enumerate(steps) if s.get('id') == 'target')
+        execute = next(i for i, s in enumerate(steps) if s.get('run', '').startswith('tools/python_versions.sh'))
+        # The producer's Python restores the bootstrap; the other one is set up after it.
+        self.assertLess(restore, target)
+        self.assertLess(target, execute)
+        self.assertEqual(steps[target]['with'], {'python-version': '${{ matrix.python }}'})
+        self.assertEqual(steps[execute]['env'], {'TARGET': '${{ steps.target.outputs.python-path }}'})
+        pinned = (ROOT / '.python-version').read_text().strip()
+        versions = job['strategy']['matrix']['python']
+        minors = {version.rstrip('t').rsplit('.', 1)[0] for version in versions}
+        self.assertEqual(minors, {'3.11', '3.12', '3.14', '3.15'})
+        self.assertNotIn(pinned.rsplit('.', 1)[0], minors)
+        # Every free-threaded build has its GIL build beside it.
+        self.assertTrue(all(version[:-1] in versions for version in versions if version.endswith('t')))
 
     def test_scripts_continue_to_build_private_configuration_specific_runtimes(self):
         variant = (ROOT / 'tools/variants.sh').read_text()

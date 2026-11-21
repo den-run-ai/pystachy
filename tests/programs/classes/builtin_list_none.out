@@ -1,0 +1,20 @@
+True False True None None False True
+len object of type 'NoneType' has no len()
+index 'NoneType' object is not subscriptable
+append 'NoneType' object has no attribute 'append'
+for 'NoneType' object is not iterable
+sorted 'NoneType' object is not iterable
+sum 'NoneType' object is not iterable
+list 'NoneType' object is not iterable
+in argument of type 'NoneType' is not iterable
+store 'NoneType' object does not support item assignment
+del 'NoneType' object does not support item deletion
+slice 'NoneType' object is not subscriptable
+reversed 'NoneType' object is not reversible
+unpack cannot unpack non-iterable NoneType object
+star Value after * must be an iterable, not NoneType
+top 'NoneType' object has no attribute 'top'
+max 'NoneType' object is not iterable
+tuple 'NoneType' object is not iterable
+lt '<' not supported between instances of 'NoneType' and 'list'
+[exit 0]

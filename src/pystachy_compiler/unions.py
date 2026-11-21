@@ -1,7 +1,7 @@
 """Explicit closed scalar, container and native reference unions."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import ann_target
-from src.pystachy_compiler.diagnostics import dynamic_program, int_lists
+from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, where
 from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import owner
@@ -216,16 +216,16 @@ def gen_utag(self, t: str) -> int:
         self.utags[t] = len(self.utags) + 1
     return self.utags[t]
 
-def gen_ubox(self, v: Val, m: str) -> str:
-    # v, of member type m, as a union's box (a class's object that may be None: null)
-    b = self.rt("pys_ubox", "ptr", [f"i64 {self.utag(m)}", "i64 " + self.to_slot(Val(v.v, m))])
+def gen_ubox(self, v: Val, m: str, u: str) -> str:
+    # v, of member type m, as a box of union u (a class's object that may be None: null)
+    b = self.rt("pys_ubox", "ptr", [f"i64 {self.utag(m)}", "i64 " + self.to_slot(Val(v.v, m), False, True)], t=u)
     if m not in self.classes or v.v in self.nn:
         return b
-    return self.select(self.ptr_cmp('==', v, Val('null', 'None')).v, Val('null', '%ptr'), Val(b, '%ptr'))
+    return self.select(self.ptr_cmp('==', v, Val('null', 'None')).v, Val('null', u), Val(b, u))
 
 def gen_uget(self, u: Val, m: str) -> Val:
     # the value a union's box u holds, known to be of member type m
-    i = Ins("union.payload", "%slot", m)
+    i = Ins("union.payload", "*" + m, m)
     i.a = [u]
     self.put(i, 2)
     return self.from_slot(tmpname(i.r[1]), m).identity(u)
@@ -293,7 +293,7 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
             # None holds no box for: Pystachy's TypeError, where CPython stores the None)
             self.notnone(v, f"TypeError: a value used as {typestr(t)} is None; annotate it {typestr(t)} | None")
             self.nn[v.v] = True
-        return Val(self.ubox(v, src), t).identity(v)
+        return Val(self.ubox(v, src, t), t).identity(v)
     if not none_ok:
         if self.join_hint(t, v.t):
             return Val("undef", t)  # (see join_hint)
@@ -358,11 +358,11 @@ def gen_class_union(self, v: Val, nt: str) -> Val:
             no = self.label()
             self.cbr(hit, yes, no)
             self.place(yes)
-            self.incoming(ph, self.ubox(Val(v.v, m), m), self.cur)
+            self.incoming(ph, self.ubox(Val(v.v, m), m, nt), self.cur)
             self.br(end)
             self.place(no)
         else:
-            self.incoming(ph, self.ubox(Val(v.v, m), m), self.cur)
+            self.incoming(ph, self.ubox(Val(v.v, m), m, nt), self.cur)
             self.br(end)
     self.place(end)
     return Val(self.phi(ph), nt).identity(v)
@@ -808,9 +808,94 @@ def gen_fnkey(self, f: FnInfo) -> str:
     return k + "(" + self.stable(f.ikey) + ")" if f.inst else k
 
 
+def field_home(self, ci: ClassInfo, name: str) -> ClassInfo:
+    # the class that declares field name of class ci (field_root): of a class template's
+    # specialization, the template, where its body annotates the field float, int or str (its
+    # specializations share that annotation, and so the join of a value given to it: ann_takes)
+    root = self.field_root(ci, name)
+    return self.classes[root.origin] if root.origin != "" and name in self.classes[root.origin].fann else root
+
+
 def gen_field_key(self, ci: ClassInfo, name: str) -> str:
     # the key for joins of field name of class ci: of the class that declares it (see stable)
-    return f"field:{self.stable(self.field_root(ci, name).name)}.{name}"
+    return f"field:{self.stable(field_home(self, ci, name).name)}.{name}"
+
+
+FLOATAT = "float:at"  # (no location's key: where the program first gave an int to one annotated float)
+MEMBERAT = "member:at"  # (and where it first gave an enum member to one annotated int or str, its types)
+ANNTYPES = ["float", "int", "str"]  # (the annotations whose locations join: ann_takes)
+
+
+def float_takes(vt: str) -> bool:
+    # is vt the type of a number that a location annotated float holds too, as it is: an int (a
+    # promoting one as well) or a bool, which PEP 484 accepts where a float is expected and
+    # CPython stores unconverted, or a union of numbers, as such a location has once it joined.
+    # Only a store that was an error joins one (join_hint), which then is an int | float (or a
+    # bool | float, ...), as if annotated so; what holds only floats keeps its type
+    return vt == "int" or vt == "bool" or vt == BIG or (is_union(vt) and all([m == "int" or m == "float" or m == "bool" for m in umembers(vt)]))
+
+
+def member_takes(self, t: str, vt: str) -> bool:
+    # is vt the type of a member of an enum class whose objects are also CPython's ints (IntEnum,
+    # IntFlag) or strs (StrEnum), where t is that type (int or str: enum_builtin), or a union of
+    # such members and t: a location annotated t holds one as it is, as CPython stores it, and its
+    # class, repr(), type() and isinstance() stay the member's. Only a store that was an error
+    # joins one (join_hint): the location then holds a union of both, an int | C, as if annotated
+    # so; what holds only ints or strs keeps its type
+    if is_union(vt):
+        return len([m for m in umembers(vt) if m != t and not member_takes(self, t, m)]) == 0
+    return (t == "int" or t == "str") and vt in self.classes and self.enum_builtin(vt) == t
+
+
+def ann_takes(self, t: str, vt: str) -> bool:
+    # does a location annotated t (float, int or str, ANNTYPES), or of the union an earlier join
+    # gave it, hold a value of type vt too, as it is (float_takes, member_takes)
+    if is_union(t):
+        return len([m for m in umembers(t) if m in ANNTYPES and ann_takes(self, m, vt)]) > 0
+    return (t == "float" and float_takes(vt)) or member_takes(self, t, vt)
+
+
+def ann_open(self) -> bool:
+    # may a location annotated float, int or str join now: not in an attempt that an error
+    # declines (xtry: a comparison's or an adapter's of a program with Any values), whose int for
+    # a float declines it, as before, so that no declined code widens storage; a narrowing's
+    # attempt drops its joins where it is declined (err)
+    return self.xtry == "" or self.xtry.startswith("narrow:")
+
+
+def ann_site(t: str) -> bool:
+    # can a location of type t be one annotated float, int or str, before or after its join
+    # (ann_takes)
+    return t in ANNTYPES or (is_union(t) and len([m for m in umembers(t) if m in ANNTYPES]) > 0)
+
+
+def field_value(self, ci: ClassInfo, name: str, v: Val) -> Val:
+    # v as a value of field name of class ci, where no store of the object's field takes it: the
+    # default its class body gives it, or the argument of the __init__ @dataclass writes. An int
+    # for a field annotated float joins the field, as a store does (setfield, join_hint), and so
+    # does an enum member for one annotated int or str
+    t = ci.ftypes[name]
+    if not ann_site(t) or not ann_takes(self, t, v.t) or name not in field_home(self, ci, name).fann:
+        return self.coerce(v, t)
+    was = self.join_at("ann:field", self.field_key(ci, name), t)
+    cv = self.coerce(v, t)
+    self.join_at(was[0], was[1], was[2])
+    return cv
+
+
+def ann_returns(f: FnInfo) -> bool:
+    # may the return of f, annotated -> float, -> int or -> str, join with what it returns
+    # (ann_takes; join_hint, whose key is its def's, "return:" and the line: its instances and its
+    # class's specializations share the join): a function's or a method's whose def has the
+    # annotation, but a special method's, whose result the operation that calls it checks, and a
+    # function that C or CPython calls. Of the functions the compiler writes (a Callable's
+    # adapter, a dispatcher, ...), only a dataclass field's default_factory, whose join is the
+    # field's
+    if f.synthetic:
+        return f.name.endswith(".factory")
+    if f.node.kind != "def" or len(f.node.kids) < 3 or f.node.kids[1].kind == "noann" or f.gen or f.extern or f.export or f.pyexport or f.iters:
+        return False
+    return f.cls == "" or not (f.name.startswith("__") and f.name.endswith("__"))
 
 
 def gen_local_hint(self, name: str) -> str:
@@ -833,21 +918,29 @@ def gen_join_hint(self, t: str, vt: str) -> bool:
     # join_at set it), does not take: unless this is the last pass, a join gives the location
     # the union of both types, as if annotated (Gen.newhints, which the next pass compiles it
     # with: see Rejoin), and the store is dropped; False where the location is annotated or
-    # another kind's, or the union is no type a join gives
+    # another kind's, or the union is no type a join gives. A location annotated float, int or
+    # str (a variable, a field: "ann:field", or a function's return: "ann:return") joins too, but
+    # only with the values it also holds (ann_takes: the numbers a float does, the enum members an
+    # int or a str does), from its annotation's type or from the join an earlier pass gave it
     if self.final or self.joinkind == "" or t != self.jointype or self.drying > 0 or self.rtmode:
         return False
     key = ""
+    ann = self.joinkind == "ann:field" or self.joinkind == "ann:return"
     if self.joinkind == "local":
         body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
-        if self.joinname in self.curfn.params or self.joinname in self.compvars or ann_target(body, self.joinname):
+        if self.joinname in self.curfn.params or self.joinname in self.compvars:
             return False
+        ann = ann_target(body, self.joinname)
         key = f"{self.fnkey(self.curfn)}|{self.joinname}"
     elif self.joinkind == "global":
-        if self.joinname in self.constflags or owner(self.joinname) not in self.inits or ann_target(self.inits[owner(self.joinname)].node.kids, self.joinname):
+        if self.joinname in self.constflags or owner(self.joinname) not in self.inits:
             return False
+        ann = ann_target(self.inits[owner(self.joinname)].node.kids, self.joinname)
         key = f"global:{self.joinname}"
-    elif self.joinkind == "field" or self.joinkind == "return":
+    elif self.joinkind == "field" or self.joinkind == "return" or ann:
         key = self.joinname
+    if ann and not (ann_takes(self, t, vt) and (t in ANNTYPES or (ann_site(t) and self.hints.get(key, "") == t)) and ann_open(self)):
+        return False
     j = self.join_type(self.newhints.get(key, t), vt)
     if key != "" and (j == "" or j == t or j == self.hints.get(key, "")) and (is_list(t) or is_dict(t)) and self.join_type(t, vt) == t:
         # a list or dict of another item type, which the location's cannot be as it is: where a
@@ -872,6 +965,12 @@ def gen_join_hint(self, t: str, vt: str) -> bool:
     if key == "" or j == "" or j == t or j == self.hints.get(key, ""):
         return False
     self.newhints[key] = j
+    at = FLOATAT if float_takes(vt) else MEMBERAT
+    if ann and self.joinkind != "local" and at not in self.hints and at not in self.newhints:
+        # (the first such store, which an error names: err; a member's with the annotation and its
+        # class)
+        base = [m for m in umembers(t) if m in ANNTYPES and ann_takes(self, m, vt)][0] if is_union(t) else t
+        self.newhints[at] = where(self.line) if at == FLOATAT else f"{where(self.line)}|{base}|{vt}"
     return True
 
 
@@ -922,11 +1021,14 @@ def gen_join_type(self, a: str, b: str) -> str:
 
 def gen_joinable(self, t: str) -> bool:
     # can a join give a location type t: T | None, or a union of int, float, bool and str (that
-    # may be None), whose operations select the member's by the tag (see unumeric)
+    # may be None), whose operations select the member's by the tag (see unumeric), with the
+    # members of enum classes whose objects are also CPython's ints or strs (member_takes) where
+    # it has that type: an int | C, whose member keeps its class
     u = unopt(t)
     if not is_union(u):
         return is_opt(t)
-    return all([m in ["int", "float", "bool", "str"] for m in umembers(u)])
+    ms = umembers(u)
+    return all([m in ["int", "float", "bool", "str"] or (m in self.classes and self.enum_builtin(m) in ms) for m in ms])
 
 
 def gen_replay_state(self) -> list[int]:

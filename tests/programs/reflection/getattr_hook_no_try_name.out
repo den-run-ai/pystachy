@@ -1,0 +1,4 @@
+a1 1 True
+a2 none False
+data {'a1': 1} True
+[exit 0]

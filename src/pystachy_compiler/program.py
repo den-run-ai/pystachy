@@ -1,6 +1,7 @@
 """Program component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
+from src.pystachy_compiler.builtin_bases import builtin_base
 from src.pystachy_compiler.analysis import all_imports, chk_names, collect, constant_writes, defines, module_anns, module_ints, module_reads, module_strs, module_values, name_nodes, needs_eh, none_assigns, reads_builtin
 from src.pystachy_compiler.diagnostics import NeedHierarchy, Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
@@ -8,10 +9,11 @@ from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_pr
 from src.pystachy_compiler.ir import Val
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import ORDERED, RENAMED, owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, LOCALS, ORDERED, RENAMED, local_class, owner, short
 from src.pystachy_compiler.pipeline import PreparedProgram
 from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
+    CABCS,
     EXCBASES,
     EXCEPTIONS,
     FINAL_FIELD,
@@ -173,6 +175,8 @@ def gen_subclass_problem(self, st: Node) -> str:
             return why
         primary = st.kids[1].s
         secondaries = [b.s for b in st.kids[2:]]
+        if primary in self.bsubn or len([b for b in secondaries if b in self.bsubn]) > 0:
+            return "multiple inheritance with a class that derives from a builtin container is not supported"
         if primary not in self.classes or self.abc_class(primary) or self.classes[primary].exc != "" or self.is_dc(primary) or len(st.kids[0].kids) != 1:
             return why
         shadow: dict[str, bool] = {}  # (the methods of the secondary bases' own classes: super_calls)
@@ -244,7 +248,8 @@ def gen_subclass_problem(self, st: Node) -> str:
                 # its objects as any other's)
                 # (... and @property a getter, abstract or not, which the class may override)
                 abstract = d.kind == "def" and len(d.kids) > 3 and len([x for x in d.kids[3:] if len(x.kids) > 0 or (self.imported(x.s) != "abc.abstractmethod" and x.s != "property")]) == 0
-                if d.kind != "def" or d.s.startswith("__") or (len(d.kids) != 3 and not abstract) or len(d.kids[0].kids) == 0:
+                # (an __init__ that stores the base's attributes: role_attrs)
+                if d.kind != "def" or (d.s.startswith("__") and d.s != "__init__") or (len(d.kids) != 3 and not abstract) or len(d.kids[0].kids) == 0:
                     return why
                 if "_pys_cm_" + d.s in methods and len(attrs) > 0:
                     continue  # (a @contextmanager method's own code is _pys_cm_<name>, checked as a method: this one makes its context manager, loader.py)
@@ -254,6 +259,8 @@ def gen_subclass_problem(self, st: Node) -> str:
     if st.kids[1].kind == "name" and st.kids[1].s in self.classes and self.classes[st.kids[1].s].exc == "":
         base_ci = self.classes[st.kids[1].s]
         dc = len(st.kids[0].kids) == 2 and self.imported(st.kids[0].kids[1].s) == "dataclasses.dataclass"
+        if base_ci.name in self.bsubn:
+            return f"inheritance from {shown(base_ci.name)}, which derives from {builtin_base(self.bsubn[base_ci.name])}, is not supported: only a class that names the builtin type as its one base"
         if base_ci.name in self.nts:
             return "inheritance from a NamedTuple is not supported"
         if self.is_dc(base_ci.name) and not dc:
@@ -266,6 +273,11 @@ def gen_subclass_problem(self, st: Node) -> str:
             return "a class with inheritance and a decorator is not supported"
         return ""
     b = self.exc_base(st.kids[1])
+    if b == "" and len(st.kids) == 2 and builtin_base(st.kids[1]) != "" and not self.bound(builtin_base(st.kids[1])):
+        # class C(list), class C(list[T]): its objects begin as the builtin's do (builtin_bases.py)
+        if len(st.kids[0].kids) > 1:
+            return f"a class that derives from {builtin_base(st.kids[1])} with a decorator is not supported"
+        return ""
     if b == "" and len(st.kids) == 2 and st.kids[1].kind == "name" and short(st.kids[1].s) == "object":
         return UNSUPPORTED["subclass"] + " (the module may have rebound the name 'object' before this statement)"
     if b == "":
@@ -363,9 +375,10 @@ def gen_inert_subscript(self, n: Node) -> bool:
 
 def gen_iterabc_derived(self, c: str) -> bool:
     # does class c (or a specialization's origin) derive from a class whose base was collections.abc's
-    # Iterator or Iterable (iter_abc), whose objects have ABCMeta's attributes too
+    # Iterator or Iterable (iter_abc), or from a class of lib's port of collections.abc (Loader's
+    # abc_classes), whose objects have ABCMeta's attributes too
     while c in self.classes:
-        if c in self.iterabc or self.classes[c].origin in self.iterabc:
+        if c in self.iterabc or self.classes[c].origin in self.iterabc or c.startswith(CABCS + "$"):
             return True
         c = self.classes[c].base
     return False
@@ -495,7 +508,7 @@ def gen_inherit(self, ci: ClassInfo) -> None:
                 # (the classes that define it, not FnInfo.cls: inherit copies a class method that
                 # uses cls for each class that inherits it)
                 own = self.declares(ci.name, method)
-                if method not in b.methods and method in seen and seen[method] != r and own:
+                if method not in b.methods and method in seen and seen[method] != r and own and method != "__init__":
                     # (also where the class's own overrides both: a Callable of its bound method
                     # would differ by the base it is read through, adapter's method families)
                     self.line = ci.node.line
@@ -518,6 +531,10 @@ def gen_inherit(self, ci: ClassInfo) -> None:
                     ci.methods[method] = original
                 elif trait and method in b.methods:
                     pass  # (the class's own, or one that comes before the trait's: kept, and checked against it)
+                elif method == "__init__" and method in b.methods:
+                    # (the primary chain's comes first in CPython's method resolution order, as here;
+                    # the class's code may call the base's own as C.__init__(self, ...))
+                    continue
                 elif method in b.methods or (method in ci.methods and ci.methods[method].cls != ci.name):
                     # (also another secondary base's: CPython's method resolution order picks one)
                     self.line = ci.node.line
@@ -525,6 +542,8 @@ def gen_inherit(self, ci: ClassInfo) -> None:
                 elif method not in ci.methods:
                     ci.methods[method] = original
             fn = ci.methods[method]
+            if method == "__init__":
+                continue  # (a constructor's own signature: no value of the base's type calls the class's)
             same = len(fn.ptypes) == len(original.ptypes)
             for j in range(1, len(fn.ptypes) if same else 0):
                 if fn.ptypes[j] != original.ptypes[j] and not (generic and original.ptypes[j] == ""):
@@ -668,8 +687,18 @@ def gen_on_chain(self, c: str, a: str) -> bool:
 
 def role_attrs(c: Node) -> list[str]:
     # the attributes class c (its class node) declares by annotation alone (x: T), which a
-    # secondary base may: no object has them until its class's code stores them
-    return [d.kids[0].s for d in c.kids[0].kids if d.kind == "annassign" and len(d.kids) == 2 and d.kids[0].kind == "name" and d.kids[0].s != "__slots__"]
+    # secondary base may: no object has them until its class's code stores them; and those its
+    # __init__ stores (self.x = v), the fields of its own objects and of the classes combining it,
+    # which their __init__ give it by calling its own (C.__init__(self, ...))
+    out = [d.kids[0].s for d in c.kids[0].kids if d.kind == "annassign" and len(d.kids) == 2 and d.kids[0].kind == "name" and d.kids[0].s != "__slots__"]
+    for d in c.kids[0].kids:
+        if d.kind == "def" and d.s == "__init__" and len(d.kids[0].kids) > 0:
+            me = d.kids[0].kids[0].s
+            for st in d.kids[2].kids:
+                for t in st.kids[:-1] if st.kind == "assign" else st.kids[:1] if st.kind == "annassign" else []:
+                    if t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s == me and t.s not in out:
+                        out.append(t.s)
+    return out
 
 def gen_role_field(self, t: str, name: str) -> bool:
     # is name an attribute that t declares (role_attrs), a class that some class names as a
@@ -817,7 +846,23 @@ def gen_init_generic(self, st: Node, hier: bool = False) -> bool:
                     fixed[b.kids[0].s] = True
             if self.init_makes_tmpl(d.kids[2], ps[0].s if len(ps) > 0 else "", fixed) if hier else self.makes_tmpl(d.kids[2]):
                 return True  # (a field may hold an object of a class template: typed where the object is made)
+            if not hier and stores_enum_class(d.kids[2], ps[0].s if len(ps) > 0 else "", self.classes):
+                return True  # (a field holds an enum class's EnumType object, of a class template too)
     return False
+
+def stores_enum_class(n: Node, me: str, classes: dict[str, ClassInfo]) -> bool:
+    # does __init__'s code n store an enum class, its EnumType object (Loader's enum_classes), into
+    # a field of me (self.kind = Color), which is of a specialization of lib/enum.py's class
+    # template, as the object of a class template is
+    if n.kind == "assign" and len(n.kids) == 2 and n.kids[0].kind == "attr" and n.kids[0].kids[0].kind == "name" and n.kids[0].kids[0].s == me:
+        v = n.kids[1]
+        if v.kind == "name" and v.s in classes and classes[v.s].node.line in ENUMCLASSES:
+            return True
+    for k in n.kids:
+        if stores_enum_class(k, me, classes):
+            return True
+    return False
+
 
 def fixed_ann_shape(a: Node, classes: dict[str, ClassInfo]) -> bool:
     if a.kind == "str" or a.kind == "noann":
@@ -1799,6 +1844,10 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
         m.body.kids = self.typing_forms(m, m.body.kids, False, False, True)
         for i in range(len(m.body.kids)):
             st = m.body.kids[i]
+            if (st.kind == "class" or st.kind == "subclass") and local_class(st.s):
+                # (a class that a function's body defines: its __qualname__ is F.<locals>.C,
+                # Loader's local_classes)
+                RENAMED[st.s] = st.s.replace(LOCALS, ".<locals>.")
             if st.kind == "subclass" and len(st.kids) == 2 and self.nt_base(st.kids[1]):
                 m.body.kids[i] = st.kids[0]  # class P(NamedTuple): a class (see nt_class)
                 self.nts[st.s] = True
@@ -1930,7 +1979,9 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
                 ci.mod = m.name
                 ci.base = st.kids[1].s if st.kids[1].kind == "name" and st.kids[1].s in self.classes else self.exc_base(st.kids[1])
                 ci.exc = self.classes[ci.base].exc if ci.base in self.classes else ci.base
-                if ci.exc == "":
+                if ci.base == "" and len(st.kids) == 2 and builtin_base(st.kids[1]) != "":
+                    self.bsubn[st.s] = st.kids[1]  # (an ordinary class but for its objects' header: builtin_bases.py)
+                elif ci.exc == "":
                     # (its base's secondary bases, then its own: subclass_problem)
                     ci.roles = list(self.classes[ci.base].roles)
                     for b in st.kids[2:]:
