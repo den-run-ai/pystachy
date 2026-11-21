@@ -57,6 +57,7 @@ NOT_RESET = {
 # and the function it interrupts sees what it added. Only Gen.__init__ assigns them of the lists.
 # source_lines accumulates metadata across module lowering, outside AST/dry traversal.
 # pipeline belongs to the compilation attempt; nested functions never advance or restore it.
+# idresults collects candidate return sites across functions for the final discovery check.
 PROGRAM = """
     pipeline classes tmpl compiling utags specdone funcs aliases imports fglobals mvars gtypes globs gcroots
     consts fieldnames bconsts tconsts tconstdata lconsts strs bstrs strvals vnodes cmexit rtfns opfxs out source_lines fns fll callsites summaries xcls xvals
@@ -71,7 +72,7 @@ PROGRAM = """
     inited guessed galias nts cnts ntdflts hasfrozen cvars typevars tvtuples tvdefaults tparams
     pep695 taliases recursive reflrecs reflstores refllate refltexts rtdatas dyntypes dynclasses
     dynfns dynkeys dynlines dynsig dynfuncs dynfnt dynboxes dynwide dynrets dynrline dynseen gidbox
-    idoff idfull idevent idsplit idtry idhint gendrops_counted genplain rdpass entries resumes_counted
+    idoff idfull idevent idsplit idtry idhint idresults gendrops_counted genplain rdpass entries resumes_counted
     genargs earlycopies sentinelglobals globvalues globowners globalts pseq pcall pstamps plogk plogv pdry
     implicitgen iterabc clsany clsused clsbodies clsannfiles clsann
 """.split()
