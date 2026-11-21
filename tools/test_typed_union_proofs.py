@@ -1401,7 +1401,8 @@ class UnionProofTests(unittest.TestCase):
 
     def test_dict_length_box_requires_owner_and_integer_tag(self):
         for owner, tag, offset in (("dict[str,int]", "int", False), ("dict[str,int]", "float", False),
-                                   ("%ptr", "int", False), ("dict[str,int]", "int", True)):
+                                   ("%ptr", "int", False), ("dict[str,int]", "int", True),
+                                   ("opt[dict[str,int]]", "int", False)):
             with self.subTest(owner=owner, tag=tag, offset=offset):
                 c = Case("dict_length_box", [owner])
                 c.g.runtime("pys_ubox")
@@ -1415,7 +1416,8 @@ class UnionProofTests(unittest.TestCase):
                     errors = StringIO()
                     with redirect_stderr(errors), self.assertRaises(SystemExit):
                         c.g.verify(c.fn, False)
-                    self.assertIn("ubox needs matching tag and payload provenance", errors.getvalue())
+                    self.assertIn("mach.load needs a nonnull proof" if owner.startswith("opt[") else
+                                  "ubox needs matching tag and payload provenance", errors.getvalue())
 
     def test_yielded_payload_is_read_as_the_generator_element_type(self):
         # (gen_slots passes an int member's payload register itself, as the %slot word yielded)

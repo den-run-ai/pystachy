@@ -544,8 +544,11 @@ class UnionProof:
         # A Dict's first word is its integer length. Establish the owner from its
         # declaration or from the proved member of an unpacked union payload.
         # A machine load's result annotation alone cannot establish either.
-        if is_dict(self.declared(addr)):
+        t = self.declared(addr)
+        if is_dict(t):
             return True
+        if is_opt(t) and is_dict(t[4:-1]):
+            return s.dom("U:" + addr) == [t[4:-1]]
         i = self.defs[addr] if addr in self.defs else None
         return i is not None and i.op == "slot.unpack" and is_dict(i.t) and i.a[0].v in self.raw and s.dom("B:" + i.a[0].v) == [i.t]
 
@@ -700,12 +703,18 @@ class UnionProof:
             return
         if (op == "mem.load" or op == "mach.load"):
             addr = a[0].v
-            if op == "mach.load" and i.t == "int" and ("U:" + addr in self.base or "U:" + addr in s.d) and not self.length_read(addr):
-                u = self.box(s, addr)
-                if checking and "None" in s.dom(u):
-                    self.error(b, "mach.load needs a nonnull proof for " + addr)
-                s.copy("T:" + r, u)
-                return
+            if op == "mach.load" and i.t == "int":
+                tracked = "U:" + addr in self.base or "U:" + addr in s.d
+                if (r in self.bitsneeded or tracked) and self.dict_header(s, addr):
+                    if r in self.bitsneeded:
+                        s.set("B:" + r, ["int"])
+                    return
+                if tracked and not self.length_read(addr):
+                    u = self.box(s, addr)
+                    if checking and "None" in s.dom(u):
+                        self.error(b, "mach.load needs a nonnull proof for " + addr)
+                    s.copy("T:" + r, u)
+                    return
             if "U:" + r in self.base:
                 mk = "MU:" + addr
                 if mk not in s.d:
@@ -714,10 +723,7 @@ class UnionProof:
             if r in self.tagvals:
                 s.copy("T:" + r, "MT:" + addr)
             if r in self.bitsneeded:
-                if op == "mach.load" and i.t == "int" and self.dict_header(s, addr):
-                    s.set("B:" + r, ["int"])
-                else:
-                    s.copy("B:" + r, "MB:" + addr)
+                s.copy("B:" + r, "MB:" + addr)
             return
         if (op == "mem.store" or op == "mach.store"):
             addr = a[0].v
