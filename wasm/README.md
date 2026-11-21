@@ -47,18 +47,27 @@ tests/run.sh ./pystachy wasm-tir tests/programs/apps/ouro2_*.py
 Each typed IR value is a WebAssembly local, and so is a slot that only loads and stores
 read. Fixed-size tuple temporaries use the reactor's 16-byte-aligned stack. A
 callee can recognize and copy a `*args` tuple before it escapes its caller.
-Only modules with tuple frames import the stack pointer.
+Modules with tuple frames or exception landing pads import the stack pointer.
 
 A function's blocks lie in order inside nested `block`s within a `loop`. A forward
 branch is a `br` to its target's label, and a backward branch sets the next block's index
 and continues the loop, whose `br_table` dispatches it. The emitter handles the operations
 of scalar code, runtime calls, direct calls, globals, class fields, tuples and list items,
 and constants (strings, tuples, field-name tables, class records), whose addresses
-`run.mjs` relocates once it has allocated the program's data. It refuses, by name,
-exception handlers, generators, function values (exception classes and callables among
-constants), dynamic values, and classes that the runtime compares or prints through the
-program's dispatchers; `wasm/build.sh tir` then builds the program through LLVM, and
-`WASM_TIR_LOG` records which way each program went.
+`run.mjs` relocates once it has allocated the program's data.
+
+Python handlers can catch built-in exceptions raised locally, by other Python functions,
+or by the shared runtime. For a call with an unwind edge, a typed Wasm catch restores the
+reactor's stack pointer and branches to the landing pad in the finalized IR. The runtime
+performs exception matching, cleanup and uncaught reporting, including `SystemExit`.
+Each run has its own Python exception tag. Host tool failures and Wasm traps still end
+the run with status 134. The direct exception fixtures in `wasm/test_codemode.mjs` have
+been verified on Node 22.23.0 and 24.22.3.
+
+The direct emitter gives a named refusal for generators, function values, user-defined
+exception classes that require callback tables, dynamic values and classes that need
+runtime comparison or printing through the program's dispatchers. `wasm/build.sh tir`
+then builds the program through LLVM, and `WASM_TIR_LOG` records the route taken.
 
 The source compiler passes the finalized functions and declarations directly to the emitter.
 `build/wasm/wasm_from_source SOURCE.py OUT.wasm` compiles a file in one process. Use `- -`
@@ -135,9 +144,10 @@ a directly emitted tool-result filter, and a JSON filter using dynamic `Any` and
 
 - **The collector is off.** The conservative stack scan cannot see WebAssembly locals, so
   `runtime.c` sets `PYSTACHY_GC=off` under WASI. The engine caps memory (4 GiB for wasm32).
-- **A raise ends the program.** `llc` lowers each `invoke` to a call, and the unwinder stubs
-  (`wasi_stubs.c`) never find a handler. An uncaught exception prints CPython's last line and
-  exit status, but `try`, `with` and `except` cannot catch anything.
+- **LLVM/WASI commands lack an unwinder.** On that route, including a fallback, `llc`
+  lowers an `invoke` to a call. An exception that needs to unwind across that call exits
+  the program with the runtime's uncaught diagnostic and status. Use
+  `createCompiler({ fallback: false })` to require direct compilation.
 - **No processes, signals, users or dynamic loading.** `wasi_stubs.c` defines those calls to
   fail with `ENOSYS`, so the runtime raises the matching `OSError`.
 - **Filesystem access depends on the runner.** The CLI preopens `/` and passes Node's working

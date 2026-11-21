@@ -113,6 +113,11 @@ test("one runtime load, fresh instances for concurrent and subsequent calls", as
   assert.equal(await run(compiled), 17);
 });
 
+test("an exception-enabled program rejects an older reactor", async () => {
+  const guest = Uint8Array.from([...program(), ...section(0, name("pystachy.eh"))]);
+  await assert.rejects(createRunner(reactor())(guest), /requires a runtime with catchable exceptions/);
+});
+
 test("standalone commands receive per-run args and environment", async () => {
   const run = createRunner("unused-runtime.wasm");
   assert.equal(await run(command(), { args: ["test", "a", "b"] }), 3);

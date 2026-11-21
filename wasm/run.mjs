@@ -109,11 +109,44 @@ function runner(runtimeSource, cli) {
       status = code >>> 0;
       throw exit;
     };
+    const hasHandlers = WebAssembly.Module.customSections(module, "pystachy.eh").length > 0;
+    if (hasHandlers && !WebAssembly.Module.imports(runtimeModule).some(
+      ({ module, name, kind }) => module === "program" && name === "raise" && kind === "function",
+    )) {
+      throw new Error("this program requires a runtime with catchable exceptions. Rebuild with wasm/build.sh runtime-wasm");
+    }
+    const tag = hasHandlers ? new WebAssembly.Tag({ parameters: ["i32"] }) : undefined;
     let program;
+    let handlersActive = false;
     const runtime = new WebAssembly.Instance(runtimeModule, {
       ...imports,
       codemode: toolImports(tools, () => runtime.exports.memory),
-      program: { init: () => program.exports.init() },
+      program: {
+        raise(pointer) {
+          if (handlersActive) throw new WebAssembly.Exception(tag, [pointer]);
+        },
+        init() {
+          if (!hasHandlers) return program.exports.init();
+          const stack = runtime.exports.__stack_pointer;
+          const entryStack = stack.value;
+          runtime.exports.pys_eh_on();
+          let uncaught;
+          handlersActive = true;
+          try {
+            program.exports.init();
+          } catch (error) {
+            if (!(error instanceof WebAssembly.Exception && error.is(tag))) throw error;
+            uncaught = error.getArg(tag, 0);
+          } finally {
+            handlersActive = false;
+          }
+          if (uncaught !== undefined) {
+            // Throwing crossed Wasm and C frames and skipped their stack epilogues.
+            stack.value = entryStack;
+            runtime.exports.pys_throw(uncaught);
+          }
+        },
+      },
       env: {
         pys_obj_eq: missingDispatcher("pys_obj_eq"),
         pys_obj_cmp: missingDispatcher("pys_obj_cmp"),
@@ -128,7 +161,9 @@ function runner(runtimeSource, cli) {
       return 1;
     }
     program = new WebAssembly.Instance(module, {
-      env: { memory: runtime.exports.memory, data: new WebAssembly.Global({ value: "i32" }, data) },
+      env: {
+        memory: runtime.exports.memory, data: new WebAssembly.Global({ value: "i32" }, data), pystachy_exception: tag,
+      },
       rt: runtime.exports,
     });
     const [relocs] = WebAssembly.Module.customSections(module, "pystachy.reloc");
