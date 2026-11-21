@@ -168,7 +168,11 @@ jobs:
           wasm/build.sh runtime-wasm
           wasm/build.sh emitter
           node --no-warnings --test wasm/test_codemode.mjs
-          tests/run.sh "$PYSTACHY" "wasm wasm-tir" tests/programs/apps/ouro2_*.py
+          tests/run.sh "$PYSTACHY" "wasm wasm-tir" tests/programs/apps/ouro2_*.py \
+            tests/programs/runtime/rt_float_hex.py \
+            tests/programs/inference/dynany_bound_methods.py \
+            tests/programs/inference/dynany_identity_promote_generic.py \
+            tests/programs/library/lib_argparse_python_int.py
 
       # These hosted/native controls run sequentially after a short GC JIT group.
       # PRs use the second native JIT worker below; neither placement adds a job.
