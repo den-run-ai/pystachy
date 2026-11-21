@@ -827,7 +827,9 @@ def main() -> None:
         # went to .text.unlikely, lli's ORC in LLVM 18 lost the landing pads that the inliner had
         # moved into main, and a try statement there missed what it should have caught (the JIT
         # runner takes the same flag, and needs it as much)
-        jitflags = " -profile-guided-section-prefix=false"
+        # LLVM 18 can give a function containing only unreachable a zero-length unwind
+        # entry at the next function's address. GCC 8's unwinder then misses its handler.
+        jitflags = " -profile-guided-section-prefix=false -trap-unreachable"
     if cmd == "check":
         f = open(diagnostics.SRC, "r", encoding=RAW)
         Parser(Lexer(f.read(), 1).file()).module()
@@ -1572,7 +1574,7 @@ def main() -> None:
                 # no function names one), with lli's flag above, in position-independent code, which
                 # ORC's JITLink links. ORC runs the constructors of IR modules alone, so lli's main
                 # module holds the program's target and the shared library's callbacks, if any
-                code = timed_sh("program.jit_codegen", f"{llvm}llc -O0 -filetype=obj -relocation-model=pic -profile-guided-section-prefix=false {q(bc)} -o {q(jobj)}")
+                code = timed_sh("program.jit_codegen", f"{llvm}llc -O0 -filetype=obj -relocation-model=pic{jitflags} {q(bc)} -o {q(jobj)}")
                 if code == 0:
                     f = open(jmain, "w", encoding=RAW)
                     f.write(layout + (OBJHOOKS_MAIN if useso != "" else ""))

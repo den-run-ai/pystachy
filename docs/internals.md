@@ -540,7 +540,9 @@ level of code generation (`lli`'s ORC generates code at `-O2` whatever `-O` says
 `PYSTACHY_JIT_CODEGEN=0` needs no `llc`; it installs none of LLVM's signal handlers, stack
 printer or perf listener; the process exits with the JIT's code still mapped; and an LLVM option
 that LLVM does not know is ignored rather than an error (the C API's parser reports none), so the
-driver passes only `-profile-guided-section-prefix=false`, which LLVM 18 to 23 know.
+driver uses `-profile-guided-section-prefix=false` and `-trap-unreachable`. The latter gives
+otherwise empty functions an instruction so GCC 8 can find the following function’s unwind
+entry on x86-64.
 
 The driver builds the runner at first use, as it builds the runtime: the selected toolchain's
 `clang` compiles `lljit.c`, which declares the part of the C API it calls, so no LLVM headers are

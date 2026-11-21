@@ -211,11 +211,12 @@ int main(int argc, char **argv) {
                     self.assertEqual((failed.returncode, failed.stdout), (1, ""), command)
                     self.assertIn(text, failed.stderr)
                 # (unlike lli, an option that LLVM does not know is ignored: the C API's parser reports
-                # no error; the driver passes only -profile-guided-section-prefix=false, which LLVM 18 to
+                # no error; the driver passes the two code generation options below, which LLVM 18 to
                 # 23 know, as lli shows)
                 ignored = self.run_jit([path, "-not-an-llvm-option", f"-extra-object={obj}", caller])
                 self.assertEqual((ignored.returncode, ignored.stdout, ignored.stderr), (0, "42\n", ""))
-                known = self.run_jit([str(Path(llvm) / "lli"), "-profile-guided-section-prefix=false", f"-extra-object={obj}", caller])
+                known = self.run_jit([str(Path(llvm) / "lli"), "-profile-guided-section-prefix=false",
+                                      "-trap-unreachable", f"-extra-object={obj}", caller])
                 self.assertEqual((known.returncode, known.stdout, known.stderr), (0, "42\n", ""))
 
     def test_no_signal_handlers(self):
