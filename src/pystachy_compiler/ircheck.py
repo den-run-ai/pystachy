@@ -210,7 +210,7 @@ def read_kinds() -> dict[str, dict[str, str]]:
         kinds[op] = {}
         for c in OP_OPERAND_TYPES[op] + [OP_RESULT_TYPE[op]]:
             p = CONSTRAINT_PARTS[c]
-            if p[2] != "":
+            if p[1] != "" and (p[2] != "" or p[1] not in kinds[op]):
                 kinds[op][p[1]] = p[2]
     return kinds
 
@@ -312,10 +312,10 @@ class OpTypes:
             return "" if t == c else c
         prefix = p[0]
         suffix = p[3]
-        if name in self.bound:
-            want = prefix + self.bound[name] + suffix
+        if self.bound[name] != "":
+            want = self.bound[name] if prefix == "" and suffix == "" else prefix + self.bound[name] + suffix
             return "" if t == want else f"{want} (${name} is {self.bound[name]} at {placed(self.where[name])})"
-        kind = self.kinds[name] if name in self.kinds else ""
+        kind = self.kinds[name]
         inner = ""
         if len(t) > len(prefix) + len(suffix) and t.startswith(prefix) and t.endswith(suffix):
             inner = t[len(prefix) : len(t) - len(suffix)]
@@ -336,10 +336,10 @@ def op_type_error(check: OpTypes, i: Ins) -> str:
     cs = OP_OPERAND_TYPES[i.op]
     result = OP_RESULT_TYPE[i.op]
     check.kinds = OP_KINDS[i.op]
-    if len(check.bound) > 0:
-        # (the previous op's bindings; most ops bind none, and keep the empty ones)
-        check.bound = {}
-        check.where = {}
+    # Each variable starts unbound for this instruction. Reuse the two tables across the
+    # function; where is read only after need has bound the name and written its position.
+    for name in check.kinds:
+        check.bound[name] = ""
     for j in range(len(i.a) if len(cs) > 0 else 0):
         need = check.need(cs[j] if j < len(cs) else cs[len(cs) - 1], i.a[j].t, j)
         if need != "":
@@ -499,14 +499,11 @@ def value_view(self, d: str, u: str, rt_result: bool, rt_operand: bool) -> str:
     return ""
 
 
-def optional_reads(self, fn: IFn) -> dict[str, dict[str, bool]]:
+def optional_reads(self, fn: IFn, types: dict[str, str], makers: dict[str, str]) -> dict[str, dict[str, bool]]:
     # The values of fn that an operand reads at a type without None where their definition gives
     # them opt[U] of a reference U (the optional view that narrows, specs.TYPE_VIEWS), with the
     # types those operands read them at: the closed-union proof must show each such value not
     # None where an operand reads it so (UnionProof.check_some)
-    types: dict[str, str] = {}
-    makers: dict[str, str] = {}
-    value_definitions(fn, types, makers)
     found: dict[str, dict[str, bool]] = {}
     for b in fn.blocks:
         for i in b.code:
@@ -569,13 +566,14 @@ def cast_error(self, fn: IFn, i: Ins, objects: dict[str, bool], types: dict[str,
     return "" if ok else f"cast {i.s} of a {a} to a {t}, where a cast of kind {i.s} reads {CAST_KINDS[i.s]}"
 
 
-def value_types(self, fn: IFn) -> None:
+def value_types(self, fn: IFn, types: dict[str, str] | None = None, makers: dict[str, str] | None = None) -> None:
     # Each operand reads its value at the type the value's definition gives it (ir.value_definitions),
     # or by a view of specs.TYPE_VIEWS, as an MLIR operand has its value's one type. An address
     # has a type &T and a packed slot a type *T, and no view reads one as the other.
-    types: dict[str, str] = {}
-    makers: dict[str, str] = {}
-    value_definitions(fn, types, makers)
+    if types is None or makers is None:
+        types = {}
+        makers = {}
+        value_definitions(fn, types, makers)
     # (the values whose definition gives them only a machine type, a runtime type variable or a
     # placeholder; the first type an operand of an op but rt reads each at, and where; and the
     # views decided so far, as many operands read alike)
@@ -909,7 +907,11 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         dynamic.run()
         for j in range(len(dynamic.bad)):
             self.bad_ir(fn, fn.blocks[at[dynamic.badblocks[j]]], dynamic.bad[j])
-    narrowed = optional_reads(self, fn)
+    # Casts, optional reads and operand types use the same immutable definitions.
+    # Without casts, wait until structural checks have validated each instruction.
+    if not casts:
+        value_definitions(fn, defined, makers)
+    narrowed = optional_reads(self, fn, defined, makers)
     unions = union_proofs or (machine_tags and has_machine_union_tag(fn))
     if len(narrowed) > 0 or (unions and not simple_union_proof(fn, self.utags, at, succ, union_types, self.classes)):
         writes: dict[str, bool] = {}
@@ -939,7 +941,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         for j in range(len(proof.bad)):
             self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])
     # (after the proofs above, whose findings name what a reading breaks more closely)
-    value_types(self, fn)
+    value_types(self, fn, defined, makers)
 
 def gen_verify_gen(self, fn: IFn, b: Blk, i: Ins, j: int) -> None:
     # a generator op (docs/internals.md#generators), past its row's shape and types: gen.start

@@ -331,6 +331,43 @@ if "union.raw" in IROPS:
 
 
 class UnionProofTests(unittest.TestCase):
+    def test_cast_and_optional_proofs_share_one_definition_scan(self):
+        for cast in (False, True):
+            with self.subTest(cast=cast):
+                c = Case("definition_scans", ["opt[str]", "%ptr"])
+                if cast:
+                    c.op("cast", "str", "bits", [("%a1", "%ptr")])
+                check = c.op("ptr.cmp", "bool", "!=", [("%a0", "opt[str]"), ("null", "None")])
+                c.op("cbr", a=[(check, "bool")], b=["some", "none"])
+                c.block("some")
+                c.g.runtime("pys_text_len")
+                c.op("rt", "int", "text.len", [("%a0", "str")])
+                c.ret()
+                c.block("none")
+                c.ret()
+                with patch.object(ircheck, "value_definitions", wraps=ircheck.value_definitions) as scans:
+                    c.g.verify(c.fn, False)
+                self.assertEqual(scans.call_count, 1)
+
+    def test_invalidating_an_object_visits_only_its_own_field_keys(self):
+        class NoScan(dict):
+            def __iter__(self):
+                raise AssertionError("scanned every tracked domain for one object")
+
+        c = Case("field_invalidation", ["Node", "Node"])
+        c.ret()
+        proof = UnionProof(c.fn, c.g.utags)
+        state = UnionState(proof.base, proof.full)
+        for obj in ("%a0", "%a1"):
+            for index in (1, 2):
+                state.set(proof.field_key(state, obj, index, "Node"), ["str"])
+        state.d = NoScan(state.d)
+        proof.forget_fields(state, "%a0")
+        self.assertNotIn("MF:a0#1", state.d)
+        self.assertNotIn("MF:a0#2", state.d)
+        self.assertEqual(state.d["MF:a1#1"], ["str"])
+        self.assertEqual(state.d["MF:a1#2"], ["str"])
+
     def test_field_identity_survives_only_matching_storage_on_all_paths(self):
         c = Case("field_identity", ["Node"])
         obj = c.op("mem.load", "Node", a=[("%owner.1", "&Node")])
