@@ -10,6 +10,8 @@
 #        modules (abi3, or abi3t on a free-threaded CPython). It may skip only what this CPython
 #        cannot run: the py_ and ext cases before 3.12, the ext cases on a free-threaded CPython
 #        before 3.15, and the JSON repair replay, whose oracle is the pinned CPython
+#   gil  on a free-threaded CPython from 3.15, an abi3t module refuses import where PYTHON_GIL=0
+#        or -X gil=0 keeps the GIL off (docs/ffi.md#threading-and-host-lifetime)
 # The caller's settings that tests/verify.sh drops are dropped. Fails when a check fails.
 # usage: tools/python_versions.sh PYTHON [COMPILER [REFERENCE]]   (default: ./pystachy and build)
 cd "$(dirname "$0")/.." || exit 1
@@ -82,6 +84,27 @@ if [ $st = 0 ] && [ -n "$passed" ] && [ -z "$extra" ]; then
 else
   grep -A12 '^FAIL' "$T/ffi.log" | head -60
   fail "the FFI${extra:+, which skipped what $NAME runs ($extra)}: $last"
+fi
+
+# gil: Pystachy's runtime is single-threaded, so its abi3t module must not load without the GIL
+if [ -n "$FT" ] && [ "$MINOR" -ge 15 ]; then
+  mkdir "$T/gil"
+  if "$PYS" ext tests/ffi/ext/fastmath.py --abi abi3t -o "$T/gil/fastmath.abi3t.so"; then
+    for how in "PYTHON_GIL=0" "-X gil=0"; do
+      if [ "$how" = "PYTHON_GIL=0" ]; then
+        out=$(cd "$T/gil" && PYTHON_GIL=0 "$PY" -c 'import fastmath' 2>&1); st=$?
+      else
+        out=$(cd "$T/gil" && "$PY" -X gil=0 -c 'import fastmath' 2>&1); st=$?
+      fi
+      case $st:$out in
+        0:*) fail "an abi3t module loads under $how" ;;
+        *"ImportError: a Pystachy extension module needs the GIL"*) ok "an abi3t module refuses import under $how" ;;
+        *) fail "an abi3t module under $how: $(printf '%s\n' "$out" | tail -1)" ;;
+      esac
+    done
+  else
+    fail "pystachy ext --abi abi3t tests/ffi/ext/fastmath.py"
+  fi
 fi
 
 if [ $bad = 0 ]; then echo "$NAME: every check passed"; else echo "$NAME: $bad checks failed"; exit 1; fi
