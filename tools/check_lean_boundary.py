@@ -52,7 +52,7 @@ BUILTIN_PAYLOADS = {
     "dict[dyn,dyn]": ("@pys_dyntype_dict",), "vtuple[dyn]": ("@pys_dyntype_tuple",),
     "list[dyn]": ("@pys_dyntype_list",), "list[int]": ("@pys_dyntype_intlist", "@pys_dyntype_biglist")}
 # struct DynType's cls word, in i64 words: class dispatchers switch on it
-CLASS_WORD = "3"
+CLASS_FIELD = "3"
 MAX_TAGS = 262144
 MAX_CONDITION = 64
 OP_KEYS = {"op", "type", "text", "immediate", "descriptor", "results", "operands", "targets"}
@@ -940,8 +940,8 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
                 found, test = None, None
                 if kind == "dyn.type" and len(operands) == 1:
                     found = tag_reads, operands[0]["value"]
-                elif (kind == "mach.addr" and op["text"] == "int" and len(operands) == 2
-                      and operands[0]["value"] in tag_reads and operands[1]["value"] == CLASS_WORD):
+                elif (kind == "mach.addr" and op["text"] == "dyntype" and len(operands) == 2
+                      and operands[0]["value"] in tag_reads and operands[1]["value"] == CLASS_FIELD):
                     found = class_addresses, tag_reads[operands[0]["value"]]
                 elif (kind == "mach.load" and op["type"] == "int" and len(operands) == 1
                       and operands[0]["value"] in class_addresses):

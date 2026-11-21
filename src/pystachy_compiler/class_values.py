@@ -181,6 +181,12 @@ def gen_class_value_box(self, v: Val) -> Val:
     return Val(self.phi(ph), "dyn")
 
 
+def boxed_class_record(self, box: Val, t: str = "%ptr") -> str:
+    # A metatype box holds its record pointer in Dyn.v, the second i64 slot,
+    # including on wasm32 where Dyn.t occupies only four bytes.
+    return self.mload(t, self.maddr("int", box.v, "1"))
+
+
 def gen_class_value_isa(self, v: Val, t: str) -> str:
     # i1: is Any value v the class box of a class that a value of type t (type[C]) may be
     end = self.label()
@@ -189,11 +195,11 @@ def gen_class_value_isa(self, v: Val, t: str) -> str:
     self.incoming(ph, "false", self.cur)
     self.cbr(self.ptr_cmp("==", Val(self.dyn_typeof(v), "dyntype"), Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, box, end)
     self.place(box)
-    rec = Val(self.mload("%ptr", self.maddr("%ptr", v.v, "1")), "%ptr")
+    rec = Val(boxed_class_record(self, v), "%ptr")
     r = "false"
     if clsof(t) == "object":
         # (any class's: a builtin class's record too, which its flags tell)
-        flags = Val(self.mload("int", self.maddr("%ptr", rec.v, "3")), "int")
+        flags = Val(self.mload("int", self.maddr("classrec", rec.v, "3")), "int")
         r = self.num_cmp("!=", Val(self.scalar("and", [flags, Val(str(RF_BUILTIN), "int")]), "int"), Val("0", "int")).v
     for k in self.class_value_kinds(clsof(t)) + ["None"]:
         # (NoneType's too, which type(x) of an x that is None gives a typed location)
@@ -212,7 +218,7 @@ def gen_class_value_unbox(self, v: Val, t: str) -> Val:
     if len(self.clsused) > 0:
         raise ClassBoxes()  # (the type may be inferred of a class a module read: that module's class box)
     self.guard(self.scalar("xor", [Val(self.class_value_isa(v, t), "bool"), Val("true", "bool")]), f"TypeError: expected {typestr(t)}")
-    return Val(self.mload(t, self.maddr("%ptr", v.v, "1")), t)
+    return Val(boxed_class_record(self, v, t), t)
 
 
 def gen_class_value_kinds(self, c: str) -> list[str]:

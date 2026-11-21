@@ -10,6 +10,7 @@ This is a guide to known limits, not a guarantee that every other Python program
 | Supported language rules | [Types](typing.md), [execution](semantics.md), [modules](modules.md) |
 | Module-specific APIs and gaps | [Library compatibility](../../lib/compatibility.md) |
 | Experimental opt-ins | [Dynamic `Any`](../dynamic-any.md), [promoting ints](../python-int.md) |
+| WebAssembly exception handling and host limits | [Experimental Wasm backend](../../wasm/README.md#what-differs-from-a-native-build) |
 | How compatibility is checked | [Testing](../testing.md) |
 
 ## Deviations from CPython

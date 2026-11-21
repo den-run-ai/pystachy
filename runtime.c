@@ -105,8 +105,13 @@ _Static_assert(offsetof(Str, len) == 0 && offsetof(Str, dict_hash) == 8 &&
                offsetof(Str, chars1) == 16 && offsetof(Str, s) == 24 && sizeof(Str) == 24,
                "Str ABI: len, dict_hash, chars1, bytes");
 typedef struct { I len, cap; I *a, *ids; } List; /* optional scanned numeric identity companion: kind, then boxes */
+#ifndef __wasi__
 _Static_assert(offsetof(List, len) == 0 && offsetof(List, cap) == 8 && offsetof(List, a) == 16 &&
                offsetof(List, ids) == 24 && sizeof(List) == 32, "List ABI: raw prefix and identity companion");
+#else
+_Static_assert(offsetof(List, len) == 0 && offsetof(List, cap) == 8 && offsetof(List, a) == 16 &&
+               offsetof(List, ids) == 20 && sizeof(List) == 24, "List ABI under WASI: wasm32's 4-byte pointers");
+#endif
 typedef struct { I len; I *ids; I a[]; } VTuple; /* immutable raw slots and optional scanned numeric identities */
 _Static_assert(offsetof(VTuple, len) == 0 && offsetof(VTuple, ids) == 8 &&
                offsetof(VTuple, a) == 16 && sizeof(VTuple) == 16, "VTuple ABI: length, identities, raw items");
@@ -258,6 +263,15 @@ static W *sfl[NK];                     /* its stand-in under stress */
 static Seg *avail[NK], *chunks, *bigs, *hcache, ***pmap;   /* hcache: freed mappings of large objects */
 /* GC_NO_ROOT(regs, bins): page-heap metadata, malloc'd, which holds no reference. */
 static Region *regs;                   /* the page heap's regions */
+#if defined(__wasi__) && UINTPTR_MAX == UINT32_MAX
+#define WASI_STATIC_HEAP 1
+/* A wasm32 address has just two bits above the page table's low 18 index bits. The
+   first GiB needs no table allocation. Fresh Wasm linear memory also supplies a zeroed
+   first region, page-aligned for pmap_set. Both arrays live in zero-initialized storage. */
+static Seg *wasi_low_pages[1 << 18];
+static Seg **wasi_tables[4] = {wasi_low_pages};
+static _Alignas(PAGE) char wasi_first_region[REGION];
+#endif
 static PRun *bins[2][NBIN];            /* its free runs, by length (rebuilt by each sweep): [0] those
                                           with dirty pages, which allocation takes first, [1] clean */
 static I nregs, cregs, nbin[2][NBIN], cbin[2][NBIN];
@@ -338,7 +352,7 @@ static I cls(I n) {                    /* size class for n bytes plus one byte o
   return 16 + (e - 7) * 4 + (I)((y + (1ULL << (e - 2)) - 1) >> (e - 2)) - 5;
 }
 __attribute__((noinline)) static void pmap_set(uintptr_t a, uintptr_t e, Seg *v) {
-  if (e >> 48) oom();                  /* map the pages of [a, e) to v (or unmap) */
+  if ((uint64_t)e >> 48) oom();        /* map the pages of [a, e) to v (or unmap) */
   if (v && (!gc_hi || a < gc_lo)) gc_lo = a;
   if (v && e > gc_hi) gc_hi = e;
   for (; a < e; a += PAGE) {
@@ -400,7 +414,8 @@ __attribute__((noinline)) static void rebuild(Seg *s) {   /* free list of unmark
 }
 /* ---------- the page heap ----------
    Chunks and large objects take runs of whole pages from regions of 2 MiB, which the runtime maps
-   itself, aligned to 2 MiB (no allocator header or spare page beside them); an object of more pages
+   itself on native targets, aligned to 2 MiB. Wasm32 reserves its first region in static storage,
+   aligned to the 4 KiB page map. An object of more pages
    than a region's gets a mapping of its own. A region's bitmaps tell its used pages and those that
    may be dirty. A page mapped or purged since it was last written reads as zero, so a zeroed
    allocation clears only the dirty pages it takes (it never faults a fresh page in), and one whose
@@ -422,6 +437,13 @@ static I os_page(void) {               /* the system's page size; 0 if unusable 
 }
 static void heap_add(I bytes) { if ((gc_heap += bytes) > gc_peak) gc_peak = gc_heap; }
 static char *map_pages(I bytes) {      /* bytes (whole system pages) of zero pages, aligned to REGION */
+#ifdef __wasi__
+  /* (WASI, wasm/README.md: linear memory has no mappings; the C library's allocator gives the aligned
+     pages, and munmap, of a whole mapping only, frees them: wasm/wasi_stubs.c) */
+  char *z = aligned_alloc(REGION, (size_t)bytes);
+  if (!z) oom();
+  return memset(z, 0, (size_t)bytes);
+#endif
   size_t len = (size_t)bytes + REGION;
   char *p = mmap(0, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   if (p == MAP_FAILED) oom();
@@ -432,6 +454,9 @@ static char *map_pages(I bytes) {      /* bytes (whole system pages) of zero pag
 }
 static I purge(uintptr_t a, uintptr_t e) {   /* the whole system pages in [a, e) back to the system,
                                                 zero when next read: their bytes (0: none) */
+#ifdef __wasi__
+  return 0;                            /* (WASI: linear memory cannot give pages back) */
+#endif
   I page = os_page();
   if (!page) return 0;
   a = (a + page - 1) & ~(uintptr_t)(page - 1); e &= ~(uintptr_t)(page - 1);
@@ -496,7 +521,11 @@ static char *pages_take(I np, I *rg, int *dirty) {
       nregs++;
     }
     memset(&regs[r], 0, sizeof *regs);
+#ifdef WASI_STATIC_HEAP
+    regs[r].base = r == 0 ? wasi_first_region : map_pages(REGION);
+#else
     regs[r].base = map_pages(REGION);
+#endif
     if (np < RPAGES) run_push(1, r, np, RPAGES - np);
   }
   Region *g = &regs[r];
@@ -557,6 +586,9 @@ __attribute__((noinline)) static void pages_settle(Seg *freed, I keep) {
   for (I r = nregs - 1; r >= 0 && d > keep; r--) {   /* regions all free: unmapped */
     Region *g = &regs[r];
     if (!g->base || g->nused) continue;
+#ifdef WASI_STATIC_HEAP
+    if (g->base == wasi_first_region) continue;
+#endif
     I c = nbits(g->dirty, 0, RPAGES) * PAGE;
     munmap(g->base, REGION); g->base = 0; heap_add(-c); d -= c;
   }
@@ -874,8 +906,15 @@ static void gc_init(char *sb, I **roots, I nroots) {
   const char *e = getenv("PYSTACHY_GC");
   gc_bottom = sb + STACK_PAST;         /* sb is @main's frame address: include its frame record */
   gc_roots = roots; gc_nroots = nroots;
+#ifdef WASI_STATIC_HEAP
+  pmap = wasi_tables;
+#else
   if (!(pmap = calloc(1 << 18, sizeof *pmap))) oom();
+#endif
   gc_off = e && !strcmp(e, "off");
+#ifdef __wasi__
+  gc_off = 1;                          /* (WASI, wasm/README.md: the stack scan cannot see WebAssembly's locals) */
+#endif
   gc_stats = e && !strcmp(e, "stats");
   if (!gc_off && (e = getenv("PYSTACHY_GC_STRESS")) && atoll(e) > 0) gc_stress = atoll(e);
   /* PYSTACHY_GC_MIN=N: N MiB (1 to 2^20) of allocation between collections at least, for GC_MIN's 32
@@ -948,6 +987,29 @@ __attribute__((noinline)) static void put(Buf *b, const char *s, I n) {   /* not
 Str *pys_str(const char *p, I n) {
   Str *s = gc_raw(sizeof(Str) + n + 1);   /* (every byte written: the header, the bytes and the NUL) */
   s->len = n; s->dict_hash = 0; s->chars1 = n < 2 ? n + 1 : 0; if (n) memcpy(s->s, p, n); s->s[n] = 0; return s;
+}
+
+#ifdef __wasi__
+/* Both Wasm backends use these imports. Splitting the copy from the call lets C allocate
+   exactly one Str without reentering the guest allocator from JavaScript. */
+__attribute__((import_module("codemode"), import_name("call")))
+uint32_t wasi_tool_call(const char *name, uint32_t n, const char *payload, uint32_t size);
+__attribute__((import_module("codemode"), import_name("read")))
+void wasi_tool_read(char *dst, uint32_t size);
+#endif
+Str *pys_tool_call(Str *name, Str *payload) {
+#ifdef __wasi__
+  I n = wasi_tool_call(name->s, (uint32_t)name->len, payload->s, (uint32_t)payload->len);
+  if (n > (I)SIZE_MAX - (I)sizeof(Str) - 1) pys_fail("MemoryError");
+  Str *s = gc_raw(sizeof(Str) + n + 1);
+  s->len = n; s->dict_hash = 0; s->chars1 = n < 2 ? n + 1 : 0;
+  wasi_tool_read(s->s, (uint32_t)n);
+  s->s[n] = 0;
+  return s;
+#else
+  (void)name; (void)payload;
+  pys_fail("NotImplementedError: codemode.call requires a WebAssembly host");
+#endif
 }
 static Str *cstr(const char *p) { return pys_str(p, strlen(p)); }
 static Str *done(Buf *b) { return pys_str(b->p, b->n); }
@@ -1443,11 +1505,18 @@ Str *pys_str_float(double d) {               /* Python repr(): shortest round-tr
   }
   return pys_str(o, w - o);
 }
-Str *pys_float_hex(double d) {                /* float.hex(): CPython spells zero 0x0.0p+0, NaN unsigned */
-  char b[40];
+Str *pys_float_hex(double d) {
   if (isnan(d)) return cstr("nan");
+  if (isinf(d)) return cstr(signbit(d) ? "-inf" : "inf");
   if (d == 0) return cstr(signbit(d) ? "-0x0.0p+0" : "0x0.0p+0");
-  return pys_str(b, fsnprintf(b, 40, "%.13a", d));
+  /* float.hex() keeps all 52 fraction bits and the minimum normal exponent for a
+     subnormal. libc %a may instead normalize it to a leading 1 and a lower exponent. */
+  uint64_t bits = double_to_bits(d);
+  int exponent = (int)(bits >> 52 & 0x7ff);
+  unsigned long long fraction = bits & ((1ULL << 52) - 1);
+  char b[40];
+  return pys_str(b, snprintf(b, sizeof b, "%s0x%d.%013llxp%+d", bits >> 63 ? "-" : "",
+                             exponent != 0, fraction, exponent ? exponent - 1023 : -1022));
 }
 I pys_float_is_integer(double d) {          /* below 2**52 in magnitude, d is whole where its truncation equals it;
                                                 from there every finite float is (no floor(): see pys_floor) */
@@ -2706,7 +2775,7 @@ void *pys_box(I v) { I *p = gc_box(1); p[0] = v; p[1] = 0; return p; }
    Mpz, in a box the collector scans */
 void *pys_big_box(I lo, void *hi) {
   if (!hi) return pys_box(lo);
-  I *p = gc_box(0); p[0] = INT64_MIN; ((void **)p)[1] = hi; return p;
+  I *p = gc_box(0); p[0] = INT64_MIN; p[1] = (I)(uintptr_t)hi; return p;
 }
 /* Closed union: a program-wide tag and the value's 8-byte slot. The collector
    scans the box for str, container or native reference payloads. None remains null. */
@@ -7969,6 +8038,9 @@ I pys_proc_write(I fd, Str *data, I at, I n) {   /* os.write(fd, data[at:at + n]
   if (r < 0) ioerr(errno);              /* (EPIPE where the reader is gone: the runtime ignores SIGPIPE) */
   return r;
 }
+I pys_os_write(I fd, Str *data) {     /* os.write(fd, data) returns the count of one write, including a short write */
+  return pys_proc_write(os_fd(fd), data, 0, data->len);
+}
 void pys_proc_close(I fd) { if (close((int)fd) < 0) ioerr(errno); }   /* os.close(fd) */
 /* The selector of Popen.communicate(): which of two descriptors to read (1 and 2) and one to write
    (4) are ready, an end of file or an error among them, within timeout seconds (negative: wait
@@ -8193,7 +8265,12 @@ static uintptr_t stack_mapping_bottom(uintptr_t here, uintptr_t page) {
 static void stack_floor_at(uintptr_t here, int mapped) {   /* (here: the caller's frame address) */
   uintptr_t lo = 0, hi = 0;
   (void)mapped;
-#if defined(__APPLE__)
+#if defined(__wasi__)
+  /* wasm-ld lays out the linear-memory stack shared with directly emitted frames. */
+  extern char __stack_low, __stack_high;
+  lo = (uintptr_t)&__stack_low;
+  hi = (uintptr_t)&__stack_high;
+#elif defined(__APPLE__)
   pthread_t self = pthread_self();
   size_t size = pthread_get_stacksize_np(self);
   hi = (uintptr_t)pthread_get_stackaddr_np(self);   /* (the highest address) */
