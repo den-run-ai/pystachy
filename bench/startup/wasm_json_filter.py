@@ -6,13 +6,14 @@ from codemode import call
 
 def count_open_issues() -> int:
     issues = json.loads(call("issue_records", "pystachy"))
-    if not isinstance(issues, list):
-        raise TypeError("expected an array of issues")
     opened = 0
-    for issue in issues:
-        if not isinstance(issue, dict):
-            raise TypeError("expected an issue object")
-        state = issue["state"]
-        if isinstance(state, str) and state == "open":
-            opened += 1
-    return opened
+    if isinstance(issues, list):
+        for issue in issues:
+            if isinstance(issue, dict):
+                state = issue["state"]
+                if isinstance(state, str) and state == "open":
+                    opened += 1
+            else:
+                raise TypeError("expected an issue object")
+        return opened
+    raise TypeError("expected an array of issues")
