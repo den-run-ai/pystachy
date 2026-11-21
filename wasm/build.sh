@@ -53,7 +53,7 @@ runtime() {
   mkdir -p "$RT"
   SYS=$(sysroot)
   stamp=$RT/runtime.stamp
-  if [ -f "$stamp" ] && [ -f "$RT/runtime.o" ] && [ -f "$RT/stubs.o" ] &&
+  if [ -f "$stamp" ] && [ -f "$RT/runtime.o" ] && [ -f "$RT/stubs.o" ] && [ -f "$RT/command-eh.o" ] &&
     [ -z "$(find runtime.c runtime.py ryu mpz wasm pystachy.py src -newer "$stamp" -type f | head -1)" ]; then
     return 0
   fi
@@ -73,6 +73,9 @@ runtime() {
   "${LLVM}clang" --target=$TARGET -O2 -c "$t/rt-opt.bc" -o "$t/runtime.o"
   # shellcheck disable=SC2086
   "${LLVM}clang" $W -O2 -Wall -Wextra -Werror -c wasm/wasi_stubs.c -o "$t/stubs.o"
+  # shellcheck disable=SC2086
+  "${LLVM}clang" $W -O2 -fwasm-exceptions -Wall -Wextra -Werror -c wasm/command_eh.c -o "$t/command-eh.o"
+  mv "$t/command-eh.o" "$RT/command-eh.o"
   mv "$t/runtime.o" "$RT/runtime.o"; mv "$t/stubs.o" "$RT/stubs.o"
   rm -rf "$t"; trap - EXIT
   touch "$stamp"
@@ -92,16 +95,24 @@ program() ( # source|ir INPUT OUTPUT (a dash streams IR input or Wasm output)
     ir=$t/prog.ll
     cat > "$ir"
   fi
-  output=$3
+  destination=$3
+  output=$destination
   if [ "$output" = - ]; then output=$t/program.wasm; fi
   # (wasm32's constants and main: wasm/wasm32_ir.py)
   "$PY" wasm/wasm32_ir.py "$ir" "$t/prog-wasi.ll"
-  "${LLVM}clang" --target=$TARGET -O"$OPT" -c -x ir "$t/prog-wasi.ll" -o "$t/prog.o" -Wno-override-module
+  set -- "$RT/runtime.o" "$RT/stubs.o"
+  ehflag=
+  if grep -q '^declare void @pys_wasi_uncaught(ptr)$' "$t/prog-wasi.ll"; then
+    [ -f "$RT/command-eh.o" ] || { echo "wasm/build.sh: rebuild the exception runtime with wasm/build.sh runtime" >&2; exit 1; }
+    ehflag=-fwasm-exceptions
+    set -- "$@" "$RT/command-eh.o"
+  fi
+  "${LLVM}clang" --target=$TARGET -O"$OPT" ${ehflag:+"$ehflag"} -c -x ir "$t/prog-wasi.ll" -o "$t/prog.o" -Wno-override-module
   # --fatal-warnings: a call whose signature differs from its definition's (which would trap)
   # shellcheck disable=SC2086
-  "${LLVM}clang" --target=$TARGET --sysroot="$SYS" "$t/prog.o" "$RT/runtime.o" "$RT/stubs.o" -o "$output" \
+  "${LLVM}clang" --target=$TARGET --sysroot="$SYS" "$t/prog.o" "$@" -o "$output" \
     -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
-  if [ "$3" = - ]; then cat "$output"; fi
+  if [ "$destination" = - ]; then cat "$output"; fi
 )
 
 runtime_wasm() {

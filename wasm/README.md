@@ -144,10 +144,11 @@ a directly emitted tool-result filter, and a JSON filter using dynamic `Any` and
 
 - **The collector is off.** The conservative stack scan cannot see WebAssembly locals, so
   `runtime.c` sets `PYSTACHY_GC=off` under WASI. The engine caps memory (4 GiB for wasm32).
-- **LLVM/WASI commands lack an unwinder.** On that route, including a fallback, `llc`
-  lowers an `invoke` to a call. An exception that needs to unwind across that call exits
-  the program with the runtime's uncaught diagnostic and status. Use
-  `createCompiler({ fallback: false })` to require direct compilation.
+- **LLVM/WASI commands use WebAssembly exception handling.** The adapter lowers native
+  landing pads to Wasm catches for Pystachy's exception payload. Python handlers, cleanup
+  and uncaught reporting use the shared runtime. WASI errno numbers can differ from Linux,
+  including which subclass a numeric `OSError` constructs. For example, both Wasm routes
+  report missing files with WASI errno 44, while Linux reports errno 2.
 - **No processes, signals, users or dynamic loading.** `wasi_stubs.c` defines those calls to
   fail with `ENOSYS`, so the runtime raises the matching `OSError`.
 - **Filesystem access depends on the runner.** The CLI preopens `/` and passes Node's working
@@ -169,6 +170,7 @@ a directly emitted tool-result filter, and a JSON filter using dynamic `Any` and
 | `../tools/wasm_from_source.py` | Source to Wasm from finalized compiler records |
 | `tir_wasm.py` | Typed IR module text to a WebAssembly module, without LLVM |
 | `reactor.c` | `runtime.wasm`'s entry: arguments, `pys_init`, the program's code, `pys_finish` |
-| `wasm32_ir.py` | IR rewrite for wasm32 constants, `main` and C library lengths |
+| `wasm32_ir.py` | Adapts constants, command entry, exception landing pads and libc calls to wasm32 |
+| `command_eh.c` | Transfers exception payloads to LLVM/WASI command handlers and resumes uncaught reporting |
 | `wasi_stubs.c` | Missing POSIX functions, unwinder stubs, working directory |
 | `include/` | Headers that `wasi-libc` lacks (`dlfcn.h`, `pthread.h`, `pwd.h`, `sys/wait.h`) and declarations `runtime.c` needs (`pystachy_wasi.h`) |

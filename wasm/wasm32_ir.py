@@ -234,9 +234,95 @@ def line_of(line: str) -> str:
     return line
 
 
+# lower_module.py emits catch-all landing pads with one use of the unwind header.
+# The Wasm target takes the same pointer from a catchpad. End the catch immediately
+# so nested handlers and rethrows run in ordinary blocks. Preserve the original
+# block label as the predecessor of its successors' phis.
+LANDING = re.compile(
+    r"^(?P<label>[-.\w]+):\n"
+    r"  (?P<pair>%[-.\w]+) = landingpad \{ ptr, i32 \} catch ptr null(?:, !dbg !\d+)?\n"
+    r"  (?P<exc>%[-.\w]+) = extractvalue \{ ptr, i32 \} (?P=pair), 0(?P<dbg>, !dbg !\d+)?$",
+    re.MULTILINE,
+)
+UNWIND = re.compile(r"^(  (?:%[-.\w]+ = )?invoke .+ unwind label %)([-.\w]+)", re.MULTILINE)
+
+
+def wasm_landing(match: re.Match) -> str:
+    label = match["label"]
+    dispatch = "pys.wasi.dispatch." + label
+    pad = "pys.wasi.pad." + label
+    return (f"{dispatch}:\n"
+            f"  %{dispatch}.cs = catchswitch within none [label %{pad}] unwind to caller\n"
+            f"{pad}:\n"
+            f"  %{pad}.token = catchpad within %{dispatch}.cs [ptr null]\n"
+            f"  {match['exc']} = call ptr @llvm.wasm.get.exception(token %{pad}.token){match['dbg'] or ''}\n"
+            f"  catchret from %{pad}.token to label %{label}\n"
+            f"{label}:")
+
+
+# Catch only LLVM's Wasm exception tag. LLVM restores the linear stack pointer at
+# each catch. A second unhandled raise while the runtime formats a user's __str__
+# must reach the same reporter (runtime.c's xr.shown), after any inner handlers.
+WASI_MAIN = """
+declare i32 @__gxx_wasm_personality_v0(...)
+declare ptr @llvm.wasm.get.exception(token)
+declare void @pys_wasi_uncaught(ptr)
+define i32 @__main_argc_argv(i32 %argc, ptr %argv) {
+entry:
+  %status = alloca i32
+  br label %run
+run:
+  %exc = phi ptr [ null, %entry ], [ %caught, %run ]
+  %caught = call ptr @pys.wasi.attempt(i32 %argc, ptr %argv, ptr %exc, ptr %status)
+  %done = icmp eq ptr %caught, null
+  br i1 %done, label %exit, label %run
+exit:
+  %result = load i32, ptr %status
+  ret i32 %result
+}
+define internal ptr @pys.wasi.attempt(i32 %argc, ptr %argv, ptr %exc, ptr %status) noinline personality ptr @__gxx_wasm_personality_v0 {
+entry:
+  %first = icmp eq ptr %exc, null
+  br i1 %first, label %main, label %report
+main:
+  %result = invoke i32 @pys.wasi.main(i32 %argc, ptr %argv) to label %done unwind label %dispatch
+done:
+  store i32 %result, ptr %status
+  ret ptr null
+report:
+  invoke void @pys_wasi_uncaught(ptr %exc) to label %unreachable unwind label %dispatch
+unreachable:
+  unreachable
+dispatch:
+  %cs = catchswitch within none [label %catch] unwind to caller
+catch:
+  %pad = catchpad within %cs [ptr null]
+  %caught = call ptr @llvm.wasm.get.exception(token %pad)
+  catchret from %pad to label %escaped
+escaped:
+  ret ptr %caught
+}
+"""
+
+
+def adapt_module(src: str) -> str:
+    out = "\n".join(line_of(line) for line in src.split("\n"))
+    if not re.search(r"^  call void @pys_eh_on\(\)", out, re.MULTILINE):
+        return out
+    if not re.search(r"^define i32 @__main_argc_argv\(", out, re.MULTILINE):
+        raise ValueError("exception-enabled WASI input requires a command entry point")
+    out = re.sub(r"^define i32 @__main_argc_argv\(", "define internal i32 @pys.wasi.main(", out, flags=re.MULTILINE)
+    out = re.sub(r"^(define [^\n]+) personality ptr @pys_personality", r"\1 personality ptr @__gxx_wasm_personality_v0", out, flags=re.MULTILINE)
+    out = UNWIND.sub(r"\1pys.wasi.dispatch.\2", out)
+    out = LANDING.sub(wasm_landing, out)
+    if re.search(r"^  %[-.\w]+ = landingpad ", out, re.MULTILINE):
+        raise ValueError("unsupported WASI landing pad")
+    return out + WASI_MAIN
+
+
 def main() -> None:
     src = open(sys.argv[1], encoding="latin-1").read()
-    out = "\n".join([line_of(line) for line in src.split("\n")])
+    out = adapt_module(src)
     f = open(sys.argv[2], "w", encoding="latin-1")
     f.write(out)
     f.close()
