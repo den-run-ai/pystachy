@@ -2923,15 +2923,15 @@ def gen_tuple_const(self, n: Node, vals: list[Val]) -> Val:
         elif x.kind == "True" or x.kind == "False":
             ok = v.t == "bool" and (v.v == "true" or v.v == "false")
         else:
-            ok = x.kind == "None" and v.v == "null"
-            if ok:
-                # Its contextual slot may be a nullable class. Intern the literal
-                # by its Python value across specializations and typed displays.
-                v = Val("null", "None")
+            # A native class holds None as a null reference. Container and numeric
+            # optionals retain their own layouts and conversion checks.
+            ok = x.kind == "None" and v.v == "null" and (v.t == "None" or v.t in self.classes)
         if not ok:
             return Val("", "")
         items.append(Val(v.v, v.t))
-        keys.append(f"{'tuple' if x.kind == 'tuple' else v.t} {v.v}")
+        # Intern by the literal's Python type while recording its actual slot layout.
+        key_type = x.kind if x.kind == "None" or x.kind == "tuple" else v.t
+        keys.append(f"{key_type} {v.v}")
     key = ("" if len(vals) == 0 else str(n.line // LINES)) + "(" + ", ".join(keys) + ")"
     if key not in self.tconsts:
         d = Data("tuple", f"@tc.{len(self.tconsts)}")
