@@ -5,16 +5,8 @@ Programs built by the native compiler against an instrumented runtime; `runtime.
 
 | Suite | Runs | Checks | Time |
 |---|---|---|---:|
-| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 9200 passed, 0 failed | 2282 s |
-| ffi | `tests/ffi/run.sh`, AOT and extension modules | 149 passed, 0 failed | 164 s |
-
-### Changed since 41dffd36201e6655c2603b28a458300c864237f7 (merge base `41dffd36201e`)
-
-Changed lines of code: 64 of 70 run (91.4%); their branches: 81 of 112 taken (72.3%).
-
-| File | Lines not run | Branches not taken |
-|---|---|---|
-| `runtime.c` | 1031, 1041-1044, 7801 | 365 (1 of 2), 922 (3 of 6), 929 (1 of 2), 931 (3 of 4), 932 (1 of 2), 950 (1 of 6), 953 (5 of 6), 8147 (1 of 8), 8149 (1 of 2), 8152 (1 of 2), 8165 (4 of 8), 8166 (4 of 10), 8167 (3 of 6), 8507 (2 of 6) |
+| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 9200 passed, 0 failed | 2340 s |
+| ffi | `tests/ffi/run.sh`, AOT and extension modules | 149 passed, 0 failed | 121 s |
 
 | File | Lines | Missed | Lines % | Branches | Missed | Branches % | Functions % | Regions % |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
