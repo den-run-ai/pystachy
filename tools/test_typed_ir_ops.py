@@ -208,6 +208,17 @@ class TypeCheckTests(unittest.TestCase):
                 self.assertEqual(op_type_error(check, typed("union.tag", "int", [("%a0", u)])),
                                  f"union.tag operand 0 needs {specs.TYPE_CLASSES['union']}, got {u}")
 
+    def test_reused_variable_binds_at_each_instruction(self):
+        check = OpTypes(function([]), {}, {})
+        bindings, positions = check.bound, check.where
+        for t in ("int", "float", "int"):
+            operands = [("true", "bool"), ("%a0", t), ("%a1", t)]
+            self.assertEqual(op_type_error(check, typed("select", t, operands)), "")
+            self.assertIs(check.bound, bindings)
+            self.assertIs(check.where, positions)
+        self.assertEqual(op_type_error(check, typed("mem.load", "int", [("%slot.0", "&float")])),
+                         "mem.load result needs float ($T is float at operand 0), got int")
+
     def test_calls_are_left_to_their_signatures(self):
         self.assertEqual(self.error(typed("rt", "anything", [("%a0", "S")], "list.len")), "")
 

@@ -210,7 +210,7 @@ def read_kinds() -> dict[str, dict[str, str]]:
         kinds[op] = {}
         for c in OP_OPERAND_TYPES[op] + [OP_RESULT_TYPE[op]]:
             p = CONSTRAINT_PARTS[c]
-            if p[2] != "":
+            if p[1] != "" and (p[2] != "" or p[1] not in kinds[op]):
                 kinds[op][p[1]] = p[2]
     return kinds
 
@@ -312,10 +312,10 @@ class OpTypes:
             return "" if t == c else c
         prefix = p[0]
         suffix = p[3]
-        if name in self.bound:
-            want = prefix + self.bound[name] + suffix
+        if self.bound[name] != "":
+            want = self.bound[name] if prefix == "" and suffix == "" else prefix + self.bound[name] + suffix
             return "" if t == want else f"{want} (${name} is {self.bound[name]} at {placed(self.where[name])})"
-        kind = self.kinds[name] if name in self.kinds else ""
+        kind = self.kinds[name]
         inner = ""
         if len(t) > len(prefix) + len(suffix) and t.startswith(prefix) and t.endswith(suffix):
             inner = t[len(prefix) : len(t) - len(suffix)]
@@ -336,10 +336,10 @@ def op_type_error(check: OpTypes, i: Ins) -> str:
     cs = OP_OPERAND_TYPES[i.op]
     result = OP_RESULT_TYPE[i.op]
     check.kinds = OP_KINDS[i.op]
-    if len(check.bound) > 0:
-        # (the previous op's bindings; most ops bind none, and keep the empty ones)
-        check.bound = {}
-        check.where = {}
+    # Each variable starts unbound for this instruction. Reuse the two tables across the
+    # function; where is read only after need has bound the name and written its position.
+    for name in check.kinds:
+        check.bound[name] = ""
     for j in range(len(i.a) if len(cs) > 0 else 0):
         need = check.need(cs[j] if j < len(cs) else cs[len(cs) - 1], i.a[j].t, j)
         if need != "":
