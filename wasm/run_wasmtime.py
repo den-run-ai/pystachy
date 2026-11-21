@@ -181,6 +181,17 @@ class Runner:
                 wasi.stderr_file = str(stderr)
             store.set_wasi(wasi)
             linker.define_wasi()
+            # Wasmtime's Preview 1 proc_exit rejects codes >= 126. Match the
+            # reactor/command ABI for SystemExit, including negative Python codes.
+            class GuestExit(Exception):
+                pass
+
+            def proc_exit(code):
+                raise GuestExit(code & U32_MAX)
+
+            linker.allow_shadowing = True
+            linker.define_func("wasi_snapshot_preview1", "proc_exit", wt.FuncType([wt.ValType.i32()], []), proc_exit)
+            linker.allow_shadowing = False
             install_tools(linker, tools or {})
             try:
                 if program.data_size is None:
@@ -188,8 +199,8 @@ class Runner:
                     command.exports(store)["_start"](store)
                     return 0
                 return self._run_direct(store, linker, program)
-            except wt.ExitTrap as exit_status:
-                return exit_status.code
+            except GuestExit as exit_status:
+                return exit_status.args[0]
 
     def _run_direct(self, store, linker, program):
         if self.runtime is None:
@@ -261,7 +272,8 @@ def main() -> int:
     options = parser.parse_args()
     runner = Runner(options.runtime)
     try:
-        return runner.run(runner.compile(options.program.read_bytes()), args=[str(options.program), *options.args])
+        status = runner.run(runner.compile(options.program.read_bytes()), args=[str(options.program), *options.args])
+        return status & 255
     except wt.Trap as exc:
         print(f"wasm trap: {exc}", file=sys.stderr)
         return 134

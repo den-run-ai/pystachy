@@ -170,7 +170,7 @@ Reuse the runner and compiled program across calls. Each call creates a fresh st
 its own tool grants, empty stdin, arguments (including argv[0]) and environment (empty by
 default). Both interfaces inherit stdout and stderr and grant no directory mounts. The
 Python API also accepts `stdout` and `stderr` file paths, truncating each file on each run.
-`run` returns the guest exit status. Wasmtime traps and host callback errors propagate to
+`run` returns the unsigned 32-bit WASI exit status. The CLI exposes its low eight bits. Wasmtime traps and host callback errors propagate to
 the Python caller. The CLI prints a trap diagnostic and exits with status 134. Calls to
 this runner from overlapping threads raise `RuntimeError` because wasmtime-py 51 shares
 its pending callback exception across threads. A callback may run another guest on the

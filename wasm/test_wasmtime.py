@@ -140,6 +140,13 @@ class HostTests(unittest.TestCase):
         self.assertIn("another thread", results[1])
         self.assertEqual(other.run(inner), 0)
 
+    def test_full_wasi_exit_codes(self):
+        for code in [0, 125, 126, 255, 293, -1]:
+            program = self.compile(f'''(module
+              (import "wasi_snapshot_preview1" "proc_exit" (func $exit (param i32)))
+              (func (export "_start") (call $exit (i32.const {code}))))''')
+            self.assertEqual(self.runner.run(program), code & 0xFFFFFFFF)
+
     def test_fuel_is_per_call(self):
         program = self.compile('(module (func (export "_start") (loop $l br $l)))')
         for fuel in [0, 1000]:
