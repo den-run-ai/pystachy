@@ -174,10 +174,16 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
                 return self.exit_value(vals)
             return self.exc_value("OSError" if f.s == "IOError" or f.s == "EnvironmentError" else f.s, vals)
         return self.builtin(f.s, args, want, resultsoft)
-    if f.kind == "attr" and f.s == "__class__" and self.refl_typeof(f) is not None and self.class_value_named(unopt(self.dry(f.kids[0]))) and (not self.dyn_policy(self.line) or is_clsval(self.dry(f))):
-        # o.__class__(args): a call of the class object of o's class (class_values.py)
-        return self.obj_call(self.expr(f, ""), args, want, resultsoft)
     if f.kind == "attr":
+        receiver = f.kids[0]
+        # The result of a method call is already a value. Capture it once before
+        # probing which __class__ it has, including a subclass's shadowing member.
+        # Otherwise each probe recompiles the whole receiver in a chain of calls.
+        if f.s == "__class__" and receiver.kind == "call" and receiver.kids[0].kind == "attr":
+            f = mk("attr", f.s, f.line, [self.vnode(self.expr(receiver, ""))])
+            self.line = f.line
+        if f.s == "__class__" and self.refl_typeof(f) is not None and self.class_value_named(unopt(self.dry(f.kids[0]))) and (not self.dyn_policy(self.line) or is_clsval(self.dry(f))):
+            return self.obj_call(self.expr(f, ""), args, want, resultsoft)
         c = self.curfn.cls
         if c != "" and self.classes[c].exc != "" and f.kids[0].kind == "name" and f.kids[0].s not in self.ltype and self.derives(c, f.kids[0].s) and f.kids[0].s != c and len(args) > 0 and args[0].kind == "name" and len(self.curfn.params) > 0 and args[0].s == self.curfn.params[0] and (f.kids[0].s in self.classes or not self.bound(f.kids[0].s)):
             # Base.m(self, args) in a method of an exception class: super().m(args) for its base
@@ -219,7 +225,7 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         self.mcall = n
         r = self.method(o, f.s, args, want, resultsoft)
         if f.s != "close" and r.t != BFILE:  # (__enter__() and __iter__() return the file: it stays open)
-            self.close_temp(f.kids[0], o)
+            self.close_temp(receiver, o)
         return r
     if f.kind == "name":
         # (a union's value that a test narrowed to its Callable member is that Callable here)
