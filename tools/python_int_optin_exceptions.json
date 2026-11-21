@@ -290,6 +290,22 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/inference/fresh_list_union.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/fresh_list_union.py:4: error: expected int, got str",
+      "reason": "The inferred mixed list would narrow a promoting integer to a 64-bit union slot. The first integer write therefore fixes the item type.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/fresh_list_union.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/fresh_list_union.py:4: error: expected int, got str",
+      "reason": "The inferred mixed list would narrow a promoting integer to a 64-bit union slot. The first integer write therefore fixes the item type.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/inference/mixed_union_operations.py",
       "mode": "jit",
       "category": "unsupported-storage",

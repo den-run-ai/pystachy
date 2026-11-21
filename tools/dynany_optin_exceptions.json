@@ -58,6 +58,20 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/777"
     },
     {
+      "case": "tests/programs/inference/fresh_list_union.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/inference/fresh_list_union.py:4: error: expected int, got str",
+      "reason": "Fresh-list union inference stops in a dynamic-Any graph because scalar union slots cannot retain the original numeric object for identity observers.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/1527"
+    },
+    {
+      "case": "tests/programs/inference/fresh_list_union.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/inference/fresh_list_union.py:4: error: expected int, got str",
+      "reason": "Fresh-list union inference stops in a dynamic-Any graph because scalar union slots cannot retain the original numeric object for identity observers.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/1527"
+    },
+    {
       "case": "tests/programs/upstream/upstream_colorsys_extracted.py",
       "mode": "jit",
       "diagnostic": "tests/programs/upstream/upstream_colorsys_extracted.py:36: error: unpacking a Any into the arguments of colorsys.rgb_to_hsv() is not supported (a tuple's items are)",

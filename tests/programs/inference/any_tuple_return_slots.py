@@ -1,11 +1,7 @@
 from __future__ import annotations
 
-from typing import Annotated, Any, Tuple as Pair
-
-
-class State:
-    def __init__(self, name: str):
-        self.name = name
+from typing import Any, Tuple as Pair
+from tuple_entries import DEFAULT_ENTRY, State, default
 
 
 def entry(flag: bool, value: Any, state: State) -> Pair[State | None, Any]:
@@ -31,15 +27,8 @@ def concrete(x: Any) -> tuple[int | None, Any]:
 print(concrete("tag")[0] + 2)
 
 
-def default(flag: bool, tag: Any) -> Annotated[tuple[State | None, Any], "entry"]:
-    if flag:
-        return None, "ok"
-    return State("fresh"), tag
-
-
 print(default(True, "x") is default(True, "y"))
-plain = (None, "ok")
-print(default(True, "x") is plain)
+print(default(True, "x") is DEFAULT_ENTRY)
 
 
 def already_joined(flag: bool, state: State, token: Any) -> tuple[State | None, Any]:
