@@ -17,7 +17,7 @@ backedge also have a dispatch loop: a backward branch sets the next block's inde
 continues the loop, whose br_table dispatches it. A phi's values are assigned on each edge, all read first.
 
 It lowers scalar code, runtime calls and exception handlers (wasm/README.md).
-Generators, dynamic dispatch and collector roots remain unsupported (the
+Generators and dynamic dispatch remain unsupported (the
 runtime's collector is off). For an unsupported operation it exits with status 3 after one
 line `tir_wasm: refused: WHAT` on stderr, and wasm/build.sh then compiles the program through
 LLVM. Run it as PYTHONPATH=. python3 wasm/tir_wasm.py, or compiled: PYSTACHY_PATH=. ./pystachy
@@ -28,7 +28,7 @@ import struct
 import sys
 
 from src.pystachy_compiler.machine_ir import WORD_READS
-from src.pystachy_compiler.specs import CONTAINER_HEADERS, RTSYM, RUNTIME
+from src.pystachy_compiler.specs import CONTAINER_HEADERS, GENDONE, GENNAME, GENRET, GENSLOTS, GENSTATE, GENVAL, RTSYM, RUNTIME
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, is_tuple, lt, rtll, rtsig, rtsym, tslots
 from wasm.wasi_abi import LIBC_WRAPPERS
 
@@ -75,7 +75,7 @@ class Inst:
         self.t = ""
 
     def is_invoke(self) -> bool:
-        return len(self.targets) != 0 and self.op in ("rt", "call", "icall", "init")
+        return len(self.targets) != 0 and self.op in ("rt", "call", "icall", "init", "gen.resume")
 
 
 class Block:
@@ -91,6 +91,8 @@ class Func:
         self.ret = ""
         self.attrs: dict[str, str] = {}
         self.slots: dict[str, str] = {}
+        self.coroutine = False
+        self.generator_exceptions: set[str] = set()
         self.tuple_offsets: dict[str, int] = {}
         self.frame_bytes = 0
         self.blocks: list[Block] = []
@@ -131,10 +133,7 @@ class Func:
             self.slots[name] = t
 
 
-def register_colors(fn: Func, labels: dict[str, int], locals_: dict[str, int], types: list[int]) -> tuple[list[int], list[int]]:
-    # Non-SSA locals (arguments, addressable slots and emitter state) own a register throughout
-    # the call. SSA values of the same type may share a register if their lifetimes do not meet.
-    values = {name: locals_[name] for name in locals_ if name.startswith("%t") and name[2:].isdigit() and name not in fn.slots}
+def live_after_blocks(fn: Func, labels: dict[str, int], values: dict[str, int]) -> list[set[int]]:
     count = len(fn.blocks)
     uses: list[set[int]] = [set() for _ in range(count)]
     defs: list[set[int]] = [set() for _ in range(count)]
@@ -173,6 +172,15 @@ def register_colors(fn: Func, labels: dict[str, int], locals_: dict[str, int], t
                 live_in[b] = before
                 changed = True
 
+    return live_out
+
+
+def register_colors(fn: Func, labels: dict[str, int], locals_: dict[str, int], types: list[int]) -> tuple[list[int], list[int]]:
+    # Non-SSA locals (arguments, addressable slots and emitter state) own a register throughout
+    # the call. SSA values of the same type may share a register if their lifetimes do not meet.
+    values = {name: locals_[name] for name in locals_ if name.startswith("%t") and name[2:].isdigit() and name not in fn.slots}
+    count = len(fn.blocks)
+    live_out = live_after_blocks(fn, labels, values)
     edges: dict[int, set[int]] = {idx: set() for idx in values.values()}
     for b in range(count):
         live = live_out[b].copy()
@@ -246,6 +254,7 @@ class Module:
         self.consts: list[Const] = []
         self.globals: dict[str, str] = {}
         self.order: list[str] = []
+        self.roots: list[str] = []
         self.classes: dict[str, ClassDecl] = {}
         self.objects: list[str] = []
         self.compared: dict[str, bool] = {}
@@ -254,6 +263,7 @@ class Module:
         self.keykinds: dict[str, str] = {}
         self.builtkinds: dict[str, str] = {}
         self.funcs: list[Func] = []
+        self.plain_generators: dict[str, int] = {}
 
     def set_object_tables(self, objects: dict[str, int], compared: dict[str, bool], hashed: dict[str, bool]) -> None:
         # Descriptors hold the numeric ID, independent of declaration or attribute order.
@@ -491,6 +501,8 @@ def parse(text: str) -> Module:
                 block.code.append(ins)
         else:
             raise Refused(f"unexpected line {line!r}")
+    if "plain" in m.attrs:
+        m.plain_generators = object_table(m.attrs["plain"], "plain")
     if "objects" in m.attrs or "compared" in m.attrs or "hashed" in m.attrs:
         objects = object_table(m.attrs.get("objects", "[]"), "objects")
         compared = {c: True for c in object_table(m.attrs.get("compared", "[]"), "compared")}
@@ -544,7 +556,8 @@ def header(line: str) -> Func:
         fn.ptypes.append(t)
     fn.ret, at = atom(line, at + 5, "")
     if line.startswith(" coroutine", at):
-        raise Refused(f"{name} is a generator")
+        fn.coroutine = True
+        at += len(" coroutine")
     fn.attrs = fields(line, at, len(line) - 1)
     return fn
 
@@ -588,7 +601,11 @@ def declaration(m: Module, line: str) -> None:
         f = fields(line, at, len(line))
         m.keykinds[name] = f.get("kind", "")
         m.builtkinds[name] = f.get("built", "")
-    elif keyword == "runtime" or keyword == "root":
+    elif keyword == "root":
+        if not name or at != len(line):
+            raise Refused("invalid global root declaration")
+        m.roots.append(name)
+    elif keyword == "runtime":
         return
     else:
         raise Refused(f"module declaration {keyword}")
@@ -707,11 +724,155 @@ class Import:
         self.typ = typ
 
 
+# A generator handle starts with the five promise words used by the existing IR.
+# The next two words hold a resume label and its producer's function-table index.
+# Each addressable source slot then owns an eight-byte cell in this instance.
+GEN_PC = GENSLOTS
+GEN_TARGET = GENSLOTS + 1
+GEN_LOCALS = GENSLOTS + 2
+
+
+def frame_inst(op: str, args: list[Operand], result: str = "", t: str = "") -> Inst:
+    i = Inst(op)
+    i.args = args
+    i.t = t
+    if result:
+        i.res = [result]
+    return i
+
+
+def frame_address(block: Block, name: str, word: int) -> None:
+    addr = frame_inst("mach.addr", [Operand("%ptr", "%wasm.frame"), Operand("int", str(word))], name, "%ptr")
+    addr.fields["element"] = "int"
+    block.code.append(addr)
+
+
+def frame_store(block: Block, address: str, value: Operand) -> None:
+    block.code.append(frame_inst("mach.store", [Operand("%ptr", address), value]))
+
+
+def frame_addresses(block: Block, fn: Func) -> None:
+    for name, index in [("%wasm.value", GENVAL), ("%wasm.return", GENRET), ("%wasm.state", GENSTATE),
+                        ("%wasm.name", GENNAME), ("%wasm.pc", GEN_PC), ("%wasm.target", GEN_TARGET)]:
+        frame_address(block, name, index)
+    at = GEN_LOCALS
+    for slot in fn.slots:
+        frame_address(block, slot, at)
+        at += 1
+
+
+def split_generator(fn: Func, resume: Func, target_slot: str) -> Func:
+    labels = fn.block_indices()
+    if not fn.blocks or not fn.blocks[0].code or fn.frame_bytes:
+        raise Refused(f"generator frame or entry in {fn.name}")
+    entry = fn.blocks[0]
+    start = entry.code[-1]
+    if start.op != "gen.start" or len(start.args) != 1 or len(start.targets) != 1:
+        raise Refused(f"generator initial suspension in {fn.name}")
+    values: dict[str, int] = {}
+    for block in fn.blocks:
+        for i in block.code:
+            for name in i.res:
+                values[name] = len(values)
+    live = live_after_blocks(fn, labels, values)
+    for b in range(len(fn.blocks)):
+        for i in fn.blocks[b].code:
+            if i.op in ("gen.start", "gen.yield"):
+                if i is not fn.blocks[b].code[-1] or len(i.targets) != 1 or (i.op == "gen.start" and b != 0):
+                    raise Refused(f"generator suspension edge in {fn.name}")
+                if live[b] or any(x.op == "phi" for x in fn.blocks[labels[i.targets[0]]].code):
+                    raise Refused(f"generator suspension with live temporaries in {fn.name}")
+            if b and any(arg.v.startswith("%a") and arg.v[2:].isdigit() for arg in i.args):
+                raise Refused(f"generator argument live across suspension in {fn.name}")
+
+    constructor = Func(fn.name)
+    constructor.ptypes = fn.ptypes
+    constructor.ret = fn.ret
+    constructor.attrs = fn.attrs
+    init = Block(entry.label)
+    constructor.blocks = [init]
+    size = 8 * (GEN_LOCALS + len(fn.slots))
+    alloc = frame_inst("rt", [Operand("int", str(size))], "%wasm.frame", "%ptr")
+    alloc.fields["entry"] = "alloc"
+    init.code.append(alloc)
+    frame_addresses(init, fn)
+    init.code.extend(entry.code[:-1])
+    frame_store(init, "%wasm.name", start.args[0])
+    frame_store(init, "%wasm.pc", Operand("int", str(labels[start.targets[0]])))
+    init.code.append(frame_inst("mach.load", [Operand("%ptr", target_slot)], "%wasm.function", "%ptr"))
+    frame_store(init, "%wasm.target", Operand("%ptr", "%wasm.function"))
+    init.code.append(frame_inst("ret", [Operand(fn.ret, "%wasm.frame")]))
+
+    resume.ret = "None"
+    resume.ptypes = ["%ptr"]
+    resume.cold = fn.cold
+    resume.generator_exceptions = {slot for slot in fn.slots if fn.slots[slot] == "exc"}
+    dispatch = Block(entry.label)
+    resume.blocks.append(dispatch)
+    dispatch.code.append(frame_inst("cast", [Operand("%ptr", "%a0")], "%wasm.frame", "%ptr"))
+    frame_addresses(dispatch, fn)
+    dispatch.code.append(frame_inst("mach.load", [Operand("%ptr", "%wasm.pc")], "%wasm.position", "int"))
+    switch = frame_inst("switch", [Operand("int", "%wasm.position")])
+    switch.targets = ["wasm.invalid.position"]
+    dispatch.code.append(switch)
+    for block in fn.blocks[1:]:
+        out = Block(block.label)
+        resume.blocks.append(out)
+        for i in block.code:
+            if i.op == "gen.yield":
+                if i.fields.get("cleanup", "0") != "0" or len(i.args) != 1:
+                    raise Refused(f"generator yield with cleanup or an extended promise in {fn.name}")
+                frame_store(out, "%wasm.value", i.args[0])
+                frame_store(out, "%wasm.pc", Operand("int", str(labels[i.targets[0]])))
+                frame_store(out, "%wasm.state", Operand("int", "0"))
+                out.code.append(frame_inst("ret", []))
+            elif i.op == "gen.ret":
+                if len(i.args) > 1:
+                    raise Refused(f"extended generator return in {fn.name}")
+                if i.args:
+                    frame_store(out, "%wasm.return", i.args[0])
+                frame_store(out, "%wasm.state", Operand("int", str(GENDONE)))
+                out.code.append(frame_inst("ret", []))
+            elif i.op == "gen.promise" and not i.args:
+                out.code.append(frame_inst("cast", [Operand("%ptr", "%wasm.frame")], i.res[0], "%ptr"))
+            else:
+                out.code.append(i)
+    # Dispatch only to suspension successors, so unrelated phi predecessors keep
+    # their original edges. Re-entering a completed handle is guarded by the IR.
+    for block in fn.blocks:
+        for i in block.code:
+            if i.op in ("gen.start", "gen.yield") and i.targets[0] not in switch.targets:
+                switch.args.append(Operand("int", str(labels[i.targets[0]])))
+                switch.targets.append(i.targets[0])
+    invalid = Block("wasm.invalid.position")
+    invalid.code.append(frame_inst("unreachable", []))
+    resume.blocks.append(invalid)
+    return constructor
+
+
+def generator_functions(m: Module, targets: dict[str, str], handles: set[str]) -> list[Func]:
+    functions: list[Func] = []
+    for fn in m.funcs:
+        if fn.coroutine:
+            resume = Func("@wasm.resume." + fn.name)
+            slot = "@wasm.resume.address." + fn.name
+            targets[slot] = resume.name
+            handles.add(fn.ret)
+            functions.append(split_generator(fn, resume, slot))
+            functions.append(resume)
+        else:
+            functions.append(fn)
+    return functions
+
+
 # ---------- emission ----------
 
 class Emitter:
     def __init__(self, m: Module, standard_exceptions: bool = False):
         self.m = m
+        self.funcs: list[Func] = []
+        self.generator_targets: dict[str, str] = {}
+        self.generator_handles: set[str] = set()
         self.standard_exceptions = standard_exceptions
         self.types = Types()
         self.imports: dict[str, Import] = {}
@@ -720,6 +881,7 @@ class Emitter:
         self.data = bytearray()
         self.addr: dict[str, int] = {}
         self.relocs: list[int] = []
+        self.root_table = 0
         self.callbacks: dict[str, list[int]] = {}
         self.indirect_calls = False
         self.object_rows = 0
@@ -829,6 +991,16 @@ class Emitter:
                     if target not in functions or functions[target].ptypes != params or functions[target].ret != result:
                         raise Refused(f"object callback {target} must take {params} and return {result}")
                     self.callback_ref(target)
+        self.root_table = len(self.data)
+        for g in self.m.roots:
+            if g not in self.m.globals or lt(self.m.globals[g]) != "ptr":
+                raise Refused(f"global root requires a pointer slot: {g}")
+            self.ref(g)
+
+        for slot in self.generator_targets:
+            self.align8()
+            self.addr[slot] = len(self.data)
+            self.callback_ref(self.generator_targets[slot])
 
     def exception_descriptor(self, c: Const, functions: dict[str, Func], strings: set[str]) -> None:
         # runtime.c's ExcClass: two string pointers, then three wasm32 function
@@ -926,15 +1098,19 @@ class Emitter:
             self.import_order.append(sym)
         return self.imports[sym]
 
+    def import_table_setter(self, sym: str) -> None:
+        self.imports[sym] = Import(sym, ["void", "ptr", "i32"], self.types.of([I32, I32], []))
+        self.import_order.append(sym)
+
     def collect_imports(self) -> None:
         # every runtime function the functions call, before function indexes are assigned
         if "@g.atexit$_hook" in self.m.globals:
             self.runtime("exit_hook")
         if self.m.objects:
-            sym = "pys_wasi_set_object_dispatch"
-            self.imports[sym] = Import(sym, ["void", "ptr", "i32"], self.types.of([I32, I32], []))
-            self.import_order.append(sym)
-        for fn in self.m.funcs:
+            self.import_table_setter("pys_wasi_set_object_dispatch")
+        if self.m.roots:
+            self.import_table_setter("pys_wasi_set_global_roots")
+        for fn in self.funcs:
             if fn.frame_bytes:
                 self.stack_frames = True
                 self.runtime("recursion.stack")
@@ -1378,6 +1554,23 @@ class Emitter:
                     self.op(0x1A)
                 else:
                     self.result(i, 0, i.t)
+        elif op in ("gen.promise", "gen.resume", "gen.drop"):
+            if len(i.args) != 1 or i.args[0].t not in self.generator_handles:
+                raise Refused(f"unknown generator producer in {self.fn.name}")
+            self.push(i.args[0], "ptr")
+            if op == "gen.promise":
+                self.result(i, 0, "%ptr")
+            elif op == "gen.drop":
+                if i.args[0].t not in self.m.plain_generators:
+                    raise Refused(f"counted generator drop in {self.fn.name}")
+                self.i64c(GENDONE)
+                self.mem(0x37, 3, GENSTATE * 8)
+            else:
+                self.push(i.args[0], "ptr")
+                self.mem(0x28, 2, GEN_TARGET * 8)
+                self.op(0x11)  # call_indirect (frame) using this instance's producer
+                uleb(self.code, self.types.of([I32], []))
+                uleb(self.code, 0)
         elif op == "init":
             callee = "@init." + i.fields.get("module", "")
             if callee not in self.fnindex:
@@ -1466,10 +1659,17 @@ class Emitter:
             if len(i.args) != 1 or len(i.targets) != 1:
                 raise Refused("invalid landing operands or target")
             slot = self.slot_target(i.args[0])
-            if self.exception_local < 0 or slot < 0 or self.ltypes[slot] != I32:
+            if self.exception_local < 0:
                 raise Refused("landing requires an invoke and an exception slot")
-            self.get(self.exception_local)
-            self.set(slot)
+            if i.args[0].v in self.fn.generator_exceptions:
+                self.address(i.args[0])
+                self.get(self.exception_local)
+                self.mem(0x36, 2, 0)
+            elif slot >= 0 and self.ltypes[slot] == I32:
+                self.get(self.exception_local)
+                self.set(slot)
+            else:
+                raise Refused("landing requires an invoke and an exception slot")
             self.goto(i.targets[0], 0)
         elif op == "unreachable":
             self.op(0x00)
@@ -1910,10 +2110,9 @@ class Emitter:
             most = max(most, size)
         return max(most, (at + most - 1) // most * most)
 
-    def callback_initializer(self) -> bytearray:
+    def install_callbacks(self) -> None:
         # Start runs once after the data segment is installed. Append the program's
         # passive element segment after the reactor's own C function pointers.
-        self.code = bytearray([1, 1, I32])  # one local for the old table size
         self.code.extend(b"\xd0\x70")  # ref.null func
         self.i32c(len(self.callbacks))
         self.code.extend(b"\xfc\x0f\x00")  # table.grow 0
@@ -1936,12 +2135,26 @@ class Emitter:
                 self.mem(0x36, 2, offset)  # i32.store
             j += 1
         if self.m.objects:
-            self.code.extend(b"\x23\x00")  # global.get env.data
-            self.i32c(self.object_rows)
-            self.op(0x6A)
-            self.i32c(len(self.m.objects))
-            self.op(0x10)
-            uleb(self.code, self.fnindex["pys_wasi_set_object_dispatch"])
+            self.register_table("pys_wasi_set_object_dispatch", self.object_rows, len(self.m.objects))
+
+    def register_table(self, sym: str, offset: int, count: int) -> None:
+        self.code.extend(b"\x23\x00")  # global.get env.data
+        self.i32c(offset)
+        self.op(0x6A)
+        self.i32c(count)
+        self.op(0x10)
+        uleb(self.code, self.fnindex[sym])
+
+    def initializer(self) -> bytearray:
+        if self.callbacks:
+            self.code = bytearray([1, 1, I32])  # one local for the old table size
+            self.install_callbacks()
+        else:
+            self.code = bytearray([0])
+        if self.m.roots:
+            # Start hands the reactor the table address. The loader relocates its
+            # entries before pys_wasi_run uses them to initialize the collector.
+            self.register_table("pys_wasi_set_global_roots", self.root_table, len(self.m.roots))
         self.op(0x0B)
         out = bytearray()
         uleb(out, len(self.code))
@@ -1959,13 +2172,14 @@ class Emitter:
         for table in ("unequal", "crossed", "unsupported"):
             if table in attrs and attrs[table] != "[]":
                 raise Refused(f"module attribute {table}")
+        self.funcs = generator_functions(self.m, self.generator_targets, self.generator_handles)
         self.lay_out_data()
         self.collect_imports()
         tag_type = self.types.of([I32], []) if self.catches else -1
         for sym in self.import_order:
             self.fnindex[sym] = len(self.fnindex)
         own: list[int] = []
-        for fn in self.m.funcs:
+        for fn in self.funcs:
             kind = fn.attrs.get("kind", "def")
             callback = kind == "class" and fn.name in self.callbacks
             if (kind not in ("def", "block") and not callback) or "export" in fn.attrs or "extern" in fn.attrs:
@@ -1977,11 +2191,11 @@ class Emitter:
         if "@main.init" not in self.fnindex:
             raise Refused("no @main.init")
         bodies: list[bytearray] = []
-        for fn in self.m.funcs:
+        for fn in self.funcs:
             bodies.append(self.function(fn))
-        if self.callbacks:
+        if self.callbacks or self.m.roots:
             own.append(self.types.of([], []))
-            bodies.append(self.callback_initializer())
+            bodies.append(self.initializer())
         out = bytearray(b"\x00asm\x01\x00\x00\x00")
         section(out, 1, self.types.encode())
         imp = bytearray()
@@ -2036,10 +2250,11 @@ class Emitter:
         exp.append(0x00)
         uleb(exp, self.fnindex["@main.init"])
         section(out, 7, exp)
-        if self.callbacks:
+        if self.callbacks or self.m.roots:
             start = bytearray()
-            uleb(start, len(self.import_order) + len(self.m.funcs))
+            uleb(start, len(self.import_order) + len(self.funcs))
             section(out, 8, start)
+        if self.callbacks:
             elements = bytearray([1, 1, 0])  # one passive segment of function indices
             uleb(elements, len(self.callbacks))
             for target in self.callbacks:

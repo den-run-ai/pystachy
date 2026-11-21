@@ -50,7 +50,7 @@ except ValueError:
             for fixture in ("containers/tuple_runtime_object_compare", "containers/dict_user_hash",
                             "classes/object_containers", "generics/template_empty_forward",
                             "classes/builtin_dict_basic", "classes/builtin_list_token_list",
-                            "reflection/callables", "exceptions/exc_class_values",
+                            "reflection/callables", "exceptions/exc_class_values", "generators/gen_resume_typed_iterators",
                             "library/lib_atexit", "library/lib_atexit_exit", "library/lib_atexit_uncaught"):
                 with self.subTest(fixture=fixture):
                     source = Path("tests/programs") / (fixture + ".py")
@@ -62,4 +62,8 @@ except ValueError:
                     self.assertEqual(out.read_bytes() + f"[exit {status}]\n".encode(),
                                      source.with_suffix(".out").read_bytes())
                     expected_error = source.with_suffix(".err")
-                    self.assertEqual(err.read_bytes(), expected_error.read_bytes() if expected_error.exists() else b"")
+                    expected = expected_error.read_bytes() if expected_error.exists() else b""
+                    if source.stem == "lib_atexit":
+                        expected = (b"Exception ignored in atexit callback:\nSystemExit: 3\n"
+                                    b"Exception ignored in atexit callback:\n" + expected)
+                    self.assertEqual(err.read_bytes(), expected)

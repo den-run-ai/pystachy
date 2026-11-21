@@ -3,9 +3,13 @@
 import atexit
 
 
+def fail() -> None:
+    raise ValueError("in callback")
+
+
 def catches() -> None:
     try:
-        raise ValueError("in callback")
+        fail()
     except ValueError as error:
         print(str(error))
 

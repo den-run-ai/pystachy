@@ -129,6 +129,33 @@ cold check -> cleanup
             with self.subTest(after=after), self.assertRaisesRegex(T.Refused, reason):
                 validate(valid.replace(before, after))
 
+    def test_plain_generator_refuses_unsaved_values_and_cleanup(self):
+        source = """module complete plain=[gen[int]] {
+  const @name kind=string text=gen
+}
+function @main.init() -> None kind=block {
+entry:
+  ret
+}
+function @generator() -> gen[int] coroutine {
+entry:
+  gen.start (str @name) -> initial
+initial:
+  %t0 = scalar.bin add (int 4, int 5) : int
+  ~%t1 ~%t2 = gen.yield (%slot %t0) -> final
+final:
+  ~%t3 ~%t4 = gen.ret (%slot 4)
+}
+"""
+        self.assertIn(b"__indirect_function_table", emit(source))
+        for before, after, reason in (
+            ("gen.ret (%slot 4)", "gen.ret (%slot %t0)", "live temporaries"),
+            ("gen.yield (", "gen.yield cleanup=1 (", "yield with cleanup"),
+            ("-> final", "-> missing", "unknown block missing"),
+        ):
+            with self.subTest(after=after), self.assertRaisesRegex(T.Refused, reason):
+                emit(source.replace(before, after))
+
     def test_legacy_container_header_allocation_is_refused(self):
         for kind, fields in (("list", 4), ("dict", 12)):
             prefix = " ".join(f'" {kind}.{k}":str' for k in range(fields))
@@ -151,6 +178,17 @@ entry:
             path.write_bytes(emit(HELLO))
             check = "new WebAssembly.Module(require('fs').readFileSync(process.argv[1]))"
             subprocess.run(["node", "-e", check, str(path)], check=True)
+
+    def test_global_root_slots_are_pointer_typed_and_relocated(self):
+        decls = "  global @n type=int\n  global @items type=list[int]\n  root @items"
+        text = HELLO.replace("  runtime ovf.smul", decls + "\n  runtime ovf.smul")
+        emitter = T.Emitter(T.parse(text))
+        self.assertIn(b"pys_wasi_set_global_roots", emitter.module())
+        self.assertIn(emitter.root_table, emitter.relocs)
+        self.assertEqual(struct.unpack_from("<I", emitter.data, emitter.root_table)[0], emitter.addr["@items"])
+        for name in ("@n", "@missing", "@items extra"):
+            with self.subTest(name=name), self.assertRaisesRegex(T.Refused, "global root"):
+                emit(text.replace("root @items", "root " + name))
 
     def test_constant_fields_and_float_slots(self):
         text = HELLO.replace('text="hello, world"', 'text=" items=(str @s.1)"')

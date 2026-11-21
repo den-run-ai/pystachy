@@ -11,7 +11,10 @@ import { createRunner } from "./run.mjs";
 const source = 'from codemode import call\nprint(call("lookup", "α"))\n';
 const generatorBody = `
 def values():
-    yield 42
+    try:
+        yield 42
+    finally:
+        print("", end="")
 for v in values():
     print(v)
 `;
@@ -21,7 +24,10 @@ test("LLVM fallback catches Python exceptions and lets host errors escape", asyn
   const script = `from codemode import call
 
 def parse():
-    yield int(call("value", "number"))
+    try:
+        yield int(call("value", "number"))
+    finally:
+        print("", end="")
 
 try:
     for value in parse():
@@ -136,7 +142,7 @@ test("direct exceptions, object dispatch and key layouts match CPython", async t
     ...exceptions.map(name => `exceptions/${name}`), "classes/object_containers", "containers/dict_user_hash",
     "containers/tuple_runtime_object_compare", "generics/template_empty_forward",
     "classes/builtin_dict_basic", "classes/builtin_list_token_list",
-    "reflection/callables", "exceptions/exc_class_values",
+    "reflection/callables", "exceptions/exc_class_values", "generators/gen_resume_typed_iterators",
     "library/lib_atexit", "library/lib_atexit_exit", "library/lib_atexit_uncaught",
   ];
   for (const fixture of cases) {
@@ -153,7 +159,10 @@ test("direct exceptions, object dispatch and key layouts match CPython", async t
         if (error.code === "ENOENT") return "";
         throw error;
       });
-      assert.equal(await readFile(err, "utf8"), expectedError);
+      // CPython recordings keep the last stderr line. Check both ignored callbacks in full.
+      const prefixError = name === "lib_atexit" ?
+        "Exception ignored in atexit callback:\nSystemExit: 3\nException ignored in atexit callback:\n" : "";
+      assert.equal(await readFile(err, "utf8"), prefixError + expectedError);
     });
   }
 });

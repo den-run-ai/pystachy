@@ -75,13 +75,22 @@ _Unwind_Reason_Code _Unwind_ForcedUnwind(struct _Unwind_Exception *e, _Unwind_St
   return _URC_END_OF_STACK;
 }
 
+/* The guest start function supplies the addresses of its global pointer slots.
+   The host relocates their table before entering pys_wasi_run. */
+static I **program_roots;
+static uint32_t program_nroots;
+__attribute__((export_name("pys_wasi_set_global_roots")))
+void pys_wasi_set_global_roots(I **roots, uint32_t count) {
+  program_roots = roots;
+  program_nroots = count;
+}
+
 __attribute__((export_name("pys_wasi_run"))) int pys_wasi_run(void) {
   __wasi_size_t argc, size;
   if (__wasi_args_sizes_get(&argc, &size)) abort();
   char **argv = calloc(argc + 1, sizeof *argv), *buf = malloc(size);
   if (!argv || !buf || __wasi_args_get((uint8_t **)argv, (uint8_t *)buf)) abort();
-  /* (no roots: the collector is off, wasm/README.md) */
-  pys_init((int)argc, argv, __builtin_frame_address(0), 0, 0);
+  pys_init((int)argc, argv, __builtin_frame_address(0), program_roots, program_nroots);
   program_init();
   pys_finish();
   return 0;
