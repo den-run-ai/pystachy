@@ -772,6 +772,48 @@ def aot_build(tc: list[str], usebc: str, plain: bool, tmp: str, parts: list[str]
     return why
 
 
+def doctor() -> int:
+    home = compiler_home()
+    directory = llvm_dir()
+    cache = cached_run.runtime_cache_dir(home)
+    print(compiler_version(home))
+    print(f"Runtime cache: {cache}")
+    print("LLVM search: " + (directory or "PATH"))
+    tmp = tempfile.mkdtemp()
+    output = tmp + "/version"
+    major = ""
+    healthy = True
+    try:
+        for tool in ["clang", "opt", "lli", "llvm-link", "llvm-as"]:
+            path = directory.rstrip("/") + "/" + tool if directory != "" else tool
+            version = ""
+            target = ""
+            if sh(f"{q(path)} --version > {q(output)} 2>/dev/null") == 0:
+                for line in text_of(output).split("\n"):
+                    if " version " in line and version == "":
+                        fields = line.split(" version ", 1)[1].split()
+                        if len(fields) > 0:
+                            version = fields[0]
+                    if line.startswith("Target:"):
+                        target = line[7:].strip()
+            print(tool + ": " + (version or "unavailable"))
+            this_major = version.split(".")[0]
+            if not this_major.isdigit():
+                healthy = False
+            elif major == "":
+                major = this_major
+            elif this_major != major:
+                print("  expected LLVM major " + major)
+                healthy = False
+            if tool == "clang":
+                print("Target: " + (target or "unknown"))
+    finally:
+        if os.path.exists(output):
+            os.remove(output)
+        os.rmdir(tmp)
+    return 0 if healthy else 1
+
+
 def print_usage(err: bool) -> None:
     lines = [
         "usage: pystachy run FILE.py [ARGS...]   JIT-compile and run (LLVM ORC)",
@@ -782,6 +824,7 @@ def print_usage(err: bool) -> None:
         "       pystachy ir FILE.py [-o OUT.ll]  emit LLVM IR",
         "       pystachy check FILE.py           only parse it, with the checks CPython makes before running it",
         "       pystachy rt runtime.py [-o OUT.ll] emit the LLVM IR of the runtime's part written in the subset",
+        "       pystachy doctor                  report the LLVM toolchain and runtime cache",
         "       pystachy --version               show version and source commit",
         "       pystachy --help                  show this help",
         "settings such as optimization and debug line tables are PYSTACHY_* environment variables:",
@@ -815,6 +858,14 @@ def main() -> None:
     if len(argv) >= 2 and (argv[1] == "--help" or argv[1] == "-h" or argv[1] == "help"):
         print_usage(False)
         return
+    if len(argv) >= 2 and argv[1] == "doctor":
+        if len(argv) == 2:
+            sys.exit(doctor())
+        if len(argv) == 3 and argv[2] in ["-h", "--help"]:
+            print_usage(False)
+            return
+        print("pystachy doctor: error: expected no arguments", file=sys.stderr)
+        sys.exit(2)
     known = len(argv) >= 2 and (argv[1] == "run" or argv[1] == "build" or argv[1] == "ext" or argv[1] == "ir" or argv[1] == "check" or argv[1] == "rt")
     if known and len(argv) >= 3 and (argv[2] == "--help" or argv[2] == "-h") and not os.path.exists(argv[2]):
         print_usage(False)
@@ -1018,9 +1069,7 @@ def main() -> None:
         llvm = llvm + "/"
     # strip clang's target-cpu/features attributes so LLVM can inline runtime helpers into our code
     strip = "sed -E 's/ \"(target-cpu|target-features|tune-cpu)\"=\"[^\"]*\"//g'"
-    cache = os.getenv("PYSTACHY_CACHE")
-    if cache is None or cache == "":
-        cache = home + "/build"
+    cache = cached_run.runtime_cache_dir(home)
     if not os.path.exists(cache):
         sh(f"mkdir -p {q(cache)}")
     # intermediate files go to a private directory (mode 0700, honours TMPDIR), removed on every path below
