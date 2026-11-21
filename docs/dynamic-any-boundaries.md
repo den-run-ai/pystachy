@@ -55,13 +55,13 @@ consumer only after preserving its aliases and the boundary to existing users.
 
 | Modules | Current boundary | Concrete work and remaining containment debt |
 |---|---|---|
-| `json_repair.py`, `json_parser.py`, `parse_object.py` | Dynamic repaired results, nested mutable containers, optional result/log tuples and interoperability with dynamic JSON. | Scanning state is largely concrete already. Recursive typed storage needs two things a closed union lacks: a promoting integer member, since a repaired document keeps integers past 64 bits ([test](../tests/programs/apps/port_json_repair_wide.py), [#907](https://github.com/den-run-ai/pystachy/issues/907)), and a result that is a value, a `(value, log)` tuple or a `str` by `repair_json()`'s arguments. Returning logs through an existing `Any` tuple is an alias/layout boundary to preserve. |
+| `json_repair.py`, `json_parser.py` | Dynamic repaired results, nested mutable containers, optional result/log tuples and interoperability with dynamic JSON. | Scanning state is largely concrete already. Recursive typed storage needs two things a closed union lacks: a promoting integer member, since a repaired document keeps integers past 64 bits ([test](../tests/programs/apps/port_json_repair_wide.py), [#907](https://github.com/den-run-ai/pystachy/issues/907)), and a result that is a value, a `(value, log)` tuple or a `str` by `repair_json()`'s arguments. Returning logs through an existing `Any` tuple is an alias/layout boundary to preserve. |
 
-Fourteen modules of the port no longer opt in. Eleven only pass values on: the three
+Fifteen modules of the port no longer opt in. Eleven only pass values on: the three
 package `__init__.py` files, `parse_comment.py`, `parse_number.py`,
 `parser_parenthesized.py`, `utils/json_context.py`, `utils/object_comparer.py` and, under
 `parse_string_helpers/`, `parse_json_llm_block.py`, `parse_boolean_or_null.py` and
-`object_value_context.py`. Their `Any` annotations are inferred from each call, and the three
+`object_value_context.py`. Their `Any` annotations are inferred from each call, and the two
 modules above box what they store. Removing these comments is containment, not a cost
 result. The modules stay inside the import closure that tracks numeric identity, so the initial
 [eleven removals](https://github.com/den-run-ai/pystachy/blob/b3a4d56981125d2da95ac920c7baedaafe5a9898/docs/dynamic-any-boundaries.md#json-repair-port-modules) reduced
@@ -80,11 +80,14 @@ one compiler, and restoring the comment restores the larger ones. The parser sti
 identity, so the repair itself is the same code: the result is compilation work and size,
 not steady-state speed or allocation.
 
-The array scanner fills a fresh `list[Any]` created by `json_parser._new_array()`. This
-keeps the same list and its mutable elements throughout parsing. In the string scanner,
+The array and object scanners fill fresh `list[Any]` and `dict[str, Any]` containers
+created by the parser. Both store boxed values and preserve mutable aliases. The
+object scanner classifies an empty object before reparsing it. An escaped key can
+produce a replacement dictionary, and malformed object syntax can produce a list.
+Each path returns the reparsed value directly. In the string scanner,
 `_prepare_string_entry()` uses a `StringParseState | None` local for the first slot of
 its result. Both early and continuing returns then have the same pair layout. The
-second slot may still carry a dynamic value supplied by the parser. Both scanners
+second slot may still carry a dynamic value supplied by the parser. All three scanners
 remain in the parser's identity-tracking import closure.
 
 ## What removing each comment meets
@@ -104,7 +107,6 @@ module still needs, which its row above describes.
 | `threading` | 2 of 16 | `inheritance with generic class templates`: `Semaphore` holds a `Condition`, whose lock types its field, and a program subclasses `Thread`, whose target and arguments type its fields |
 | `json_repair.py` | 15 of 18 | `repair_json() returns both` a `(value, log)` tuple and a value |
 | `json_parser.py` | 18 of 18 | `JSONParser`: `typing.Any is only supported in the parameter and return annotations` |
-| `parse_object.py` | 15 of 18 | `cannot infer the type of` the empty dict a repaired object starts as |
 
 `_pystachy_json_any` is the dynamic JSON codec itself: no program reaches it without an
 opt-in somewhere.
