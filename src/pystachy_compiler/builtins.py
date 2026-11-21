@@ -779,7 +779,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.class_value_issub(self.expr(args[0], ""), args[1])
     if name == "isinstance" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw":
         # decided by the static types, or by whether it is None (an optional value, an object)
-        v = self.expr(args[0], "")
+        v = self.isinst_operand(args[0], args[1])
         self.isinst_reads(args[1])
         if v.t == "dyn":
             return self.dyn_isinst(v, args[1])  # (by its box's type: dynamic.py)
@@ -3300,6 +3300,9 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 v = self.held_default(v, pt, V)  # (get()'s and setdefault()'s, a tuple of ints as the dict holds it: bigints.py)
             if key == "dict.setdefault" and i == 0 and held(K) != K:
                 v = self.list_hold(v, K)  # (the key it stores, a tuple of ints as the dict holds it: bigints.py)
+            if p == "*T" and key in ["list.append", "list.insert"] and v.t != pt and mc is not None and args[i] is mc.kids[-1]:
+                if self.fresh_list_join(mc, pt, v.t):
+                    return Val("null", "None")  # the next pass emits the wider store
             v = self.coerce(v, pt, f"argument {i + 1} of {tname(o.t)}.{m}()" if is_opt(v.t) else "")
             if self.list_id_kind(o.t) != 0 and p == "*T":
                 idstore = v

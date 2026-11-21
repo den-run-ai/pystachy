@@ -1504,6 +1504,14 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
             # annotated Any, retaining the concrete send and return types of the others.
             genann = has_kind(d.kids[2], "yield") and a.kind == "index" and self.typing_ref(a.kids[0]) in ["Generator", "Iterator", "Iterable"]
             if not genann:
+                while a.kind == "index" and self.typing_ref(a.kids[0]) == "Annotated" and a.kids[1].kind == "tuple" and len(a.kids[1].kids) >= 2:
+                    a = a.kids[1].kids[0]
+                    if a.kind == "str":
+                        a = self.parse_expr(a.s)
+                if a.kind == "index" and a.kids[0].kind in ["name", "attr"] and self.ann_base(a.kids[0]) == "tuple" and a.kids[1].kind == "tuple":
+                    slots = a.kids[1].kids
+                    if len(slots) > 0 and slots[-1].kind != "ellipsis":
+                        f.return_slots = slots
                 d.kids[1] = mk("noann", "", d.line, [])
                 f.anys.append("")
     elif (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport:

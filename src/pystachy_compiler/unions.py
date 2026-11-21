@@ -1,6 +1,6 @@
 """Explicit closed scalar, container and native reference unions."""
 from __future__ import annotations
-from src.pystachy_compiler.analysis import ann_target
+from src.pystachy_compiler.analysis import ann_target, fresh_list_name
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists
 from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
@@ -1076,6 +1076,42 @@ def gen_join_at(self, kind: str, name: str, t: str) -> list[str]:
     return was
 
 
+def gen_fresh_list_join(self, site: Node, old: str, incoming: str) -> bool:
+    # Recompile the empty display using the ordinary variable hint. Each write
+    # then uses the union's own slot representation, including its GC behavior.
+    if self.final or self.rtmode or self.drying > 0 or self.xtry != "" or self.term or dynamic_program():
+        return False
+    if is_tuple(old) or is_tuple(incoming):
+        return False
+    joined = self.list_hint_type(old, incoming)
+    if joined == "" or joined == old or (not self.scalar_union(joined) and not is_opt(joined)):
+        return False
+    members = umembers(unopt(joined)) if is_union(unopt(joined)) else [unopt(joined)]
+    # Union slots drop numeric identity. A dynamic caller can observe it for
+    # ints as well as floats; NaN membership needs it even in static code.
+    # Their int payload is also fixed-width in a promoting-int program.
+    if "float" in members or (int_lists() and "int" in members):
+        return False
+    body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
+    name = fresh_list_name(body, site, self.modlevel)
+    if name == "" or name in self.curfn.params or name in self.compvars or name in self.cells or ann_target(body, name):
+        return False
+    if self.is_global(name) and not (self.modlevel and self.curfn.mod == ""):
+        return False
+    if self.rtype(name) != "list[" + old + "]":
+        return False
+    key = "global:" + name if self.is_global(name) else f"{self.fnkey(self.curfn)}|{name}"
+    if key in self.newhints:
+        prior = self.newhints[key]
+        if not is_list(prior):
+            return False
+        joined = self.list_hint_type(elem(prior), joined)
+        if joined == "":
+            return False
+    self.newhints[key] = self.ctype("list", [joined])
+    return True
+
+
 def gen_join_hint(self, t: str, vt: str) -> bool:
     # a value of type vt that the location being stored to, whose type t was inferred (as
     # join_at set it), does not take: unless this is the last pass, a join gives the location
@@ -1096,7 +1132,23 @@ def gen_join_hint(self, t: str, vt: str) -> bool:
         key = f"global:{self.joinname}"
     elif self.joinkind == "field" or self.joinkind == "return":
         key = self.joinname
-    j = self.join_type(self.newhints.get(key, t), vt)
+    prior = self.newhints.get(key, t)
+    j = self.join_type(prior, vt)
+    policy = ""
+    if self.joinkind == "return" and len(self.curfn.return_slots) > 0 and is_tuple(prior) and is_tuple(vt):
+        left, right = targs(prior), targs(vt)
+        if len(left) == len(right) and len(left) == len(self.curfn.return_slots):
+            # Remember which specialization needed a declared sibling. Its inferred
+            # siblings must keep their representation across all return statements.
+            policy = self.newhints.get(key + "|slots", self.hints.get(key + "|slots", ""))
+            if any([left[i] != right[i] and self.any_in([self.curfn.return_slots[i]]) for i in range(len(left))]):
+                if policy == "declared":
+                    return False
+                policy = "mixed"
+            elif j == "" and policy != "mixed":
+                j = self.join_type(prior, vt, True)
+                policy = "declared"
+
     if key != "" and (j == "" or j == t or j == self.hints.get(key, "")) and (is_list(t) or is_dict(t)) and self.join_type(t, vt) == t:
         # a list or dict of another item type, which the location's cannot be as it is: where a
         # call of a function or method without a return annotation made it, the function returns
@@ -1120,10 +1172,12 @@ def gen_join_hint(self, t: str, vt: str) -> bool:
     if key == "" or j == "" or j == t or j == self.hints.get(key, ""):
         return False
     self.newhints[key] = j
+    if policy != "":
+        self.newhints[key + "|slots"] = policy
     return True
 
 
-def gen_join_type(self, a: str, b: str) -> str:
+def gen_join_type(self, a: str, b: str, returning: bool = False) -> str:
     # the type of a location that holds values of types a and b, as a join gives it (join_hint):
     # their union (see joinable); for lists, dicts of one key type and tuples of one length, the
     # one of their items' joins (a display assigned to it is made of that); "" if there is none
@@ -1134,9 +1188,16 @@ def gen_join_type(self, a: str, b: str) -> str:
         e = self.join_type(targs(a)[1], targs(b)[1])
         return self.ctype("dict", [targs(a)[0], e]) if e != "" else ""
     if is_tuple(a) and is_tuple(b) and len(targs(a)) == len(targs(b)):
+        left, right = targs(a), targs(b)
         ts: list[str] = []
-        for i in range(len(targs(a))):
-            x = targs(a)[i] if targs(a)[i] == targs(b)[i] else self.join_type(targs(a)[i], targs(b)[i])
+        for i in range(len(left)):
+            x = left[i] if left[i] == right[i] else self.join_type(left[i], right[i])
+            if x == "" and returning and len(self.curfn.return_slots) == len(left):
+                # Ordinary Any requests inference. When it cannot join two slots,
+                # the declared sibling can supply a shared, representation-safe type.
+                hint = self.ann(self.curfn.return_slots[i])
+                if not hint.startswith("!") and self.widens(left[i], hint) and self.widens(right[i], hint):
+                    x = hint
             if x == "":
                 return ""
             ts.append(x)

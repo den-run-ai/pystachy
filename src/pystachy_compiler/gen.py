@@ -1,7 +1,7 @@
 """Gen component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
-from src.pystachy_compiler.diagnostics import STATICFILES
+from src.pystachy_compiler.diagnostics import LINES, STATICFILES, static_file
 from src.pystachy_compiler.source_lines import SourceLines
 from src.pystachy_compiler.lowering import gen_lower_scalar as scalar_ir_lower_scalar
 from src.pystachy_compiler.scalar_ir import (
@@ -258,6 +258,7 @@ from src.pystachy_compiler.dynamic import (
 from src.pystachy_compiler.unions import (
     gen_field_key as unions_field_key,
     gen_fnkey as unions_fnkey,
+    gen_fresh_list_join as unions_fresh_list_join,
     gen_join_at as unions_join_at,
     gen_join_hint as unions_join_hint,
     gen_join_type as unions_join_type,
@@ -3547,8 +3548,8 @@ class Gen:
     def joinable(self, t: str) -> bool:
         return unions_joinable(self, t)
 
-    def join_type(self, a: str, b: str) -> str:
-        return unions_join_type(self, a, b)
+    def join_type(self, a: str, b: str, returning: bool = False) -> str:
+        return unions_join_type(self, a, b, returning)
 
     def local_again(self, f: FnInfo, before: list[int]) -> bool:
         return unions_local_again(self, f, before)
@@ -3558,6 +3559,9 @@ class Gen:
 
     def stable(self, s: str) -> str:
         return unions_stable(self, s)
+
+    def fresh_list_join(self, site: Node, old: str, incoming: str) -> bool:
+        return unions_fresh_list_join(self, site, old, incoming)
 
     def fnkey(self, f: FnInfo) -> str:
         return unions_fnkey(self, f)
@@ -4774,6 +4778,15 @@ class Gen:
         if len(STATICFILES) > 0:
             return dynamic_static_value(self, expressions_expr(self, n, want, returnctx, resultsoft))  # (a static module's: dynamic.py)
         return expressions_expr(self, n, want, returnctx, resultsoft)
+
+    def isinst_operand(self, n: Node, cls: Node) -> Val:
+        # In a static adapter, only the builtin scalar type test can inspect an incoming
+        # box. All other reads pass through expr(), including reads on the failure edge.
+        if (len(STATICFILES) > 0 and n.kind == "name" and static_file(n.line // LINES) and self.ltype.get(n.s, "") == "dyn"
+                and n.s in self.curfn.params and n.s not in self.compvars and n.s not in self.cells and not self.curfn.gen
+                and cls.kind == "name" and cls.s in ["bool", "float", "str"] and not self.bound(cls.s)):
+            return expressions_expr(self, n, "")
+        return self.expr(n, "")
 
     def scalar_read_index(self, n: Node) -> bool:
         return expressions_scalar_read_index(self, n)

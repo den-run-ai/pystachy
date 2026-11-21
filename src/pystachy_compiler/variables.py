@@ -55,6 +55,7 @@ from src.pystachy_compiler.utils import (
     selem,
     targs,
     tname,
+    tuple_literal,
     typestr,
     unopt,
 )
@@ -1353,6 +1354,13 @@ def gen_retval(self, e: Node, want: str) -> Val:
         v = self.read(e)
         self.allowq = False
         return v
+    if len(self.curfn.return_slots) > 0 and is_tuple(want) and (e.kind != "tuple" or tuple_literal(e)) and self.hints.get(self.fnkey(self.curfn) + "|return|slots", "") == "declared":
+        # A source constant or an existing tuple must be returned with its own
+        # identity. Widening a native reference preserves that tuple's slots.
+        v = self.expr(e, "")
+        if self.widens(v.t, want):
+            return Val(v.v, want)
+        self.err("declared tuple return slots would require copying an existing tuple")
     # A direct forwarding call keeps its fresh empty result open until this
     # template's caller supplies a type. Argument evaluation keeps normal contexts.
     return self.expr(e, "?" if e.kind == "call" and (want == "" or "?" in want) else want, contextual, self.curfn.rsoft)
@@ -2113,6 +2121,8 @@ def gen_assign(self, t: Node, v: Val) -> None:
         if is_list(unopt(o.t)):
             ix = self.ival(t.kids[1], "", True, o, nosub)
             o = self.unwrap(o, nosub)
+            if v.t != elem(o.t) and self.fresh_list_join(t, elem(o.t), v.t):
+                return
             self.list_store(o, self.list_hold(v, elem(o.t)), "set", ix.v)
         elif is_dict(unopt(o.t)):
             kv = targs(unopt(o.t))

@@ -163,7 +163,9 @@ applies. Bytes case methods remain ASCII-only.
   remain unsupported.
 - **Tuple constants:** literal-only displays share a module constant; `()` is
   shared everywhere. CPython also folds operator expressions such as `(1 + 2, 3)`.
-  Pystachy recreates those tuples, and tuples whose annotations retype/box items.
+  Pystachy recreates those tuples and tuples whose annotations change the item layout.
+  For example, a return annotation that boxes a literal item creates a fresh tuple on each
+  call ([boxed tuple identity](../../tests/deviations/dynany_tuple_constant_identity.py)).
 - **Tuple conversions:** fixed-shape to runtime-length tuples, scalar to
   optional-element tuples, or objects to union-item tuples create new objects, also where
   tuples of other lengths [join](typing.md#inferred-unions) into a runtime-length tuple

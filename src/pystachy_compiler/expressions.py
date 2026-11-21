@@ -1391,6 +1391,14 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         mixed = not given and jt == "-" and et != "dyn" and not self.dyn_policy(n.line) and len([v for v in items if is_fn(v.t) or is_callable(unopt(v.t))]) == 0
         if mixed:
             self.making.append(MIXED.replace("{}", "list display's items"))  # (an item that et does not hold: say what would)
+        if given and (et in ["int", "float", "bool", "str"] or is_union(unopt(et)) or is_opt(et)):
+            rejoining = False
+            for v in items:
+                if v.t != et and not self.widens(v.t, et) and not self.boxes(v.t, et):
+                    if self.fresh_list_join(n, et, v.t):
+                        rejoining = True
+            if rejoining:
+                return Val("null", lty)  # this pass drops the extension; the next types the display
         try:
             items = [self.list_hold(kept[i] if i in kept else items[i], et) for i in range(len(items))]
         finally:
@@ -2915,11 +2923,15 @@ def gen_tuple_const(self, n: Node, vals: list[Val]) -> Val:
         elif x.kind == "True" or x.kind == "False":
             ok = v.t == "bool" and (v.v == "true" or v.v == "false")
         else:
-            ok = x.kind == "None" and v.t == "None" and v.v == "null"
+            # A native class holds None as a null reference. Container and numeric
+            # optionals retain their own layouts and conversion checks.
+            ok = x.kind == "None" and v.v == "null" and (v.t == "None" or v.t in self.classes)
         if not ok:
             return Val("", "")
         items.append(Val(v.v, v.t))
-        keys.append(f"{'tuple' if x.kind == 'tuple' else v.t} {v.v}")
+        # Intern by the literal's Python type while recording its actual slot layout.
+        key_type = x.kind if x.kind == "None" or x.kind == "tuple" else v.t
+        keys.append(f"{key_type} {v.v}")
     key = ("" if len(vals) == 0 else str(n.line // LINES)) + "(" + ", ".join(keys) + ")"
     if key not in self.tconsts:
         d = Data("tuple", f"@tc.{len(self.tconsts)}")
