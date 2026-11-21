@@ -1,0 +1,29 @@
+init 80 3
+80
+86 -3 11 2
+local 7 80 8
+160 90 local:80/3
+   80|3|81
+80/local/3 80 3!
+20
+AttributeError: no setting 'missing'
+21
+[80, 3] 83 {3: 80} (80, 'local')
+80 True True
+15 [80, 81] 80
+init 80 3
+6 3
+42 -5
+8 ['double', 'neg', 'double']
+6 ['double', 'neg', 'double', 'double', 'arg']
+AttributeError: nope
+['double', 'neg', 'double', 'double', 'arg', 'nope']
+1
+AttributeError: Strict has no y
+root.a.b.c
+ABC HELLO! AB 3 True q
+1 None False True
+2
+asked thing
+['ab', 'ab'] True False 1.5 None
+[exit 0]

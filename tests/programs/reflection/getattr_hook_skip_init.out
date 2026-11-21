@@ -1,0 +1,7 @@
+5 -4 -5 -4 True True
+1 10 True 2 1
+-4 -40 False 0 -4
+AttributeError: no depth yet
+3 30 True 4 3
+3 8 4 True
+[exit 0]

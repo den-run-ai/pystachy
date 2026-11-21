@@ -7,7 +7,7 @@ from src.pystachy_compiler.diagnostics import FILES, LINES, dynamic_program, fai
 from src.pystachy_compiler.ir import Ins
 from src.pystachy_compiler.symbols import ClassInfo, Closure, FnInfo
 from src.pystachy_compiler.llvm_abi import llvm_decl
-from src.pystachy_compiler.names import short
+from src.pystachy_compiler.names import own_name, short
 from src.pystachy_compiler.specs import (
     BIG,
     BIGOPT,
@@ -118,8 +118,8 @@ def lt(t: str) -> str:
         return "i32"
     if t == "None":
         return "void"
-    if t == "%slot":
-        return "i64"  # (the IR's pseudo-type of a value in an 8-byte container slot)
+    if t == "%slot" or t.startswith("*"):
+        return "i64"  # (a packed slot *T, the eight-byte word that holds a T, or %slot, opaque bits)
     if t == "int+":
         return "{i64, ptr}"  # (a promoting int: its 64-bit value, and its Mpz or null, bigints.py)
     return "ptr"
@@ -152,6 +152,165 @@ def rtsig(k: str) -> list[str]:
 def rtsym(k: str) -> str:
     s = RUNTIME[k][RUNTIME[k].rfind("|") + 1 :]
     return s if s != "" else "pys_" + k.replace(".", "_")
+
+
+# the type variables of RUNTIME's signatures: S, the receiver a function works on; T, K and V, the
+# element, key and value types of what it holds; U, a second value's type, which need not be T's
+# (a comparison's operands); and R, a result's type that its call gives (gen_rt's t: a union's box)
+RT_VARS: list[str] = ["T", "K", "V", "S", "U", "R"]
+
+
+def rt_words(t: str) -> list[str]:
+    # the names in type t: what lies between its brackets, commas, slot and address marks
+    words: list[str] = []
+    start = 0
+    for j in range(len(t) + 1):
+        if j == len(t) or t[j] == "[" or t[j] == "]" or t[j] == "," or t[j] == "*" or t[j] == "&" or t[j] == ":":
+            if j > start:
+                words.append(t[start:j])
+            start = j + 1
+    return words
+
+
+def rt_generic(t: str) -> bool:
+    # does type t name a runtime type variable (RT_VARS)
+    if "T" not in t and "K" not in t and "V" not in t and "S" not in t and "U" not in t and "R" not in t:
+        return False
+    for w in rt_words(t):
+        if w in RT_VARS:
+            return True
+    return False
+
+
+def rt_operand_order(sig: list[str]) -> list[int]:
+    # the positions of a runtime signature's operands (1 on) in the order that binds their
+    # variables: the receiver (S) last, as it binds what the others leave (rt_receiver)
+    order: list[int] = []
+    for j in range(1, len(sig)):
+        if sig[j] != "S":
+            order.append(j)
+    for j in range(1, len(sig)):
+        if sig[j] == "S":
+            order.append(j)
+    return order
+
+
+def rt_receiver(s: str, bound: dict[str, str]) -> None:
+    # Bind T, K and V, where no operand did, to what a receiver of type s (S) holds: a list's or a
+    # set's items, a dict's keys and values (those of an optional receiver's value). An operand's
+    # own type may differ from it (a value that a search compares with the items, a key that
+    # equals one): a result whose variable only the receiver binds has its type.
+    r = unopt(s)
+    xs = targs(r) if r.endswith("]") else []
+    names: list[str] = []
+    if (r.startswith("list[") or is_set(r)) and len(xs) == 1:
+        names = ["T"]
+    elif r.startswith("dict[") and len(xs) == 2:
+        names = ["K", "V"]
+    for j in range(len(names)):
+        if names[j] not in bound and xs[j] != "?":
+            bound[names[j]] = xs[j]
+
+
+def rt_bind(sig: str, t: str, bound: dict[str, str], strict: bool) -> bool:
+    # Bind the type variables of a runtime signature's type sig (RT_VARS) so that sig names type t:
+    # whether t is an instance of sig. A variable takes the type its first position gives it, and
+    # S also binds what its receiver holds, where nothing did (rt_receiver: the receiver's last). A
+    # type that claims none (%slot for a packed slot, %ptr for a reference) or an empty
+    # container's placeholder (?) binds nothing.
+    # Where a later position gives a variable another type: strict, t is no instance; else (when
+    # Gen.instantiate types an op) the variable keeps its type, which the position's value is
+    # then read as by a view (specs.TYPE_VIEWS), but a placeholder's gives way to a concrete one.
+    if sig == t:
+        return True
+    if sig in RT_VARS:
+        if t == "%ptr" or t == "?" or t == "":
+            return True
+        if sig not in bound:
+            bound[sig] = t
+            if sig == "S":
+                rt_receiver(t, bound)
+            return True
+        a = bound[sig]
+        if a == t or "?" in t:
+            return True
+        if "?" in a:
+            if not strict:
+                bound[sig] = t
+            return True
+        return not strict
+    if sig.startswith("*"):
+        if t == "%slot":
+            return True
+        if t.startswith("*"):
+            return rt_bind(sig[1:], t[1:], bound, strict)
+        # (an int read as a packed slot holds the int: specs.TYPE_VIEWS' int slot)
+        return not strict and t == "int" and rt_bind(sig[1:], "int", bound, strict)
+    h = sig.find("[")
+    if h <= 0 or not sig.endswith("]") or not rt_generic(sig):
+        return False
+    if t == "%ptr":
+        return True
+    if not t.startswith(sig[: h + 1]) or not t.endswith("]"):
+        return False
+    xs = targs(sig)
+    ys = targs(t)
+    if len(xs) != len(ys):
+        return False
+    ok = True
+    for j in range(len(xs)):
+        if not rt_bind(xs[j], ys[j], bound, strict):
+            ok = False
+    return ok
+
+
+def rt_open(sig: str, bound: dict[str, str]) -> bool:
+    # does runtime signature type sig name a type variable that bound does not bind
+    for w in rt_words(sig):
+        if w in RT_VARS and w not in bound:
+            return True
+    return False
+
+
+def rt_subst(sig: str, bound: dict[str, str]) -> str:
+    # runtime signature type sig with its bound type variables replaced by their types
+    if not rt_generic(sig):
+        return sig
+    out = ""
+    start = 0
+    for j in range(len(sig) + 1):
+        if j == len(sig) or sig[j] == "[" or sig[j] == "]" or sig[j] == "," or sig[j] == "*" or sig[j] == "&" or sig[j] == ":":
+            w = sig[start:j]
+            out += bound[w] if w in bound else w
+            if j < len(sig):
+                out += sig[j]
+            start = j + 1
+    return out
+
+
+def rt_instance_error(i: Ins, sig: list[str]) -> str:
+    # What makes rt op i's operand and result types no instance of its runtime function's
+    # signature sig (rtsig), or "": with one type for each type variable (rt_bind, strict), each
+    # is the signature's type with its variables replaced, or claims none (%slot, %ptr, ?); and a
+    # type that names no variable is the signature's own. The operands bind in Gen.instantiate's
+    # order (rt_operand_order) and the result last, so that what they bind checks it; the
+    # receiver binds only what the other operands leave, so an item they write is not checked
+    # against its items here (a list write's is: list_write_error).
+    if len(i.a) != len(sig) - 1:
+        return f"rt {i.s} has {len(i.a)} operands, but its signature {len(sig) - 1}"
+    bound: dict[str, str] = {}
+    order = rt_operand_order(sig)
+    order.append(0)
+    for j in order:
+        s = sig[j]
+        t = i.t if j == 0 else i.a[j - 1].t
+        where = "result" if j == 0 else f"operand {j - 1}"
+        if s != t and not rt_bind(s, t, bound, True):
+            want = rt_subst(s, bound)
+            return f"rt {i.s} {where} needs {'an instance of ' + want if rt_open(want, bound) else want}, got {t or 'no type'}"
+        if s != t and t != "%slot" and t != "%ptr" and rtll(t) != rtll(s):
+            return f"rt {i.s} {where} needs the LLVM type {rtll(s)} of {s}, got {t}"
+    return ""
 
 
 def rt_subset(k: str, ts: list[str]) -> str:
@@ -232,6 +391,10 @@ class RtFn:
         self.sym = rtsym(k)  # its LLVM symbol
         self.sig: list[str] = rtsig(k)  # its result and parameter types, as RUNTIME spells them
         self.ll: list[str] = [rtll(p) for p in self.sig]  # and as LLVM types
+        self.generic = False  # whether they name a type variable (RT_VARS), which a call instantiates
+        for t in self.sig:
+            if rt_generic(t):
+                self.generic = True
         self.fx = fxmask(fx.replace("U?", "").replace("R?", ""))  # its effects (FX bits), but U? and R?
         self.q = "U?" in fx  # whether it has U? (U when the descriptor of its # parameter holds a class)
         self.rq = "R?" in fx  # and R? (R when it holds a recursive alias's edge)
@@ -274,7 +437,7 @@ def tname(t: str) -> str:
     if is_callable(t):
         return "function"
     b = t.find("[")
-    return t[:b] if b >= 0 else short(t)
+    return t[:b] if b >= 0 else own_name(t)  # (a nested class's __name__, Outer.Inner's Inner: as CPython's messages)
 
 
 def raising_op(op: str) -> bool:
@@ -477,6 +640,12 @@ def tslots(t: str) -> int:
         if ts[i] == BIG:
             last = i
     return len(ts) + last + 1
+
+
+def packed_item(t: str) -> str:
+    # what the slot of a fixed tuple's item of type t holds: the item, or a promoting int's 64-bit
+    # int (its Mpz word is a slot of its own past the items: hislot)
+    return "int" if t == BIG else t
 
 
 def hislot(t: str, i: int) -> int:
@@ -946,7 +1115,7 @@ def list_receiver_error(t: str) -> str:
             return "native list operation needs a concrete list receiver"
     if depth != 0:
         return "native list operation needs a concrete list receiver"
-    if element == BIG or element.startswith("%") or element.startswith("*") or element == "#":
+    if element == BIG or element.startswith("%") or element.startswith("*") or element.startswith("&") or element == "#":
         return "native list operation needs a semantic item type, not a machine representation"
     return ""
 
@@ -1201,6 +1370,7 @@ def clone(n: Node) -> Node:
     c.tpsource = n.tpsource
     c.chk = n.chk
     c.mchk = n.mchk
+    c.outer = n.outer
     c.depth = n.depth
     c.made = n.made
     c.src = n.src

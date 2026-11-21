@@ -1,0 +1,10 @@
+[<Auto.FIRST: 1>, <Auto.SECOND: 2>, <Auto.THIRD: 3>] [<Manual.FIRST: 3>, <Manual.SECOND: 4>, <Manual.THIRD: 5>] [<Perm.R: 1>, <Perm.W: 2>, <Perm.X: 4>] <Perm.RW: 3> [<Signed.LOW: -3>, <Signed.HIGH: 4>] Signed.HIGH [<Empty.ONLY: 'x'>]
+<enum 'Auto'> <flag 'Perm'> <enum 'Manual'>
+UNIQUE ValueError aliases found in <enum 'Gaps'>: C -> B
+CONTINUOUS ValueError invalid enum 'Gaps': missing values 2, 3
+NAMED_FLAGS passes
+ValueError duplicate values found in <enum 'Gaps'>: C -> B
+ValueError invalid Flag 'Bits': aliases b and d are missing combined values of 0x3 [use enum.show_flag_values(value) for details]
+TypeError can only concatenate str (not "int") to str
+<enum 'Words'> [<Bits.c: 4>]
+[exit 0]

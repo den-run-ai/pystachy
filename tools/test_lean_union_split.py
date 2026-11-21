@@ -6,7 +6,6 @@ splits into a tag slot and a payload slot; Lean must reject it, or the adapter r
 the original stays proved.
 """
 import copy
-import json
 import os
 from pathlib import Path
 import subprocess
@@ -30,7 +29,7 @@ def inspect(program, directory):
                             cwd=ROOT, env=env, capture_output=True, text=True, timeout=60)
     if result.returncode:
         raise AssertionError(result.stdout + result.stderr)
-    return json.loads((directory / "typed-after.json").read_text())
+    return boundary.read_snapshot((directory / "typed-after.json"), boundary.MAX_PROGRAM_BYTES)[0]
 
 
 class UnionSplitTests(unittest.TestCase):

@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.pystachy_compiler import diagnostics
 from src.pystachy_compiler.emission import gen_err
+from src.pystachy_compiler.unions import FLOATAT
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -83,7 +84,7 @@ class DiagnosticCaptureTests(unittest.TestCase):
                          ["compiling outer(int)", "compiling helper.inner(int)"])
 
     def generator(self, **changes):
-        values = dict(retry_hierarchy=lambda msg: None, xtry="", newx={}, newhints={}, final=False, making=[], recursive=[], line=4,
+        values = dict(retry_hierarchy=lambda msg: None, xtry="", newx={}, hints={}, newhints={}, final=False, making=[], recursive=[], line=4,
                       ncand={}, xwant={}, xnot={}, newwant={}, curfn=None, fnkey=lambda f: f, clsused={})
         values.update(changes)
         return SimpleNamespace(**values)
@@ -147,6 +148,21 @@ class DiagnosticCaptureTests(unittest.TestCase):
         self.assertEqual(output.getvalue(), f"main.py:4: error: {expected}\n")
         self.assertEqual(diagnostics.CAPTURED[0].message, expected)
         self.assertEqual(diagnostics.CAPTURED[0].context, notes)
+
+    def test_float_join_note_names_the_first_int(self):
+        # an error of a pass after a location annotated float joined an int it was given (#1534)
+        # names where the program first gave it one; one without such a join has no note
+        diagnostics.CAPTURE = True
+        generator = self.generator(hints={FLOATAT: "main.py:2"}, final=True)
+        with redirect_stderr(StringIO()) as output, self.assertRaises(SystemExit):
+            gen_err(generator, "expected float, got float | int")
+        note = " (note: what is annotated float and was given an int at main.py:2 holds an int | float"
+        self.assertTrue(output.getvalue().startswith("main.py:4: error: expected float, got float | int" + note))
+        self.assertTrue(diagnostics.CAPTURED[0].message.startswith("expected float, got float | int" + note))
+        generator = self.generator(hints={"global:x": "float | int"}, final=True)
+        with redirect_stderr(StringIO()) as output, self.assertRaises(SystemExit):
+            gen_err(generator, "expected float, got float | int")
+        self.assertEqual(output.getvalue(), "main.py:4: error: expected float, got float | int\n")
 
     def test_real_compilation_keeps_output_and_context(self):
         # Each compilation has its own worker: these tests do not imply that the

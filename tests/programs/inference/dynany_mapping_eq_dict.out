@@ -1,0 +1,10 @@
+Counter True True False False True True False False False False True True
+Counter False False True True False False True True False False True True TypeError TypeError
+OrderedDict True True False False True True False False False False True True
+OrderedDict False False True True False False True True False False True True TypeError TypeError
+defaultdict True True False False True True False False False False True True
+defaultdict False False True True False False True True False False True True TypeError TypeError
+False False True True True True False False True True False False True True False False
+[True, True, True] [2, 2, 2] [1, 1, 1]
+True 0 3 False False
+[exit 0]

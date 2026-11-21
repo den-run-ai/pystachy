@@ -327,6 +327,20 @@ constants are shared (`sconst`); and since records and tables are internal, `glo
 only for classes that reach a reflective site. `RUNTIME` declares `refl.find` without effects
 and `refl.vars` with `A I rO rL rD U` (a field's `__repr__` may run user code).
 
+A class's `__getattr__` ([attribute fallback](language/semantics.md#attribute-fallback)) needs
+no record and no new IR operation, because every attribute of a class is known. `o.name` of a
+name the class lacks is a call of the method with a string constant (`hook_read`). A field with
+an "is assigned" flag branches on the flag and joins the method's value with the field's in a
+`phi` (`hook_field`, in `getfield`); such a read is a call, so it is no narrowed attribute path
+(`hook_reads`). A property's getter runs in a `try` block whose `AttributeError` handler calls
+the method (`hook_prop`). Where the method's value is not of the field's type, the read is
+rejected if an object of the class or of a derived one may lack the field: `fl_fields` records
+those fields per class (`ClassInfo.funset`), with `super().__init__()` assigning what the
+base's `__init__` surely does. `getattr()` with a default and `hasattr()` wrap these lookups in
+the handler they already use for a getter. A program that reaches such a handler without
+exception handling is compiled again with it on, as a dynamic slice is (`NeedSliceEH`). A class
+without the method compiles to the IR it compiled to before.
+
 **Dynamic values.** Opt-in `Any` values use immutable `{DynType *, payload}` boxes.
 The `DynType` identifies the Python type and payload layout; compiler-generated helpers
 dispatch operations on boxed values. See [dynamic `Any`](dynamic-any.md#representation)

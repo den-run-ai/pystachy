@@ -899,7 +899,7 @@ def main():
         if uses_state(fns, used, sym, dw):
             derived.append("I")
         for i, p in enumerate(pys.rtsig(k)[1:]):
-            o = OWNER.get(k[: k.find(".") + 1], "") if p == "S" else "L" if p.startswith("list[") else "D" if p.startswith("dict[") or p.startswith("set[") else "F" if p == "file" else ""
+            o = OWNER.get(k[: k.find(".") + 1], "") if p == "S" or p == "U" else "L" if p.startswith("list[") else "D" if p.startswith("dict[") or p.startswith("set[") else "F" if p == "file" else ""
             if o and sym in eff and i < len(eff[sym]) and eff[sym][i] is not None:
                 derived.extend((["r" + o] if eff[sym][i][0] else []) + (["w" + o] if eff[sym][i][1] else []))
         for x in derived:

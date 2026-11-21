@@ -1,0 +1,7 @@
+[<Animal.ANT: 1>, <Animal.BEE: 2>, <Animal.CAT: 3>, <Animal.DOG: 4>] 3 Animal.BEE
+[<Color.RED: 0>, <Color.GREEN: 1>, <Color.BLUE: 2>] 0 [<Shape.SQUARE: 4>, <Shape.TRIANGLE: 3>] True
+[<Mode.read: 'r'>, <Mode.write: 'w'>] Mode.write [<Level.LOW: 10>, <Level.HIGH: 11>] 12
+[<Perm.R: 1>, <Perm.W: 2>, <Perm.X: 4>] Perm.R|X [<Bits.A: 1>, <Bits.B: 2>] <Bits.A|B: 3>
+[<Word.Alpha: 'alpha'>, <Word.Beta: 'beta'>] alpha 3 <Code.OK: 1>
+Animal <flag 'Perm'> CAT
+[exit 0]

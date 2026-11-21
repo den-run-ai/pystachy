@@ -7,7 +7,7 @@ class Node:
     def __init__(self, kind: str, s: str, line: int, kids: list[Node] | None = None):
         self.kind = kind
         self.s = s
-        self.pyname = ""  # a private def's source name, before its binding is mangled
+        self.pyname = ""  # a private def's or nested class's source name, before its binding is mangled
         self.tpsource = ""  # a def/class's type-parameter spellings, when lexical mangling changes them
         self.line = line
         self.kids: list[Node] = kids if kids is not None else []  # (mk's: no list made to replace)
@@ -18,6 +18,9 @@ class Node:
         # an import in a try statement runs which the read takes as its package's attribute
         # (Loader.trysubs); else ""
         self.mchk = ""
+        # a read of class C.N that the program writes as C.N (Loader.nested_ref): C, which CPython
+        # reads first, so that the read is checked as one of C (Gen.fl_expr); else ""
+        self.outer = ""
         self.depth = 1  # levels of nodes from this one down, as mk counted them
         self.made = False  # a name the compiler makes (a comprehension's variable or f-string helper)
         self.memo = 0  # an item of a display: where Gen.dmemo remembers its dry-run type, + 1 (Gen.dyn_dry)

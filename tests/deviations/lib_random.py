@@ -2,7 +2,6 @@
 # Mersenne Twister) from CPython.
 import math
 import random
-from collections import deque
 from random import Random
 
 # Pystachy's ints are 64-bit: getrandbits() takes up to 63 bits, and raises OverflowError past
@@ -36,12 +35,8 @@ except OverflowError as e:
 # to run there); a Pystachy float has none, and its hash is 0: CPython prints False.
 print(Random(math.nan).random() == Random(0).random())
 
-# sample() takes what isinstance() finds a collections.abc.Sequence: a deque is none in Pystachy,
-# and a dict view, a list, is one: CPython prints [1, 3], then raises TypeError for the keys.
-try:
-    print(Random(1).sample(deque([1, 2, 3]), 2))
-except TypeError as e:
-    print("TypeError:", e)
+# sample() takes what isinstance() finds a collections.abc.Sequence: a dict view, a list in
+# Pystachy, is one: CPython raises TypeError for the keys.
 try:
     print(Random(1).sample({"a": 1, "b": 2}.keys(), 1))
 except TypeError as e:

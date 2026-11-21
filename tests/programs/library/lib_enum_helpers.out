@@ -1,0 +1,22 @@
+strict <FlagBoundary.CONFORM: 'conform'> eject keep [<FlagBoundary.STRICT: 'strict'>, <FlagBoundary.CONFORM: 'conform'>, <FlagBoundary.EJECT: 'eject'>, <FlagBoundary.KEEP: 'keep'>] True 4
+<EnumCheck.UNIQUE: 'one name per value'> no skipped integer values NAMED_FLAGS [<EnumCheck.CONTINUOUS: 'no skipped integer values'>, <EnumCheck.NAMED_FLAGS: 'multi-flag aliases may not contain unnamed flags'>, <EnumCheck.UNIQUE: 'one name per value'>] True True
+[1, 4, 8] [] [1, 4] [1, 8]
+[1, 2, 4] [2] [1, 4611686018427387904]
+made
+ValueError -8 is not a positive integer
+_bad_ True False False
+__mal__ False True False
+_MyEnum__private False False True
+_MyEnum__private_ True False True
+okay False False False
+_semi_private False False False
+_weird__ False False False
+_MyEnum__ False False False
+_ False False False
+__ False False False
+_a_ True False False
+__a__ False True False
+True False False 0b0 1010 0b1 0101 0b0 00000101
+__main__.LOW __main__.R|__main__.W __main__.Perm(0) __main__.A|8
+R Perm(0) HIGH LOW
+[exit 0]

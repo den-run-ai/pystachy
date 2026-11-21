@@ -1,0 +1,4 @@
+2 <Kind.SQUARE: 2> Size(3) Size(4) 1 2
+Shape.Size nested_shapes <class 'nested_shapes.Shape.Size'> Size nested_shapes
+Bad Shape.Bad nested_shapes Bad('no') <class 'nested_shapes.Shape.Bad'>
+[exit 0]

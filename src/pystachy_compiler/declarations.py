@@ -3,12 +3,14 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.analysis import READS_ONLY_FNS, attr_fills, attr_values, called_only, calls_init, local_names, nonexpr, only_reads_items, stmt_walrus
 from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrow_type, narrowed
+from src.pystachy_compiler.builtin_bases import BWORDS
 from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import ENUMCLASSES, owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, own_name, owner, short
+from src.pystachy_compiler.reflection import hook_class, hook_derived, hook_field, hook_of, hook_problem, hook_type
 from src.pystachy_compiler.specs import (
     ANYUSE,
     BIG,
@@ -52,6 +54,7 @@ from src.pystachy_compiler.specs import (
     VTUPLE_ITEMS,
 )
 from src.pystachy_compiler.syntax import Node, has_kind, has_value_return, mentions, mk, other_return
+from src.pystachy_compiler.unions import ANNTYPES, ann_site, field_home
 from src.pystachy_compiler.utils import (
     holds_no_object,
     is_clsval,
@@ -1402,6 +1405,9 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     # is a template: a call compiles it, once per list of argument types, for those types
     # (see instance), and what cannot be compiled in it is an error only then
     self.line = d.line
+    # (may it be a template, its unannotated parameters typed by each call: also a dict
+    # subclass's __missing__, which a d[key] that misses calls, builtin_bases.py)
+    tok = template_ok(d.s) or (d.s == "__missing__" and self.bkind(cls) == "dict")
     # a generic class's methods: an annotation that mentions its type variables is left out
     # where they are not bound, in the class itself (whose objects are its specializations'),
     # and in its __init__'s parameters, which each call's arguments type (they bind them, see
@@ -1474,7 +1480,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     if cls != "" and len(ps) == 0 and f.deco != "staticmethod":
         self.err(f"method '{d.s}' of class '{cls}' must take {'cls' if f.deco != '' else 'self'} as its first parameter")
     tv = self.typevar_in([p.kids[0] for p in ps] + [d.kids[1]], tvs)
-    if tv != "" and (cls == "" or template_ok(d.s)):
+    if tv != "" and (cls == "" or tok):
         # def f(x: T) with T = TypeVar("T"): what mentions a TypeVar is left unannotated, as in
         # def f[T](x: T) (a template); also *args: *Ts
         self.tv_plan(f, ps, d.kids[1], tvs)
@@ -1487,9 +1493,9 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     for i in range(len(ps)):
         # x: object, as in __eq__(self, other: object): a template's parameter, which each call
         # types (any argument: isinstance() narrows it), where a template may be
-        if ps[i].kind == "param" and ps[i].kids[0].kind == "name" and ps[i].kids[0].s == "object" and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or template_ok(d.s) or init):
+        if ps[i].kind == "param" and ps[i].kids[0].kind == "name" and ps[i].kids[0].s == "object" and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or tok or init):
             ps[i].kids[0] = mk("noann", "", d.line, [])
-    if (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport and not self.dyn_policy(d.line):
+    if (cls == "" or tok or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport and not self.dyn_policy(d.line):
         # typing.Any, also in list[Any] or Mapping[str, Any]: what it annotates is left to each
         # call, as a TypeVar's is. A parameter takes its argument's type (*args and **kwargs
         # those of each call's), the return what the function returns; no value is boxed, so
@@ -1506,7 +1512,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
             if not genann:
                 d.kids[1] = mk("noann", "", d.line, [])
                 f.anys.append("")
-    elif (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport:
+    elif (cls == "" or tok or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport:
         # in a module that compiles Any as dyn: an annotation that mentions Any where no Any value
         # can stand (Callable[..., Any], whose parameters no Callable type names) requests
         # inference, as in a module that does not opt in, and so do __exit__'s, which a with
@@ -1534,7 +1540,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         d.kids[1] = mk("noann", "", d.line, [])
         f.anys.append("")
     tvbad = f"method '{d.s}' of class '{short(cls)}' mentions TypeVar '{short(tv)}', which is not supported: {d.s}() is not a template (another method whose parameters mention a TypeVar is, compiled for each call's argument types)"
-    if tv != "" and cls != "" and not template_ok(d.s) and not self.lib:
+    if tv != "" and cls != "" and not tok and not self.lib:
         self.err(tvbad)
     receiver = cls in self.classes and self.classes[cls].tag != 0 and f.deco == ""
     if receiver:
@@ -1545,11 +1551,11 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         # a method's are too, as M2 makes them (but its self or cls; see template_ok), and a
         # class template's __init__; an annotation that names a class template types nothing
         own = cls != "" and i == 0 and f.deco != "staticmethod"
-        if (cls == "" or ((template_ok(d.s) or init) and not own)) and ((ps[i].kind == "param" and (ps[i].kids[0].kind == "noann" or self.tmpl_ann(ps[i].kids[0]) or self.sentinel_param(ps[i]))) or ps[i].kind == "starparam" or ps[i].kind == "dstarparam"):
+        if (cls == "" or ((tok or init) and not own)) and ((ps[i].kind == "param" and (ps[i].kids[0].kind == "noann" or self.tmpl_ann(ps[i].kids[0]) or self.sentinel_param(ps[i]))) or ps[i].kind == "starparam" or ps[i].kind == "dstarparam"):
             f.generic = True
-    if (cls == "" or template_ok(d.s)) and d.kids[1].kind != "noann" and self.tmpl_ann(d.kids[1]) and not (cls in self.classes and self.classes[cls].origin != ""):
+    if (cls == "" or tok) and d.kids[1].kind != "noann" and self.tmpl_ann(d.kids[1]) and not (cls in self.classes and self.classes[cls].origin != ""):
         f.generic = True  # (-> Box: what it returns is one of the class's specializations)
-    if cls in self.classes and self.classes[cls].origin != "" and (template_ok(d.s) or init):
+    if cls in self.classes and self.classes[cls].origin != "" and (tok or init):
         f.generic = True  # (a specialization's methods: compiled where they are called, see specialize)
     gbad = self.gen_declare(f, d) if has_kind(d.kids[2], "yield") and not self.rtmode else ""
     # an __iter__ annotated -> Iterator[T] (or Iterable[T]) that returns something other than
@@ -1557,7 +1563,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     # unannotated one's is (an iterator class's __next__ gives the items)
     selfiter = cls != "" and d.s == "__iter__" and d.kids[1].kind != "noann" and self.iter_item(d.kids[1]) is not None and other_return(d.kids[2]) and not f.gen
     protocol = cls != "" and (d.s == "__iter__" or d.s == "__next__") and d.kids[1].kind == "noann" and d not in held
-    if not f.gen and ((d.kids[1].kind == "noann" and (cls == "" or template_ok(d.s))) or selfiter or protocol) and not f.extern and not f.export and not f.pyexport and has_value_return(d.kids[2]):
+    if not f.gen and ((d.kids[1].kind == "noann" and (cls == "" or tok)) or selfiter or protocol) and not f.extern and not f.export and not f.pyexport and has_value_return(d.kids[2]):
         # The declared parameter types still coerce every call. Reuse return
         # inference even when all parameter types are already concrete.
         # Initializers and other implicit special methods keep their contracts.
@@ -1617,11 +1623,11 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
                 # A generic class's TypeVar annotation is restored on its specializations.
                 self.err(f"parameter '{p.s}' of '{d.s}' needs a type annotation")
             f.ptypes.append("")
-        elif f.generic and self.tmpl_ann(p.kids[0]) and not (cls in self.classes and self.classes[cls].origin != "" and not init and not template_ok(d.s)):
+        elif f.generic and self.tmpl_ann(p.kids[0]) and not (cls in self.classes and self.classes[cls].origin != "" and not init and not tok):
             f.ptypes.append("")  # (it names a class template: any of its specializations, see tmpl_ann)
             if self.callable_pat(p.kids[0]) != "":
                 f.pats[len(f.params) - 1] = p.kids[0]
-        elif self.sentinel_param(p) and f.generic and (cls == "" or template_ok(d.s) or init):
+        elif self.sentinel_param(p) and f.generic and (cls == "" or tok or init):
             # p: T = S of a module's sentinel S = object(), as mypy's Bogus[...] = _dummy: a template
             # parameter that is a T (call_fn coerces a given argument to it) or S itself, where a
             # call leaves it out; p is S decides each specialization's branch (static)
@@ -1681,13 +1687,13 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         bad = gbad  # (a generator function whose yield or annotation Pystachy does not support)
     elif bad == "" and self.rtmode and has_kind(d.kids[2], "yield"):
         bad = "generator functions are not supported in runtime.py"
-    tret = d.kids[1].kind != "noann" and f.generic and self.tmpl_ann(d.kids[1]) and not (cls in self.classes and self.classes[cls].origin != "" and not template_ok(d.s)) and not f.gen
+    tret = d.kids[1].kind != "noann" and f.generic and self.tmpl_ann(d.kids[1]) and not (cls in self.classes and self.classes[cls].origin != "" and not tok) and not f.gen
     if bad == "" and self.lib and d.kids[1].kind != "noann" and not tret and not f.gen:
         it = self.iter_item(d.kids[1]) if cls != "" and (d.s == "__iter__" or d.s == "__reversed__") else None  # (see iter_ann)
         why = self.ann_problem(d.kids[1], True) if it is None else self.ann_problem(it, False)
         if why != "":
             bad = f"{cls + '.' if cls != '' else ''}{d.s}() is not supported: return annotation: {why}"
-    if tv != "" and cls != "" and not template_ok(d.s):
+    if tv != "" and cls != "" and not tok:
         bad = tvbad  # (an imported module's: an error only where it is used)
     if bad != "" and not f.generic and not self.lib:
         self.err(bad)
@@ -1705,6 +1711,8 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         f.ret = ""  # (-> Box: decided by its first return, as an unannotated one is)
     elif d.kids[1].kind != "noann":
         f.ret = self.typeof(d.kids[1])
+        if f.ret in ANNTYPES and len(self.hints) > 0:
+            f.ret = self.hints.get(f"return:{d.line}", f.ret)  # (it returned an int or a member too: a join's type, see ann_returns)
     elif cls != "" and (d.s == "__len__" or d.s == "__hash__") and has_value_return(d.kids[2]):
         # bool is also a legal length or hash; infer it so an explicit obj.__len__()
         # keeps returning bool while len(obj) converts it to int (and so hash()).
@@ -1860,6 +1868,15 @@ def gen_init_after(self, ci: ClassInfo, name: str) -> bool:
             return True
     return False
 
+def field_ann(self, ci: ClassInfo, name: str, a: Node) -> str:
+    # the type that annotation a in class ci's body gives its field name: where that is float and
+    # an earlier pass stored an int in the field (or int or str and an enum member), their union
+    # (a join's type, as if annotated: see ann_takes)
+    t = self.vtype(a)
+    if t in ANNTYPES:
+        ci.fann[name] = True
+    return self.hints.get(self.field_key(ci, name), t) if t in ANNTYPES and len(self.hints) > 0 else t
+
 def gen_add_field(self, ci: ClassInfo, name: str, t: str) -> None:
     if name in ci.methods and ci.methods[name].prop:
         self.err(f"field '{name}' of '{short(ci.name)}' conflicts with property '{name}'")
@@ -1986,6 +2003,11 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
                 ci.fopts[x] = b.fopts[x]  # (a dataclass's: its fields come first, as they are)
             if x in b.factory:
                 ci.factory[x] = b.factory[x]
+    elif self.bkind(ci.name) != "":
+        # the header of the builtin container it derives from (runtime.c's List), which only that
+        # container's code reads and writes: words that may hold references, by no name
+        for k in range(BWORDS[self.bkind(ci.name)]):
+            self.add_field(ci, f" {self.bkind(ci.name)}.{k}", "str")
     elif ci.tag != 0:
         self.add_field(ci, " class", "int")
     elif ci.exc != "":
@@ -2043,13 +2065,13 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
                 o["kw_only"] = True
         if dc and st.kind == "annassign" and st.kids[0].kind == "name" and ci.base in self.classes and st.kids[0].s in self.classes[ci.base].ftypes:
             # (a base dataclass's field declared again, with or without a default)
-            if self.vtype(st.kids[1]) != self.classes[ci.base].ftypes[st.kids[0].s]:
+            if field_ann(self, ci, st.kids[0].s, st.kids[1]) != self.classes[ci.base].ftypes[st.kids[0].s]:
                 self.bad_class(ci, f"field '{st.kids[0].s}' of '{short(ci.base)}' declared again in '{short(ci.name)}' with another type (not supported)")
                 continue
         elif st.kind == "annassign" and st.kids[0].kind == "name" and ci.base in self.classes and st.kids[0].s in self.classes[ci.base].ftypes:
             # (a class attribute of the base bound again, with the same type: as x = v is)
             b = self.classes[ci.base]
-            if len(st.kids) < 3 or st.kids[0].s not in b.fdefault or self.vtype(st.kids[1]) != b.ftypes[st.kids[0].s]:
+            if len(st.kids) < 3 or st.kids[0].s not in b.fdefault or field_ann(self, ci, st.kids[0].s, st.kids[1]) != b.ftypes[st.kids[0].s]:
                 self.err(f"field '{st.kids[0].s}' of '{short(ci.base)}' declared again in '{short(ci.name)}' (not supported" + (", but for a class attribute of the same type" if st.kids[0].s in b.fdefault else "") + ")")
         if st.kind == "annassign" and st.kids[0].kind == "name" and ci.mod != "" and self.ann_problem(st.kids[1], False) != "":
             # an imported module's class: an error only where the program uses it
@@ -2059,7 +2081,7 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
                 del ci.fopts[st.kids[0].s]  # (whose default is not checked: see below)
         elif st.kind == "annassign" and st.kids[0].kind == "name":
             name = st.kids[0].s
-            self.add_field(ci, name, self.vtype(st.kids[1]))
+            self.add_field(ci, name, field_ann(self, ci, name, st.kids[1]))
             if len(st.kids) == 3:
                 ci.fdefault[name] = st.kids[2]
             if len(st.kids) == 3 and st.kids[2].kind in ["enummember", "enumalias"] and ci.node.line in ENUMCLASSES:
@@ -2083,6 +2105,8 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
             bt = self.classes[ci.base].ftypes.get(st.kids[0].s, "") if ci.base in self.classes else ""
             if t != "" and bt != "" and (self.widens(t, bt) or self.boxes(t, bt) or (t == "int" and bt == BIG)):
                 t = bt  # (a class attribute of the base bound again, with a value of its type)
+            if t == "" and ci.mod == "" and st.kids[1].kind == "name" and st.kids[1].s in self.classes and self.classes[st.kids[1].s].node.line in ENUMCLASSES:
+                self.err(f"class attribute '{st.kids[0].s}' of enum class {short(st.kids[1].s)} is not supported: a variable or a field (self.{st.kids[0].s} = {short(st.kids[1].s)}) may hold the class")
             if t == "" and ci.mod == "":
                 self.err(f"cannot infer the type of class attribute '{st.kids[0].s}'; annotate it ({st.kids[0].s}: {'Final[T]' if st.s == 'Final' else 'T'} = ...)")
             if t == "":
@@ -2092,6 +2116,9 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
             ci.fdefault[st.kids[0].s] = st.kids[1]
             st.kind = "annassign"  # (its s stays "Final" where typing_forms made it of x: Final = v)
             st.kids = [st.kids[0], mk("noann", "", st.line, []), st.kids[1]]
+        elif st.kind == "class" or st.kind == "subclass":
+            # (Loader's nested_classes made the others classes of the module)
+            self.err(f"class {short(ci.name)}.{st.s} is not supported: a class nests classes in the body of a class statement of a module's body (not of an if or try statement), but not of an enum class or a generic class of PEP 695")
         elif st.kind != "def" and st.kind != "pass" and not (st.kind == "expr" and (st.kids[0].kind == "str" or st.kids[0].kind == "ellipsis")):
             what = "an assignment to anything but one name (x = v)" if st.kind == "assign" else "an expression statement" if st.kind == "expr" else f"a{'n' if st.kind[0] in 'aeiou' else ''} {st.kind} statement"
             self.err(f"a class body may only contain fields, methods, a docstring, pass and ..., not {what}")
@@ -2146,6 +2173,11 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
         if owner == "":
             continue
         why = f"the special method {m}{'' if owner == ci.name else ' of its base ' + shown(owner)} is not supported (CPython calls it {UNCALLED[m]})"
+        if m == "__getattr__":
+            # (a def of an ordinary class is called for the attributes it does not find: reflection.py)
+            if hook_problem(self, ci) == "":
+                continue
+            why += hook_problem(self, ci)
         if ci.mod == "":
             self.line = ci.node.line if owner != ci.name else ci.methods[m].node.line if m in ci.methods else ci.fdefault[m].line
             self.err(why)
@@ -2439,7 +2471,8 @@ def gen_dc_methods(self, ci: ClassInfo) -> None:
         self.bad_class(ci, f"repr=False in a dataclass whose base's __repr__ is the one @dataclass writes is not supported (CPython's shows the object's class, {short(ci.name)})")
     if "__repr__" not in own and "no-repr" not in ci.dcopts:
         parts: list[Node] = []
-        lit = short(ci.name) + "("
+        # (a dataclass's __qualname__, Outer.Inner for a nested class, a NamedTuple's __name__)
+        lit = (own_name(ci.name) if ci.name in self.nts else short(ci.name)) + "("
         for i in range(len(reprs)):
             parts.append(mk("str", lit + (", " if i > 0 else "") + reprs[i] + "=", line, []))
             parts.append(mk("call", "", line, [mk("name", "__pys_repr", line, []), mk("attr", reprs[i], line, [me])]))
@@ -2520,7 +2553,9 @@ def gen_scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dic
                 t = "" if t == "None" or why != "" else t  # (f() that returns None: a field has a value type)
                 if t == "" and why == "" and ci.origin in self.cnts:
                     why = f"field '{name}' of namedtuple {short(ci.name)} given {'None' if given == 'None' else 'a value whose type cannot be inferred'} is not supported (the call that makes an object types its fields)"
-                jh = self.hints.get(f"field:{self.stable(ci.name)}.{name}", "") if k == "assign" and len(self.hints) > 0 else ""
+                if k == "annassign" and t in ANNTYPES:
+                    ci.fann[name] = True  # (annotated float, int or str: what it is given may widen it too, see ann_takes)
+                jh = self.hints.get(f"field:{self.stable(ci.name)}.{name}", "") if (k == "assign" or name in ci.fann) and len(self.hints) > 0 else ""
                 if jh != "":
                     t = jh  # (a join's type: as if annotated, see join_hint)
                     why = ""
@@ -2790,6 +2825,23 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         local_names(guess_scope(f), asg)
         if e.s not in asg:
             return "type[" + e.s + "]"
+    if k == "name" and e.s in self.classes and self.classes[e.s].node.line in ENUMCLASSES and self.compiling:
+        # an enum class: its EnumType object (a _FlagType's, of a flag class), which its module
+        # binds after the class statement (Loader's enum_classes), of the specialization of
+        # lib/enum.py's class template that that call's arguments pick: the class's name, its
+        # members, by name (and a flag's by value, its masks and its boundary). Once code is being
+        # compiled, as a class template's object (unless a local of the method has the class's
+        # name): a field that holds one makes its class a template too (stores_enum_class)
+        asg = {}
+        local_names(guess_scope(f), asg)
+        g = e.s[: e.s.rfind("$") + 1] + "_pys_enum_" + short(e.s)
+        v = self.globvalues[g] if g in self.globvalues else mk("pass", "", e.line, [])
+        tc = v.kids[0].s if v.kind == "call" and len(v.kids) > 0 and v.kids[0].kind == "name" else ""
+        if e.s not in asg and (tc == "enum$EnumType" or tc == "enum$_FlagType") and tc in self.tmpl:
+            ets = ["str", "list[" + e.s + "]", "dict[str," + e.s + "]"]
+            if tc == "enum$_FlagType":
+                ets = ets + ["dict[int," + e.s + "]", "int", "int", "int", "str"]
+            return self.specialize(tc, ets, {}, False, {})
     p = self.imported_ref(e) if k == "name" or k == "attr" else ""
     if p in MODFUNCS:
         # a builtin module's function (math.sqrt, or sqrt from-imported), unless a local of the
@@ -2851,7 +2903,7 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return ci.methods[e.s].ret
         if e.s not in ci.ftypes and e.s in ci.methods and ci.methods[e.s].deco == "":
             return f"fn[m:{f.cls}.{e.s}]"  # (self.m: the method bound to the object)
-        return ci.ftypes.get(e.s, "")
+        return ci.ftypes[e.s] if e.s in ci.ftypes else hook_type(self, f.cls, e.s)
     if k == "attr" and not (e.kids[0].kind == "name" and e.kids[0].s == me) and attr_root(e).kind == "name" and (attr_root(e).s in f.params or (attr_root(e).s in self.guessvars and self.guessowner[attr_root(e).s] is f)):
         # p.k of a parameter p holding an object (also of a comprehension's variable, or of an
         # attribute of either or of self's: p.j.k, self.j.k): the type of its field k, or what its
@@ -2872,6 +2924,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return self.classes[t].ftypes[e.s]
         if t in self.classes and e.s in self.classes[t].methods and self.classes[t].methods[e.s].prop and self.classes[t].methods[e.s].bad == "":
             return self.classes[t].methods[e.s].ret
+        if hook_type(self, t, e.s) != "":
+            return hook_type(self, t, e.s)
     if k == "dictstar":
         # {**a, **b} of **kwargs records: their record, each name with its last value's type
         names: list[str] = []
@@ -2905,6 +2959,9 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             # self.accept(Visitor()) of a method -> T that a visitor's class binds (tv_bound); a
             # static or class method's parameters do not include self
             return self.tv_bound(ms[m], ([f.cls] if ms[m].deco == "" else []) + [self.guess(x, f) for x in e.kids[1:]])
+        ft = self.classes[f.cls].ftypes.get(m, "")
+        if m not in ms and is_clsval(ft) and clsof(ft) in self.classes and clsof(ft) not in self.tmpl:
+            return clsof(ft)  # (self.N(...) of a class attribute that holds a class, as a nested class's: an object of it)
         return "" if m not in ms else ms[m].ret if ms[m].bad == "" else "!" + ms[m].bad
     if k == "call" and e.kids[0].kind == "name" and e.kids[0].s == me:
         ms = self.classes[f.cls].methods  # self(...): self.__call__(...)
@@ -3485,7 +3542,7 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
             self.err(f"'{short(o.t)}' object has no attribute '{name}' (of an exception object, only the fields of its class are supported; str(e) and repr(e) are)")
         if o.t in self.nts and name == "__doc__":
             self.err(f"reading the __doc__ of NamedTuple {short(o.t)} is not supported (Pystachy keeps no docstrings of classes)")
-        self.err(f"'{shown(o.t)}' object has no attribute '{name}'")
+        self.err(f"'{shown(o.t)}' object has no attribute '{name}'" + self.nested_hint(o.t, name))
     extra = " and no __dict__ for setting new attributes" if store else ""
     if self.rolex != o.v and self.role_field(o.t, name):
         # (the object may be a combining class's, whose layout holds the attribute elsewhere:
@@ -3498,7 +3555,7 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
             # Exact comparison arms retain the actual operand's layout. A new
             # base-typed access cannot silently use the hidden prefix when a
             # descendant already has a different attribute at its own offset.
-            tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "*int"))
+            tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "&int"))
             for override_ci in overrides:
                 self.guard(self.num_cmp("==", tag, Val(str(override_ci.tag), "int")).v,
                            f"TypeError: comparison-created attribute '{name}' of {short(ci.name)} is shadowed by {short(override_ci.name)}; narrow to the concrete class")
@@ -3542,7 +3599,7 @@ def gen_fgep(self, o: Val, i: int) -> str:
     # remains in IFn.fa so native and machine memory operations have identical effects.
     ci = self.classes[o.t]
     t = ci.ftypes[ci.fields[i]] if i < len(ci.fields) else "dyn" if i in ci.fbox.values() else "bool"
-    op = Ins("field.addr", "*" + t, "")
+    op = Ins("field.addr", "&" + t, "")
     op.k = i
     op.a = [o]
     self.put(op, 1)
@@ -3550,8 +3607,9 @@ def gen_fgep(self, o: Val, i: int) -> str:
     self.fn.fa[r] = True
     return r
 
-def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
+def gen_getfield(self, o: Val, p: Val, name: str, plain: bool = False) -> Val:
     # load a field (p = self.field(o, name)); a field __init__ may leave unassigned is checked
+    # (where its class has a __getattr__, CPython calls that instead: hook_field, unless plain)
     ci = self.classes[o.t]
     r = ""
     bad = ""
@@ -3564,26 +3622,26 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
             for sub in self.classes.values():
                 if sub.name != ci.name and self.derives(sub.name, ci.name) and name in sub.fdefault and self.default_home(sub, name) is not self.default_home(ci, name):
                     self.err(f"reading __slots__ through exception base {short(ci.name)} is not supported when a subclass overrides it; read it through the concrete class")
-        r = self.mem_load(Val(p.v, "*" + p.t)).v
+        r = self.mem_load(Val(p.v, "&" + p.t)).v
         if ci.tag != 0:
-            tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "*int")).v
+            tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "&int")).v
             for sub in self.classes.values():
                 if sub.tag != 0 and sub.name != ci.name and self.derives(sub.name, ci.name) and name in sub.fdefault:
                     if sub.ftypes[name] != p.t:
                         self.err(f"reading __slots__ through {short(ci.name)} is not supported when subclasses use different declaration types; read it through the concrete class")
                     self.class_default(sub, name)
-                    dv = self.mem_load(Val(sub.fglob[name], "*" + p.t))
+                    dv = self.mem_load(Val(sub.fglob[name], "&" + p.t))
                     r = self.select(self.num_cmp("==", Val(tag, "int"), Val(str(sub.tag), "int")).v, dv, Val(r, p.t))
         return Val(r, p.t)
     if o.t + "." + name in self.cvars:
         # a class variable: the object's own value once it has assigned one, else the class's
-        own = self.mem_load(Val(self.fgep(o, ci.fflag[name]), "*bool")).v
-        fv = self.mem_load(Val(p.v, "*" + p.t))
+        own = self.mem_load(Val(self.fgep(o, ci.fflag[name]), "&bool")).v
+        fv = self.mem_load(Val(p.v, "&" + p.t))
         if ci.tag != 0:
             # Each concrete class may shadow its base's class attribute. All related
             # mutable defaults share the inherited instance-assignment flag, but their
             # fallback globals still belong to the classes that define those defaults.
-            tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "*int")).v
+            tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "&int")).v
             cv = fv
             cb = box
             assigned = own
@@ -3592,7 +3650,7 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
                     match = self.num_cmp('==', Val(tag, "int"), Val(str(sub.tag), "int")).v
                     if sub.name + "." + name in self.cvars or not is_const(sub.fdefault[name]) or box != "":
                         self.class_default(sub, name)
-                        dv = self.mem_load(Val(sub.fglob[name], "*" + p.t))
+                        dv = self.mem_load(Val(sub.fglob[name], "&" + p.t))
                     else:
                         dv = self.coerce(self.expr(sub.fdefault[name], p.t), p.t)
                     cv = Val(self.select(match, dv, cv), p.t)
@@ -3602,15 +3660,15 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
             bad = self.scalar('xor', [Val(assigned, 'bool'), Val('true', 'bool')])
             r = self.select(own, fv, cv)
             if box != "":
-                box = self.select(own, Val(box, "%ptr"), Val(cb, "%ptr"))
+                box = self.cast(Val(self.select(own, Val(box, "%ptr"), Val(cb, "%ptr")), "%ptr"), "&dyn", "bits").v  # (the identity box's address)
         else:
             self.class_default(ci, name)
-            r = self.select(own, fv, self.mem_load(Val(ci.fglob[name], "*" + p.t)))
+            r = self.select(own, fv, self.mem_load(Val(ci.fglob[name], "&" + p.t)))
             if is_opt(p.t) or is_union(p.t):
                 self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
             v = Val(r, p.t)
             if box != "":
-                box = self.select(own, Val(box, "%ptr"), Val(ci.fglob[name] + ".box", "%ptr"))
+                box = self.cast(Val(self.select(own, Val(box, "%ptr"), Val(ci.fglob[name] + ".box", "%ptr")), "%ptr"), "&dyn", "bits").v  # (the identity box's address)
                 self.dyn_id_read(v, box)
             return v
     shadows = self.exc_shadows(ci, name) if name in ci.fflag and name not in ci.fsure else []
@@ -3618,9 +3676,9 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
         # an object of an exception class whose class variable shadows the field (exc_shadows)
         # reads that class's value until it assigns the field itself: found, as for a tagged
         # class's objects above, by the object's class, here the ExcClass it holds
-        own = self.mem_load(Val(self.fgep(o, ci.fflag[name]), "*bool")).v
-        fv = self.mem_load(Val(p.v, "*" + p.t))
-        cls = self.mem_load(Val(self.fgep(o, ci.fpos[" cls"]), "*str")).v
+        own = self.mem_load(Val(self.fgep(o, ci.fflag[name]), "&bool")).v
+        fv = self.mem_load(Val(p.v, "&" + p.t))
+        cls = self.mem_load(Val(self.fgep(o, ci.fpos[" cls"]), "&str")).v
         cv = fv
         cb = box
         assigned = own
@@ -3630,18 +3688,23 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
             self.xcls[x.name] = True  # (its ExcClass, which its objects hold)
             match = self.ptr_cmp('==', Val(cls, "str"), Val(f"@x.{x.name}", "str")).v
             self.class_default(x, name)
-            cv = Val(self.select(match, self.mem_load(Val(x.fglob[name], "*" + p.t)), cv), p.t)
+            cv = Val(self.select(match, self.mem_load(Val(x.fglob[name], "&" + p.t)), cv), p.t)
             if box != "":
                 cb = self.select(match, Val(x.fglob[name] + ".box", "%ptr"), Val(cb, "%ptr"))
             assigned = self.scalar('or', [Val(assigned, 'bool'), Val(match, 'bool')])
         bad = self.scalar('xor', [Val(assigned, 'bool'), Val('true', 'bool')])
         r = self.select(own, fv, cv)
         if box != "":
-            box = self.select(own, Val(box, "%ptr"), Val(cb, "%ptr"))
+            box = self.cast(Val(self.select(own, Val(box, "%ptr"), Val(cb, "%ptr")), "%ptr"), "&dyn", "bits").v  # (the identity box's address)
     if name in ci.fflag and name not in ci.fsure:
         f = self.fgep(o, ci.fflag[name])
         if bad == "":
-            bad = self.scalar('xor', [Val(self.mem_load(Val(f, '*bool')).v, 'bool'), Val('true', 'bool')])
+            bad = self.scalar('xor', [Val(self.mem_load(Val(f, '&bool')).v, 'bool'), Val('true', 'bool')])
+        hooked = 0 if plain else hook_of(self, o.t)
+        if hooked == 2 and hook_class(self, o.t, name) != "":
+            hook_derived(self, o.t, hook_class(self, o.t, name), f"reading field '{name}', which may be unassigned,")
+        if hooked == 1:
+            return hook_field(self, o, p, name, bad)
         subs = [x for x in self.classes.values() if x.base == o.t]
         if len(subs) > 0 and (ci.exc != "" or ci.tag != 0):
             # CPython's missing-attribute error names the concrete object's class.
@@ -3652,7 +3715,7 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
             if ci.exc != "":
                 c = self.rt("pys_exc_cls", "ptr", [f"ptr {o.v}"])
             else:
-                tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "*int")).v
+                tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "&int")).v
                 if not self.fieldnames:
                     # Positive tags are assigned before discovery and never reused; templates
                     # are untagged. Share one immutable table rather than a subclass-name select
@@ -3678,7 +3741,7 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
     if p.t == NONEVAR and not self.fieldcmp:
         return Val("null", "None")  # (a field that is always None, see none_field)
     if r == "":
-        r = self.mem_load(Val(p.v, "*" + p.t)).v
+        r = self.mem_load(Val(p.v, "&" + p.t)).v
     if is_opt(p.t) or is_union(p.t):
         self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
     v = Val(r, p.t)
@@ -3713,18 +3776,19 @@ def gen_setfield_store(self, o: Val, p: Val, name: str, v: Val) -> None:
                 comparison_record_write(self, name, combined)
                 raise Rejoin()  # layout discovery is not a failed comparison body
     what = f"the value assigned to field '{name}' ({typestr(p.t)})" if is_opt(v.t) else ""
-    # (a value of another type than an inferred field's may widen it: join_hint)
-    was = self.join_at("field" if name in self.field_root(ci, name).fguess else "", self.field_key(ci, name), p.t)
+    # (a value of another type than an inferred field's may widen it, and an int a field's that
+    # is annotated float, an enum member one annotated int or str: join_hint)
+    was = self.join_at("field" if name in self.field_root(ci, name).fguess else "ann:field" if ann_site(p.t) and name in field_home(self, ci, name).fann else "", self.field_key(ci, name), p.t)
     cv = self.coerce(v, p.t, what)
     self.join_at(was[0], was[1], was[2])
     self.identity_field(ci, p.t, True)  # (dynamic.py)
-    self.mem_store(Val(p.v, "*" + p.t), cv)
+    self.mem_store(Val(p.v, "&" + p.t), cv)
     if name in ci.fbox and (numeric_identity(p.t) or p.t == NONEVAR):
         box = self.fgep(o, ci.fbox[name])
-        if len(self.fn.lazyflag) == 0 or not self.lazy_store(o, box, name):
+        if len(self.fn.build.lazyflag) == 0 or not self.lazy_store(o, box, name):
             self.dyn_id_store(box, v, p.t)
     if name in ci.fflag:
-        self.mem_store(Val(self.fgep(o, ci.fflag[name]), "*bool"), Val("true", "bool"))
+        self.mem_store(Val(self.fgep(o, ci.fflag[name]), "&bool"), Val("true", "bool"))
 
 def gen_is_prop(self, t: str, name: str) -> bool:
     # is attribute name of objects of type t a property (of the class or its specialization's template)

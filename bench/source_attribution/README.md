@@ -30,8 +30,10 @@ inherit the originating instruction's location. Lowering creates a compile unit,
 file records, a subprogram for each Python specialization, and instruction
 locations. Imported and nested functions keep their own file and function
 identity. Generated entry points and wrappers use line zero, so LLVM can preserve
-Python locations when inlining into those callers. Newly synthesized bookkeeping
-also uses line zero. Columns, lexical variables, source checksums, and a complete
+Python locations when inlining into those callers. A typed-IR operation that a pass
+synthesizes takes the line of the operation it derives from
+([locations](../../docs/typed-ir.md#locations)), and the allocas of a function's
+entry storage use line zero. Columns, lexical variables, source checksums, and a complete
 Python inline-call stack are outside this prototype. A front-end expansion can
 retain its originating file and line without becoming a distinct inline frame.
 

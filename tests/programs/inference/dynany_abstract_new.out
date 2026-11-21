@@ -1,0 +1,5 @@
+argument Can't instantiate abstract class Half without an implementation for abstract method 'f'
+variable Can't instantiate abstract class Half without an implementation for abstract method 'f'
+Full
+1
+[exit 0]

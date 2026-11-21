@@ -46,6 +46,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/argparse_schema.py',
     'src/pystachy_compiler/ctypes_schema.py',
     'src/pystachy_compiler/bigints.py',
+    'src/pystachy_compiler/builtin_bases.py',
     'src/pystachy_compiler/builtins.py',
     'src/pystachy_compiler/calls.py',
     'src/pystachy_compiler/cached_run.py',
@@ -1017,7 +1018,9 @@ def main() -> None:
         llvm = llvm + "/"
     # strip clang's target-cpu/features attributes so LLVM can inline runtime helpers into our code
     strip = "sed -E 's/ \"(target-cpu|target-features|tune-cpu)\"=\"[^\"]*\"//g'"
-    cache = os.getenv("PYSTACHY_CACHE", "") or home + "/build"
+    cache = os.getenv("PYSTACHY_CACHE")
+    if cache is None or cache == "":
+        cache = home + "/build"
     if not os.path.exists(cache):
         sh(f"mkdir -p {q(cache)}")
     # intermediate files go to a private directory (mode 0700, honours TMPDIR), removed on every path below

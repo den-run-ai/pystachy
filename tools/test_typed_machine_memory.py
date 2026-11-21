@@ -81,7 +81,8 @@ class TypedMachineMemoryTests(unittest.TestCase):
 
     def test_storage_rejects_malformed_operands_types_results_and_metadata(self):
         for op in ("mach.load", "mach.store"):
-            for t in ("", "None", "%slot", "%raw", "*int", "#", "T"):
+            # (a word may hold a packed slot *T, and a store may write the opaque %slot)
+            for t in ("", "None", "%raw", "*%slot", "*", "&int", "#", "T") + (("%slot",) if op == "mach.load" else ()):
                 self.assert_bad(memory(op, t))
             for field, value in (("a", []), ("a", [Val("%a0", "int")]),
                                  ("x", "LLVM"), ("k", 1), ("b", ["entry"]),

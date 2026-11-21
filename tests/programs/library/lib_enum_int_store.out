@@ -1,0 +1,12 @@
+1 <Color.RED: 1> 2 2 True True 1 1 Color True
+6
+6
+<Perm.R|W: 6> <Perm.R: 4> 7 True
+<Color.RED: 1> 2 True
+9 10 False
+<Color.GREEN: 2> 7
+['0', '<Color.BLUE: 3>']
+Item(count=<Color.GREEN: 2>, size=<Color.RED: 1>) <Color.GREEN: 2> <Color.RED: 1> Item(count=3, size=<Color.RED: 1>)
+<Color.BLUE: 3> 6 0 <Color.GREEN: 2> <Color.GREEN: 2>
+<Color.GREEN: 2> 3
+[exit 0]

@@ -1,0 +1,5 @@
+True Sub Sub 5 5
+2 1 __Hidden Outer.__Hidden
+Outer.__Hidden 5 5 Outer.__Hidden 5 5 True False
+__Error Outer.__Error __Error('hidden') <class '__main__.Outer.__Error'>
+[exit 0]
