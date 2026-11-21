@@ -167,9 +167,12 @@ jobs:
           export PYSTACHY_HOME="$PWD"
           wasm/build.sh runtime-wasm
           wasm/build.sh emitter
+          python3 -m pip install --only-binary=:all: wasmtime==51.0.0
+          python3 -m unittest wasm.test_wasmtime wasm.test_wasmtime_codemode
           node --no-warnings --test wasm/test_codemode.mjs
           direct_cases=(tests/programs/apps/ouro2_*.py tests/programs/runtime/rt_float_hex.py
-                        tests/programs/strings/str_dict_hash.py tests/programs/language/varargs_tuple_lifetime.py)
+                        tests/programs/strings/str_dict_hash.py tests/programs/language/varargs_tuple_lifetime.py
+                        tests/programs/numbers/int_masked_low32.py)
           routes=$(mktemp)
           WASM_TIR_LOG="$routes" tests/run.sh "$PYSTACHY" "wasm wasm-tir" "${direct_cases[@]}" \
             tests/programs/inference/dynany_bound_methods.py \

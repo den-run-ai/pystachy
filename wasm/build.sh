@@ -19,7 +19,8 @@
 # WASI_SYSROOT, a wasi-libc sysroot (default: Ubuntu's wasi-libc package, whose headers and
 # libraries lie in /usr/include/wasm32-wasi and /usr/lib/wasm32-wasi); WASM_RUNTIME, the
 # runtime's directory (default build/wasm); WASM_OPT, the -O level of programs (default 2); PY,
-# the Python that runs wasm/wasm32_ir.py (default python3).
+# the Python that runs wasm/wasm32_ir.py (default python3). WASM_EH=standard targets try_table;
+# linking LLVM programs with catches then requires Binaryen wasm-opt with --emit-exnref.
 set -eu
 cd "$(dirname "$0")/.."
 PYSTACHY=${PYSTACHY:-./pystachy}
@@ -27,6 +28,11 @@ LLVM=${PYSTACHY_LLVM:+$PYSTACHY_LLVM/}
 RT=${WASM_RUNTIME:-build/wasm}
 OPT=${WASM_OPT:-2}
 PY=${PY:-python3}
+EH=${WASM_EH-legacy}
+case "$EH" in
+  legacy|standard) ;;
+  *) echo "WASM_EH must be legacy or standard" >&2; exit 2 ;;
+esac
 TARGET=wasm32-wasi
 # runtime.c's POSIX that WASI lacks: wasm/include's headers and pystachy_wasi.h declare it,
 # wasm/wasi_stubs.c defines it; the C library emulates signal(), clock() and getpid(). (Its
@@ -102,8 +108,14 @@ program() ( # source|ir INPUT OUTPUT (a dash streams IR input or Wasm output)
   "$PY" wasm/wasm32_ir.py "$ir" "$t/prog-wasi.ll"
   set -- "$RT/runtime.o" "$RT/stubs.o"
   ehflag=
+  standard_command=false
   if grep -q '^declare void @pys_wasi_uncaught(ptr)$' "$t/prog-wasi.ll"; then
     [ -f "$RT/command-eh.o" ] || { echo "wasm/build.sh: rebuild the exception runtime with wasm/build.sh runtime" >&2; exit 1; }
+    if [ "$EH" = standard ]; then
+      command -v wasm-opt >/dev/null || { echo "wasm/build.sh: WASM_EH=standard needs Binaryen wasm-opt for LLVM exception handlers" >&2; exit 1; }
+      standard_command=true
+      output=$t/legacy.wasm
+    fi
     ehflag=-fwasm-exceptions
     set -- "$@" "$RT/command-eh.o"
   fi
@@ -112,6 +124,11 @@ program() ( # source|ir INPUT OUTPUT (a dash streams IR input or Wasm output)
   # shellcheck disable=SC2086
   "${LLVM}clang" --target=$TARGET --sysroot="$SYS" "$t/prog.o" "$@" -o "$output" \
     -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
+  if [ "$standard_command" = true ]; then
+    wasm-opt --enable-exception-handling --emit-exnref "$output" -o "$t/standard.wasm"
+    output=$t/standard.wasm
+    if [ "$destination" != - ]; then mv "$output" "$destination"; fi
+  fi
   if [ "$destination" = - ]; then cat "$output"; fi
 )
 
@@ -129,7 +146,7 @@ runtime_wasm() {
   # the class dispatchers (env.pys_obj_*), which wasm/run.mjs supplies
   # shellcheck disable=SC2086
   "${LLVM}clang" --target=$TARGET --sysroot="$SYS" -mexec-model=reactor "$t/reactor.o" "$RT/runtime.o" "$RT/stubs.o" \
-    -o "$t/runtime.wasm" -Wl,--export-all -Wl,--export=__stack_pointer -Wl,--allow-undefined-file=wasm/reactor.imports -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
+    -o "$t/runtime.wasm" -Wl,--export-all -Wl,--growable-table -Wl,--export=__stack_pointer -Wl,--allow-undefined-file=wasm/reactor.imports -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
   mv "$t/runtime.wasm" "$RT/runtime.wasm"
   rm -rf "$t"; trap - EXIT
 }

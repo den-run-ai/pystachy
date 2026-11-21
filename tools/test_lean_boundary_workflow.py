@@ -94,7 +94,7 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
 
     def test_adapter_inspection_tests_and_pins_run_lean(self):
         for name in ("tools/check_lean_boundary.py", "tools/check_lean_access.py", "tools/test_lean_access.py",
-                     "tools/inspect_compiler.py",
+                     "tools/inspect_compiler.py", "wasm/tir_wasm.py",
                      "tools/test_lean_boundary_workflow.py", "pystachy.py",
                      "tools/check_lean_storage.py", "tools/check_lean_storage_corpus.py",
                      "tools/test_lean_storage.py", "tools/test_lean_storage_corpus.py",

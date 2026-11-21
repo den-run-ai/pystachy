@@ -9,19 +9,21 @@ an i32 global), the runtime functions it calls (rt.SYMBOL) and the recursion sta
 (rt.pys_recursion_state). It exports its module code as `init`; wasm/run.mjs --runtime loads both.
 Its custom section `pystachy.data` holds the data block's size, which the loader reads first.
 
-Each typed-IR value is a WebAssembly local of its LLVM type's WebAssembly type (i64, f64, or i32
-for i1, i8, i32 and pointers); a slot whose address only loads and stores read is a local too.
+Typed-IR values use WebAssembly locals of the corresponding machine type (i64, f64, or i32
+for i1, i8, i32 and pointers). Recursion-counted functions reuse locals when SSA values of
+the same type have disjoint lifetimes. Addressable slots and emitter state have dedicated locals.
 A function's blocks are laid out in forward order inside nested blocks. Functions with a
 backedge also have a dispatch loop: a backward branch sets the next block's index and
 continues the loop, whose br_table dispatches it. A phi's values are assigned on each edge, all read first.
 
-It lowers scalar code, runtime calls and built-in exception handlers (wasm/README.md).
+It lowers scalar code, runtime calls and exception handlers (wasm/README.md).
 Generators, function values, dynamic dispatch and collector roots remain unsupported (the
 runtime's collector is off). For an unsupported operation it exits with status 3 after one
 line `tir_wasm: refused: WHAT` on stderr, and wasm/build.sh then compiles the program through
 LLVM. Run it as PYTHONPATH=. python3 wasm/tir_wasm.py, or compiled: PYSTACHY_PATH=. ./pystachy
 build wasm/tir_wasm.py, from the repository root (it reads the compiler's RUNTIME table).
 """
+import os
 import struct
 import sys
 
@@ -38,6 +40,14 @@ VOID = 0x40
 
 # LLVM's ordered fcmp predicates and une, as WebAssembly's f64 comparisons
 FCMP_OPS: dict[str, int] = {"oeq": 0x61, "une": 0x62, "olt": 0x63, "ogt": 0x64, "ole": 0x65, "oge": 0x66}
+
+
+def standard_eh() -> bool:
+    encoding = os.getenv("WASM_EH", "legacy")
+    if encoding not in ("legacy", "standard"):
+        sys.stderr.write("WASM_EH must be legacy or standard\n")
+        sys.exit(2)
+    return encoding == "standard"
 
 
 class Refused(Exception):
@@ -94,6 +104,97 @@ class Func:
             self.frame_bytes += 8 * max(1, tslots(t))
         else:
             self.slots[name] = t
+
+
+def register_colors(fn: Func, labels: dict[str, int], locals_: dict[str, int], types: list[int]) -> tuple[list[int], list[int]]:
+    # Non-SSA locals (arguments, addressable slots and emitter state) own a register throughout
+    # the call. SSA values of the same type may share a register if their lifetimes do not meet.
+    values = {name: locals_[name] for name in locals_ if name.startswith("%t") and name[2:].isdigit() and name not in fn.slots}
+    count = len(fn.blocks)
+    uses: list[set[int]] = [set() for _ in range(count)]
+    defs: list[set[int]] = [set() for _ in range(count)]
+    successors: list[set[int]] = [set() for _ in range(count)]
+    edge_uses: list[set[int]] = [set() for _ in range(count)]
+    for b in range(count):
+        for i in fn.blocks[b].code:
+            if i.op == "phi":
+                # goto reads all phi inputs before assigning any destination.
+                for j in range(len(i.args)):
+                    if i.args[j].v in values:
+                        edge_uses[labels[i.targets[j]]].add(values[i.args[j].v])
+            else:
+                for arg in i.args:
+                    if arg.v in values and values[arg.v] not in defs[b]:
+                        uses[b].add(values[arg.v])
+                for label in i.targets:
+                    successors[b].add(labels[label])
+                if i.op == "check":
+                    key = i.fields.get("key", "") or i.fields.get("message", "")
+                    successors[b].add(labels[fn.cold[key]])
+            for name in i.res:
+                if name in values:
+                    defs[b].add(values[name])
+
+    live_in = [u.copy() for u in uses]
+    live_out = [u.copy() for u in edge_uses]
+    changed = True
+    while changed:
+        changed = False
+        for b in range(count - 1, -1, -1):
+            for succ in successors[b]:
+                live_out[b].update(live_in[succ])
+            before = uses[b] | (live_out[b] - defs[b])
+            if before != live_in[b]:
+                live_in[b] = before
+                changed = True
+
+    edges: dict[int, set[int]] = {idx: set() for idx in values.values()}
+    for b in range(count):
+        live = live_out[b].copy()
+        phis: set[int] = set()
+        for j in range(len(fn.blocks[b].code) - 1, -1, -1):
+            inst = fn.blocks[b].code[j]
+            written = {values[name] for name in inst.res if name in values}
+            if inst.op == "phi":
+                phis.update(written)
+                continue
+            read = {values[arg.v] for arg in inst.args if arg.v in values}
+            # An operation can write a result before its final operand read (e.g. vtuple.make).
+            interfere(edges, written, live | read | written, types)
+            live.difference_update(written)
+            live.update(read)
+        interfere(edges, phis, live | phis, types)
+
+    slots = [-1] * len(types)
+    packed: list[int] = []
+    for k in range(len(types)):
+        if k not in edges:
+            slots[k] = len(packed)
+            packed.append(types[k])
+    # Color the most constrained values first. Keep the original allocation order on ties.
+    order = sorted([(-len(edges[k]), k) for k in edges])
+    colors: dict[int, list[int]] = {I32: [], I64: [], F64: []}
+    for pair in order:
+        k = pair[1]
+        wt = types[k]
+        taken = {slots[other] for other in edges[k]}
+        for slot in colors[wt]:
+            if slot not in taken:
+                slots[k] = slot
+                break
+        if slots[k] < 0:
+            slots[k] = len(packed)
+            colors[wt].append(len(packed))
+            packed.append(wt)
+    return (slots, packed)
+
+
+def interfere(edges: dict[int, set[int]], written: set[int], live: set[int], types: list[int]) -> None:
+    for dst in written:
+        for src in live:
+            if dst != src and types[dst] == types[src]:
+                edges[dst].add(src)
+                edges[src].add(dst)
 
 
 class ClassDecl:
@@ -522,8 +623,9 @@ class Import:
 # ---------- emission ----------
 
 class Emitter:
-    def __init__(self, m: Module):
+    def __init__(self, m: Module, standard_exceptions: bool = False):
         self.m = m
+        self.standard_exceptions = standard_exceptions
         self.types = Types()
         self.imports: dict[str, Import] = {}
         self.import_order: list[str] = []
@@ -531,6 +633,7 @@ class Emitter:
         self.data = bytearray()
         self.addr: dict[str, int] = {}
         self.relocs: list[int] = []
+        self.callbacks: dict[str, list[int]] = {}
         self.recursion = False
         self.stack_frames = False
         self.catches = False
@@ -542,6 +645,9 @@ class Emitter:
         self.fn = Func("")
         self.locals: dict[str, int] = {}
         self.ltypes: list[int] = []
+        self.compact_locals = False
+        self.local_sites: list[tuple[int, int, int]] = []
+        self.remap: list[int] = []
         self.nparams = 0
         self.code = bytearray()
         self.bindex: dict[str, int] = {}
@@ -558,6 +664,8 @@ class Emitter:
             at = (at + 7) // 8 * 8
             self.addr[c.name] = at
             at += const_size(c)
+        functions: dict[str, Func] = {}
+        strings: set[str] = set()
         for c in self.m.consts:
             self.align8()
             if len(self.data) != self.addr[c.name]:
@@ -585,6 +693,11 @@ class Emitter:
             elif c.kind == "fieldnames":
                 for r in c.refs:
                     self.ref(r)
+            elif c.kind == "exception":
+                if not functions:
+                    functions = {fn.name: fn for fn in self.m.funcs}
+                    strings = {data.name for data in self.m.consts if data.kind == "string"}
+                self.exception_descriptor(c, functions, strings)
             elif c.kind == "classrec" and len(c.refs) == 5 and len(c.items) == 3:
                 # {ptr, ptr, ptr, i64, i64, ptr, i64, ptr}, at wasm32's offsets 0 4 8 16 24 32 40 48
                 for r in c.refs[0:3]:
@@ -607,6 +720,29 @@ class Emitter:
             for _ in range(n):
                 self.data.append(0)
         self.align8()
+
+    def exception_descriptor(self, c: Const, functions: dict[str, Func], strings: set[str]) -> None:
+        # runtime.c's ExcClass: two string pointers, then three wasm32 function
+        # pointers (table indices). SystemExit subclasses supply the last callback.
+        cls = c.name[3:]
+        if not c.name.startswith("@x.") or cls not in self.m.classes or len(c.refs) != 5:
+            raise Refused(f"exception descriptor {c.name}")
+        if c.refs[0] not in strings or c.refs[1] not in strings:
+            raise Refused(f"exception descriptor {c.name} requires string names")
+        self.ref(c.refs[0])
+        self.ref(c.refs[1])
+        for j in range(2, 5):
+            target = c.refs[j]
+            if j == 4 and target == "null":
+                self.ref("null")
+                continue
+            result = "exc" if j == 4 else "str"
+            if target not in functions or functions[target].ptypes != [cls] or functions[target].ret != result:
+                raise Refused(f"exception callback {target} must take {cls} and return {result}")
+            if target not in self.callbacks:
+                self.callbacks[target] = []
+            self.callbacks[target].append(len(self.data))
+            self.data.extend(bytes(4))
 
     def ref(self, name: str) -> None:
         # a 4-byte address: null, or a constant's (relocated)
@@ -710,17 +846,27 @@ class Emitter:
     def op(self, b: int) -> None:
         self.code.append(b)
 
+    def local_op(self, opcode: int, k: int) -> None:
+        self.code.append(opcode)
+        if self.remap:
+            uleb(self.code, self.remap[k])
+        else:
+            at = len(self.code)
+            uleb(self.code, k)
+            if self.compact_locals:
+                self.local_sites.append((at, len(self.code), k))
+
     def get(self, k: int) -> None:
-        self.code.append(0x20)
-        uleb(self.code, k)
+        self.local_op(0x20, k)
 
     def set(self, k: int) -> None:
-        self.code.append(0x21)
-        uleb(self.code, k)
+        self.local_op(0x21, k)
 
     def i32c(self, v: int) -> None:
         self.code.append(0x41)
-        sleb(self.code, v)
+        # LLVM may spell a 32-bit mask as an unsigned decimal. Wasm i32.const
+        # expects a signed immediate with the same 32-bit pattern.
+        sleb(self.code, v - 4294967296 if 2147483648 <= v <= 4294967295 else v)
 
     def i64c(self, v: int) -> None:
         self.code.append(0x42)
@@ -799,6 +945,9 @@ class Emitter:
     def function(self, fn: Func) -> bytearray:
         self.fn = fn
         self.locals = {}
+        self.remap = []
+        self.local_sites = []
+        self.compact_locals = False
         self.ltypes = []
         self.code = bytearray()
         self.depth_local = -1
@@ -819,12 +968,25 @@ class Emitter:
         for j in range(len(fn.blocks)):
             self.bindex[fn.blocks[j].label] = j
         self.phis = {}
+        # Finalization marks functions whose activations can recur with recursion.enter.
+        # Compact only those frames, so ordinary one-shot calls keep the short lowering path.
+        if fn.blocks:
+            for i in fn.blocks[0].code:
+                if i.op == "rt" and i.fields.get("entry", "") == "recursion.enter":
+                    self.compact_locals = True
         for b in fn.blocks:
             for i in b.code:
+                if i.op != "phi" and i.targets and i is not b.code[-1]:
+                    self.compact_locals = False  # only terminal edges are modeled in textual IR
                 if self.exception_local < 0 and i.is_invoke():
                     self.exception_local = self.scratch(I32)
                     self.handler_stack = self.frame_local if self.frame_local >= 0 else self.scratch(I32)
                 elif i.op == "phi":
+                    if len(i.args) != len(i.targets):
+                        raise Refused(f"phi in {b.label} with unequal input and predecessor counts")
+                    for pred in i.targets:
+                        if pred not in self.bindex:
+                            raise Refused(f"phi in {b.label} from unknown block {pred}")
                     self.define(i.res[0], i.t)
                     if b.label not in self.phis:
                         self.phis[b.label] = []
@@ -842,7 +1004,17 @@ class Emitter:
                     self.invoke(i)
                 else:
                     self.inst(i)
+        packed = self.ltypes
         blocks = self.code
+        if self.compact_locals:
+            self.remap, packed = register_colors(fn, self.bindex, self.locals, self.ltypes)
+            blocks = bytearray()
+            at = 0
+            for site in self.local_sites:
+                blocks.extend(self.code[at:site[0]])
+                uleb(blocks, self.remap[site[2]])
+                at = site[1]
+            blocks.extend(self.code[at:])
         self.code = bytearray()
         if fn.frame_bytes:
             self.enter_frame()
@@ -876,10 +1048,10 @@ class Emitter:
         decls = bytearray()
         groups = 0
         j = self.nparams
-        while j < len(self.ltypes):
-            wt = self.ltypes[j]
+        while j < len(packed):
+            wt = packed[j]
             end = j + 1
-            while end < len(self.ltypes) and self.ltypes[end] == wt:
+            while end < len(packed) and packed[end] == wt:
                 end += 1
             uleb(decls, end - j)
             decls.append(wt)
@@ -891,6 +1063,8 @@ class Emitter:
         out = bytearray()
         uleb(out, len(body))
         out.extend(body)
+        self.remap = []
+        self.compact_locals = False
         return out
 
     def enter_frame(self) -> None:
@@ -915,8 +1089,7 @@ class Emitter:
         uleb(self.code, 2)
         self.i32c(size)
         self.op(0x6B)  # i32.sub
-        self.op(0x22)  # local.tee frame
-        uleb(self.code, self.frame_local)
+        self.local_op(0x22, self.frame_local)  # local.tee frame
         self.op(0x24)  # global.set rt.__stack_pointer
         uleb(self.code, 2)
 
@@ -964,20 +1137,37 @@ class Emitter:
         pad = self.bindex.get(i.targets[1], -1)
         if pad < 0 or not self.fn.blocks[pad].code or self.fn.blocks[pad].code[0].op != "landing":
             raise Refused(f"invoke without a landing at {i.targets[1]}")
-        self.op(0x06)  # try (the typed catch encoding supported throughout Node 22)
-        self.op(VOID)
-        self.inst(i)
-        self.op(0x07)  # catch tag 0: the runtime Exc pointer in shared memory
-        uleb(self.code, 0)
+        if self.standard_exceptions:
+            self.op(0x02)  # block (result i32): receives the caught exception pointer
+            self.op(I32)
+            self.op(0x1F)  # try_table, no results, one catch of tag 0 to the block
+            self.op(VOID)
+            self.op(1)
+            self.op(0)  # catch (payload only)
+            self.op(0)  # tag index
+            self.op(0)  # enclosing block depth, relative to the try_table
+            self.inst(i)
+            self.op(0x0B)
+            self.goto(i.targets[0], 1)
+            self.op(0x0B)
+        else:
+            self.op(0x06)  # legacy try/catch for early Node 22 releases
+            self.op(VOID)
+            self.inst(i)
+            self.op(0x07)
+            uleb(self.code, 0)
         self.set(self.exception_local)
         # Both runtime C calls and emitted tuple frames use this linear stack.
         # Unwinding Wasm activation records alone leaves its global at the throw site.
         self.get(self.handler_stack)
         self.op(0x24)
         uleb(self.code, 2)
-        self.goto(i.targets[1], 1)
-        self.op(0x0B)
-        self.goto(i.targets[0], 0)
+        if self.standard_exceptions:
+            self.goto(i.targets[1], 0)
+        else:
+            self.goto(i.targets[1], 1)
+            self.op(0x0B)
+            self.goto(i.targets[0], 0)
 
     def result(self, i: Inst, k: int, t: str) -> None:
         self.set(self.define(i.res[k], t))
@@ -1327,8 +1517,8 @@ class Emitter:
             self.mem(0x37, 3, 0)
 
     def overflow(self, i: Inst) -> None:
-        a = self.scratch(I64)
-        b = self.scratch(I64)
+        a = self.local("overflow.left", I64) if self.compact_locals else self.scratch(I64)
+        b = self.local("overflow.right", I64) if self.compact_locals else self.scratch(I64)
         v = self.local(i.res[1], I64)
         f = self.local(i.res[2], I32)
         self.push(i.args[0], "i64")
@@ -1420,6 +1610,7 @@ class Emitter:
             self.push(a, ll)
         table = {"i64": {"add": 0x7C, "sub": 0x7D, "mul": 0x7E, "sdiv": 0x7F, "udiv": 0x80, "srem": 0x81, "urem": 0x82,
                          "and": 0x83, "or": 0x84, "xor": 0x85, "shl": 0x86, "ashr": 0x87, "lshr": 0x88},
+                 "i32": {"add": 0x6A, "sub": 0x6B, "mul": 0x6C, "and": 0x71, "or": 0x72, "xor": 0x73, "shl": 0x74},
                  "i1": {"and": 0x71, "or": 0x72, "xor": 0x73},
                  "double": {"fadd": 0xA0, "fsub": 0xA1, "fmul": 0xA2, "fdiv": 0xA3, "fneg": 0x9A}}
         if ll not in table or o not in table[ll] or (o == "fneg") != (len(i.args) == 1):
@@ -1435,7 +1626,9 @@ class Emitter:
         key = f"{i.operator} {src} {dst}"
         table: dict[str, list[int]] = {
             "zext i1 i64": [0xAD], "sext i1 i64": [],
+            "zext i8 i64": [0x41, 0xFF, 0x01, 0x71, 0xAD],  # i64.extend_i32_u(x & 255)
             "trunc i64 i1": [0xA7, 0x41, 0x01, 0x71], "trunc i64 i8": [0xA7, 0x41, 0xFF, 0x01, 0x71],
+            "trunc i64 i32": [0xA7], "zext i32 i64": [0xAD],
             "sitofp i64 double": [0xB9], "uitofp i1 double": [0xB8], "fptosi double i64": [0xFC, 0x06],
             "bitcast i64 double": [0xBF], "bitcast double i64": [0xBD],
             "ptrtoint ptr i64": [0xAD], "inttoptr i64 ptr": [0xA7],
@@ -1545,6 +1738,37 @@ class Emitter:
             most = max(most, size)
         return max(most, (at + most - 1) // most * most)
 
+    def callback_initializer(self) -> bytearray:
+        # Start runs once after the data segment is installed. Append the program's
+        # passive element segment after the reactor's own C function pointers.
+        self.code = bytearray([1, 1, I32])  # one local for the old table size
+        self.code.extend(b"\xd0\x70")  # ref.null func
+        self.i32c(len(self.callbacks))
+        self.code.extend(b"\xfc\x0f\x00")  # table.grow 0
+        self.set(0)
+        self.get(0)
+        self.i32c(-1)
+        self.op(0x46)  # i32.eq
+        self.code.extend(b"\x04\x40\x00\x0b")  # if growth failed, trap before installing any callback
+        self.get(0)
+        self.i32c(0)
+        self.i32c(len(self.callbacks))
+        self.code.extend(b"\xfc\x0c\x00\x00")  # table.init 0 0
+        j = 0
+        for target in self.callbacks:
+            for offset in self.callbacks[target]:
+                self.code.extend(b"\x23\x00")  # global.get env.data
+                self.get(0)
+                self.i32c(j)
+                self.op(0x6A)  # i32.add
+                self.mem(0x36, 2, offset)  # i32.store
+            j += 1
+        self.op(0x0B)
+        out = bytearray()
+        uleb(out, len(self.code))
+        out.extend(self.code)
+        return out
+
     # -- the module --
     def module(self) -> bytearray:
         attrs = self.m.attrs
@@ -1563,8 +1787,10 @@ class Emitter:
             self.fnindex[sym] = len(self.fnindex)
         own: list[int] = []
         for fn in self.m.funcs:
-            if fn.attrs.get("kind", "def") not in ("def", "block") or "export" in fn.attrs or "extern" in fn.attrs:
-                raise Refused(f"function {fn.name} of kind {fn.attrs.get('kind', 'def')}")
+            kind = fn.attrs.get("kind", "def")
+            callback = kind == "class" and fn.name in self.callbacks
+            if (kind not in ("def", "block") and not callback) or "export" in fn.attrs or "extern" in fn.attrs:
+                raise Refused(f"function {fn.name} of kind {kind}")
             params = [wasm_type(value_ll(t)) for t in fn.ptypes if t != "None"]
             results: list[int] = [] if fn.ret == "None" else [wasm_type(value_ll(fn.ret))]
             own.append(self.types.of(params, results))
@@ -1574,11 +1800,14 @@ class Emitter:
         bodies: list[bytearray] = []
         for fn in self.m.funcs:
             bodies.append(self.function(fn))
+        if self.callbacks:
+            own.append(self.types.of([], []))
+            bodies.append(self.callback_initializer())
         out = bytearray(b"\x00asm\x01\x00\x00\x00")
         section(out, 1, self.types.encode())
         imp = bytearray()
         stack = self.stack_frames or self.catches
-        uleb(imp, 3 + len(self.import_order) + int(stack) + int(self.catches))
+        uleb(imp, 3 + len(self.import_order) + int(stack) + int(self.catches) + int(len(self.callbacks) != 0))
         name_bytes(imp, "env")
         name_bytes(imp, "memory")
         imp.append(0x02)
@@ -1606,6 +1835,10 @@ class Emitter:
             imp.append(0x04)  # tag import
             imp.append(0x00)  # exception tag
             uleb(imp, tag_type)
+        if self.callbacks:
+            name_bytes(imp, "rt")
+            name_bytes(imp, "__indirect_function_table")
+            imp.extend(b"\x01\x70\x00\x01")  # a funcref table, at least one slot (zero is NULL)
         for sym in self.import_order:
             name_bytes(imp, "rt")
             name_bytes(imp, sym)
@@ -1623,6 +1856,15 @@ class Emitter:
         exp.append(0x00)
         uleb(exp, self.fnindex["@main.init"])
         section(out, 7, exp)
+        if self.callbacks:
+            start = bytearray()
+            uleb(start, len(self.import_order) + len(self.m.funcs))
+            section(out, 8, start)
+            elements = bytearray([1, 1, 0])  # one passive segment of function indices
+            uleb(elements, len(self.callbacks))
+            for target in self.callbacks:
+                uleb(elements, self.fnindex[target])
+            section(out, 9, elements)
         code = bytearray()
         uleb(code, len(bodies))
         for b in bodies:
@@ -1675,6 +1917,8 @@ def const_size(c: Const) -> int:
         return 8 * len(c.items)
     if c.kind == "fieldnames":
         return 4 * len(c.refs)
+    if c.kind == "exception":
+        return 20
     if c.kind == "classrec":
         return 56
     raise Refused(f"constants of kind {c.kind}")
@@ -1728,7 +1972,7 @@ def main() -> None:
     text = f.read()
     f.close()
     try:
-        out = Emitter(parse(text)).module()
+        out = Emitter(parse(text), standard_eh()).module()
     except Refused as e:
         sys.stderr.write(f"tir_wasm: refused: {e.what}\n")
         sys.exit(3)

@@ -47,6 +47,21 @@ cold "OverflowError: integer result does not fit in 64 bits" -> L5
 """
 
 
+EXCEPTION = """module complete {
+  class E base=Exception fields=[] exception=Exception
+  const @x.E kind=exception refs=[@s.2 @s.2 @show @show null]
+  const @s.2 kind=string text=E
+}
+function @main.init() -> None kind=block {
+entry:
+  ret
+}
+function @show(self: E) -> str kind=class {
+entry:
+  ret (str @s.2)
+}
+"""
+
 def emit(text):
     return bytes(T.Emitter(T.parse(text)).module())
 
@@ -95,6 +110,11 @@ no:
   mem.store (&int @result, int 42)
   ret
 """, False),
+            ("""  %t0 = scalar.cast zext (%byte -1) : int
+  %t1 = scalar.bin sub (int %t0, int 213) : int
+  mem.store (&int @result, int %t1)
+  ret
+""", False),
             ("""  br -> next
 next:
   %t0 = phi (int 0, int %t1) -> entry, next : int
@@ -123,6 +143,58 @@ console.log(new DataView(memory.buffer).getBigInt64(0, true).toString());
                     self.assertEqual(emitter.dispatch_local >= 0, has_backedge)
                     result = subprocess.check_output(["node", "-e", script, str(path)], text=True, timeout=10)
                     self.assertEqual(result.strip(), "42")
+
+    @unittest.skipUnless(shutil.which("node"), "node runs the module")
+    def test_recursive_locals_follow_cfg_edges_and_keep_addressable_slots(self):
+        text = """module complete {
+  global @result type=int
+}
+function @main.init() -> None kind=block {
+  %total.1 = slot : int
+  %top.2 = slot : int
+entry:
+  rt entry=recursion.enter : int
+  mem.store (&int %total.1, int 40)
+  mem.store (&int %top.2, int 2)
+  br -> setup
+work:
+  %t0 = scalar.bin add (int 1, int 2) : int
+  br -> loop
+setup:
+  %t1 = mem.load (&int %total.1) : int
+  br -> work
+loop:
+  %t2 = phi (int 0, int %t3) -> work, again : int
+  %t3 = scalar.bin add (int %t2, int 1) : int
+  %t4 = num.cmp < (int %t3, int 2) : bool
+  cbr (bool %t4) -> again, done
+again:
+  br -> loop
+done:
+  %t5 = scalar.bin add (int %t1, int %t3) : int
+  mem.store (&int @result, int %t5)
+  ret
+}
+function @unused() -> None {
+}
+"""
+        script = """
+const mod = new WebAssembly.Module(require("node:fs").readFileSync(process.argv[1]));
+const memory = new WebAssembly.Memory({ initial: 1 });
+const view = new DataView(memory.buffer);
+view.setBigInt64(8, 1000n, true);
+const rt = {pys_recursion_state: 0, pys_recursion_error() { throw Error("depth"); }};
+new WebAssembly.Instance(mod, { env: { memory, data: 64 }, rt }).exports.init();
+require("node:assert/strict").equal(view.getBigInt64(64, true), 42n);
+"""
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "recursive.wasm"
+            path.write_bytes(emit(text))
+            subprocess.run(["node", "-e", script, str(path)], check=True, timeout=10)
+        with self.assertRaisesRegex(T.Refused, "from unknown block missing"):
+            emit(text.replace("int %t3) -> work, again", "int %t3, int %t0) -> work, again, missing"))
+        with self.assertRaisesRegex(T.Refused, "unequal input and predecessor counts"):
+            emit(text.replace("int %t3) -> work, again", "int %t3) -> work"))
 
     @unittest.skipUnless(shutil.which("node"), "node runs the module")
     def test_tuple_frames_share_and_restore_the_runtime_stack(self):
@@ -246,8 +318,16 @@ assert.equal(sp.value, 512);
 """
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "unwind.wasm"
-            path.write_bytes(emit(program))
+            legacy = emit(program)
+            modern = bytes(T.Emitter(T.parse(program), True).module())
+            self.assertNotEqual(legacy, modern)
+            path.write_bytes(legacy)
             subprocess.run(["node", "-e", script, str(path)], check=True, timeout=10)
+            # Independent feature probe: (module (func (try_table))).
+            probe = "process.exit(WebAssembly.validate(Buffer.from('0061736d01000000010401600000030201000a080106001f40000b0b','hex')) ? 0 : 1)"
+            if subprocess.run(["node", "-e", probe], check=False, timeout=10).returncode == 0:
+                path.write_bytes(modern)
+                subprocess.run(["node", "-e", script, str(path)], check=True, timeout=10)
         for before, after, reason in [
             ("-> done, caught", "-> done", "exception edges"),
             ("-> done, caught", "-> done, handler", "without a landing"),
@@ -255,6 +335,47 @@ assert.equal(sp.value, 512);
         ]:
             with self.subTest(after=after), self.assertRaisesRegex(T.Refused, reason):
                 emit(program.replace(before, after))
+
+    def test_exception_callback_signatures(self):
+        self.assertIn(b"__indirect_function_table", emit(EXCEPTION))
+        with self.assertRaisesRegex(T.Refused, "requires string names"):
+            emit(EXCEPTION.replace("refs=[@s.2", "refs=[null"))
+        for before, after in (("self: E", "self: int"), (" -> str kind", " -> int kind"),
+                              ("@show @show null", "@show @missing null"),
+                              ("@show @show null", "@show @show @show")):
+            with self.subTest(after=after), self.assertRaisesRegex(T.Refused, "exception callback"):
+                emit(EXCEPTION.replace(before, after))
+
+    @unittest.skipUnless(shutil.which("node"), "node instantiates the module")
+    def test_callbacks_append_to_the_reactor_table(self):
+        script = """
+const assert = require('node:assert/strict');
+const mod = new WebAssembly.Module(require('node:fs').readFileSync(process.argv[1]));
+const memory = new WebAssembly.Memory({initial: 1});
+const words = new DataView(memory.buffer);
+function load(data, table) {
+  return new WebAssembly.Instance(mod, {env: {memory, data},
+    rt: {pys_recursion_state: 0, __indirect_function_table: table}});
+}
+const table = new WebAssembly.Table({element: 'anyfunc', initial: 2});
+const first = load(128, table);
+table.set(1, first.exports.init);
+load(256, table);
+assert.equal(table.length, 4);
+assert.equal(table.get(1), first.exports.init);
+for (const [data, index] of [[128, 2], [256, 3]]) {
+  assert.equal(words.getUint32(data + 8, true), index);
+  assert.equal(words.getUint32(data + 12, true), index);
+  assert.equal(words.getUint32(data + 16, true), 0);
+  assert.equal(table.get(index)(0), data + 24); // @s.2 after the 20-byte descriptor and alignment padding
+}
+const fixed = new WebAssembly.Table({element: 'anyfunc', initial: 2, maximum: 2});
+assert.throws(() => load(384, fixed), WebAssembly.RuntimeError);
+"""
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "callback.wasm"
+            path.write_bytes(emit(EXCEPTION))
+            subprocess.run(["node", "-e", script, str(path)], check=True, timeout=10)
 
     def test_refusals_name_what(self):
         cases = {

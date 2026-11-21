@@ -10,6 +10,7 @@ import { createCodeMode } from "../../wasm/codemode.mjs";
 import { createRunner } from "../../wasm/run.mjs";
 
 const runPython = createCodeMode();
+const jsonFilter = readFileSync(new URL("./wasm_json_filter.py", import.meta.url), "utf8");
 const tools = new Map([["issues", project => {
   assert.equal(project, "pystachy");
   return "closed\nopen\nopen";
@@ -20,6 +21,7 @@ const tools = new Map([["issues", project => {
 
 function script(kind, n) {
   if (kind === "hello") return `print("hello", ${n})\n`;
+  if (kind === "json-typed") return `${jsonFilter}\nprint("open", count_open_issues(), ${n})\n`;
   if (kind === "json") return `# pystachy: dynamic-any
 import json
 from typing import Any
@@ -78,7 +80,7 @@ if (process.argv[2] === "--once") {
     return duration;
   }
   try {
-    for (const kind of ["hello", "tools", "json"]) {
+    for (const kind of ["hello", "tools", "json-typed", "json"]) {
       const samples = { compile_ms: [], fresh_guest_ms: [], warm_source_to_exit_ms: [], cold_source_to_exit_ms: [] };
       for (let n = 0; n <= rounds; n++) {
         const expected = expectOutput(kind, n);

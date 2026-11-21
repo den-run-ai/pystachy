@@ -512,6 +512,7 @@ check-fast: lint-python typecheck check-repository
 # The ordinary compiler and runtime do not invoke Lean.
 check-lean-boundary:
 	cd tools/lean_boundary && lake build
+	$(PY) tools/check_lean_wasm_frame.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_access.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_inline.py

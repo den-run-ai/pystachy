@@ -13,7 +13,7 @@ from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.ir import IFn, Ins, slot_register
 from src.pystachy_compiler.lexer import host_text
 from src.pystachy_compiler.specs import OPS
-from wasm.tir_wasm import Block, ClassDecl, Const, Emitter, Func, Inst, Module, Operand, Refused
+from wasm.tir_wasm import Block, ClassDecl, Const, Emitter, Func, Inst, Module, Operand, Refused, standard_eh
 
 
 def instruction(i: Ins) -> Inst:
@@ -124,10 +124,11 @@ class WasmRefusal:
 class WasmBackend:
     def __init__(self, fallback: bool):
         self.fallback = fallback
+        self.standard_exceptions = standard_eh()
 
     def lower(self, gen: Gen) -> bytearray | WasmRefusal:
         try:
-            return Emitter(wasm_module(gen)).module()
+            return Emitter(wasm_module(gen), self.standard_exceptions).module()
         except Refused as exc:
             return WasmRefusal(exc.what, gen.lower_program() if self.fallback else "")
 

@@ -6,6 +6,7 @@ import PystachyAlias
 import PystachyCompanion
 import PystachyAccess
 import PystachyInt
+import PystachyWasmFrame
 import PystachyInline
 import PystachyStorage
 import PystachyPipeline
@@ -18,7 +19,8 @@ allowed axioms are Lean's standard logical axioms, not assumptions about IR. -/
 open Lean in
 run_cmd do
   let allowed := #[``propext, ``Classical.choice, ``Quot.sound]
-  for theoremName in #[``PystachyBoundary.check_iff,
+  for theoremName in #[``PystachyWasmFrame.accepted_frame,
+      ``PystachyBoundary.check_iff,
       ``PystachyLayout.checked_projection, ``PystachyLayout.accepted_layout_projection,
       ``PystachyAlias.accepted_reference_roundtrip, ``PystachyAlias.accepted_alias_write,
       ``PystachyAlias.accepted_traces_reference, ``PystachyAlias.accepted_root_chain,
