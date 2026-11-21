@@ -1,0 +1,5 @@
+- id: pystachy-check
+  name: Check Python syntax with Pystachy
+  entry: tools/pre_commit_check.sh
+  language: script
+  types: [python]

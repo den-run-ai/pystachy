@@ -81,6 +81,25 @@ Run the CPython, JIT and AOT commands again; each prints `285`. You can also cal
 a construct your program needs. `pystachy check` checks syntax only; compiling
 and executing the relevant path gives stronger evidence.
 
+## Check staged files with pre-commit
+
+With [pre-commit](https://pre-commit.com/) installed and Python 3.11+ available as
+`python3`, add this hook to your project's `.pre-commit-config.yaml`. Replace
+`TAG_OR_COMMIT` with a Pystachy tag or full commit that contains the hook.
+
+```yaml
+repos:
+  - repo: https://github.com/den-run-ai/pystachy
+    rev: TAG_OR_COMMIT
+    hooks:
+      - id: pystachy-check
+```
+
+Run `pre-commit install` to check staged Python files on each commit, or
+`pre-commit run pystachy-check --all-files` to check all tracked Python files.
+The hook runs the selected revision's `check` command once per file. It reports
+syntax errors without executing your code or installing LLVM.
+
 ## Measure the work you care about
 
 This ten-element example is too small to demonstrate a useful speedup. Start with
