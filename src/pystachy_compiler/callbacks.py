@@ -5,7 +5,7 @@ already-emitted immutable function objects are candidates. No source is inferred
 again, and no code or profiling state is created while the program runs.
 """
 from __future__ import annotations
-from src.pystachy_compiler.ir import Blk, IFn, Ins, Loop, Val, real_ops, tmpname, one_num
+from src.pystachy_compiler.ir import Blk, IFn, Ins, Loop, Val, real_ops, block_label, tmpname, one_num
 from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.utils import identity_abi, is_callable
 
@@ -129,7 +129,7 @@ def callback_guards(fn: IFn, param: int, targets: list[str], variants: list[IFn]
     entry = fn.blocks[0]
     line = entry.code[0].line
     fn.n += 1
-    fallback = Blk(f"L{fn.n}")
+    fallback = Blk(block_label(fn.n))
     fallback.code = entry.code[1:]
     entry.code = entry.code[:1]
     for b in [fallback] + fn.blocks:
@@ -139,9 +139,9 @@ def callback_guards(fn: IFn, param: int, targets: list[str], variants: list[IFn]
     added: list[Blk] = []
     for j in range(len(variants)):
         fn.n += 1
-        hit = Blk(f"L{fn.n}")
+        hit = Blk(block_label(fn.n))
         fn.n += 1
-        miss = Blk(f"L{fn.n}") if j + 1 < len(variants) else fallback
+        miss = Blk(block_label(fn.n)) if j + 1 < len(variants) else fallback
         compare = Ins("ptr.cmp", "bool", "==")
         compare.a = [Val(f"%a{param}", fn.f.ptypes[param]), Val(targets[j], fn.f.ptypes[param])]
         fn.n += 1

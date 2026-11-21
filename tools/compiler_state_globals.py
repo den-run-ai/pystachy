@@ -93,6 +93,7 @@ RETAINED = {
     # Interned IR fragments: each entry is a pure function of its index, so retaining them across
     # dry runs, retries and compilations changes no output. one_num's lists are shared and must not
     # be mutated; ircheck verifies them after lowering.
+    "ir.BLOCK_LABELS": "bounded process-lifetime memo of numbered IR block names",
     "ir.TMPNAMES": "process-lifetime memo of %t<n> value names; entry n is always '%t<n>'",
     "ir.ONENUMS": "process-lifetime memo of single-number lists; entry n is always [n], checked after lowering",
 }
@@ -132,6 +133,7 @@ WRITERS = {
     "specs.GLUE": {"loader.Loader.load"},
     "specs.SPECSHOW": {"templates.gen_specialize"},
     "specs.MODULES": {"driver.runtime_ir", "driver.main"},
+    "ir.BLOCK_LABELS": {"ir.block_label"},
     "ir.TMPNAMES": {"ir.tmpname"},
     "ir.ONENUMS": {"ir.one_num"},
 }

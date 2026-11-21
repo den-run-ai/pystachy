@@ -2,7 +2,7 @@
 from __future__ import annotations
 import os
 from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_lists, int_program
-from src.pystachy_compiler.ir import Blk, IFn, Ins, Lookup, Loop, Val, Values, cast_number, real_n, real_ops, tmpname, one_num
+from src.pystachy_compiler.ir import Blk, IFn, Ins, Lookup, Loop, Val, Values, cast_number, real_n, real_ops, block_label, tmpname, one_num
 from src.pystachy_compiler.ircheck import EffectSummaries
 from src.pystachy_compiler.specs import CANON_DEPTH, FXALL, FXBIT, LOOKUPS, NONEVAR, RAWW, REACH
 from src.pystachy_compiler.utils import is_list, is_opt, is_tuple, is_union, umembers
@@ -1004,7 +1004,7 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
     for b in fn.blocks:
         if b.label in region:
             fn.n += 1
-            labels[b.label] = f"L{fn.n}"
+            labels[b.label] = block_label(fn.n)
             for i in b.code:
                 for r in i.r:
                     fn.n += 1
@@ -1014,7 +1014,7 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
                     if i.op == "cast":
                         fn.casts.append(fn.n)  # (a copy of a cast is a cast: erase_casts)
     fn.n += 1
-    test = Blk(f"L{fn.n}")
+    test = Blk(block_label(fn.n))
     # each base's register: a slot base's is the test's load of the slot, which the copy reads in
     # place of the loop's loads of it (the loop never stores the slot), so that the tests and the
     # copy's indexes name one value
@@ -1110,7 +1110,7 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
         null.r = [fn.n]
         cur.code.append(null)
         fn.n += 1
-        nxt = Blk(f"L{fn.n}")
+        nxt = Blk(block_label(fn.n))
         skip = Ins("cbr", "", "")
         skip.a = [Val(tmpname(null.r[0]), "bool")]
         skip.b = [lp.head, nxt.label]
@@ -1133,7 +1133,7 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
         low.r = [fn.n]
         cur.code.append(low)
         fn.n += 1
-        nxt = Blk(f"L{fn.n}")
+        nxt = Blk(block_label(fn.n))
         branch = Ins("cbr", "", "")
         branch.a = [Val(tmpname(low.r[0]), "bool")]
         branch.b = [nxt.label, lp.head]
@@ -1148,7 +1148,7 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
         cur.code.append(add)
         ends[base] = tmpname(add.r[1])
         fn.n += 1
-        nxt = Blk(f"L{fn.n}")
+        nxt = Blk(block_label(fn.n))
         branch = Ins("cbr", "", "")
         branch.a = [Val(tmpname(add.r[2]), "bool")]
         branch.b = [lp.head, nxt.label]
@@ -1180,7 +1180,7 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
         nxt = cur
         if k < len(plain) - 1 or len(plan.pairs) > 0:
             fn.n += 1
-            nxt = Blk(f"L{fn.n}")
+            nxt = Blk(block_label(fn.n))
             tests.append(nxt)
             target = nxt.label
         branch = Ins("cbr", "", "")
@@ -1216,7 +1216,7 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
         nxt = cur
         if k < len(plan.pairs) - 1:
             fn.n += 1
-            nxt = Blk(f"L{fn.n}")
+            nxt = Blk(block_label(fn.n))
             tests.append(nxt)
             target = nxt.label
         branch = Ins("cbr", "", "")

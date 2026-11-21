@@ -5,7 +5,7 @@ from src.pystachy_compiler.bigints import narrows
 from src.pystachy_compiler.diagnostics import ClassBoxes, Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.frames import Frame
-from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, tmpname, one_num, value_definitions
+from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, block_label, tmpname, one_num, value_definitions
 from src.pystachy_compiler.specs import BIGOPT, CHECKED, EMPTYFS, LIST_READS, LIST_WRITES, NARROWED, PATH_OPS, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS
 from src.pystachy_compiler.unions import FLOATAT, MEMBERAT
 from src.pystachy_compiler.utils import (
@@ -217,7 +217,7 @@ def gen_tmp(self) -> str:
 
 def gen_label(self) -> str:
     self.n += 1
-    return f"L{self.n}"
+    return block_label(self.n)
 
 
 def gen_add(self, i: Ins) -> None:
