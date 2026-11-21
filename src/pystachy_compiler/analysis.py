@@ -2046,16 +2046,16 @@ def only_none(body: list[Node], name: str) -> bool:
     return True
 
 
-def bind_count(body: list[Node], name: str) -> int:
+def bind_count(body: list[Node], name: str, list_build: bool = False) -> int:
     # how many statements in body (into blocks, not into defs and classes) bind variable name:
     # an assignment counts once, another binding (a for loop's, an import's, an except clause's,
-    # a def's) twice
+    # a def's) twice. A list under construction keeps its binding across +=.
     n = 0
     for st in body:
         if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
             n += 2 if st.s == name else 0
             continue
-        if stmt_binds(st, name):
+        if stmt_binds(st, name) and not (list_build and st.kind == "augassign" and st.s == "+" and st.kids[0].kind == "name" and st.kids[0].s == name):
             n += 1 if st.kind == "assign" else 2
         if has_kind(st, "walrus"):
             n += 2
@@ -2063,9 +2063,9 @@ def bind_count(body: list[Node], name: str) -> int:
             n += 2 if a.s == name else 0
         for kid in st.kids:
             if kid.kind == "block":
-                n += bind_count(kid.kids, name)
+                n += bind_count(kid.kids, name, list_build)
             if kid.kind == "except":
-                n += (2 if kid.s == name else 0) + bind_count(kid.kids[1].kids, name)
+                n += (2 if kid.s == name else 0) + bind_count(kid.kids[1].kids, name, list_build)
     return n
 
 
@@ -2174,6 +2174,95 @@ def aliases(n: Node, name: str) -> bool:
         elif aliases(kid, name):
             return True
     return False
+
+
+def fresh_list_step(st: Node, name: str, site: Node, module: bool) -> int:
+    # A write-only construction step. Check an entire loop, including statements
+    # after the site: an alias there would already exist on its next iteration.
+    # -1 ends construction, 0 continues it, 1 also contains the requested write.
+    if not module and not mentions(st, [name]):
+        return 0
+    if not module and st.kind in ["if", "for", "while", "block"]:
+        found = 0
+        for kid in st.kids:
+            if kid.kind == "block" or st.kind == "block":
+                result = fresh_list_step(kid, name, site, module)
+                if result < 0:
+                    return -1
+                found |= result
+            elif mentions(kid, [name]) or has_kind(kid, "walrus"):
+                return -1
+        return found
+    receiver = st
+    write = st
+    args: list[Node] = []
+    if st.kind == "expr" and st.kids[0].kind == "call":
+        call = st.kids[0]
+        f = call.kids[0]
+        if f.kind != "attr" or f.s not in ["append", "insert", "extend"] or len(call.kids) != (3 if f.s == "insert" else 2):
+            return -1
+        receiver = f.kids[0]
+        write = call.kids[-1] if f.s == "extend" else call
+        args = call.kids[1:]
+    elif st.kind == "augassign" and st.s == "+":
+        receiver, write = st.kids
+        args = [write]
+    elif st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "index":
+        write = st.kids[0]
+        receiver = write.kids[0]
+        args = [write.kids[1], st.kids[1]]
+    else:
+        return -1
+    if receiver.kind != "name" or receiver.s != name:
+        return -1
+    for arg in args:
+        if mentions(arg, [name]) or has_kind(arg, "walrus"):
+            return -1
+        if module:
+            # A callback can observe a module global without naming it at its
+            # call site. Allow only literal writes until its layout is fixed.
+            items = arg.kids if arg.kind == "list" else [arg]
+            if any(x.kind not in ["int", "float", "True", "False", "str", "None"] for x in items):
+                return -1
+    return 1 if write is site else 0
+
+
+def fresh_list_name(body: list[Node], site: Node, module: bool) -> str:
+    # Look only on a mismatch. No speculative expression evaluation, no mutation
+    # of an existing allocation, and no Gen state for dry runs or nested frames.
+    receiver = site
+    if site.kind == "call" and site.kids[0].kind == "attr":
+        receiver = site.kids[0].kids[0]
+    elif site.kind == "index":
+        receiver = site.kids[0]
+    elif site.kind == "list":
+        # A fresh display for xs.extend([...]) or xs += [...]. Find its
+        # immediate consumer; inner displays cannot choose the outer layout.
+        pending = list(body)
+        while len(pending) > 0:
+            st = pending.pop()
+            if st.kind == "augassign" and st.s == "+" and st.kids[1] is site:
+                receiver = st.kids[0]
+                break
+            if st.kind == "call" and len(st.kids) == 2 and st.kids[1] is site and st.kids[0].kind == "attr" and st.kids[0].s == "extend":
+                receiver = st.kids[0].kids[0]
+                break
+            if st.kind not in ["def", "class", "subclass", "lambda"]:
+                pending.extend(st.kids)
+    if receiver.kind != "name":
+        return ""
+    name = receiver.s
+    started = False
+    for st in body:
+        if not started:
+            started = st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[0].s == name and st.kids[1].kind == "list" and len(st.kids[1].kids) == 0
+        else:
+            result = fresh_list_step(st, name, site, module)
+            if result == 1:
+                return name if bind_count(body, name, True) == 1 else ""
+            if result < 0:
+                return ""
+    return ""
 
 
 def shows_items(n: Node, name: str) -> bool:

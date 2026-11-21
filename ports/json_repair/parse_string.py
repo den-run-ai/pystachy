@@ -1,4 +1,3 @@
-# Pystachy port: parser state is optional on the direct-result paths.
 from typing import Any
 from dataclasses import dataclass, field
 
@@ -251,21 +250,20 @@ def _cached_skip_to_character(
 def _prepare_string_entry(
     self,
 ) -> tuple[StringParseState | None, Any]:
-    state: StringParseState | None = None
     char = self.get_char_at()
     if char in ["#", "/"]:
-        return state, self.parse_comment()
+        return None, self.parse_comment()
 
     while char and char not in STRING_DELIMITERS and not char.isalnum():
         self.index += 1
         char = self.get_char_at()
 
     if not char:
-        return state, ""
+        return None, ""
 
     fast_path_value = _try_parse_simple_quoted_string(self)
     if fast_path_value is not None:
-        return state, fast_path_value
+        return None, fast_path_value
 
     state = StringParseState()
 

@@ -1,0 +1,40 @@
+from __future__ import annotations
+
+from typing import Annotated, Any, Tuple as Pair
+
+
+class State:
+    def __init__(self, name: str):
+        self.name = name
+
+
+def entry(flag: bool, value: Any, state: State) -> Pair[State | None, Any]:
+    if flag:
+        return None, value
+    return state, value
+
+
+def seen(flag: bool, token: Any) -> None:
+    state = State("ready")
+    got, value = entry(flag, token, state)
+    print(got is state, got.name if got is not None else "absent", value is token)
+
+
+seen(False, ["x"])
+seen(True, State("token"))
+
+
+def concrete(x: Any) -> tuple[int | None, Any]:
+    return 1, x
+
+
+print(concrete("tag")[0] + 2)
+
+
+def default(flag: bool, tag: Any) -> Annotated[tuple[State | None, Any], "entry"]:
+    if flag:
+        return None, "ok"
+    return State("fresh"), tag
+
+
+print(default(True, "x") is default(True, "y"))

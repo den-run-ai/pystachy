@@ -2113,6 +2113,8 @@ def gen_assign(self, t: Node, v: Val) -> None:
         if is_list(unopt(o.t)):
             ix = self.ival(t.kids[1], "", True, o, nosub)
             o = self.unwrap(o, nosub)
+            if v.t != elem(o.t) and self.fresh_list_join(t, elem(o.t), v.t):
+                return
             self.list_store(o, self.list_hold(v, elem(o.t)), "set", ix.v)
         elif is_dict(unopt(o.t)):
             kv = targs(unopt(o.t))

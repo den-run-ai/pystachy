@@ -333,6 +333,20 @@ rules and the compiler's existing unbound-variable checks continue to apply.
 Empty `[]` and `{}` take their types from an annotated variable, parameter, field or return
 context. Otherwise their first useful operation determines the type: `append`, `insert`,
 `extend`, item or slice assignment, `+=`, `setdefault`, `get(key, default)`, or reassignment.
+During construction of a fresh, unannotated `xs = []`, ordinary static programs
+can infer unions of `int`, `str`, `bool`, and `None` from successive writes. This covers `append`,
+`insert`, index stores, and list displays passed to `extend` or `+=`. Local
+construction can span `if`, `for`, and `while` blocks and unrelated statements.
+For example, `xs.append(1)` followed by `xs.append("a")` infers
+`list[int | str]`. Giving the list to another name or function ends construction.
+At the top level of the entry module, this inference requires consecutive literal
+writes. Parameters and annotated bindings keep their declared element types.
+An initial `append(None)` needs an annotation. Float joins require a representation
+that preserves NaN identity for membership and counting. Programs importing a
+dynamic-Any module keep their existing list inference because a caller can also
+observe numeric identity. Integer joins in a promoting-int program need a
+representation that preserves values beyond 64 bits.
+
 Nested forms such as `d.setdefault(key, []).append(value)` are supported. Empty `set()`
 uses the same principle with `add`, `update`, or set operators.
 
@@ -941,7 +955,11 @@ templates, also under `from __future__ import annotations`. A parameter takes it
 type, and `*args: Any` or `**kwargs: Any` those of each call's arguments; a return is inferred
 as an unannotated one is. Values keep their concrete types and are not boxed: a `list[Any]`
 parameter given a `list[int]` cannot append a `str`, and a function annotated `-> Any` returns
-one type for each specialization. An initialized module or local variable whose annotation
+one type for each specialization. When two returns of the same fixed tuple shape cannot join
+a slot by inference, a concrete slot in the return annotation can supply a type that accepts both
+representations. For example, a function annotated `-> tuple[State | None, Any]` can return
+`None, value` on one branch and `state, value` on another. The second slot keeps its inferred
+type for each specialization. An initialized module or local variable whose annotation
 mentions `Any` is inferred as if unannotated: `x: Any = 5`, `xs: list[Any] = []` followed by
 `xs.append(1)`, and `b: Box[Any] = Box(1)` use the existing assignment inference. This erases
 the whole annotation, including any concrete parts. The same straight-line local retyping

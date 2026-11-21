@@ -72,7 +72,7 @@ the same observable behavior. Promoting-int policy remains independent.
 
 ## Static modules
 
-A module that must hold no `Any` value can say so. Put this comment before any code:
+A module can require concrete values for its operations. Put this comment before any code:
 
 ```python
 # pystachy: static
@@ -82,8 +82,8 @@ doc = json.loads('{"rows": [1, 2]}')  # typed JSONValue: accepted
 print(doc["rows"][1])
 ```
 
-In that module, an expression that is an `Any` value, or a container or `Callable` of
-them, is a compile error at its line, and so is a typed value that would be boxed
+Outside the scalar guard below, reading an `Any` value, or a container or `Callable`
+of them, is a compile error at its line. The check also rejects a value that would be boxed
 because what takes it is annotated `Any` in an opt-in module. The comment only
 rejects: a module that compiles with it compiles to the same code without it.
 `typing.Any` keeps its [inference meaning](language/typing.md#supported-types) there,
@@ -96,12 +96,27 @@ and [closed unions](language/typing.md#operations-on-closed-unions) hold mixed v
 | `json.loads(text)`, an `int \| str` union, a template's `Any` parameter | Accepted: no dynamic value |
 | `# pystachy: dynamic-any` in the same file | Rejected: the two comments contradict |
 
-The check is strict on purpose: it has no rule yet for a value that is narrowed with
-`isinstance()` as soon as it arrives, so code that reads an opt-in library's `Any`
-results belongs in a module without the comment. It also does not see numeric identity
-boxes, which a module inside an opt-in module's [import closure](#identity-scope)
-still allocates. Fixtures: `tests/programs/inference/static_module.py` and
-`tests/errors/inference/static_*.py`.
+An adapter in a static module can test an incoming parameter with the builtin
+`isinstance(value, str)`, `isinstance(value, float)`, or `isinstance(value, bool)`.
+An opt-in caller may pass its boxed result directly. The test checks the runtime
+type, and reads on the matching path use the concrete payload. A caller with a
+concrete argument still gets ordinary per-call inference.
+
+```python
+# pystachy: static
+from typing import Any
+
+def label(value: Any) -> str:
+    if isinstance(value, str):
+        return value.upper()
+    return "unknown"
+```
+
+The exception applies to a plain parameter in an ordinary function. A captured
+parameter or a generator frame can outlive the call. An `int` guard also accepts
+`bool` and may match a promoting integer. A `list` guard cannot establish its
+element storage or write permissions. These cases keep the existing diagnostic.
+Numeric identity bookkeeping still follows the [import closure](#identity-scope).
 
 ## Promoting integers
 

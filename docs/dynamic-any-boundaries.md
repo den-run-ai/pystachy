@@ -85,8 +85,8 @@ created by the parser. Both store boxed values and preserve mutable aliases. The
 object scanner classifies an empty object before reparsing it. An escaped key can
 produce a replacement dictionary, and malformed object syntax can produce a list.
 Each path returns the reparsed value directly. In the string scanner,
-`_prepare_string_entry()` uses a `StringParseState | None` local for the first slot of
-its result. Both early and continuing returns then have the same pair layout. The
+`_prepare_string_entry()` declares `StringParseState | None` in the first slot of its
+return annotation. Early and continuing returns share that slot layout. The
 second slot may still carry a dynamic value supplied by the parser. All three scanners
 remain in the parser's identity-tracking import closure.
 

@@ -84,7 +84,7 @@ def gen_static_value(self, v: Val) -> Val:
     # Speculative typing (dry) reports nothing, and the compiler's own dispatchers, which other
     # modules' operations ask for, are no module's code
     if self.drying == 0 and not self.curfn.synthetic and static_file(self.line // LINES) and holds_dyn(v.t):
-        self.err(f"{STATICMOD}: this expression is one ({typestr(v.t)}). Give it a concrete type, or narrow it with isinstance() in a module without the marker")
+        self.err(f"{STATICMOD}: this expression is one ({typestr(v.t)}). Pass a concrete value, or narrow an incoming scalar parameter with isinstance()")
     return v
 
 
