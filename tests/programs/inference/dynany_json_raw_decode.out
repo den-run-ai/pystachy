@@ -10,4 +10,5 @@ error Expecting value 0 1 1
 error Expecting property name enclosed in double quotes 3 1 4
 error Expecting value 3 1 4
 error idx cannot be negative
+Expecting value 9000 1 9001 True
 [exit 0]

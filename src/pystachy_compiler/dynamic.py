@@ -20,7 +20,7 @@ from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globa
 from src.pystachy_compiler.bigints import held
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, TupleBoxes, dynamic_file, dynamic_program, int_lists, int_program, static_file
 from src.pystachy_compiler.frames import Reduce
-from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
+from src.pystachy_compiler.ir import Data, IFn, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
@@ -240,14 +240,42 @@ def gen_identity_call(self, f: FnInfo) -> None:
     home = self.fn_home(f)
     here = self.fn_home(self.curfn)
     if (home in self.idhint) != (here in self.idhint):
-        if all(self.identity_inert(t, [], True) for t in f.ptypes) and self.identity_inert(f.ret, [], True):
-            return
+        if all(self.identity_inert(t, [], True) for t in f.ptypes):
+            if self.identity_inert(f.ret, [], True):
+                return
+            if (home in self.idhint and here != "?" and here not in self.idoff and
+                    f.ret == "int" and not f.synthetic and f.node.kind == "def" and len(f.node.kids) == 3):
+                body = f.node.kids[2].kids
+                if (len(body) == 1 and body[0].kind == "return" and len(body[0].kids) == 1 and
+                        body[0].kids[0].kind == "binop" and body[0].kids[0].s in ["+", "-", "*"]):
+                    # Discovery checks the actual operation and its uses, including overloaded operators.
+                    self.idresults[f.ll] = f.name
+                    return
         self.identity_event(f"hinted call of {f.name}()")
     if home == "?" or here == "?" or (home in self.idoff) == (here in self.idoff):
         return
     if here in self.idoff and all(self.identity_free(t) for t in f.ptypes) and (self.identity_free(f.ret) or numeric_identity(f.ret)):
         return
     self.identity_event(f"call of {f.name}()")
+
+
+def fresh_int_result(fn: IFn) -> bool:
+    # An overflow-checked primitive integer result used only by return cannot have a
+    # published alias. Verify this on the emitted body, before optimization, so a call
+    # of __add__, a returned field, or a stored intermediate cannot look like a fresh result.
+    fresh: dict[str, bool] = {}
+    used: dict[str, bool] = {}
+    returned: list[str] = []
+    for block in fn.blocks:
+        for op in block.code:
+            if op.op == "ovf" and any(a.v.startswith("%") for a in op.a):
+                fresh[tmpname(op.r[1])] = True
+            if op.op == "ret" and len(op.a) == 1:
+                returned.append(op.a[0].v)
+            else:
+                for value in op.a:
+                    used[value.v] = True
+    return len(returned) > 0 and all(v in fresh and v not in used for v in returned)
 
 
 def gen_identity_global(self, name: str, t: str, store: bool) -> None:
@@ -5701,6 +5729,9 @@ def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool,
         if name == "json$loads" and not holds_dyn(want):
             return None
         self.add(Ins("init", "", JSONANY))  # (its module's code, as an import runs it: nothing imports it)
+        if (name == "json$_raw_decode" and len(args) == 1 and args[0].kind not in ["starred", "dstar"] and
+                (args[0].kind != "kw" or args[0].s == "s")):
+            q = JSONANY + "$_raw_decode_start"
         return self.call_fn(self.funcs[q], [], args, want, resultsoft=resultsoft)
     objkw = [x for x in args if x.kind == "kw" and x.s == "obj"]
     if len(args) == 0 or args[0].kind == "starred" or args[0].kind == "dstar" or (args[0].kind == "kw" and len(objkw) != 1):

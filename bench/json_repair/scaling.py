@@ -16,6 +16,10 @@ def payload(mode: str, size: int) -> tuple[str, str]:
     if mode == "valid":
         value = "x," * size
         return '{"a":"' + value + '"}', value
+    if mode == "raw-prefix":
+        # The port inserts the missing opening brace, then raw-decodes the entire candidate.
+        value = "é🌲," * size
+        return '"a":"' + value + '"}', value
     if mode == "bare-key":
         value = "x" * size
         return '{a:"' + value + '"}', value
@@ -38,7 +42,7 @@ def payload(mode: str, size: int) -> tuple[str, str]:
     if mode == "logs":
         value = "x," * size
         return '{a: "' + value + '",}', value
-    raise ValueError("mode must be valid, bare-key, comma, newline, unicode, escaped, escaped-unicode, sparse or logs")
+    raise ValueError("mode must be valid, raw-prefix, bare-key, comma, newline, unicode, escaped, escaped-unicode, sparse or logs")
 
 
 def checked_value(result: Any, expected: str, logging: bool) -> int:

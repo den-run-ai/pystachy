@@ -483,6 +483,50 @@ print(p.step('def'), inertlib.decode('1000'))
         baseline, _ = self.compile(source, hints=False)
         self.assertIn("%C.json$_Parser = type {ptr, i1, ptr, i1, i1, i64, i64, i64, i64, ptr, ptr, ptr, ptr, ptr, ptr}", baseline)
 
+    def test_fresh_integer_return_from_hinted_method(self):
+        helper = INERTLIB.replace("return self.pos\n", "return self.pos + 0\n")
+        source = "# pystachy: dynamic-any\nimport inertlib\np = inertlib.make('abc')\nprint(p.number())\n"
+        _, generations = self.compile(source, helper=helper)
+        self.assertEqual([g.idevent for g in generations], [""])
+        self.assertIn("@m.inertlib$Cursor.number", generations[-1].idresults)
+
+        # A number stored in the cursor and a constant expression may each be shared.
+        for expr in ["self.pos", "1000 + 20"]:
+            unsafe = INERTLIB.replace("return self.pos\n", "return " + expr + "\n")
+            with self.subTest(expr=expr):
+                ir, attempts = self.compile(source, helper=unsafe)
+                self.assertEqual(attempts[0].idevent, "hinted call of number()")
+                baseline, _ = self.compile(source, helper=unsafe, hints=False)
+                self.assertEqual(ir, baseline)
+
+        # An overloaded + returns a field, although its surface syntax is arithmetic.
+        overloaded = INERTLIB.replace("class Cursor:", """class Number:
+    def __init__(self, text: str) -> None:
+        self.value = int(text)
+
+    def __add__(self, right: int) -> int:
+        return self.value
+
+
+class Cursor:""").replace("self.pos = len(text)", "self.pos = len(text)\n        self.wrap = Number('1000')")
+        overloaded = overloaded.replace("return self.pos\n", "return self.wrap + 0\n")
+        ir, attempts = self.compile(source, helper=overloaded)
+        self.assertEqual(attempts[0].idevent, "hinted call of number()")
+        baseline, _ = self.compile(source, helper=overloaded, hints=False)
+        self.assertEqual(ir, baseline)
+
+    def test_raw_decode_default_keeps_private_offsets(self):
+        source = "# pystachy: dynamic-any\nfrom json import _raw_decode\n"
+        ir, attempts = self.compile(source + 'print(_raw_decode("true"))\n')
+        self.assertIn("json", attempts[-1].idhint)
+        self.assertIn("_pystachy_bytescan", attempts[-1].idhint)
+        self.assertNotIn("@m.json$_Parser.seek_char(", ir)
+        body = functions(ir)["@m.json$_Parser.char_index"]
+        self.assertIsNone(BOXING.search(body))
+        _, attempts = self.compile(source + 'print(_raw_decode("true", int("1000")))\n')
+        self.assertEqual(attempts[0].idevent, "hinted call of seek_char()")
+        self.assertFalse(attempts[-1].idhint)
+
     def test_observed_any_json_does_not_reenter_typed_container_decoder(self):
         source = (ROOT / "bench/smoke/json_decode_any.py").read_text()
         ir, generations = self.compile(source)
