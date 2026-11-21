@@ -246,8 +246,16 @@ assert.equal(sp.value, 512);
 """
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "unwind.wasm"
-            path.write_bytes(emit(program))
+            legacy = emit(program)
+            modern = bytes(T.Emitter(T.parse(program), True).module())
+            self.assertNotEqual(legacy, modern)
+            path.write_bytes(legacy)
             subprocess.run(["node", "-e", script, str(path)], check=True, timeout=10)
+            # Independent feature probe: (module (func (try_table))).
+            probe = "process.exit(WebAssembly.validate(Buffer.from('0061736d01000000010401600000030201000a080106001f40000b0b','hex')) ? 0 : 1)"
+            if subprocess.run(["node", "-e", probe], check=False, timeout=10).returncode == 0:
+                path.write_bytes(modern)
+                subprocess.run(["node", "-e", script, str(path)], check=True, timeout=10)
         for before, after, reason in [
             ("-> done, caught", "-> done", "exception edges"),
             ("-> done, caught", "-> done, handler", "without a landing"),

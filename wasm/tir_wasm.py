@@ -22,6 +22,7 @@ line `tir_wasm: refused: WHAT` on stderr, and wasm/build.sh then compiles the pr
 LLVM. Run it as PYTHONPATH=. python3 wasm/tir_wasm.py, or compiled: PYSTACHY_PATH=. ./pystachy
 build wasm/tir_wasm.py, from the repository root (it reads the compiler's RUNTIME table).
 """
+import os
 import struct
 import sys
 
@@ -38,6 +39,14 @@ VOID = 0x40
 
 # LLVM's ordered fcmp predicates and une, as WebAssembly's f64 comparisons
 FCMP_OPS: dict[str, int] = {"oeq": 0x61, "une": 0x62, "olt": 0x63, "ogt": 0x64, "ole": 0x65, "oge": 0x66}
+
+
+def standard_eh() -> bool:
+    encoding = os.getenv("WASM_EH", "legacy")
+    if encoding not in ("legacy", "standard"):
+        sys.stderr.write("WASM_EH must be legacy or standard\n")
+        sys.exit(2)
+    return encoding == "standard"
 
 
 class Refused(Exception):
@@ -522,8 +531,9 @@ class Import:
 # ---------- emission ----------
 
 class Emitter:
-    def __init__(self, m: Module):
+    def __init__(self, m: Module, standard_exceptions: bool = False):
         self.m = m
+        self.standard_exceptions = standard_exceptions
         self.types = Types()
         self.imports: dict[str, Import] = {}
         self.import_order: list[str] = []
@@ -964,20 +974,37 @@ class Emitter:
         pad = self.bindex.get(i.targets[1], -1)
         if pad < 0 or not self.fn.blocks[pad].code or self.fn.blocks[pad].code[0].op != "landing":
             raise Refused(f"invoke without a landing at {i.targets[1]}")
-        self.op(0x06)  # try (the typed catch encoding supported throughout Node 22)
-        self.op(VOID)
-        self.inst(i)
-        self.op(0x07)  # catch tag 0: the runtime Exc pointer in shared memory
-        uleb(self.code, 0)
+        if self.standard_exceptions:
+            self.op(0x02)  # block (result i32): receives the caught exception pointer
+            self.op(I32)
+            self.op(0x1F)  # try_table, no results, one catch of tag 0 to the block
+            self.op(VOID)
+            self.op(1)
+            self.op(0)  # catch (payload only)
+            self.op(0)  # tag index
+            self.op(0)  # enclosing block depth, relative to the try_table
+            self.inst(i)
+            self.op(0x0B)
+            self.goto(i.targets[0], 1)
+            self.op(0x0B)
+        else:
+            self.op(0x06)  # legacy try/catch for early Node 22 releases
+            self.op(VOID)
+            self.inst(i)
+            self.op(0x07)
+            uleb(self.code, 0)
         self.set(self.exception_local)
         # Both runtime C calls and emitted tuple frames use this linear stack.
         # Unwinding Wasm activation records alone leaves its global at the throw site.
         self.get(self.handler_stack)
         self.op(0x24)
         uleb(self.code, 2)
-        self.goto(i.targets[1], 1)
-        self.op(0x0B)
-        self.goto(i.targets[0], 0)
+        if self.standard_exceptions:
+            self.goto(i.targets[1], 0)
+        else:
+            self.goto(i.targets[1], 1)
+            self.op(0x0B)
+            self.goto(i.targets[0], 0)
 
     def result(self, i: Inst, k: int, t: str) -> None:
         self.set(self.define(i.res[k], t))
@@ -1728,7 +1755,7 @@ def main() -> None:
     text = f.read()
     f.close()
     try:
-        out = Emitter(parse(text)).module()
+        out = Emitter(parse(text), standard_eh()).module()
     except Refused as e:
         sys.stderr.write(f"tir_wasm: refused: {e.what}\n")
         sys.exit(3)
