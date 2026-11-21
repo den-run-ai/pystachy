@@ -100,19 +100,23 @@ void *pys_mpz_from_str(Str *s, I base) {
     if (pb && (base == 0 || base == pb)) { base = pb; lo += 2; if (lo < hi && t->s[lo] == '_') lo++; }
   }
   if (!base) { base = 10; old_octal = lo < hi && t->s[lo] == '0'; }
-  I digits = 0; int nonzero = 0;
-  for (I i = lo; i < hi; i++) {
-    int c = (unsigned char)t->s[i], d = digitv(c);
+  I digits = 0, end = lo; int nonzero = 0;
+  for (; end < hi; end++) {
+    int c = (unsigned char)t->s[end], d = digitv(c);
     if (c == '_' && prev == 1) { prev = 2; continue; }
-    if (d >= base) badlit("ValueError: invalid literal for int()", original, s);
+    if (d >= base) break;
     digits++; prev = 1; nonzero |= d != 0;
   }
-  if (!digits || prev != 1) badlit("ValueError: invalid literal for int()", original, s);
+  /* CPython's C string ends at a NUL, with whitespace before it: digits past the limit are
+     reported before what follows such a NUL, as runtime.py's pys_int_str does */
+  I rest = end;
+  while (rest < hi && aws(t->s[rest])) rest++;
+  if (!digits || prev != 1 || (rest < hi && t->s[rest])) badlit("ValueError: invalid literal for int()", original, s);
   if ((base & (base - 1)) && digits > 4300)
     failf("ValueError: Exceeds the limit (4300 digits) for integer string conversion: value has %lld digits; "
           "use sys.set_int_max_str_digits() to increase the limit", (long long)digits);
   /* CPython rejects a nonzero base-0 literal with a leading zero after the digit limit */
-  if (old_octal && nonzero) badlit("ValueError: invalid literal for int()", original, s);
+  if (rest < hi || (old_octal && nonzero)) badlit("ValueError: invalid literal for int()", original, s);
   Mpz *r;
   if (!(base & (base - 1))) {
     /* A power-of-two base packs bits from the last digit in linear time, as CPython's

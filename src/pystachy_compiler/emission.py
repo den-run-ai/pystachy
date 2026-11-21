@@ -655,9 +655,49 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
     if name == "udiv" or name == "urem":
         self.guard(self.num_cmp('==', Val(a[1], "int"), Val('0', "int")).v, "ZeroDivisionError: integer division or modulo by zero")
         return Val(self.scalar(name, [Val(a[0], 'int'), Val(a[1], 'int')]), "int")
+    if name == "sdiv" or name == "srem":
+        signed_divisor = vals[1]
+        zero = self.num_cmp("==", signed_divisor, Val("0", "int"))
+        self.guard(zero.v, "ZeroDivisionError: integer modulo by zero" if name == "srem" else "ZeroDivisionError: integer division or modulo by zero")
+        neg_one = self.num_cmp("==", signed_divisor, Val("-1", "int"))
+        if name == "sdiv":
+            minimum = self.num_cmp("==", vals[0], Val("-9223372036854775808", "int"))
+            self.guard(self.scalar("and", [minimum, neg_one]), "OverflowError: integer result does not fit in 64 bits")
+        else:
+            # LLVM srem is undefined for MIN / -1. Both 1 and -1 divide every input exactly.
+            signed_divisor = Val(self.select(neg_one.v, Val("1", "int"), signed_divisor), "int")
+        return Val(self.scalar(name, [vals[0], signed_divisor]), "int")
+    if name == "ctlz":
+        return Val(self.rt("llvm.ctlz.i64", "i64", [f"i64 {a[0]}", "i1 false"]), "int")
+    if name == "ctpop":
+        return Val(self.rt("llvm.ctpop.i64", "i64", [f"i64 {a[0]}"]), "int")
     if name == "mul_ovf":
         return Val(self.checked("*", a[0], a[1])[1], "bool")
-    if name == "shl" or name == "lshr":
+    if name == "mul_hi":
+        # the product in 128 bits, where it cannot wrap; LLVM makes it one widening multiply
+        p = self.scalar('mul', [Val(self.scalar_cast('zext', Val(a[0], 'int'), '%i128'), '%i128'), Val(self.scalar_cast('zext', Val(a[1], 'int'), '%i128'), '%i128')])
+        return Val(self.scalar_cast('trunc', Val(self.scalar('lshr', [Val(p, '%i128'), Val('64', '%i128')]), '%i128'), 'int'), "int")
+    if name == "urem_wide" or name == "udiv_wide":
+        # Divide the unsigned 128-bit hi:lo by d, returning the low word of the result.
+        self.guard(self.num_cmp("==", vals[2], Val("0", "int")).v, "ZeroDivisionError: integer division or modulo by zero")
+        hi = Val(self.scalar_cast("zext", vals[0], "%i128"), "%i128")
+        shifted_hi = Val(self.scalar("shl", [hi, Val("64", "%i128")]), "%i128")
+        lo = Val(self.scalar_cast("zext", vals[1], "%i128"), "%i128")
+        dividend = Val(self.scalar("or", [shifted_hi, lo]), "%i128")
+        divisor = Val(self.scalar_cast("zext", vals[2], "%i128"), "%i128")
+        wide = Val(self.scalar(name[:4], [dividend, divisor]), "%i128")
+        return Val(self.scalar_cast("trunc", wide, "int"), "int")
+    if name == "float_bits":
+        return Val(self.scalar_cast('bitcast', Val(a[0], 'float'), 'int'), "int")
+    if name == "bits_float":
+        return Val(self.scalar_cast('bitcast', Val(a[0], 'int'), 'float'), "float")
+    if name == "fma":
+        return Val(self.rt("llvm.fma.f64", "double", [f"double {a[0]}", f"double {a[1]}", f"double {a[2]}"]), "float")
+    if name == "sqrt":
+        return Val(self.rt("llvm.sqrt.f64", "double", [f"double {a[0]}"]), "float")
+    if name == "fdiv":
+        return Val(self.scalar('fdiv', [Val(a[0], 'float'), Val(a[1], 'float')]), "float")
+    if name == "shl" or name == "lshr" or name == "ashr":
         # by n mod 64, as the hardware shifts (LLVM would make a larger shift poison)
         return Val(self.scalar(name, [Val(a[0], 'int'), Val(self.scalar('and', [Val(a[1], 'int'), Val('63', 'int')]), 'int')]), "int")
     if name == "str_done":
