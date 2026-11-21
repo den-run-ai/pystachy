@@ -5508,7 +5508,7 @@ class Loader:
                     guarded = False
                     if changes > 0 and (changes == 2 or x not in exported):
                         guarded = src.kinds.get(x, "") == "v" and x in src.sure and m.kinds.get(x, "v") == "v"
-                        if x not in exported and (not guarded or x in m.kinds or x in PYBUILTINS):
+                        if x not in exported and (not guarded or not self.can_add_export(m, src, x)):
                             # Introducing a second possible type for an existing destination
                             # can reject code that uses its original type on the untaken path.
                             continue
@@ -5626,6 +5626,21 @@ class Loader:
         if base == "":
             fail("attempted relative import beyond top-level package", line)
         return base + "." + path if path != "" else base
+
+    def can_add_export(self, m: Mod, src: Mod, name: str) -> bool:
+        # A conditional addition can introduce a variable or recopy the same source
+        # variable. Neither case widens a binding already used at another type.
+        if name in PYBUILTINS:
+            return False
+        if name not in m.kinds:
+            return True
+        scope = "@" + m.name
+        if scope + " " + name not in self.vtook:
+            return False
+        for take in self.vtaken:
+            if take.s == name and take.kids[4].s == scope and (take.kids[0].s != src.name or take.kids[1].s != name):
+                return False
+        return True
 
     def export_changes(self, body: list[Node], out: list[str], branch: bool) -> int:
         # 2 if a branch may replace __all__, 1 if it only extends it, 0 if neither,
