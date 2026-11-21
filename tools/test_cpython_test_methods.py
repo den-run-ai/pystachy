@@ -8,6 +8,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import compare_cpython_methods as comparison
 import cpython_test_methods as ctm
 import pytest_native as pytest_runner
 
@@ -472,6 +473,35 @@ class Cases(unittest.TestCase):
 ''')
         with self.assertRaisesRegex(ctm.Unsupported, "setUpModule"):
             ctm.pytest_suite(self.src, self.out, [("Cases", "test_ok")], selected_methods_only=True)
+
+
+class CompareReportsTests(unittest.TestCase):
+    def test_compare_keeps_qualified_identities_and_promoting_matches(self):
+        def report(prefix, statuses):
+            return {"records": [{"file": prefix + "Lib/test/test_x.py", "test": method, "status": status}
+                                for method, status in statuses]}
+        before = report("/old/", [("A.a", "differs"), ("A.b", "match-python-int"), ("A.c", "cpython-fail")])
+        after = report("/new/", [("A.b", "timeout"), ("A.a", "match"), ("A.c", "cpython-fail")])
+        oracle = {"records": [{"file": "Lib/test/test_x.py", "test": method, "cpython": status}
+                              for method, status in [("A.a", "ok"), ("A.b", "ok"), ("A.c", "fail")]]}
+        before["records"][0]["file"] = r"C:\cpython\Lib\test\test_x.py"
+        result = comparison.compare(before, after, oracle)
+        self.assertEqual(result["qualified"], 2)
+        self.assertEqual(result["after"], {"timeout": 1, "match": 1})
+        self.assertEqual(result["newly_matching"], [{"file": "Lib/test/test_x.py", "test": "A.a", "before": "differs", "after": "match"}])
+        self.assertEqual(result["no_longer_matching"][0]["test"], "A.b")
+        with self.assertRaisesRegex(ValueError, "qualification differs"):
+            comparison.compare(before, report("", [("A.a", "match"), ("A.c", "match")]))
+        self.assertEqual(comparison.compare(before, after, {"records": oracle["records"][:1]})["qualified"], 1)
+        with self.assertRaisesRegex(ValueError, "candidate lacks 1 qualified methods"):
+            comparison.compare(before, report("", [("A.a", "match")]), oracle)
+
+    def test_compare_rejects_incomplete_or_duplicate_results(self):
+        row = {"file": "test_x.py", "test": "A.a", "status": "match"}
+        for report, message in [({"records": [row, row]}, "duplicate"), ({"records": [row | {"status": "skipped"}]}, "unknown"),
+                                ({"records": [row], "errors": {"bad.py": "failed"}}, "extraction errors"), ({"records": []}, "empty")]:
+            with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
+                comparison.qualified_methods(report)
 
 
 if __name__ == "__main__":
