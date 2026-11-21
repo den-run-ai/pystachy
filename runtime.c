@@ -2752,7 +2752,7 @@ void *pys_box(I v) { I *p = gc_box(1); p[0] = v; p[1] = 0; return p; }
    Mpz, in a box the collector scans */
 void *pys_big_box(I lo, void *hi) {
   if (!hi) return pys_box(lo);
-  I *p = gc_box(0); p[0] = INT64_MIN; ((void **)p)[1] = hi; return p;
+  I *p = gc_box(0); p[0] = INT64_MIN; p[1] = (I)(uintptr_t)hi; return p;
 }
 /* Closed union: a program-wide tag and the value's 8-byte slot. The collector
    scans the box for str, container or native reference payloads. None remains null. */
