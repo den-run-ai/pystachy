@@ -238,6 +238,156 @@ def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None
     return True
 
 
+
+def private_optional_reads(fn: IFn, narrowed: dict[str, dict[str, bool]], at: dict[str, int], successors: list[list[str]]) -> bool:
+    """Prove loads from private local slots with nonnull facts on every incoming edge.
+
+    This certificate only accepts reads of SSA values whose own load already had
+    a nonnull slot. Unfamiliar origins, control flow or bounds use UnionProof.
+    """
+    if fn.n < 0 or fn.n > 262144 or len(fn.blocks) == 0:
+        return False
+    seen = [False] * (fn.n + 1)
+    loads: dict[str, str] = {}
+    origin: dict[str, int] = {}
+    locals_: dict[str, bool] = {}
+    for i in fn.slots:
+        n = i.r[0]
+        name = slot_register(i)
+        if n < 0 or n > fn.n or name in locals_:
+            return False
+        seen[n] = True
+        locals_[name] = i.k == 0 and is_opt(i.t)
+    slots: dict[str, int] = {}
+    for k in range(len(fn.blocks)):
+        for i in fn.blocks[k].code:
+            for n in i.r:
+                if n < 0 or n > fn.n or seen[n]:
+                    return False
+                seen[n] = True
+                v = tmpname(n)
+                if v in narrowed:
+                    if i.op != "mem.load" or not locals_.get(i.a[0].v, False):
+                        return False
+                    slot = i.a[0].v
+                    if slot not in slots:
+                        if len(slots) >= 62:
+                            return False
+                        slots[slot] = 1 << len(slots)
+                    loads[v] = slot
+                    origin[v] = k
+    if len(loads) != len(narrowed):
+        return False
+    # An operand outside its load's block is accepted only along an unambiguous
+    # chain from that load. Count handler edges even before EH lowering.
+    pred = [-1] * len(fn.blocks)
+    for k in range(len(fn.blocks)):
+        for label in successors[k]:
+            dest = at[label]
+            pred[dest] = k if pred[dest] == -1 else -2
+        handler = fn.blocks[k].handler
+        if handler != "":
+            if handler not in at:
+                return False
+            pred[at[handler]] = -2
+    edges: list[list[int]] = []
+    guards: list[int] = []
+    orders: list[bool] = []
+    steps: list[list[tuple[int, int]]] = []
+    starts = [-1] * len(fn.blocks)
+    starts[0] = 0
+    for k in range(len(fn.blocks)):
+        b = fn.blocks[k]
+        if b.handler != "":
+            starts[at[b.handler]] = 0
+        last = b.code[-1]
+        branch = last.a[0].v if last.op == "cbr" or last.op == "check" else ""
+        current: dict[str, int] = {}
+        localdefs: dict[str, bool] = {}
+        ops: list[tuple[int, int]] = []
+        guard = 0
+        first = False
+        for i in b.code:
+            for j in range(len(i.a)):
+                a = i.a[j]
+                if a.v in slots and (j != 0 or (i.op != "mem.load" and i.op != "mem.store")):
+                    return False
+                if a.v in narrowed and a.t in narrowed[a.v]:
+                    if i.op == "phi":
+                        return False
+                    p = k
+                    for depth in range(16):
+                        if p == origin[a.v] or p < 0:
+                            break
+                        p = pred[p]
+                    if p != origin[a.v] or (p == k and a.v not in localdefs):
+                        return False
+            if i.op == "mem.load" and i.a[0].v in slots:
+                v = tmpname(i.r[0])
+                bit = slots[i.a[0].v]
+                current[v] = bit
+                if v in narrowed:
+                    localdefs[v] = True
+                    ops.append((0, bit))
+            elif i.op == "mem.store" and i.a[0].v in slots:
+                bit = slots[i.a[0].v]
+                ops.append((bit, current.get(i.a[1].v, 0)))
+                if bit == guard:
+                    guard = 0
+                for old in list(current):
+                    if current[old] == bit:
+                        del current[old]
+            elif i.op == "ptr.cmp" and (i.s == "==" or i.s == "!=") and tmpname(i.r[0]) == branch:
+                if i.a[0].v == "null" or i.a[1].v == "null":
+                    guard = current.get(i.a[0].v if i.a[1].v == "null" else i.a[1].v, 0)
+                    first = (i.s == "!=") == (last.op == "cbr")
+        out: list[int] = []
+        for j in range(len(successors[k])):
+            label = successors[k][j]
+            if last.op == "cbr" and ((branch == "true" and j == 1) or (branch == "false" and j == 0)):
+                continue
+            d = at[label]
+            destblock = fn.blocks[d]
+            # Short-circuit "and"/"or" branches through a Boolean phi. On the
+            # incoming condition's own edge the phi result is already known.
+            if len(destblock.code) == 2 and destblock.code[0].op == "phi" and destblock.code[1].op == "cbr":
+                phi = destblock.code[0]
+                destbr = destblock.code[1]
+                if phi.t == "bool" and tmpname(phi.r[0]) == destbr.a[0].v and len(phi.a) == len(phi.b) and phi.b.count(b.label) == 1:
+                    incoming = phi.a[phi.b.index(b.label)].v
+                    if incoming == "true" or incoming == "false":
+                        d = at[destbr.b[0 if incoming == "true" else 1]]
+                    elif last.op == "cbr" and incoming == branch and last.b[0] != last.b[1]:
+                        d = at[destbr.b[j]]
+            out.append(d)
+        edges.append(out)
+        guards.append(guard)
+        orders.append(first)
+        steps.append(ops)
+    todo = [k for k in range(len(starts)) if starts[k] >= 0]
+    while len(todo) > 0:
+        k = todo.pop()
+        facts = starts[k]
+        for action in steps[k]:
+            bit = action[0]
+            source = action[1]
+            if bit == 0:
+                if facts & source == 0:
+                    return False
+            elif facts & source != 0:
+                facts |= bit
+            else:
+                facts &= ~bit
+        for j in range(len(edges[k])):
+            d = edges[k][j]
+            give = facts | guards[k] if (j == 0) == orders[k] else facts
+            joined = give if starts[d] < 0 else starts[d] & give
+            if starts[d] != joined:
+                starts[d] = joined
+                todo.append(d)
+    return True
+
+
 class UnionProof:
     def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None, raises: dict[str, bool] | None = None, declarations: list[Val] | None = None, consts: dict[str, Data] | None = None, narrowed: dict[str, dict[str, bool]] | None = None, written: dict[str, int] | None = None, kin: dict[str, dict[str, bool]] | None = None, unions: bool = True, classes: dict[str, ClassInfo] | None = None):
         self.fn = fn

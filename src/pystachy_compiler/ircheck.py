@@ -5,7 +5,7 @@ from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, merged_blocks, operand_kind, slot_register, tmpname, value_definitions
 from src.pystachy_compiler.scalar_ir import SCALAR_INTS
 from src.pystachy_compiler.symbols import ClassInfo
-from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
+from src.pystachy_compiler.union_proof import UnionProof, private_optional_reads, simple_union_proof
 from src.pystachy_compiler.specs import BIG, CAST_KINDS, EMPTYFS, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME, TYPE_CLASSES
 from src.pystachy_compiler.specs import OPS, OP_ENTRY, OP_FIELDS, OP_INVOKE, OP_K, OP_LABELS, OP_MAX, OP_MIN, OP_OPERAND_TYPES, OP_PER_OPERAND, OP_RESULT_TYPE, OP_S, OP_T, OP_TEMPS, OP_X, RESULT_NUMBERS
 from src.pystachy_compiler.utils import RT_VARS, gelem, generator_identity, is_dict, is_gen, is_list, is_opt, is_set, is_tuple, is_union, list_read_error, list_receiver_error, list_write_error, lt, packed_item, rt_generic, rt_instance_error, same_kind, targs, tslots, umembers, unopt
@@ -913,6 +913,8 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         value_definitions(fn, defined, makers)
     narrowed = optional_reads(self, fn, defined, makers)
     unions = union_proofs or (machine_tags and has_machine_union_tag(fn))
+    if not unions and len(narrowed) > 0 and private_optional_reads(fn, narrowed, at, succ):
+        narrowed.clear()
     if len(narrowed) > 0 or (unions and not simple_union_proof(fn, self.utags, at, succ, union_types, self.classes)):
         writes: dict[str, bool] = {}
         raises: dict[str, bool] = {}
