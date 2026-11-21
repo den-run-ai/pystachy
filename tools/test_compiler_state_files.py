@@ -19,8 +19,9 @@ class FileStateTests(unittest.TestCase):
     # Preserve the surrounding test process: these tests intentionally leave a
     # completed or rejected compilation's discoveries visible between calls.
     def setUp(self):
-        self.roots = [diagnostics.FILES, diagnostics.DYNFILES, diagnostics.IDINERT, diagnostics.INTFILES, diagnostics.INTSPANS, LAMBDAS,
-                      driver.RENAMED, driver.LIBS, driver.LINKDL, GLUE, SPECSHOW, loader.ENUMCLASSES]
+        self.roots = [diagnostics.FILES, diagnostics.DYNFILES, diagnostics.STATICFILES, diagnostics.IDINERT,
+                      diagnostics.INTFILES, diagnostics.INTSPANS, LAMBDAS, driver.RENAMED, driver.LIBS,
+                      driver.LINKDL, GLUE, SPECSHOW, loader.ENUMCLASSES]
         self.saved = [value.copy() for value in self.roots]
         self.source = diagnostics.SRC
         diagnostics.SRC = "hosted-context.py"
@@ -50,6 +51,8 @@ class FileStateTests(unittest.TestCase):
         diagnostics.FILES[:] = ["old-main.py", "old-import.py"]
         diagnostics.DYNFILES.clear()
         diagnostics.DYNFILES.update({0: True, 1: True, 5: True})
+        diagnostics.STATICFILES.clear()
+        diagnostics.STATICFILES.update({0: True, 1: True, 5: True})
         diagnostics.IDINERT.clear()
         diagnostics.IDINERT.update({0: True, 1: True, 5: True})
         diagnostics.INTFILES.clear()
@@ -62,6 +65,7 @@ class FileStateTests(unittest.TestCase):
         instance = loader.Loader([])
         program(instance, "plain.py", "print(1)\n")
         self.assertEqual(diagnostics.FILES, ["plain.py"])
+        self.assertEqual(diagnostics.STATICFILES, {})
         self.assertEqual(diagnostics.DYNFILES, {})
         self.assertEqual(diagnostics.INTFILES, {})
         self.assertEqual(diagnostics.INTSPANS, [])
@@ -92,8 +96,8 @@ class FileStateTests(unittest.TestCase):
 
     def test_each_missing_reset_is_detected(self):
         source = textwrap.dedent(inspect.getsource(loader.Loader.program))
-        for reset in ("FILES.clear()", "DYNFILES.clear()", "IDINERT.clear()", "INTFILES.clear()", "INTSPANS.clear()", "ENUMCLASSES.clear()",
-                      "ORDERED.clear()"):
+        for reset in ("FILES.clear()", "DYNFILES.clear()", "STATICFILES.clear()", "IDINERT.clear()",
+                      "INTFILES.clear()", "INTSPANS.clear()", "ENUMCLASSES.clear()", "ORDERED.clear()"):
             with self.subTest(reset=reset):
                 statement = "    " + reset + "\n"
                 self.assertEqual(source.count(statement), 1)
@@ -199,11 +203,13 @@ class FileStateTests(unittest.TestCase):
         passes = []
 
         def restart_once(gen, modules):
-            passes.append((diagnostics.FILES.copy(), diagnostics.DYNFILES.copy(), diagnostics.IDINERT.copy()))
+            passes.append((diagnostics.FILES.copy(), diagnostics.DYNFILES.copy(),
+                           diagnostics.IDINERT.copy(), diagnostics.STATICFILES.copy()))
             if len(passes) == 1:
                 diagnostics.FILES.append("abandoned.py")
                 diagnostics.DYNFILES[5] = True
                 diagnostics.IDINERT[5] = True
+                diagnostics.STATICFILES[5] = True
                 raise Rejoin()
             return original(gen, modules)
 
@@ -211,10 +217,10 @@ class FileStateTests(unittest.TestCase):
             module = Path(temp) / "dependency.py"
             module.write_text("# pystachy: dynamic-any\nvalue = 3\n")
             with patch.object(driver.Gen, "program", restart_once):
-                result = self.compile("import dependency\nprint(dependency.value)\n",
+                result = self.compile("# pystachy: static\nimport dependency\nprint(dependency.value)\n",
                                       dirs=[temp, str(ROOT / "lib")])
             self.assertEqual(result[0], 0)
-            self.assertEqual(passes, [(["main.py", str(module)], {1: True}, {})] * 2)
+            self.assertEqual(passes, [(["main.py", str(module)], {1: True}, {}, {0: True})] * 2)
 
     def test_runtime_program_interleaving_and_failures(self):
         runtime = "def pys_probe(a: int) -> int:\n    return a + 1\n"
