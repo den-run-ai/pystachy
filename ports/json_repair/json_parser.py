@@ -23,6 +23,10 @@ from .utils.json_context import JsonContext
 from .utils.object_comparer import ObjectComparer
 
 
+def _new_array() -> list[Any]:
+    result: list[Any] = []
+    return result
+
 
 class JSONParser:
     # Split the parse methods into separate files because this one was like 3000 lines
