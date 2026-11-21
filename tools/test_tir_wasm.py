@@ -67,6 +67,28 @@ def emit(text):
 
 
 class TirWasm(unittest.TestCase):
+    def test_object_dispatch_metadata_uses_ids_and_quoted_names(self):
+        module = T.parse('module complete objects=["odd: name":1 C:0] compared=[C] hashed=["odd: name"] {\n'
+                         '  class "odd: name"\n  class C\n}')
+        self.assertEqual(module.objects, ["C", "odd: name"])
+        self.assertEqual(module.compared, {"C": True})
+        self.assertEqual(module.hashed, {"odd: name": True})
+
+    def test_object_dispatch_metadata_rejects_ambiguous_rows(self):
+        for attrs, reason in [
+            ("objects=[C:0 C:1]", "duplicate class"),
+            ("objects=[C:0 D:0]", "distinct and dense"),
+            ("objects=[C:1]", "distinct and dense"),
+            ("objects=[C:-1]", "invalid object dispatch ID"),
+            ("objects=[C:0] objects=[D:0]", "duplicate module attribute"),
+            ("objects=[C:0D:1]", "invalid separator"),
+            ("objects=[E:0]", "unknown object dispatch class"),
+            ("compared=[C]", "no object dispatch ID"),
+            ("objects=[C:0] hashed=[D]", "no object dispatch ID"),
+        ]:
+            with self.subTest(attrs=attrs), self.assertRaisesRegex(T.Refused, reason):
+                T.parse(f"module complete {attrs} {{\n  class C\n  class D\n}}")
+
     def test_module(self):
         out = emit(HELLO)
         self.assertEqual(out[:8], b"\x00asm\x01\x00\x00\x00")
@@ -74,6 +96,21 @@ class TirWasm(unittest.TestCase):
             self.assertIn(name, out)
         # the strings' Str headers: byte length, hash 0, characters + 1, then the bytes
         self.assertIn((12).to_bytes(8, "little") + bytes(8) + (13).to_bytes(8, "little") + b"hello, world\x00", out)
+
+    def test_legacy_container_header_allocation_is_refused(self):
+        for kind, fields in (("list", 4), ("dict", 12)):
+            prefix = " ".join(f'" {kind}.{k}":str' for k in range(fields))
+            text = f"""module complete {{
+  class C fields=[{prefix} tail:int]
+}}
+function @main.init() -> None kind=block {{
+entry:
+  %instance = alloc.fixed : C
+  ret
+}}
+"""
+            with self.subTest(kind=kind), self.assertRaisesRegex(T.Refused, "legacy container header of C"):
+                emit(text)
 
     @unittest.skipUnless(shutil.which("node"), "node validates the module")
     def test_node_validates(self):
@@ -376,6 +413,62 @@ assert.throws(() => load(384, fixed), WebAssembly.RuntimeError);
             path = Path(directory) / "callback.wasm"
             path.write_bytes(emit(EXCEPTION))
             subprocess.run(["node", "-e", script, str(path)], check=True, timeout=10)
+
+    @unittest.skipUnless(shutil.which("node"), "node runs the module")
+    def test_empty_key_kinds_relocate_and_preserve_the_tag(self):
+        # A fresh dict takes the untagged descriptor; after a forwarded result
+        # was populated its built kind must preserve the runtime's tag bit.
+        program = """module complete {
+  const @padding kind=tuple
+  const @desc kind=string text=H0
+  hole 1 type=dict[K,str]
+  hole 2 type=set[int]
+  keykind dict[K,str] kind="ptrtoint (ptr @desc to i64)" built="ptrtoint (ptr getelementptr (i8, ptr @desc, i64 2) to i64)"
+  keykind set[K] built="ptrtoint (ptr @desc to i64)"
+  keykind set[int] kind=-7 built=-7
+}
+function @main.init() -> None kind=block {
+entry:
+  %d = rt entry=dict.new hole=1 (int 0, int 0) : dict[K,str]
+  %p = empty.kind hole=1 (dict[K,str] %d)
+  %s = rt entry=set.new (int 0) : set[K]
+  %q = empty.kind (set[K] %s)
+  %n = rt entry=set.new hole=2 (int 0) : set[int]
+  %r = empty.kind (set[int] %n)
+  ret
+}
+"""
+        script = """
+const assert = require("node:assert/strict");
+const bytes = require("node:fs").readFileSync(process.argv[1]);
+const module = new WebAssembly.Module(bytes);
+for (const data of [64, 128]) {
+  const memory = new WebAssembly.Memory({initial: 1});
+  const descriptor = BigInt(data + 8); // after the padding tuple
+  const rt = {pys_recursion_state: 0, pys_dict_new(kind) {
+    assert.equal(kind, descriptor);
+    return 512;
+  }, pys_set_new(kind) {
+    assert.ok(kind === 0n || kind === -7n);
+    return kind === 0n ? 544 : 560;
+  }};
+  new WebAssembly.Instance(module, {env: {memory, data}, rt}).exports.init();
+  const view = new DataView(memory.buffer);
+  assert.equal(view.getBigInt64(520, true), descriptor + 2n);
+  assert.equal(view.getBigInt64(552, true), descriptor);
+  assert.equal(view.getBigInt64(568, true), -7n);
+}
+"""
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "kinds.wasm"
+            path.write_bytes(emit(program))
+            subprocess.run(["node", "-e", script, str(path)], check=True, timeout=10)
+        for bad_tag in ("i64 3)", "i32 2)"):
+            with self.subTest(bad_tag=bad_tag), self.assertRaisesRegex(T.Refused, "symbol"):
+                emit(program.replace("i64 2)", bad_tag))
+        for invalid in ("--7", "²"):
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(T.Refused, "dict/set key kind"):
+                emit(program.replace("built=-7", f"built={invalid}"))
 
     def test_refusals_name_what(self):
         cases = {

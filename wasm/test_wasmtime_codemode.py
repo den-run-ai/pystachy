@@ -42,3 +42,21 @@ except ValueError:
                     self.assertEqual(calls, ["λ"])
                     self.assertEqual(out.read_text(), "caught ValueError\n" if route == "direct" else "résultat\n")
                     self.assertEqual(err.read_bytes(), b"")
+
+    def test_direct_object_dispatch_and_key_layouts(self):
+        runner = Runner(Path(os.environ.get("WASM_RUNTIME", "build/wasm")) / "runtime.wasm")
+        with tempfile.TemporaryDirectory() as directory:
+            binary, out, err = [Path(directory) / name for name in ("program.wasm", "out", "err")]
+            for fixture in ("containers/tuple_runtime_object_compare", "containers/dict_user_hash",
+                            "classes/object_containers", "generics/template_empty_forward",
+                            "classes/builtin_dict_basic", "classes/builtin_list_token_list"):
+                with self.subTest(fixture=fixture):
+                    source = Path("tests/programs") / (fixture + ".py")
+                    subprocess.run(["wasm/build.sh", "direct", source, binary], check=True,
+                                   env={**os.environ, "WASM_EH": "standard"})
+                    program = runner.compile(binary.read_bytes())
+                    self.assertIsNotNone(program.data_size)
+                    status = runner.run(program, stdout=out, stderr=err)
+                    self.assertEqual(out.read_bytes() + f"[exit {status}]\n".encode(),
+                                     source.with_suffix(".out").read_bytes())
+                    self.assertEqual(err.read_bytes(), b"")

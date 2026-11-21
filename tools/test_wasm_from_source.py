@@ -22,7 +22,8 @@ class WasmSourceTests(unittest.TestCase):
     def test_direct_and_printed_ir_are_byte_identical(self):
         with tempfile.TemporaryDirectory() as directory:
             for case in ("apps/ouro2_hello", "apps/ouro2_classes", "apps/ouro2_queens", "exceptions/exc_uncaught",
-                         "exceptions/exc_class_try", "exceptions/exc_class_exit"):
+                         "exceptions/exc_class_try", "exceptions/exc_class_exit",
+                         "classes/object_containers", "classes/dataclass_hash_keys"):
                 with self.subTest(case=case):
                     program = ROOT / f"tests/programs/{case}.py"
                     work = Path(directory) / program.stem
