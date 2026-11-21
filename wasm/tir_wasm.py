@@ -27,7 +27,7 @@ import sys
 
 from src.pystachy_compiler.machine_ir import WORD_READS
 from src.pystachy_compiler.specs import RTSYM, RUNTIME
-from src.pystachy_compiler.utils import atomic_dict, atomic_list, lt, rtll, rtsig, rtsym, tslots
+from src.pystachy_compiler.utils import atomic_dict, atomic_list, is_tuple, lt, rtll, rtsig, rtsym, tslots
 from wasm.wasi_abi import LIBC_WRAPPERS
 
 I32 = 0x7F
@@ -85,6 +85,8 @@ class Func:
 
     def add_slot(self, name: str, t: str, kind: int) -> None:
         if kind == 2:
+            if not is_tuple(t) or not t.endswith("]"):
+                raise Refused(f"frame slot {name} requires a fixed tuple, got {t}")
             self.tuple_offsets[name] = self.frame_bytes
             self.frame_bytes += 8 * max(1, tslots(t))
         else:
@@ -997,6 +999,8 @@ class Emitter:
             self.i64c(int(kind))
             self.mem(0x37, 3, 0)
         elif op == "ret":
+            if len(i.args) > 0 and i.args[0].v in self.fn.tuple_offsets:
+                raise Refused(f"return of frame slot {i.args[0].v}")
             self.restore_frame()
             if len(i.args) > 0:
                 self.push(i.args[0], value_ll(i.args[0].t))

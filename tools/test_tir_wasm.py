@@ -173,6 +173,25 @@ assert.equal(seen.length, 4);
             path.write_bytes(emit(program))
             subprocess.run(["node", "-e", script, str(path)], check=True, timeout=10)
 
+    def test_frame_slot_refusals(self):
+        program = """module complete {
+}
+function @main.init() -> None kind=block {
+entry:
+  ret
+}
+function @bad() -> tuple[int] {
+  %stk.4 = slot kind=2 : tuple[int]
+entry:
+  ret (tuple[int] %stk.4)
+}
+"""
+        with self.assertRaisesRegex(T.Refused, "return of frame slot %stk.4"):
+            emit(program)
+        for t in ("int", "vtuple[int]"):
+            with self.subTest(t=t), self.assertRaisesRegex(T.Refused, "requires a fixed tuple"):
+                emit(program.replace("slot kind=2 : tuple[int]", f"slot kind=2 : {t}"))
+
     def test_refusals_name_what(self):
         cases = {
             HELLO.replace("entry=write", "entry=unknown"): "runtime entry unknown",
