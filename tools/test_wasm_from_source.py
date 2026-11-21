@@ -19,20 +19,10 @@ def source_command(*args, stdin=None, cwd=ROOT, eh="legacy"):
 
 
 class WasmSourceTests(unittest.TestCase):
-    def test_user_exception_descriptor_keeps_its_named_fallback(self):
-        program = ROOT / "tests/programs/exceptions/exc_class_try.py"
-        with tempfile.TemporaryDirectory() as directory:
-            wasm = Path(directory) / "out.wasm"
-            llvm = Path(directory) / "fallback.ll"
-            result = source_command(program, wasm, llvm)
-            self.assertEqual(result.returncode, 3, result.stderr)
-            self.assertIn(b"constants of kind exception", result.stderr)
-            self.assertFalse(wasm.exists())
-            self.assertIn(b"@x.E =", llvm.read_bytes())
-
     def test_direct_and_printed_ir_are_byte_identical(self):
         with tempfile.TemporaryDirectory() as directory:
-            for case in ("apps/ouro2_hello", "apps/ouro2_classes", "apps/ouro2_queens", "exceptions/exc_uncaught"):
+            for case in ("apps/ouro2_hello", "apps/ouro2_classes", "apps/ouro2_queens", "exceptions/exc_uncaught",
+                         "exceptions/exc_class_try", "exceptions/exc_class_exit"):
                 with self.subTest(case=case):
                     program = ROOT / f"tests/programs/{case}.py"
                     work = Path(directory) / program.stem
