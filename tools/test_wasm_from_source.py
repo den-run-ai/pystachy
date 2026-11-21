@@ -23,7 +23,8 @@ class WasmSourceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             for case in ("apps/ouro2_hello", "apps/ouro2_classes", "apps/ouro2_queens", "exceptions/exc_uncaught",
                          "exceptions/exc_class_try", "exceptions/exc_class_exit",
-                         "classes/object_containers", "classes/dataclass_hash_keys"):
+                         "classes/object_containers", "classes/dataclass_hash_keys",
+                         "reflection/callables", "exceptions/exc_class_values"):
                 with self.subTest(case=case):
                     program = ROOT / f"tests/programs/{case}.py"
                     work = Path(directory) / program.stem

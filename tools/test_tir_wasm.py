@@ -97,6 +97,38 @@ class TirWasm(unittest.TestCase):
         # the strings' Str headers: byte length, hash 0, characters + 1, then the bytes
         self.assertIn((12).to_bytes(8, "little") + bytes(8) + (13).to_bytes(8, "little") + b"hello, world\x00", out)
 
+    def test_bad_cfg_edges_are_named_refusals(self):
+        valid = """module complete {
+}
+function @main.init() -> None kind=block {
+entry:
+  rt entry=recursion.enter -> next, cleanup : int
+next:
+  check key=check (bool 0) -> done
+cleanup:
+  br -> done
+done:
+  %t0 = phi (int 1, int 2) -> next, cleanup : int
+  ret
+cold check -> cleanup
+}
+"""
+        # Exercise exactly the graph a suspension analysis or register packer receives.
+        def validate(source):
+            return T.parse(source).funcs[0].block_indices()
+        self.assertEqual(validate(valid), {"entry": 0, "next": 1, "cleanup": 2, "done": 3})
+        for before, after, reason in (
+            ("-> next, cleanup :", "-> next, missing :", "unknown block missing"),
+            ("br -> done", "br -> missing", "unknown block missing"),
+            ("-> next, cleanup : int\n  ret", "-> missing, cleanup : int\n  ret", "from unknown block missing"),
+            ("(int 1, int 2)", "(int 1)", "unequal input"),
+            ("cold check -> cleanup", "cold other -> cleanup", "without a cold block"),
+            ("cold check -> cleanup", "cold check -> missing", "unknown block missing"),
+            ("cleanup:\n", "entry:\n", "duplicate block entry"),
+        ):
+            with self.subTest(after=after), self.assertRaisesRegex(T.Refused, reason):
+                validate(valid.replace(before, after))
+
     def test_legacy_container_header_allocation_is_refused(self):
         for kind, fields in (("list", 4), ("dict", 12)):
             prefix = " ".join(f'" {kind}.{k}":str' for k in range(fields))
@@ -372,6 +404,38 @@ assert.equal(sp.value, 512);
         ]:
             with self.subTest(after=after), self.assertRaisesRegex(T.Refused, reason):
                 emit(program.replace(before, after))
+
+    def test_callable_indices_match_the_reactor_table(self):
+        program = """module complete {
+  const @cvo kind=callable refs=[@code null]
+}
+function @code(env: env, v: int) -> int kind=def {
+entry:
+  ret (int %a1)
+}
+function @main.init() -> None kind=block {
+entry:
+  %ptr1 = mach.load (callable[int,int] @cvo) : %ptr
+  %answer = icall (%ptr %ptr1, env null, int 42) : int
+  ret
+}
+"""
+        output = emit(program)
+        self.assertIn(b"__indirect_function_table", output)
+        # A caller can receive its target as an argument without contributing
+        # any local entries to the imported function table.
+        external = program.replace("  const @cvo kind=callable refs=[@code null]\n", "")
+        external = external.replace("  %ptr1 = mach.load (callable[int,int] @cvo) : %ptr\n", "")
+        external = external.replace("%ptr %ptr1", "%ptr null")
+        self.assertIn(b"__indirect_function_table", emit(external))
+        for old, new, reason in (
+            ("refs=[@code null]", "refs=[@unknown null]", "invalid callable constant"),
+            ("refs=[@code null]", "refs=[@code @cvo]", "invalid callable constant"),
+            ("@cvo kind=callable refs=[@code null]", "@x.mk.0 kind=callable refs=[null]", "invalid exception constructor table"),
+            ("icall (%ptr %ptr1", "icall (int %ptr1", "invalid indirect call signature"),
+        ):
+            with self.subTest(new=new), self.assertRaisesRegex(T.Refused, reason):
+                emit(program.replace(old, new))
 
     def test_exception_callback_signatures(self):
         self.assertIn(b"__indirect_function_table", emit(EXCEPTION))

@@ -136,6 +136,8 @@ test("direct exceptions, object dispatch and key layouts match CPython", async t
     ...exceptions.map(name => `exceptions/${name}`), "classes/object_containers", "containers/dict_user_hash",
     "containers/tuple_runtime_object_compare", "generics/template_empty_forward",
     "classes/builtin_dict_basic", "classes/builtin_list_token_list",
+    "reflection/callables", "exceptions/exc_class_values",
+    "library/lib_atexit", "library/lib_atexit_exit", "library/lib_atexit_uncaught",
   ];
   for (const fixture of cases) {
     await t.test(fixture, async t => {
@@ -147,7 +149,10 @@ test("direct exceptions, object dispatch and key layouts match CPython", async t
       t.after(() => Promise.all([stdout.close(), stderr.close()]));
       const status = await run(module, { stdout: stdout.fd, stderr: stderr.fd });
       assert.equal(await readFile(out, "utf8") + `[exit ${status}]\n`, await readFile(`${prefix}.out`, "utf8"));
-      const expectedError = ["exc_uncaught", "exc_class_try", "exc_class_exit_msg"].includes(name) ? await readFile(`${prefix}.err`, "utf8") : "";
+      const expectedError = await readFile(`${prefix}.err`, "utf8").catch(error => {
+        if (error.code === "ENOENT") return "";
+        throw error;
+      });
       assert.equal(await readFile(err, "utf8"), expectedError);
     });
   }

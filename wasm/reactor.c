@@ -67,8 +67,8 @@ I pys_obj_cmp(I c, I op, I a, I b) {
 
 /* The header is the first field of runtime.c's Exc. While a direct program is running,
    the host throws that pointer with the tag imported by its landing pads. If the pointer
-   escaped the program, the host re-enters pys_throw with this hook disarmed, so the
-   runtime applies its ordinary uncaught cleanup, diagnostic and SystemExit handling. */
+   escaped the program, the host lets the first unwind from pys_throw return to C to report it. Exceptions
+   from guest callbacks during reporting or pys_finish still use the guest tag. */
 _Unwind_Reason_Code _Unwind_ForcedUnwind(struct _Unwind_Exception *e, _Unwind_Stop_Fn stop, void *arg) {
   (void)stop; (void)arg;
   program_raise(e);

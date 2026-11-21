@@ -17,7 +17,7 @@ backedge also have a dispatch loop: a backward branch sets the next block's inde
 continues the loop, whose br_table dispatches it. A phi's values are assigned on each edge, all read first.
 
 It lowers scalar code, runtime calls and exception handlers (wasm/README.md).
-Generators, function values, dynamic dispatch and collector roots remain unsupported (the
+Generators, dynamic dispatch and collector roots remain unsupported (the
 runtime's collector is off). For an unsupported operation it exits with status 3 after one
 line `tir_wasm: refused: WHAT` on stderr, and wasm/build.sh then compiles the program through
 LLVM. Run it as PYTHONPATH=. python3 wasm/tir_wasm.py, or compiled: PYSTACHY_PATH=. ./pystachy
@@ -75,7 +75,7 @@ class Inst:
         self.t = ""
 
     def is_invoke(self) -> bool:
-        return len(self.targets) != 0 and self.op in ("rt", "call", "init")
+        return len(self.targets) != 0 and self.op in ("rt", "call", "icall", "init")
 
 
 class Block:
@@ -95,6 +95,31 @@ class Func:
         self.frame_bytes = 0
         self.blocks: list[Block] = []
         self.cold: dict[str, str] = {}
+
+    def block_indices(self) -> dict[str, int]:
+        labels: dict[str, int] = {}
+        for idx in range(len(self.blocks)):
+            label = self.blocks[idx].label
+            if label in labels:
+                raise Refused(f"duplicate block {label} in {self.name}")
+            labels[label] = idx
+        # Both suspension analysis and recursive local packing follow these edges.
+        for block in self.blocks:
+            for inst in block.code:
+                if inst.op == "phi" and len(inst.args) != len(inst.targets):
+                    raise Refused(f"phi in {block.label} with unequal input and predecessor counts")
+                for target in inst.targets:
+                    if target not in labels:
+                        if inst.op == "phi":
+                            raise Refused(f"phi in {block.label} from unknown block {target}")
+                        raise Refused(f"branch to unknown block {target}")
+                if inst.op == "check":
+                    key = inst.fields.get("key", "") or inst.fields.get("message", "")
+                    if key not in self.cold:
+                        raise Refused(f"check without a cold block ({key})")
+                    if self.cold[key] not in labels:
+                        raise Refused(f"branch to unknown block {self.cold[key]}")
+        return labels
 
     def add_slot(self, name: str, t: str, kind: int) -> None:
         if kind == 2:
@@ -696,6 +721,7 @@ class Emitter:
         self.addr: dict[str, int] = {}
         self.relocs: list[int] = []
         self.callbacks: dict[str, list[int]] = {}
+        self.indirect_calls = False
         self.object_rows = 0
         self.recursion = False
         self.stack_frames = False
@@ -756,11 +782,14 @@ class Emitter:
             elif c.kind == "fieldnames":
                 for r in c.refs:
                     self.ref(r)
-            elif c.kind == "exception":
+            elif c.kind in ("exception", "callable"):
                 if not functions:
                     functions = {fn.name: fn for fn in self.m.funcs}
                     strings = {data.name for data in self.m.consts if data.kind == "string"}
-                self.exception_descriptor(c, functions, strings)
+                if c.kind == "exception":
+                    self.exception_descriptor(c, functions, strings)
+                else:
+                    self.callable_constant(c, functions)
             elif c.kind == "classrec" and len(c.refs) == 5 and len(c.items) == 3:
                 # {ptr, ptr, ptr, i64, i64, ptr, i64, ptr}, at wasm32's offsets 0 4 8 16 24 32 40 48
                 for r in c.refs[0:3]:
@@ -821,6 +850,27 @@ class Emitter:
                 raise Refused(f"exception callback {target} must take {cls} and return {result}")
             self.callback_ref(target)
 
+    def callable_constant(self, c: Const, functions: dict[str, Func]) -> None:
+        if c.name.startswith("@x.mk."):
+            # pys_exc_ctor walks (class descriptor, constructor) pairs up to NULL.
+            if len(c.refs) < 2 or len(c.refs) % 2 or c.refs[-2:] != ["null", "null"]:
+                raise Refused(f"invalid exception constructor table {c.name}")
+            for j in range(0, len(c.refs) - 2, 2):
+                cls = c.refs[j]
+                ctor = c.refs[j + 1]
+                if not cls.startswith("@x.") or cls[3:] not in self.m.classes or ctor not in functions or functions[ctor].ret != "exc":
+                    raise Refused(f"invalid exception constructor {ctor} for {cls}")
+                self.ref(cls)
+                self.callback_ref(ctor)
+            self.ref("null")
+            self.ref("null")
+        else:
+            # A static Callable stores its adapter's code and a null environment.
+            if len(c.refs) != 2 or c.refs[0] not in functions or c.refs[1] != "null":
+                raise Refused(f"invalid callable constant {c.name}")
+            self.callback_ref(c.refs[0])
+            self.ref("null")
+
     def callback_ref(self, target: str) -> None:
         if target not in self.callbacks:
             self.callbacks[target] = []
@@ -878,6 +928,8 @@ class Emitter:
 
     def collect_imports(self) -> None:
         # every runtime function the functions call, before function indexes are assigned
+        if "@g.atexit$_hook" in self.m.globals:
+            self.runtime("exit_hook")
         if self.m.objects:
             sym = "pys_wasi_set_object_dispatch"
             self.imports[sym] = Import(sym, ["void", "ptr", "i32"], self.types.of([I32, I32], []))
@@ -997,9 +1049,17 @@ class Emitter:
                 else:
                     raise Refused(f"{v} of type {a.t} as {ll}")
         elif v.startswith("@"):
-            if v not in self.addr or wt != I32:
+            if v in self.addr and wt == I32:
+                self.data_addr(v, 0)
+            elif v in self.fnindex and ll == "ptr":
+                # Bound and captured callables store code in heap objects. Read its
+                # relocated table index from a slot populated by the start function.
+                if v not in self.callbacks:
+                    self.callback_ref(v)
+                self.code.extend(b"\x23\x00")  # global.get env.data
+                self.mem(0x28, 2, self.callbacks[v][0])
+            else:
                 raise Refused(f"symbol {v} as a value")
-            self.data_addr(v, 0)
         elif v == "true" or v == "false":
             if wt == I64:
                 self.i64c(1 if v == "true" else 0)
@@ -1056,9 +1116,7 @@ class Emitter:
         self.frame_local = self.scratch(I32) if fn.frame_bytes else -1
         self.exception_local = -1
         self.handler_stack = -1
-        self.bindex = {}
-        for j in range(len(fn.blocks)):
-            self.bindex[fn.blocks[j].label] = j
+        self.bindex = fn.block_indices()
         self.phis = {}
         # Finalization marks functions whose activations can recur with recursion.enter.
         # Compact only those frames, so ordinary one-shot calls keep the short lowering path.
@@ -1074,11 +1132,6 @@ class Emitter:
                     self.exception_local = self.scratch(I32)
                     self.handler_stack = self.frame_local if self.frame_local >= 0 else self.scratch(I32)
                 elif i.op == "phi":
-                    if len(i.args) != len(i.targets):
-                        raise Refused(f"phi in {b.label} with unequal input and predecessor counts")
-                    for pred in i.targets:
-                        if pred not in self.bindex:
-                            raise Refused(f"phi in {b.label} from unknown block {pred}")
                     self.define(i.res[0], i.t)
                     if b.label not in self.phis:
                         self.phis[b.label] = []
@@ -1108,6 +1161,8 @@ class Emitter:
                 at = site[1]
             blocks.extend(self.code[at:])
         self.code = bytearray()
+        if fn.name == "@main.init" and "@g.atexit$_hook" in self.m.globals:
+            self.call_import(self.runtime("exit_hook"), [Operand("%ptr", "@g.atexit$_hook")])
         if fn.frame_bytes:
             self.enter_frame()
         if self.handler_stack >= 0 and self.frame_local < 0:
@@ -1295,15 +1350,29 @@ class Emitter:
                     self.op(0x1A)
                 else:
                     self.set(self.local(i.res[0], wasm_type(imp.ll[0])))
-        elif op == "call":
-            callee = i.fields.get("callee", "")
-            if callee not in self.fnindex:
-                raise Refused(f"call of {callee}")
-            for a in i.args:
+        elif op in ("call", "icall"):
+            args = i.args
+            if op == "icall":
+                if not args or args[0].t != "%ptr" or not i.t:
+                    raise Refused("invalid indirect call signature")
+                args = args[1:]
+            for a in args:
                 if a.t != "None":
                     self.push(a, value_ll(a.t))
-            self.op(0x10)
-            uleb(self.code, self.fnindex[callee])
+            if op == "icall":
+                self.indirect_calls = True
+                params = [wasm_type(value_ll(a.t)) for a in args if a.t != "None"]
+                results: list[int] = [] if i.t == "None" else [wasm_type(value_ll(i.t))]
+                self.push(i.args[0], "ptr")
+                self.op(0x11)  # call_indirect expects the index after the arguments
+                uleb(self.code, self.types.of(params, results))
+                uleb(self.code, 0)
+            else:
+                callee = i.fields.get("callee", "")
+                if callee not in self.fnindex:
+                    raise Refused(f"call of {callee}")
+                self.op(0x10)
+                uleb(self.code, self.fnindex[callee])
             if i.t != "None" and i.t != "":
                 if len(i.res) == 0:
                     self.op(0x1A)
@@ -1917,7 +1986,8 @@ class Emitter:
         section(out, 1, self.types.encode())
         imp = bytearray()
         stack = self.stack_frames or self.catches
-        uleb(imp, 3 + len(self.import_order) + int(stack) + int(self.catches) + int(len(self.callbacks) != 0))
+        table = self.indirect_calls or len(self.callbacks) != 0
+        uleb(imp, 3 + len(self.import_order) + int(stack) + int(self.catches) + int(table))
         name_bytes(imp, "env")
         name_bytes(imp, "memory")
         imp.append(0x02)
@@ -1945,7 +2015,7 @@ class Emitter:
             imp.append(0x04)  # tag import
             imp.append(0x00)  # exception tag
             uleb(imp, tag_type)
-        if self.callbacks:
+        if table:
             name_bytes(imp, "rt")
             name_bytes(imp, "__indirect_function_table")
             imp.extend(b"\x01\x70\x00\x01")  # a funcref table, at least one slot (zero is NULL)
@@ -2032,7 +2102,7 @@ def const_size(c: Const) -> int:
         return 8 * max(1, len(c.items))
     if c.kind == "listdata":
         return 8 * len(c.items)
-    if c.kind == "fieldnames":
+    if c.kind in ("fieldnames", "callable"):
         return 4 * len(c.refs)
     if c.kind == "exception":
         return 20
