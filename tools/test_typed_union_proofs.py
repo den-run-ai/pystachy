@@ -16,7 +16,7 @@ from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, Val, slot_register
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.specs import IROPS
-from src.pystachy_compiler.union_state import UnionState
+from src.pystachy_compiler.union_state import UnionState, union_join
 from src.pystachy_compiler.union_proof import UnionProof, proof_number, simple_union_proof
 
 U = "union[int,float]"
@@ -331,6 +331,24 @@ if "union.raw" in IROPS:
 
 
 class UnionProofTests(unittest.TestCase):
+    def test_field_identity_survives_only_matching_storage_on_all_paths(self):
+        c = Case("field_identity", ["Node"])
+        obj = c.op("mem.load", "Node", a=[("%owner.1", "&Node")])
+        c.ret()
+        proof = UnionProof(c.fn, c.g.utags)
+        left = UnionState(proof.base, proof.full)
+        left.loaded[obj] = "%owner.1"
+        left.set("U:" + obj, ["Node"])
+        left.set("MU:%owner.1", ["Node"])
+        right = left.clone()
+        same = union_join(left, right)
+        self.assertEqual(proof.field_key(same, obj, 1, "Node"), "MF:owner.1#1")
+        del right.loaded[obj]
+        changed = union_join(left, right)
+        self.assertEqual(changed.eq["U:" + obj], changed.eq["MU:%owner.1"])
+        self.assertNotEqual(proof.field_key(changed, obj, 1, "Node"), "MF:owner.1#1")
+        self.assertFalse(left.same(right))
+
     def test_union_store_into_recursive_alias_admits_all_source_members(self):
         g = Gen()
         g.recursive["Tree"] = "opt[union[int,float,list[rec[Tree]]]]"

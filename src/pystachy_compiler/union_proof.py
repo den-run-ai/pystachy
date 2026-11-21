@@ -245,6 +245,7 @@ class UnionProof:
         # object, ircheck's kin; and the class of each field key's object)
         self.kin: dict[str, dict[str, bool]] = {} if kin is None else kin
         self.keyclass: dict[str, str] = {}
+        self.fieldobjs: dict[str, bool] = {}
         # (the values that operands read at a type without None, which their definitions give as
         # opt[U], by the types they read them at: ircheck.optional_reads; and the blocks whose
         # edges carry such a read of a phi's)
@@ -289,6 +290,8 @@ class UnionProof:
         named: dict[str, bool] = {}
         for b in fn.blocks:
             for i in b.code:
+                if i.op == "field.addr" and len(self.narrowed) > 0:
+                    self.fieldobjs[i.a[0].v] = True
                 for a in i.a:
                     references[a.v] = True
                     if a.v.startswith("@g."):
@@ -682,6 +685,10 @@ class UnionProof:
         # known, limits it), or a call's whose effects give the storage classes it writes (-1:
         # any). A global's storage changes only by a write of globals (wG), a field's that a
         # field key names only by one of objects (wO)
+        if effects == -1 or effects & FXBIT["wG"] != 0:
+            for v in list(s.loaded):
+                if s.loaded[v].startswith("@g."):
+                    del s.loaded[v]
         written = self.roots.get(address, "")
         # (a store to a field of an object of class c changes no field of an object that cannot
         # be the same object, of a class unrelated to c; a field key of a global's object is the
@@ -702,21 +709,12 @@ class UnionProof:
                     s.forget(k)
 
     def field_key(self, s: UnionState, obj: str, index: int, cls: str) -> str:
-        # the key of the storage of field index of object obj, where obj is a parameter or what a
-        # load of a local's slot or a global read and that still holds: so that a field.addr of the same
-        # object, as an attribute path reads it again, reads the facts that a test of an earlier
-        # read of the field gave. The key names the slot (or parameter), not obj, as liveness
-        # keeps no fact of a value no path reads; a store to the slot forgets it (forget_fields)
-        base = ""
-        if obj.startswith("%a") and obj[2:].isdigit():
-            base = obj
-        elif obj in self.defs:
-            d = self.defs[obj]
-            slot = d.a[0].v if d.op == "mem.load" and len(d.a) == 1 else ""
-            if (slot in self.private or slot.startswith("@g.")) and ("U:" + obj) in s.eq and ("MU:" + slot) in s.eq and s.eq["U:" + obj] == s.eq["MU:" + slot]:
-                base = slot
-        if base == "":
+        # Share facts between separate loads of the same private slot or global
+        # only while it still holds that object. Otherwise a field of a value
+        # can be shared only with another use of that very SSA value.
+        if not (obj in self.defs or (obj.startswith("%a") and obj[2:].isdigit())):
             return ""
+        base = s.loaded.get(obj, obj)
         key = "MF:" + base[1:] + "#" + str(index)
         self.keyclass[key] = cls
         return key
@@ -798,6 +796,10 @@ class UnionProof:
                 self.check_some(facts, a[j], b, op + " operand " + str(j))
         for n in i.r:
             v = "%t" + str(n)
+            if v in self.fieldobjs:
+                self.forget_fields(s, v)  # a loop may redefine the SSA value
+                if v in s.loaded:
+                    del s.loaded[v]
             if self.native[v] == "bool":
                 if v in s.truth:
                     del s.truth[v]
@@ -834,6 +836,8 @@ class UnionProof:
                 s.copy("MU:" + r, key)
         if (op == "mem.load" or op == "mach.load"):
             addr = a[0].v
+            if r in self.fieldobjs and (addr in self.private or addr.startswith("@g.")):
+                s.loaded[r] = addr
             if op == "mach.load" and i.t == "int":
                 tracked = "U:" + addr in self.base or "U:" + addr in s.d
                 if (r in self.bitsneeded or tracked) and self.length_header(s, addr):
@@ -864,6 +868,9 @@ class UnionProof:
                 self.killmem(s, addr)
             else:
                 self.forget_fields(s, addr)
+                for obj in list(s.loaded):
+                    if s.loaded[obj] == addr:
+                        del s.loaded[obj]
             if "MU:" + addr in self.base or "U:" + v in self.base or "U:" + v in s.d:
                 s.copy("MU:" + addr, self.box(s, v))
             else:
@@ -1019,6 +1026,8 @@ class UnionProof:
                 continue
             a = i.a[i.b.index(frm)]
             r = "%t" + str(i.r[0])
+            if r in self.fieldobjs:
+                self.forget_fields(z, r)
             if i.t == "bool":
                 bools.append(r)
                 bsources.append(a.v)
