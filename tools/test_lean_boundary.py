@@ -294,6 +294,22 @@ class AdapterTests(SnapshotFixture):
                     self.normalized(snapshot)
                 self.assertNotIsInstance(raised.exception, Unsupported)
 
+    def test_long_tuple_slot_uses_its_full_representation(self):
+        snapshot, function = self.selected()
+        typ = "tuple[" + ",".join(["int"] * 74) + "]"
+        slot = instruction("slot", typ=typ, text="long_tuple", results=[9000])
+        function["slots"].append(slot)
+        load = instruction("mem.load", typ=typ, results=[9001], operands=[("%long_tuple.9000", "&" + typ)])
+        self.block(function, "L8")["operations"].insert(0, load)
+        self.normalized(snapshot)
+        # Distinguish types that differ only beyond the ordinary identifier limit.
+        load["operands"][0]["type"] = "&" + typ[:-4] + "str]"
+        with self.assertRaisesRegex(ValueError, "slot address has wrong type"):
+            self.normalized(snapshot)
+        load["operands"][0]["type"] = "&" + "t" * check_lean_boundary.MAX_INSTRUCTION_TEXT
+        with self.assertRaisesRegex(ValueError, "invalid operand type"):
+            self.normalized(snapshot)
+
     def test_generators_and_box_stores_stay_outside(self):
         def generator(function):
             function["recursion"]["generator"] = True
