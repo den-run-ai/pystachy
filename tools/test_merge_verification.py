@@ -1344,7 +1344,7 @@ class PullRequestProfileTests(unittest.TestCase):
             pairs = [(case, mode) for step in native if step["modes"] == [mode] for case in step["selected_cases"]]
             self.assertEqual(Counter(pairs), Counter((case, mode) for case in self.corpus))
         for group in ("native-jit-0", "native-jit-1", "native-aot-0", "native-aot-1", "native-aot-2", "native-aot-3",
-                      "safety-1", "opt-in", "cache-gc"):
+                      "safety-1", "opt-in", "gc-self"):
             path = self.directory / f"verification-{group}" / "verification.json"
             path.unlink()
             with self.subTest(missing=group), self.assertRaisesRegex(ValueError, "missing report groups"):
