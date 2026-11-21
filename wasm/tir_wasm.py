@@ -28,7 +28,7 @@ import struct
 import sys
 
 from src.pystachy_compiler.machine_ir import WORD_READS
-from src.pystachy_compiler.specs import RTSYM, RUNTIME
+from src.pystachy_compiler.specs import CONTAINER_HEADERS, RTSYM, RUNTIME
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, is_tuple, lt, rtll, rtsig, rtsym, tslots
 from wasm.wasi_abi import LIBC_WRAPPERS
 
@@ -1375,13 +1375,20 @@ class Emitter:
             self.store(i)
         elif op == "mach.addr":
             self.address(i.args[0])
-            self.push(i.args[1], "i64")
-            self.op(0xA7)
             element = i.fields.get("element", "")
-            if element not in ("int", "%ptr", "%byte"):
-                raise Refused(f"mach.addr element {element}")
-            self.i32c(access(lt(element))[3])
-            self.op(0x6C)
+            if element in ("list.header", "dict.header"):
+                members = [lt(t) for t in CONTAINER_HEADERS[element[:-7]]]
+                key = i.args[1].v
+                if key not in [str(k) for k in range(len(members))]:
+                    raise Refused(f"field {key} of {element}")
+                self.i32c(self.member_offset(members, int(key)))
+            else:
+                if element not in ("int", "%ptr", "%byte"):
+                    raise Refused(f"mach.addr element {element}")
+                self.push(i.args[1], "i64")
+                self.op(0xA7)
+                self.i32c(access(lt(element))[3])
+                self.op(0x6C)
             self.op(0x6A)
             self.set(self.local(i.res[0], I32))
         elif op == "field.addr":
@@ -1719,15 +1726,19 @@ class Emitter:
         return [lt(t) for t in d.ftypes] + ["i1" for _ in range(d.nflag)] + ["ptr" for _ in range(d.nbox)]
 
     def field_offset(self, c: str, k: int) -> int:
-        at = 0
         ms = self.members(c)
-        for j in range(len(ms)):
+        if k < 0 or k >= len(ms):
+            raise Refused(f"field {k} of {c}")
+        return self.member_offset(ms, k)
+
+    def member_offset(self, ms: list[str], k: int) -> int:
+        at = 0
+        for j in range(k + 1):
             size = access(ms[j])[3]
             at = (at + size - 1) // size * size
-            if j == k:
-                return at
-            at += size
-        raise Refused(f"field {k} of {c}")
+            if j < k:
+                at += size
+        return at
 
     def struct_size(self, c: str) -> int:
         at = 0

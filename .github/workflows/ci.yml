@@ -172,7 +172,8 @@ jobs:
           node --no-warnings --test wasm/test_codemode.mjs
           direct_cases=(tests/programs/apps/ouro2_*.py tests/programs/runtime/rt_float_hex.py
                         tests/programs/strings/str_dict_hash.py tests/programs/language/varargs_tuple_lifetime.py
-                        tests/programs/numbers/int_masked_low32.py)
+                        tests/programs/numbers/int_masked_low32.py
+                        tests/programs/classes/builtin_list_gc.py tests/programs/classes/builtin_dict_gc.py)
           routes=$(mktemp)
           WASM_TIR_LOG="$routes" tests/run.sh "$PYSTACHY" "wasm wasm-tir" "${direct_cases[@]}" \
             tests/programs/inference/dynany_bound_methods.py \
