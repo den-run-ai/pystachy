@@ -83,10 +83,11 @@ print("open", states.count("open"))
 `codemode.call(name, payload) -> str` invokes one synchronous JavaScript callback.
 Names, payloads and replies are Unicode strings. An unregistered name, callback exception
 or invalid reply traps the guest (status 134). Compilation errors reject the promise.
-Status 3 on a compiler error identifies a direct-emitter refusal. Use the file-based
-`tir` command when LLVM fallback is wanted.
+An unsupported snippet takes the LLVM path using the same finalized IR and the checkout's
+prebuilt runtime objects. Hosts can set `fallback: false` to require direct compilation
+and receive the named refusal as error code 3. That configuration needs no LLVM at run time.
 
-`createCodeMode({compiler, runtime, cwd})` accepts alternate artifact paths and a source
+`createCodeMode({compiler, runtime, cwd, fallback})` accepts alternate artifact paths and a source
 import directory. `createRunner(runtime)` in `run.mjs` accepts already compiled program
 bytes, a file path or a `WebAssembly.Module`. Both hosts accept per-call `args` (including
 argv[0]), `env`, `tools` and numeric `stdin`, `stdout`, `stderr` descriptors. Embedded

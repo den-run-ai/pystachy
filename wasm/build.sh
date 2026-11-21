@@ -76,23 +76,30 @@ runtime() {
   touch "$stamp"
 }
 
-program() ( # FILE.py OUT.wasm [already lowered program.ll]
+program() ( # source|ir INPUT OUTPUT (a dash streams IR input or Wasm output)
   [ -f "$RT/runtime.o" ] && [ -f "$RT/stubs.o" ] || { echo "wasm/build.sh: no runtime in $RT: run wasm/build.sh runtime" >&2; exit 1; }
   SYS=$(sysroot)
   t=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-wasm.XXXXXX")
   trap 'rm -rf "$t"' EXIT
-  ir=${3:-$t/prog.ll}
-  if [ "$#" -lt 3 ]; then
+  ir=$2
+  if [ "$1" = source ]; then
+    ir=$t/prog.ll
     # shellcheck disable=SC2086
-    $PYSTACHY ir "$1" -o "$ir"
+    $PYSTACHY ir "$2" -o "$ir"
+  elif [ "$ir" = - ]; then
+    ir=$t/prog.ll
+    cat > "$ir"
   fi
+  output=$3
+  if [ "$output" = - ]; then output=$t/program.wasm; fi
   # (wasm32's constants and main: wasm/wasm32_ir.py)
   "$PY" wasm/wasm32_ir.py "$ir" "$t/prog-wasi.ll"
   "${LLVM}clang" --target=$TARGET -O"$OPT" -c -x ir "$t/prog-wasi.ll" -o "$t/prog.o" -Wno-override-module
   # --fatal-warnings: a call whose signature differs from its definition's (which would trap)
   # shellcheck disable=SC2086
-  "${LLVM}clang" --target=$TARGET --sysroot="$SYS" "$t/prog.o" "$RT/runtime.o" "$RT/stubs.o" -o "$2" \
+  "${LLVM}clang" --target=$TARGET --sysroot="$SYS" "$t/prog.o" "$RT/runtime.o" "$RT/stubs.o" -o "$output" \
     -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
+  if [ "$3" = - ]; then cat "$output"; fi
 )
 
 runtime_wasm() {
@@ -147,7 +154,7 @@ tir() {
         IFS= read -r why < "$d/err" || why="emitter refused"
         printf '%s refused: %s\n' "$1" "${why#tir_wasm: refused: }" >> "$WASM_TIR_LOG"
       fi
-      program "$1" "$d/program.wasm" "$d/program.ll" ;;
+      program ir "$d/program.ll" "$d/program.wasm" ;;
     *) cat "$d/err" >&2; return "$status" ;;
   esac
   mv "$d/program.wasm" "$2"
@@ -155,10 +162,11 @@ tir() {
 
 case ${1:-} in
   runtime) runtime ;;
-  program) [ $# = 3 ] || { echo "usage: wasm/build.sh program FILE.py OUT.wasm" >&2; exit 2; }; program "$2" "$3" ;;
+  program) [ $# = 3 ] || { echo "usage: wasm/build.sh program FILE.py OUT.wasm" >&2; exit 2; }; program source "$2" "$3" ;;
+  link) [ $# = 1 ] || { echo "usage: wasm/build.sh link < INPUT.ll > OUT.wasm" >&2; exit 2; }; program ir - - ;;
   runtime-wasm) runtime_wasm ;;
   emitter) emitter ;;
   direct) [ $# = 3 ] || { echo "usage: wasm/build.sh direct FILE.py OUT.wasm" >&2; exit 2; }; direct "$2" "$3" ;;
   tir) [ $# = 3 ] || { echo "usage: wasm/build.sh tir FILE.py OUT.wasm" >&2; exit 2; }; tir "$2" "$3" ;;
-  *) echo "usage: wasm/build.sh runtime | program FILE.py OUT.wasm | runtime-wasm | emitter | {direct|tir} FILE.py OUT.wasm" >&2; exit 2 ;;
+  *) echo "usage: wasm/build.sh runtime | program FILE.py OUT.wasm | runtime-wasm | emitter | link | {direct|tir} FILE.py OUT.wasm" >&2; exit 2 ;;
 esac

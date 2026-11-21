@@ -7,35 +7,44 @@ import { createRunner } from "./run.mjs";
 const home = fileURLToPath(new URL("../", import.meta.url));
 const nativeCompiler = fileURLToPath(new URL("../build/wasm/wasm_from_source", import.meta.url));
 
-async function compileSource(compiler, source, cwd) {
-  const child = spawn(compiler, ["-", "-"], {
+const linker = fileURLToPath(new URL("./build.sh", import.meta.url));
+
+async function invoke(command, args, input, cwd) {
+  const child = spawn(command, args, {
     cwd, env: { ...process.env, PYSTACHY_HOME: process.env.PYSTACHY_HOME ?? home },
     stdio: ["pipe", "pipe", "pipe"],
   });
-  const binary = [], diagnostics = [];
-  child.stdout.on("data", chunk => binary.push(chunk));
+  const output = [], diagnostics = [];
+  child.stdout.on("data", chunk => output.push(chunk));
   child.stderr.on("data", chunk => diagnostics.push(chunk));
   return new Promise((resolve, reject) => {
     child.on("error", reject);
     // Syntax errors can terminate the compiler before a large source write finishes.
     child.stdin.on("error", error => { if (error.code !== "EPIPE") reject(error); });
     child.on("close", (code, signal) => {
-      if (code === 0) return resolve(Buffer.concat(binary));
-      const message = Buffer.concat(diagnostics).toString("utf8").trimEnd();
-      const error = new Error(message || `Wasm compiler exited with ${signal ?? code}`);
-      error.code = code;
-      reject(error);
+      resolve({ code, signal, output: Buffer.concat(output), message: Buffer.concat(diagnostics).toString("utf8").trimEnd() });
     });
-    child.stdin.end(source, "utf8");
+    child.stdin.end(input);
   });
 }
 
-// Compiler errors reject (code 3 identifies an unsupported typed IR operation). A program that
-// runs returns its exit status. The cwd is for resolving source imports, independent of guest mounts.
-export function createCodeMode({ compiler = nativeCompiler, runtime, cwd = process.cwd() } = {}) {
+function checked(result) {
+  if (result.code === 0) return result.output;
+  const error = new Error(result.message || `Wasm compilation exited with ${result.signal ?? result.code}`);
+  error.code = result.code;
+  throw error;
+}
+
+// On a direct refusal the native frontend may write the retained LLVM IR on stdout. Only then
+// launch the WASI linker. With fallback disabled code 3 exposes the reason to the caller.
+export function createCodeMode({ compiler = nativeCompiler, runtime, cwd = process.cwd(), fallback = true } = {}) {
   const run = createRunner(runtime);
   return async (source, options) => {
     if (typeof source !== "string") throw new TypeError("expected Python source text");
-    return run(await compileSource(compiler, source, cwd), options);
+    let result = await invoke(compiler, fallback ? ["-", "-", "-"] : ["-", "-"], source, cwd);
+    if (fallback && result.code === 3) {
+      result = await invoke(linker, ["link"], result.output, cwd);
+    }
+    return run(checked(result), options);
   };
 }

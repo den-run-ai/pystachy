@@ -34,9 +34,10 @@ test("source strings and a generator fallback call the host once per run", async
   const runPython = createCodeMode();
   assert.equal(await runPython(source, options), 0);
   assert.equal(await runPython(source, options), 0);
-  await assert.rejects(runPython(generator, options), { code: 3 });
+  await assert.rejects(createCodeMode({ fallback: false })(generator, options), { code: 3 });
   await assert.rejects(runPython("print(unknown_name)\n", options), { code: 1 });
   assert.equal(calls, 2);
+  assert.equal(await runPython(generator, options), 0);
 
   await writeFile(path, generator);
   const build = spawnSync("wasm/build.sh", ["tir", path, wasm], {
@@ -47,5 +48,5 @@ test("source strings and a generator fallback call the host once per run", async
   const compiled = await WebAssembly.compile(await readFile(wasm));
   assert.equal(WebAssembly.Module.customSections(compiled, "pystachy.data").length, 0);
   assert.equal(await createRunner()(compiled, options), 0);
-  assert.equal(await readFile(output, "utf8"), "item 1\nitem 2\nitem 3\n42\n");
+  assert.equal(await readFile(output, "utf8"), "item 1\nitem 2\nitem 3\n42\nitem 4\n42\n");
 });

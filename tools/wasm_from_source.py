@@ -133,9 +133,18 @@ class WasmBackend:
         return ""
 
 
+def write_stdout(data: bytes) -> None:
+    at = 0
+    while at < len(data):
+        count = os.write(1, data[at:at + 65536])
+        if count == 0:
+            raise OSError("short write to stdout")
+        at += count
+
+
 def main() -> None:
     if len(sys.argv) not in (3, 4):
-        sys.stderr.write("usage: wasm_from_source.py SOURCE.py|- OUT.wasm|- [FALLBACK.ll]\n")
+        sys.stderr.write("usage: wasm_from_source.py SOURCE.py|- OUT.wasm|- [FALLBACK.ll|-]\n")
         sys.exit(2)
     sys.setrecursionlimit(diagnostics.MAXNEST * 40)
     from_stdin = sys.argv[1] == "-"
@@ -152,17 +161,15 @@ def main() -> None:
     if backend.refusal != "":
         sys.stderr.write(f"tir_wasm: refused: {backend.refusal}\n")
         if backend.fallback:
-            with open(sys.argv[3], "w", encoding=diagnostics.RAW) as fallback:
-                fallback.write(llvm)
+            if sys.argv[3] == "-":
+                write_stdout(llvm.encode(diagnostics.RAW))
+            else:
+                with open(sys.argv[3], "w", encoding=diagnostics.RAW) as fallback:
+                    fallback.write(llvm)
         sys.exit(3)
     data = bytes(backend.output)
     if sys.argv[2] == "-":
-        at = 0
-        while at < len(data):
-            count = os.write(1, data[at:])
-            if count == 0:
-                raise OSError("short write to stdout")
-            at += count
+        write_stdout(data)
     else:
         with open(sys.argv[2], "wb") as output:
             output.write(data)

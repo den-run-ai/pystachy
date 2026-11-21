@@ -161,7 +161,7 @@ static inline int opt_in(void) { if (pys_plain) opt_in_trap(); return 1; }
    collection frees serve the next cycle without page faults, and without zeroing where they
    are clean or their new object's caller writes every byte (gc_raw).
    Every chunk and large object starts with a Seg header on a page boundary, and a two-level
-   page map (4 KiB pages, 48-bit native or 32-bit WASI addresses) sends each of its pages to that header, so "is
+   page map (48-bit addresses, 4 KiB pages) sends each of its pages to that header, so "is
    this word a pointer into the heap, and into which object" is a range check, two loads and
    a multiply by the reciprocal of the slot size: O(1), interior pointers included.
    Kinds. pys_alloc returns scanned memory (objects, tuples, list headers and the item arrays of
@@ -213,16 +213,7 @@ static inline int opt_in(void) { if (pys_plain) opt_in_trap(); return 1; }
    collects, PYSTACHY_GC=stats prints a summary at exit. */
 #define PAGE 4096
 #define CHUNK 65536                    /* small-object chunk */
-#if !defined(__wasi__) || UINTPTR_MAX != UINT32_MAX
-#define REGION ((I)2 << 20)            /* native page heap: 2 MiB aligned regions */
-#define PM_BITS 18                     /* 48 address bits minus the 12-bit page offset, in two levels */
-#else
-#define REGION ((I)256 << 10)          /* wasm32 explicitly clears each region when a fresh instance allocates */
-#define PM_BITS 10                     /* 32 address bits minus the same offset, in two levels */
-#endif
-#define PM_SIZE (1U << PM_BITS)
-#define PM_TOP(a) ((a) >> (12 + PM_BITS))
-#define PM_LEAF(a) (((a) >> 12) & (PM_SIZE - 1))
+#define REGION ((I)2 << 20)            /* the page heap maps memory 2 MiB at a time, so aligned */
 #define RPAGES ((int)(REGION / PAGE))  /* pages per region */
 #define NBIN 36                        /* free-run lists: 1..32 pages, then up to 64, 128, 256, 512 */
 #define SMALL 8200                     /* largest size class */
@@ -250,7 +241,7 @@ struct Seg {                           /* header on the first page of a chunk or
                                           grew, str_grow); [bump, nobj) needs zeroing */
   uint64_t mark[];                     /* one bit per slot */
 };
-typedef struct {                       /* one aligned region of the page heap */
+typedef struct {                       /* a region of the page heap: 2 MiB that it mapped */
   char *base;                          /* its first page (NULL: an unmapped region's slot) */
   uint64_t used[RPAGES / 64];          /* the pages that a chunk or large object holds */
   uint64_t dirty[RPAGES / 64];         /* pages that may hold nonzero bytes: written since they
@@ -272,6 +263,15 @@ static W *sfl[NK];                     /* its stand-in under stress */
 static Seg *avail[NK], *chunks, *bigs, *hcache, ***pmap;   /* hcache: freed mappings of large objects */
 /* GC_NO_ROOT(regs, bins): page-heap metadata, malloc'd, which holds no reference. */
 static Region *regs;                   /* the page heap's regions */
+#if defined(__wasi__) && UINTPTR_MAX == UINT32_MAX
+#define WASI_STATIC_HEAP 1
+/* A wasm32 address has just two bits above the page table's low 18 index bits. The
+   first GiB needs no table allocation. Fresh Wasm linear memory also supplies a zeroed
+   first region, page-aligned for pmap_set. Both arrays live in zero-initialized storage. */
+static Seg *wasi_low_pages[1 << 18];
+static Seg **wasi_tables[4] = {wasi_low_pages};
+static _Alignas(PAGE) char wasi_first_region[REGION];
+#endif
 static PRun *bins[2][NBIN];            /* its free runs, by length (rebuilt by each sweep): [0] those
                                           with dirty pages, which allocation takes first, [1] clean */
 static I nregs, cregs, nbin[2][NBIN], cbin[2][NBIN];
@@ -356,9 +356,9 @@ __attribute__((noinline)) static void pmap_set(uintptr_t a, uintptr_t e, Seg *v)
   if (v && (!gc_hi || a < gc_lo)) gc_lo = a;
   if (v && e > gc_hi) gc_hi = e;
   for (; a < e; a += PAGE) {
-    Seg **m = pmap[PM_TOP(a)];
-    if (!m && !(m = pmap[PM_TOP(a)] = calloc(PM_SIZE, sizeof *m))) oom();
-    m[PM_LEAF(a)] = v;
+    Seg **m = pmap[a >> 30];
+    if (!m && !(m = pmap[a >> 30] = calloc(1 << 18, sizeof *m))) oom();
+    m[a >> 12 & 0x3ffff] = v;
   }
 }
 __attribute__((noinline)) static void mstk_grow(void) { mstk = arr_grow(mstk, &mcap, 4096, sizeof *mstk); }
@@ -368,7 +368,7 @@ __attribute__((noinline, no_sanitize("address"))) static void scan(const W *p, c
   for (; p < e; p++) {                 /* mark every heap object a word in [p, e) points into */
     uintptr_t w = *p, off, i = 0;
     Seg **m, *s;
-    if (w - lo >= span || !(m = pm[PM_TOP(w)]) || !(s = m[PM_LEAF(w)])) continue;
+    if (w - lo >= span || !(m = pm[w >> 30]) || !(s = m[w >> 12 & 0x3ffff])) continue;
     if ((off = w - (uintptr_t)s->start) >= (uintptr_t)s->lim) continue;   /* header, tail, unused */
     if (!s->large) i = off * s->inv >> 40;
     if (s->mark[i >> 6] >> (i & 63) & 1) continue;
@@ -413,8 +413,9 @@ __attribute__((noinline)) static void rebuild(Seg *s) {   /* free list of unmark
   *tail = ~(uintptr_t)0;
 }
 /* ---------- the page heap ----------
-   Chunks and large objects take runs of whole pages from regions aligned to their own size
-   (2 MiB native, 256 KiB on wasm32). On native targets the runtime maps them itself; an object of more pages
+   Chunks and large objects take runs of whole pages from regions of 2 MiB, which the runtime maps
+   itself on native targets, aligned to 2 MiB. Wasm32 reserves its first region in static storage,
+   aligned to the 4 KiB page map. An object of more pages
    than a region's gets a mapping of its own. A region's bitmaps tell its used pages and those that
    may be dirty. A page mapped or purged since it was last written reads as zero, so a zeroed
    allocation clears only the dirty pages it takes (it never faults a fresh page in), and one whose
@@ -520,7 +521,11 @@ static char *pages_take(I np, I *rg, int *dirty) {
       nregs++;
     }
     memset(&regs[r], 0, sizeof *regs);
+#ifdef WASI_STATIC_HEAP
+    regs[r].base = r == 0 ? wasi_first_region : map_pages(REGION);
+#else
     regs[r].base = map_pages(REGION);
+#endif
     if (np < RPAGES) run_push(1, r, np, RPAGES - np);
   }
   Region *g = &regs[r];
@@ -581,6 +586,9 @@ __attribute__((noinline)) static void pages_settle(Seg *freed, I keep) {
   for (I r = nregs - 1; r >= 0 && d > keep; r--) {   /* regions all free: unmapped */
     Region *g = &regs[r];
     if (!g->base || g->nused) continue;
+#ifdef WASI_STATIC_HEAP
+    if (g->base == wasi_first_region) continue;
+#endif
     I c = nbits(g->dirty, 0, RPAGES) * PAGE;
     munmap(g->base, REGION); g->base = 0; heap_add(-c); d -= c;
   }
@@ -866,12 +874,12 @@ __attribute__((noinline)) static void weakrefs_sweep(void) {
 static Seg *gc_seg(const void *p) {    /* the chunk or large object that holds p (from gc_alloc): p can hold
                                           its size less the byte of slack, as for the n that cls(n) took */
   uintptr_t a = (uintptr_t)p;
-  return pmap[PM_TOP(a)][PM_LEAF(a)];
+  return pmap[a >> 30][a >> 12 & 0x3ffff];
 }
 static Seg *gc_find(const void *p) {   /* gc_seg of any pointer: 0 where it is not in the heap (a constant) */
   uintptr_t a = (uintptr_t)p;
-  Seg **m = pmap[PM_TOP(a)];
-  return m ? m[PM_LEAF(a)] : 0;
+  Seg **m = pmap[a >> 30];
+  return m ? m[a >> 12 & 0x3ffff] : 0;
 }
 /* Whether x is in a frame between this one and @main's: the *args tuple that a call made in its
    own frame (Gen.stack_tuple), which the function called copies before it keeps it
@@ -898,7 +906,11 @@ static void gc_init(char *sb, I **roots, I nroots) {
   const char *e = getenv("PYSTACHY_GC");
   gc_bottom = sb + STACK_PAST;         /* sb is @main's frame address: include its frame record */
   gc_roots = roots; gc_nroots = nroots;
-  if (!(pmap = calloc(PM_SIZE, sizeof *pmap))) oom();
+#ifdef WASI_STATIC_HEAP
+  pmap = wasi_tables;
+#else
+  if (!(pmap = calloc(1 << 18, sizeof *pmap))) oom();
+#endif
   gc_off = e && !strcmp(e, "off");
 #ifdef __wasi__
   gc_off = 1;                          /* (WASI, wasm/README.md: the stack scan cannot see WebAssembly's locals) */
@@ -3476,7 +3488,7 @@ static I *inline_items(List *l) { return (I *)(l + 1); }
 static int atomic_items(const I *a) {  /* is the item array a atomic? its kind, from the page map */
   uintptr_t w = (uintptr_t)a; Seg **m, *s;
   if (a == empty_atomic) return 1;
-  return w - gc_lo < gc_hi - gc_lo && (m = pmap[PM_TOP(w)]) && (s = m[PM_LEAF(w)]) && (s->k & 1);
+  return w - gc_lo < gc_hi - gc_lo && (m = pmap[w >> 30]) && (s = m[w >> 12 & 0x3ffff]) && (s->k & 1);
 }
 static void empty(List *l) {           /* detach an empty list's historical storage without allocating */
   if (l->cap) {                        /* cap 0 during sort: preserve its mutation marker */
@@ -7109,7 +7121,7 @@ void pys_finish(void) {                /* at exit, what CPython's shows of its e
 }
 static int gc_marked(const void *p) {
   uintptr_t w = (uintptr_t)p; Seg **m, *s;
-  if (w - gc_lo >= gc_hi - gc_lo || !(m = pmap[PM_TOP(w)]) || !(s = m[PM_LEAF(w)])) return 1;
+  if (w - gc_lo >= gc_hi - gc_lo || !(m = pmap[w >> 30]) || !(s = m[w >> 12 & 0x3ffff])) return 1;
   I i = s->large ? 0 : (I)((w - (uintptr_t)s->start) * s->inv >> 40);
   return s->mark[i >> 6] >> (i & 63) & 1;
 }

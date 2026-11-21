@@ -40,20 +40,29 @@ class WasmSourceTests(unittest.TestCase):
             program = work / "test.py"
             wasm = work / "out.wasm"
             fallback = work / "fallback.ll"
-            program.write_text("def numbers():\n    yield 7\nfor n in numbers():\n    print(n)\n")
+            program.write_text('def numbers():\n    yield "é雪🌲"\nfor n in numbers():\n    print(n)\n', encoding="utf-8")
             result = source_command(program, wasm, fallback)
             self.assertEqual(result.returncode, 3, result.stderr)
             self.assertIn(b"refused:", result.stderr)
             self.assertFalse(wasm.exists())
-            reference = subprocess.run([sys.executable, "pystachy.py", "ir", str(program)],
-                                       cwd=ROOT, capture_output=True, check=True).stdout
-            self.assertEqual(fallback.read_bytes(), reference)
+            reference = work / "reference.ll"
+            subprocess.run([sys.executable, "pystachy.py", "ir", str(program), "-o", str(reference)],
+                           cwd=ROOT, capture_output=True, check=True)
+            self.assertEqual(fallback.read_bytes(), reference.read_bytes())
+            self.assertEqual(result.stdout, b"")
+            streamed = source_command(program, "-", "-")
+            self.assertEqual(streamed.returncode, 3, streamed.stderr)
+            self.assertEqual(streamed.stderr, result.stderr)
+            self.assertEqual(streamed.stdout, reference.read_bytes())
             fallback.unlink()
             program.write_text("def broken(:\n")
             result = source_command(program, wasm, fallback)
             self.assertEqual(result.returncode, 1, result.stderr)
             self.assertFalse(wasm.exists())
             self.assertFalse(fallback.exists())
+            streamed = source_command(program, "-", "-")
+            self.assertEqual(streamed.returncode, 1, streamed.stderr)
+            self.assertEqual(streamed.stdout, b"")
 
     def test_stdio_preserves_unicode_and_resolves_sibling_imports(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -64,7 +73,7 @@ class WasmSourceTests(unittest.TestCase):
             shadow = work / "other"
             shadow.mkdir()
             (work / "<codemode>.py").symlink_to(shadow / "script.py")
-            virtual = source_command("-", "-", stdin=source, cwd=work)
+            virtual = source_command("-", "-", "-", stdin=source, cwd=work)
             self.assertEqual(virtual.returncode, 0, virtual.stderr)
             # Compile the same logical path on disk to check source encoding and names.
             (work / "<codemode>.py").unlink()
