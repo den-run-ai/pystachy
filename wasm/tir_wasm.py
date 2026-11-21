@@ -730,7 +730,9 @@ class Emitter:
 
     def i32c(self, v: int) -> None:
         self.code.append(0x41)
-        sleb(self.code, v)
+        # LLVM may spell a 32-bit mask as an unsigned decimal. Wasm i32.const
+        # expects a signed immediate with the same 32-bit pattern.
+        sleb(self.code, v - 4294967296 if 2147483648 <= v <= 4294967295 else v)
 
     def i64c(self, v: int) -> None:
         self.code.append(0x42)
@@ -1447,6 +1449,7 @@ class Emitter:
             self.push(a, ll)
         table = {"i64": {"add": 0x7C, "sub": 0x7D, "mul": 0x7E, "sdiv": 0x7F, "udiv": 0x80, "srem": 0x81, "urem": 0x82,
                          "and": 0x83, "or": 0x84, "xor": 0x85, "shl": 0x86, "ashr": 0x87, "lshr": 0x88},
+                 "i32": {"add": 0x6A, "sub": 0x6B, "mul": 0x6C, "and": 0x71, "or": 0x72, "xor": 0x73, "shl": 0x74},
                  "i1": {"and": 0x71, "or": 0x72, "xor": 0x73},
                  "double": {"fadd": 0xA0, "fsub": 0xA1, "fmul": 0xA2, "fdiv": 0xA3, "fneg": 0x9A}}
         if ll not in table or o not in table[ll] or (o == "fneg") != (len(i.args) == 1):
@@ -1463,6 +1466,7 @@ class Emitter:
         table: dict[str, list[int]] = {
             "zext i1 i64": [0xAD], "sext i1 i64": [],
             "trunc i64 i1": [0xA7, 0x41, 0x01, 0x71], "trunc i64 i8": [0xA7, 0x41, 0xFF, 0x01, 0x71],
+            "trunc i64 i32": [0xA7], "zext i32 i64": [0xAD],
             "sitofp i64 double": [0xB9], "uitofp i1 double": [0xB8], "fptosi double i64": [0xFC, 0x06],
             "bitcast i64 double": [0xBF], "bitcast double i64": [0xBD],
             "ptrtoint ptr i64": [0xAD], "inttoptr i64 ptr": [0xA7],
