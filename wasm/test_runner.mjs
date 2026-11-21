@@ -76,6 +76,25 @@ function command(getSizes = "args_sizes_get", trap = false) {
   );
 }
 
+// Do finite CPU work in the normal entry point, or in the Wasm start section
+// that runs before the instance constructor returns. Both routes use the same loop.
+function countdown(entry, runAtInstantiation) {
+  const loop = [
+    1, 1, i32,                                     // one i32 counter local
+    0x41, 1, 0x41, 30, 0x74, 0x21, 0,              // counter = 1 << 30
+    0x03, 0x40,                                    // loop
+    0x20, 0, 0x41, 1, 0x6b, 0x22, 0, 0x0d, 0,      // repeat while --counter
+    0x0b, 0x0b,                                    // end loop and function
+  ];
+  return wasm(
+    ...(entry === "init" ? [section(0, name("pystachy.data"), 0)] : []),
+    section(1, 1, fn([], [])), section(3, 2, 0, 0), section(5, 1, 0, 1),
+    section(7, 2, exp("memory", 2, 0), exp(entry, 0, runAtInstantiation ? 1 : 0)),
+    ...(runAtInstantiation ? [section(8, 0)] : []),
+    section(10, 2, bytes(loop), body()),
+  );
+}
+
 async function temp(t) {
   const dir = await mkdtemp(join(tmpdir(), "pystachy-runner-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
@@ -99,6 +118,20 @@ test("standalone commands receive per-run args and environment", async () => {
   assert.equal(await run(command(), { args: ["test", "a", "b"] }), 3);
   assert.equal(await run(command("environ_sizes_get"), { env: { KEY: "value" } }), 1);
   assert.equal(await run(command("environ_sizes_get")), 0);
+});
+
+test("execution deadlines interrupt command and reactor guests and leave the runner reusable", async () => {
+  const run = createRunner(reactor());
+  for (const entry of ["_start", "init"]) {
+    for (const runAtInstantiation of [false, true]) {
+      const guest = await WebAssembly.compile(countdown(entry, runAtInstantiation));
+      await assert.rejects(run(guest, { executionTimeoutMs: 25 }), { code: "ERR_SCRIPT_EXECUTION_TIMEOUT" });
+    }
+  }
+  assert.equal(await run(command(), { executionTimeoutMs: 2000 }), 1);
+  assert.equal(await run(program(), { executionTimeoutMs: 2000 }), 17);
+  assert.equal(await run(program()), 17);
+  await assert.rejects(run(command(), { executionTimeoutMs: 0 }), { code: "ERR_OUT_OF_RANGE" });
 });
 
 test("embedded runs cannot close or renumber borrowed stdio or mount directories", async (t) => {

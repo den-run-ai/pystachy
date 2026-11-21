@@ -100,9 +100,31 @@ argv[0]), `env`, `tools` and numeric `stdin`, `stdout`, `stderr` descriptors. Em
 runs start with an empty environment and no directory mounts. Stdio defaults to the host
 descriptors. The command-line runner exposes the host filesystem and environment.
 
-Guest execution and callbacks are synchronous on the Node thread. Hosts that require a
-deadline or run untrusted source need a separately confined, terminable process for the
-compiler and runner. The prototype provides neither fuel accounting nor suspend/resume.
+For repeated source, compile once and pass the returned module to a runner. The
+compiler reports `backend` (`"direct"` or `"llvm"`) and `refusal` (the direct
+emitter's diagnostic on fallback, otherwise `null`). The caller controls the
+module's lifetime. Each execution supplies its own tools and starts with fresh
+guest state.
+
+```js
+import { createCompiler } from "./wasm/codemode.mjs";
+import { createRunner } from "./wasm/run.mjs";
+
+const compile = createCompiler();
+const run = createRunner();
+const { module } = await compile('from codemode import call\nprint(call("lookup", "id"))');
+await run(module, { tools: new Map([["lookup", id => "first"]]) });
+await run(module, { tools: new Map([["lookup", id => "second"]]) });
+```
+
+Guest execution and callbacks are synchronous on the Node thread. Both runner
+APIs accept an optional positive integer `executionTimeoutMs` per call. Expiry
+during instantiation or execution rejects the promise with
+`ERR_SCRIPT_EXECUTION_TIMEOUT`. Source compilation, linking and module
+compilation occur before the timer starts. A blocking native host call can
+delay interruption, and a tool may already have performed external work.
+A hard deadline over the complete request requires a separately supervised
+process. Fuel accounting and suspend/resume remain open.
 
 Run `node --no-warnings bench/startup/wasm.mjs 11` from the checkout to measure
 source compilation, a fresh guest in a warm host, and source-to-exit latency in warm

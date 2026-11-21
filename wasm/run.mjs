@@ -43,12 +43,31 @@ export function createRunner(runtimeSource = defaultRuntime) {
 
 function runner(runtimeSource, cli) {
   let compiledRuntime;
-  return async function run(source, {
-    args = ["program"], env = {}, stdin = 0, stdout = 1, stderr = 2, tools, preopens,
+  async function run(source, {
+    args = ["program"], env = {}, stdin = 0, stdout = 1, stderr = 2, tools, preopens, executionTimeoutMs,
   } = {}) {
     if (preopens !== undefined) throw new TypeError("directory mounts are unavailable in embedded runs");
     const module = await compile(source);
     const [section] = WebAssembly.Module.customSections(module, "pystachy.data");
+    let runtimeModule;
+    if (section !== undefined) {
+      // Concurrent first calls share compilation, and a failed load can be retried.
+      compiledRuntime ??= compile(runtimeSource).catch((error) => {
+        compiledRuntime = undefined;
+        throw error;
+      });
+      runtimeModule = await compiledRuntime;
+    }
+    const options = { args, env, stdin, stdout, stderr, tools };
+    if (executionTimeoutMs === undefined) return instantiateAndRun(module, section, runtimeModule, options);
+    // V8 can interrupt synchronous Wasm and JS across this call. Loading and
+    // compilation have already finished. A blocking native host call can delay return.
+    const { runInNewContext } = await import("node:vm");
+    const execute = () => instantiateAndRun(module, section, runtimeModule, options);
+    return runInNewContext("execute()", { execute }, { timeout: executionTimeoutMs });
+  }
+
+  function instantiateAndRun(module, section, runtimeModule, { args, env, stdin, stdout, stderr, tools }) {
     const wasi = new WASI({
       version: "preview1", args, env, preopens: cli ? { "/": "/" } : {}, stdin, stdout, stderr, returnOnExit: true,
     });
@@ -83,11 +102,6 @@ function runner(runtimeSource, cli) {
       }
     }
 
-    // Concurrent first calls share compilation, and a failed load can be retried.
-    compiledRuntime ??= compile(runtimeSource).catch((error) => {
-      compiledRuntime = undefined;
-      throw error;
-    });
     // A reactor uses initialize(), so WASI.start() cannot handle proc_exit for us.
     const exit = {};
     let status = 0;
@@ -96,7 +110,7 @@ function runner(runtimeSource, cli) {
       throw exit;
     };
     let program;
-    const runtime = new WebAssembly.Instance(await compiledRuntime, {
+    const runtime = new WebAssembly.Instance(runtimeModule, {
       ...imports,
       codemode: toolImports(tools, () => runtime.exports.memory),
       program: { init: () => program.exports.init() },
@@ -133,7 +147,8 @@ function runner(runtimeSource, cli) {
     } catch (error) {
       return error === exit ? status : trap(error);
     }
-  };
+  }
+  return run;
 }
 
 async function main(argv) {

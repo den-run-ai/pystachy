@@ -37,14 +37,22 @@ function checked(result) {
 
 // On a direct refusal the native frontend may write the retained LLVM IR on stdout. Only then
 // launch the WASI linker. With fallback disabled code 3 exposes the reason to the caller.
-export function createCodeMode({ compiler = nativeCompiler, runtime, cwd = process.cwd(), fallback = true } = {}) {
-  const run = createRunner(runtime);
-  return async (source, options) => {
+export function createCompiler({ compiler = nativeCompiler, cwd = process.cwd(), fallback = true } = {}) {
+  return async source => {
     if (typeof source !== "string") throw new TypeError("expected Python source text");
     let result = await invoke(compiler, fallback ? ["-", "-", "-"] : ["-", "-"], source, cwd);
+    let refusal = null;
     if (fallback && result.code === 3) {
+      refusal = result.message;
       result = await invoke(linker, ["link"], result.output, cwd);
     }
-    return run(checked(result), options);
+    const module = await WebAssembly.compile(checked(result));
+    return { module, backend: refusal === null ? "direct" : "llvm", refusal };
   };
+}
+
+export function createCodeMode(options = {}) {
+  const compile = createCompiler(options);
+  const run = createRunner(options.runtime);
+  return async (source, runOptions) => run((await compile(source)).module, runOptions);
 }
