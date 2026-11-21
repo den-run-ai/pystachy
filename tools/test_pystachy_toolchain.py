@@ -4,10 +4,13 @@ import errno
 import hashlib
 import http.client
 import io
+import os
 from pathlib import Path
 import socket
 import socketserver
 import ssl
+import subprocess
+import sys
 import tempfile
 import threading
 import unittest
@@ -402,6 +405,49 @@ class ManagedToolchainTests(unittest.TestCase):
                 toolchain.unpack_ubuntu(Path(directory), Path(directory) / "payload", "amd64")
             self.assertEqual(fetch.call_count, 2)
             extract.assert_not_called()
+
+    def test_doctor_observes_missing_partial_and_complete_managed_installs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "_pystachy_source").symlink_to(Path(toolchain.__file__).parent)
+            cache = root / "managed"
+            dest = cache / f"ubuntu-{toolchain.UBUNTU_REVISION}-amd64"
+            env = {key: val for key, val in os.environ.items() if not key.startswith("PYSTACHY_")}
+            env.update(PYSTACHY_LLVM_CACHE=str(cache), PYSTACHY_CACHE=str(root / "runtime"))
+            script = """from unittest.mock import patch
+from _pystachy_source import pystachy_cli, pystachy_toolchain as tc
+with (patch.object(tc.sys, 'platform', 'linux'), patch.object(tc.platform, 'machine', return_value='x86_64'),
+      patch.object(tc.platform, 'freedesktop_os_release', return_value={'ID': 'ubuntu', 'VERSION_ID': '24.04'}),
+      patch.object(tc, 'ensure_toolchain', side_effect=AssertionError('doctor tried to install LLVM'))):
+    pystachy_cli.main()
+"""
+
+            def doctor():
+                result = subprocess.run([sys.executable, "-B", "-c", script, "doctor"],
+                                        cwd=root, env=env, text=True, capture_output=True, timeout=20)
+                self.assertEqual(result.stderr, "")
+                self.assertFalse((root / "runtime").exists())
+                return result
+
+            first = doctor()
+            self.assertEqual(first.returncode, 1)
+            self.assertIn("pending download on first compile", first.stdout)
+            self.assertFalse(cache.exists())
+            (dest / "bin").mkdir(parents=True)
+            for tool in toolchain.TOOLS:
+                binary = dest / "bin" / tool
+                binary.write_text("#!/bin/sh\necho 'LLVM version 18.1.3'\n")
+                binary.chmod(0o700)
+            partial = doctor()
+            self.assertEqual(partial.returncode, 1)
+            self.assertIn("clang: 18.1.3", partial.stdout)
+            self.assertIn("pending download on first compile", partial.stdout)
+            header = dest / "lib/clang/18/include/stddef.h"
+            header.parent.mkdir(parents=True)
+            header.touch()
+            ready = doctor()
+            self.assertEqual(ready.returncode, 0, ready.stdout)
+            self.assertIn("Managed LLVM 18.1.3: cached", ready.stdout)
 
     def test_partial_install_is_not_published_and_retry_is_cached(self):
         def partial_install(staging, payload, arch):

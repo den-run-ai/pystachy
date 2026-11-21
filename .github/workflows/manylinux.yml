@@ -1,0 +1,58 @@
+# The compiler on glibc 2.28 (docs/testing.md#older-glibc): tools/manylinux_check.sh in the
+# manylinux_2_28 image (AlmaLinux 8, GCC 8's libgcc_s) with AlmaLinux's LLVM packages: the
+# bootstrap, the glibc symbols that the compiler, an AOT program and an extension module need, and
+# corpus areas in JIT and AOT. Daily, on demand and on relevant pushes to main: pull requests keep
+# their 19-job budget. Release archives keep their own glibc baseline (docs/install.md).
+name: manylinux
+
+on:
+  schedule:
+    - cron: '53 9 * * *'   # daily, 09:53 UTC
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/manylinux.yml
+      - Makefile
+      - lljit.c
+      - pyembed.c
+      - pyext.c
+      - runtime.c
+      - src/pystachy_compiler/driver.py
+      - tools/linux_abi.py
+      - tools/manylinux_check.sh
+concurrency:
+  group: manylinux-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  manylinux:
+    name: manylinux_2_28 (x86-64, AlmaLinux 8's LLVM)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container:
+      image: quay.io/pypa/manylinux_2_28_x86_64@sha256:d086f64cddcace250ef0f0073583c51b8298159303290a730c9f59bd91edfd2c
+    env:
+      PYSTACHY_LLVM: /usr/bin
+      PYSTACHY_JOBS: '4'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false   # the tests run arbitrary programs: no token for them to read
+
+      - name: LLVM from AlmaLinux 8's application streams
+        run: dnf -y -q install clang llvm
+
+      - name: tools/manylinux_check.sh
+        run: tools/manylinux_check.sh
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: always()
+        with:
+          name: manylinux-x86_64
+          path: build/manylinux/
+          if-no-files-found: ignore
+          retention-days: 7

@@ -38,6 +38,9 @@ def check_install(command, python, directory, environment, revision, *, provisio
         toolchain_cache = Path(environment["PYSTACHY_LLVM_CACHE"]).resolve()
         if not llvm_bin or toolchain_cache not in Path(llvm_bin).resolve().parents:
             raise RuntimeError(f"{command} selected LLVM outside the managed cache: {llvm_bin!r}")
+        report = execute([str(command), "doctor"], directory, environment)
+        if "LLVM search: " + llvm_bin not in report.splitlines() or ": cached" not in report:
+            raise RuntimeError(f"{command} doctor missed the managed toolchain: {report}")
         clang_version = execute([str(Path(llvm_bin) / "clang"), "--version"], directory, environment)
         print(f"{command}: {clang_version.splitlines()[0]}", flush=True)
     executable = directory / "demo"
