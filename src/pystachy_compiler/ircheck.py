@@ -378,6 +378,14 @@ def type_view(self, a: str, b: str, generic: bool, parent: str) -> str:
         return "alias"
     if (a.startswith("rec[") and a[4:-1] in self.recursive and self.recursive[a[4:-1]] == b) or (b.startswith("rec[") and b[4:-1] in self.recursive and self.recursive[b[4:-1]] == a):
         return "alias"
+    if b.startswith("rec[") and b[4:-1] in self.recursive and is_union(unopt(a)):
+        # A smaller closed union stores the same tag and payload in a recursive
+        # value slot. The alias must admit every incoming member, including None.
+        target = self.recursive[b[4:-1]]
+        if is_union(unopt(target)) and (not is_opt(a) or is_opt(target)):
+            members = umembers(unopt(target))
+            if all([m in members for m in umembers(unopt(a))]):
+                return "alias"
     if parent != "" and ((a == "int" and b == BIG) or (a == BIG and b == "int")):
         return "alias"
     if parent == "tuple" and a == "bool" and b == "int":
