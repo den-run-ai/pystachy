@@ -164,3 +164,34 @@ except BaseException:
   assert.equal(status, 134);
   assert.equal(await readFile(err, "utf8"), "wasm trap: host tool failed\n");
 });
+
+test("a JSON tool result runs directly with the typed decoder", async t => {
+  const source = await readFile(new URL("../bench/startup/wasm_json_filter.py", import.meta.url), "utf8");
+  const { module, backend } = await createCompiler({ fallback: false })(source + `
+try:
+    print(count_open_issues())
+except json.JSONDecodeError as e:
+    print(e.msg, e.pos)
+except TypeError as e:
+    print(str(e))
+`);
+  assert.equal(backend, "direct");
+  const dir = await mkdtemp(join(tmpdir(), "pystachy-json-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const out = await open(join(dir, "out"), "w");
+  t.after(() => out.close());
+  const run = createRunner();
+  const replies = [
+    JSON.stringify([{ state: "open", title: "雪" }, { state: null }, { state: "öpen" }, { state: "open" }]),
+    "[]", "{}", "[null]", '["雪",]',
+  ];
+  for (const reply of replies) {
+    const tools = new Map([["issue_records", project => {
+      assert.equal(project, "pystachy");
+      return reply;
+    }]]);
+    assert.equal(await run(module, { tools, stdout: out.fd }), 0);
+  }
+  assert.equal(await readFile(join(dir, "out"), "utf8"),
+    "2\n0\nexpected an array of issues\nexpected an issue object\nIllegal trailing comma before end of array 4\n");
+});

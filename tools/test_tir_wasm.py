@@ -110,6 +110,11 @@ no:
   mem.store (&int @result, int 42)
   ret
 """, False),
+            ("""  %t0 = scalar.cast zext (%byte -1) : int
+  %t1 = scalar.bin sub (int %t0, int 213) : int
+  mem.store (&int @result, int %t1)
+  ret
+""", False),
             ("""  br -> next
 next:
   %t0 = phi (int 0, int %t1) -> entry, next : int

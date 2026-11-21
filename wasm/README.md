@@ -150,7 +150,11 @@ process. The Node host has no fuel accounting or suspend/resume API.
 Run `node --no-warnings bench/startup/wasm.mjs 11` from the checkout to measure
 source compilation, a fresh guest in a warm host, and source-to-exit latency in warm
 and fresh Node processes. It checks a distinct snippet for every sample, covering hello,
-a directly emitted tool-result filter, and a JSON filter using dynamic `Any` and the LLVM fallback.
+a directly emitted tool-result filter, and two filters for the same JSON records.
+The [typed filter](../bench/startup/wasm_json_filter.py) uses `json.loads` and narrows its
+recursive `JSONValue` with `isinstance`; it runs directly. The original `json` benchmark
+uses the dynamic `Any` decoder and takes the LLVM fallback. The typed decoder has the
+[same integer and nesting limits](../docs/json.md) as on the native backend.
 
 ## Calling tools from a Wasmtime host
 

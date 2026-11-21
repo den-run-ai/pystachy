@@ -1493,6 +1493,7 @@ class Emitter:
         key = f"{i.operator} {src} {dst}"
         table: dict[str, list[int]] = {
             "zext i1 i64": [0xAD], "sext i1 i64": [],
+            "zext i8 i64": [0x41, 0xFF, 0x01, 0x71, 0xAD],  # i64.extend_i32_u(x & 255)
             "trunc i64 i1": [0xA7, 0x41, 0x01, 0x71], "trunc i64 i8": [0xA7, 0x41, 0xFF, 0x01, 0x71],
             "sitofp i64 double": [0xB9], "uitofp i1 double": [0xB8], "fptosi double i64": [0xFC, 0x06],
             "bitcast i64 double": [0xBF], "bitcast double i64": [0xBD],
