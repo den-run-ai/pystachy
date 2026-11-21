@@ -33,6 +33,17 @@ cp pystachy "$L/abi/pystachy" &&
 "$PY" -I -c 'import json, sys
 for b in json.load(open(sys.argv[1]))["binaries"]: print(b["path"], "needs glibc", b["glibc_symbol_floor"])' "$L/linux-abi.json"
 
+# LLVM 18 can place empty dispatch functions at the same address as the main function.
+# This case needs main's handler, including when lli links an object from llc at -O0.
+echo "== exception through each JIT launcher and code generation level"
+for launcher in auto lli; do
+  for level in 0 2; do
+    log="$L/exception-$launcher-$level.log"
+    PYSTACHY_JIT_LAUNCHER=$launcher PYSTACHY_JIT_CODEGEN=$level tests/run.sh ./pystachy jit \
+      tests/programs/exceptions/exc_as_unbound.py > "$log" 2>&1 || { cat "$log"; exit 1; }
+  done
+done
+
 echo "== corpus, JIT and AOT"
 # shellcheck disable=SC2086
 tests/run.sh ./pystachy "jit aot" $FILES > "$L/test.log" 2>&1; st=$?
