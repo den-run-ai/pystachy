@@ -44,3 +44,26 @@ def main() -> None:
 
 
 main()
+
+# CPython's Python scanner preserves the caller's out-of-range index in the
+# exception. Its C accelerator reconstructs an equal int for large offsets.
+try:
+    from json import _raw_decode as raw_offset
+except ImportError:
+    from json.scanner import py_make_scanner
+
+    def raw_offset(s: str, idx: int) -> tuple[Any, int]:
+        decoder = json.JSONDecoder()
+        decoder.scan_once = py_make_scanner(decoder)
+        return decoder.raw_decode(s, idx)
+
+
+def same_position(a: Any, b: Any) -> bool:
+    return a is b
+
+
+index = int("9000")
+try:
+    raw_offset("abc", index)
+except json.JSONDecodeError as error:
+    print(error.msg, error.pos, error.lineno, error.colno, same_position(error.pos, index))

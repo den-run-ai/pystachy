@@ -79,6 +79,10 @@ fallback that only Valgrind triggers.
 <a id="earlier-prototype-measurement"></a>
 <a id="earlier-measurement"></a>
 
+The [scanner-offset experiment](results/scanner-offsets-2026-11-20.md) compares
+the default raw decoder on successful Unicode prefixes, trailing-comma errors
+and short records. It records allocation counts, elapsed times and input sizes.
+
 ## Historical evidence
 
 The first prototype measurement, of the ten-record mix at `ce6aee5e`, is on
