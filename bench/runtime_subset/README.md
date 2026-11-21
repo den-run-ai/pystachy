@@ -305,3 +305,32 @@ taskset -c "$BENCH_CPU" python3.13 bench/runtime_subset/compare.py \
   --cases floordiv modulo lshift rshift bit-length bit-count idiv-small idiv-wide \
   --json /tmp/integer-helpers.json
 ```
+
+On a Linux x86-64 Intel Xeon Platinum 8573C, the benchmark compared the C
+helpers at `b34c6def` with the subset helpers at `88acad77`. Both clean trees
+used CPython 3.13.16 and LLVM 18.1.3. Each value is the median of seven paired
+ratios, candidate time divided by baseline time, pinned to CPU 8. Each workload
+produced the CPython checksum in both modes.
+
+| Workload | Wall time, AOT | Wall time, JIT | Process CPU time, AOT | Process CPU time, JIT |
+|---|---:|---:|---:|---:|
+| Integer floor division | 1.431 | 1.008 | 1.028 | 0.992 |
+| Integer remainder | 1.089 | 0.907 | 0.991 | 0.992 |
+| Left shift | 0.777 | 0.910 | 0.781 | 0.821 |
+| Right shift | 0.784 | 1.201 | 1.019 | 1.011 |
+| Bit length | 0.931 | 0.818 | 0.971 | 0.919 |
+| Bit count | 1.017 | 1.103 | 1.037 | 0.983 |
+| True division, small operands | 0.731 | 0.827 | 0.813 | 0.959 |
+| True division, large operands | 0.534 | 0.522 | 0.540 | 0.546 |
+
+The machine was shared. The [wall-clock recording](integers-wall.json) and
+[process CPU recording](integers-cpu.json) preserve all pairs. For AOT floor
+division, the middle half of the seven ratios spanned 1.16–1.51 on the wall clock
+and 0.90–1.13 on the CPU clock. For large integer true division, both clocks put
+the candidate near half the baseline time.
+
+For the CPU-time run, copy `compare.py` and `integers.py` to the same temporary
+directory. In that copy of `integers.py`, replace `from time import perf_counter`
+with `from time import process_time as perf_counter`. Run the copied `compare.py`
+with the command above, using a separate output file. The timed loops, inputs
+and checksum checks are identical.
