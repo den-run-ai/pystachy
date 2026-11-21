@@ -4,7 +4,7 @@ import os
 import sys
 import tempfile
 import time
-from typing import Callable
+from typing import Callable, TypeVar, overload
 from src.pystachy_compiler import aot_runtime, cached_run, diagnostics, program_cache
 from src.pystachy_compiler.diagnostics import MAXNEST, RAW, ClassBoxes, NeedHandlers, NeedHierarchy, NeedSliceEH, Rejoin, TupleBoxes, fail
 from src.pystachy_compiler.gen import Gen
@@ -106,7 +106,20 @@ COMPILER_SOURCES: list[str] = [
 ]
 
 
-def compile_program(path: str, src: str, dirs: list[str], ext: str, backend: Callable[[Gen], str] | None = None) -> str:
+BackendResult = TypeVar("BackendResult")
+
+
+@overload
+def compile_program(path: str, src: str, dirs: list[str], ext: str, backend: None = None) -> str: ...
+
+
+@overload
+def compile_program(path: str, src: str, dirs: list[str], ext: str,
+                    backend: Callable[[Gen], BackendResult]) -> BackendResult: ...
+
+
+def compile_program(path: str, src: str, dirs: list[str], ext: str,
+                    backend: Callable[[Gen], BackendResult] | None = None) -> str | BackendResult:
     # the program's IR: where a join finds a location's inferred type too narrow for a value the
     # program stores to it (Gen.join_hint), the program is compiled again with the union of both
     # types, as if annotated, until no join widens one (at most JOINS passes after the first).
@@ -175,12 +188,17 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str, backend: Cal
             # Alternate backends take the finalized IR before LLVM consumes its
             # bodies. Keep their optional LLVM fallback inside the same retry scope.
             if backend is None:
-                ir = g.program(mods)
+                result = g.program(mods)
             else:
                 g.typed_program(mods)
-                ir = backend(g)
+                try:
+                    result = backend(g)
+                finally:
+                    # LLVM clears the program's class aliases when it consumes the IR.
+                    # Other backends may return or decline without consuming anything.
+                    RENAMED.clear()
             diagnostics.TRIAL = False
-            return ir
+            return result
         except Rejoin as retry:
             if isinstance(retry, NeedHandlers):
                 for k in ld.newkeeps:

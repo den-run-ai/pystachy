@@ -114,23 +114,21 @@ def wasm_module(gen: Gen) -> Module:
     return m
 
 
+class WasmRefusal:
+    def __init__(self, reason: str, llvm: str):
+        self.reason = reason
+        self.llvm = llvm
+
+
 class WasmBackend:
     def __init__(self, fallback: bool):
         self.fallback = fallback
-        self.output = bytearray()
-        self.refusal = ""
 
-    def lower(self, gen: Gen) -> str:
-        # Publish results only once the retrying compile_program returns. If LLVM
-        # requests a retry, the next attempt replaces this refusal and its output.
-        self.refusal = ""
+    def lower(self, gen: Gen) -> bytearray | WasmRefusal:
         try:
-            self.output = Emitter(wasm_module(gen)).module()
+            return Emitter(wasm_module(gen)).module()
         except Refused as exc:
-            self.refusal = exc.what
-            if self.fallback:
-                return gen.lower_program()
-        return ""
+            return WasmRefusal(exc.what, gen.lower_program() if self.fallback else "")
 
 
 def write_stdout(data: bytes) -> None:
@@ -157,17 +155,17 @@ def main() -> None:
         with open(sys.argv[1], encoding=diagnostics.RAW) as f:
             source = f.read()
     backend = WasmBackend(len(sys.argv) == 4)
-    llvm = compile_program(diagnostics.SRC, source, dirs, "", backend.lower)
-    if backend.refusal != "":
-        sys.stderr.write(f"tir_wasm: refused: {backend.refusal}\n")
+    result = compile_program(diagnostics.SRC, source, dirs, "", backend.lower)
+    if isinstance(result, WasmRefusal):
+        sys.stderr.write(f"tir_wasm: refused: {result.reason}\n")
         if backend.fallback:
             if sys.argv[3] == "-":
-                write_stdout(llvm.encode(diagnostics.RAW))
+                write_stdout(result.llvm.encode(diagnostics.RAW))
             else:
                 with open(sys.argv[3], "w", encoding=diagnostics.RAW) as fallback:
-                    fallback.write(llvm)
+                    fallback.write(result.llvm)
         sys.exit(3)
-    data = bytes(backend.output)
+    data = bytes(result)
     if sys.argv[2] == "-":
         write_stdout(data)
     else:

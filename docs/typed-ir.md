@@ -67,6 +67,17 @@ stages in order, for both ordinary programs and `runtime.py`:
 the whole finalized typed program before function/module LLVM lowering. `Gen.program`
 preserves the ordinary complete-compilation entry point by calling both.
 
+The driver's `compile_program(path, source, dirs, ext)` returns LLVM text for
+the native CLI, JIT and AOT. A caller supplying `backend=emit` receives the
+concrete return type of `emit(gen)`. The driver calls it with the current
+attempt's finalized functions and module tables. A backend can read those
+records and return its artifact directly. If it declines a feature, it can
+call `gen.lower_program()` once, while the records are still intact, to use
+LLVM in the same attempt. Inference retries discard the attempt. Emitters
+should publish bytes, files or diagnostics only after `compile_program` returns.
+The [Wasm source compiler](../tools/wasm_from_source.py) returns either module
+bytes or a named refusal carrying optional fallback LLVM text.
+
 `PipelineState` enforces the stage order. It rejects premature or repeated
 lowering, repeated stages, and attempts to continue a stage that failed or
 requested an inference retry. `PreparedProgram` borrows mutable ASTs and is owned
