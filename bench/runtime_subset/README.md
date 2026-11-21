@@ -334,3 +334,8 @@ directory. In that copy of `integers.py`, replace `from time import perf_counter
 with `from time import process_time as perf_counter`. Run the copied `compare.py`
 with the command above, using a separate output file. The timed loops, inputs
 and checksum checks are identical.
+
+The [full Lean run for the measured compiler](https://github.com/den-run-ai/pystachy/blob/52e2f31aec23695d5db646b6917bbf6cff791561/tools/lean_boundary/REPORT.md)
+covers all 3,169 programs in that checkout. Its 3,020 unproved obligations and
+the incomplete null check for `bytearray_methods.py` match the previous report.
+The pinned link keeps this result tied to the source used for the timings.
