@@ -5,12 +5,24 @@
    code (its export init, which this module imports as program.init), pys_finish. */
 #include <stdint.h>
 #include <stdlib.h>
+#include <unwind.h>
 #include <wasi/api.h>
 
 typedef int64_t I;
 void pys_init(int argc, char **argv, char *sb, I **roots, I nroots);
 void pys_finish(void);
 __attribute__((import_module("program"), import_name("init"))) void program_init(void);
+__attribute__((import_module("program"), import_name("raise"))) void program_raise(void *exc);
+
+/* The header is the first field of runtime.c's Exc. While a direct program is running,
+   the host throws that pointer with the tag imported by its landing pads. If the pointer
+   escaped the program, the host re-enters pys_throw with this hook disarmed, so the
+   runtime applies its ordinary uncaught cleanup, diagnostic and SystemExit handling. */
+_Unwind_Reason_Code _Unwind_ForcedUnwind(struct _Unwind_Exception *e, _Unwind_Stop_Fn stop, void *arg) {
+  (void)stop; (void)arg;
+  program_raise(e);
+  return _URC_END_OF_STACK;
+}
 
 __attribute__((export_name("pys_wasi_run"))) int pys_wasi_run(void) {
   __wasi_size_t argc, size;

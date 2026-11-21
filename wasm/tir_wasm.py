@@ -15,9 +15,9 @@ A function's blocks are laid out in forward order inside nested blocks. Function
 backedge also have a dispatch loop: a backward branch sets the next block's index and
 continues the loop, whose br_table dispatches it. A phi's values are assigned on each edge, all read first.
 
-It lowers what the first version needs (wasm/README.md's cuts): no exception handlers, no
-generators, no function values, no dynamic values or class dispatchers, no collector roots (the
-runtime's collector is off). Anything else it refuses by name: it exits with status 3 after one
+It lowers scalar code, runtime calls and built-in exception handlers (wasm/README.md).
+Generators, function values, dynamic dispatch and collector roots remain unsupported (the
+runtime's collector is off). For an unsupported operation it exits with status 3 after one
 line `tir_wasm: refused: WHAT` on stderr, and wasm/build.sh then compiles the program through
 LLVM. Run it as PYTHONPATH=. python3 wasm/tir_wasm.py, or compiled: PYSTACHY_PATH=. ./pystachy
 build wasm/tir_wasm.py, from the repository root (it reads the compiler's RUNTIME table).
@@ -63,6 +63,9 @@ class Inst:
         self.args: list[Operand] = []
         self.targets: list[str] = []
         self.t = ""
+
+    def is_invoke(self) -> bool:
+        return len(self.targets) != 0 and self.op in ("rt", "call", "init")
 
 
 class Block:
@@ -150,8 +153,10 @@ def unquote(text: str, at: int) -> tuple[str, int]:
                     code = 0x10000 + ((code - 0xD800) << 10) + (low - 0xDC00)
                     j += 6
                 out.append(chr(code))
-            else:
+            elif e == '"' or e == "\\" or e == "/":
                 out.append(e)
+            else:
+                raise Refused("invalid escape in quoted atom")
         else:
             out.append(c)
             j += 1
@@ -311,8 +316,20 @@ def parse(text: str) -> Module:
             continue
         elif in_function and not raw.startswith("  "):
             label, at = atom(line, 0, ":")
-            if line[at:] != ":":
-                raise Refused(f"block {label} has a handler (exceptions)")
+            if line.startswith(": handler=", at):
+                if "exceptions" not in m.attrs:
+                    raise Refused(f"block {label} has a handler without module exceptions")
+                # The region label may outlive an optimized-away landing. Finalized
+                # calls carry their executable unwind edges in their own target lists.
+                start = at + len(": handler=")
+                try:
+                    handler, end = atom(line, start, "")
+                except (IndexError, ValueError):
+                    raise Refused(f"invalid handler on block {label}") from None
+                if not handler or end != len(line) or (line[start] != '"' and handler.count("[") != handler.count("]")):
+                    raise Refused(f"invalid handler on block {label}")
+            elif line[at:] != ":":
+                raise Refused(f"unexpected text after block label {label}")
             block = Block(label)
             fn.blocks.append(block)
         elif in_function:
@@ -516,6 +533,9 @@ class Emitter:
         self.relocs: list[int] = []
         self.recursion = False
         self.stack_frames = False
+        self.catches = False
+        self.exception_local = -1
+        self.handler_stack = -1
         self.frame_local = -1
         self.dispatch_local = -1
         # per function
@@ -645,6 +665,8 @@ class Emitter:
                 self.runtime("recursion.stack")
             for b in fn.blocks:
                 for i in b.code:
+                    if i.is_invoke():
+                        self.catches = True
                     if i.op == "rt" and i.fields.get("entry", "").startswith("recursion."):
                         self.recursion = True
                         if i.fields["entry"] == "recursion.enter":
@@ -655,6 +677,10 @@ class Emitter:
                         self.alloc_import()
                     elif i.op == "raise":
                         self.runtime("raise")
+                    elif i.op == "throw":
+                        self.runtime("throw")
+                    elif i.op == "exc.match":
+                        self.runtime("exc.in")
         if self.recursion:
             self.runtime("recursion.error")
 
@@ -787,13 +813,18 @@ class Emitter:
         for s in fn.slots:
             self.local(s, wasm_type(value_ll(fn.slots[s])))
         self.frame_local = self.scratch(I32) if fn.frame_bytes else -1
+        self.exception_local = -1
+        self.handler_stack = -1
         self.bindex = {}
         for j in range(len(fn.blocks)):
             self.bindex[fn.blocks[j].label] = j
         self.phis = {}
         for b in fn.blocks:
             for i in b.code:
-                if i.op == "phi":
+                if self.exception_local < 0 and i.is_invoke():
+                    self.exception_local = self.scratch(I32)
+                    self.handler_stack = self.frame_local if self.frame_local >= 0 else self.scratch(I32)
+                elif i.op == "phi":
                     self.define(i.res[0], i.t)
                     if b.label not in self.phis:
                         self.phis[b.label] = []
@@ -807,11 +838,18 @@ class Emitter:
                 self.op(0x0B)
             self.cur = j
             for i in fn.blocks[j].code:
-                self.inst(i)
+                if i.is_invoke():
+                    self.invoke(i)
+                else:
+                    self.inst(i)
         blocks = self.code
         self.code = bytearray()
         if fn.frame_bytes:
             self.enter_frame()
+        if self.handler_stack >= 0 and self.frame_local < 0:
+            self.op(0x23)  # global.get rt.__stack_pointer at function entry
+            uleb(self.code, 2)
+            self.set(self.handler_stack)
         if self.dispatch_local >= 0:
             self.op(0x03)
             self.op(VOID)
@@ -917,6 +955,29 @@ class Emitter:
             self.push(args[j], imp.ll[j + 1])
         self.op(0x10)
         uleb(self.code, self.fnindex[imp.sym])
+
+    def invoke(self, i: Inst) -> None:
+        # Finalized invokes have explicit normal and unwind successors. Catch the
+        # runtime's Python tag alone; a host exception or a Wasm trap must escape.
+        if "exceptions" not in self.m.attrs or len(i.targets) != 2:
+            raise Refused(f"invalid exception edges on {i.op}")
+        pad = self.bindex.get(i.targets[1], -1)
+        if pad < 0 or not self.fn.blocks[pad].code or self.fn.blocks[pad].code[0].op != "landing":
+            raise Refused(f"invoke without a landing at {i.targets[1]}")
+        self.op(0x06)  # try (the typed catch encoding supported throughout Node 22)
+        self.op(VOID)
+        self.inst(i)
+        self.op(0x07)  # catch tag 0: the runtime Exc pointer in shared memory
+        uleb(self.code, 0)
+        self.set(self.exception_local)
+        # Both runtime C calls and emitted tuple frames use this linear stack.
+        # Unwinding Wasm activation records alone leaves its global at the throw site.
+        self.get(self.handler_stack)
+        self.op(0x24)
+        uleb(self.code, 2)
+        self.goto(i.targets[1], 1)
+        self.op(0x0B)
+        self.goto(i.targets[0], 0)
 
     def result(self, i: Inst, k: int, t: str) -> None:
         self.set(self.define(i.res[k], t))
@@ -1046,6 +1107,23 @@ class Emitter:
         elif op == "raise":
             self.call_import(self.runtime("raise"), i.args)
             self.op(0x00)
+        elif op == "throw":
+            self.call_import(self.runtime("throw"), i.args)
+            self.op(0x00)
+        elif op == "exc.match":
+            self.call_import(self.runtime("exc.in"), i.args)
+            self.op(0x50)  # i64.eqz, i32.eqz: runtime membership != 0
+            self.op(0x45)
+            self.result(i, 1, "bool")
+        elif op == "landing":
+            if len(i.args) != 1 or len(i.targets) != 1:
+                raise Refused("invalid landing operands or target")
+            slot = self.slot_target(i.args[0])
+            if self.exception_local < 0 or slot < 0 or self.ltypes[slot] != I32:
+                raise Refused("landing requires an invoke and an exception slot")
+            self.get(self.exception_local)
+            self.set(slot)
+            self.goto(i.targets[0], 0)
         elif op == "unreachable":
             self.op(0x00)
         elif op == "ovf":
@@ -1472,7 +1550,7 @@ class Emitter:
         attrs = self.m.attrs
         if "complete" not in attrs:
             raise Refused("a module that does not declare lowering's state (complete)")
-        for flag in ("exceptions", "dynamic", "promoting", "protocol", "rtmode", "extension"):
+        for flag in ("dynamic", "promoting", "protocol", "rtmode", "extension"):
             if flag in attrs:
                 raise Refused(f"module attribute {flag}")
         for table in ("objects", "compared", "hashed", "unequal", "crossed", "unsupported"):
@@ -1480,6 +1558,7 @@ class Emitter:
                 raise Refused(f"module attribute {table}")
         self.lay_out_data()
         self.collect_imports()
+        tag_type = self.types.of([I32], []) if self.catches else -1
         for sym in self.import_order:
             self.fnindex[sym] = len(self.fnindex)
         own: list[int] = []
@@ -1498,7 +1577,8 @@ class Emitter:
         out = bytearray(b"\x00asm\x01\x00\x00\x00")
         section(out, 1, self.types.encode())
         imp = bytearray()
-        uleb(imp, 3 + len(self.import_order) + int(self.stack_frames))
+        stack = self.stack_frames or self.catches
+        uleb(imp, 3 + len(self.import_order) + int(stack) + int(self.catches))
         name_bytes(imp, "env")
         name_bytes(imp, "memory")
         imp.append(0x02)
@@ -1514,12 +1594,18 @@ class Emitter:
         imp.append(0x03)
         imp.append(I32)
         imp.append(0x00)
-        if self.stack_frames:
+        if stack:
             name_bytes(imp, "rt")
             name_bytes(imp, "__stack_pointer")
             imp.append(0x03)
             imp.append(I32)
             imp.append(0x01)  # mutable global shared with the reactor
+        if self.catches:
+            name_bytes(imp, "env")
+            name_bytes(imp, "pystachy_exception")
+            imp.append(0x04)  # tag import
+            imp.append(0x00)  # exception tag
+            uleb(imp, tag_type)
         for sym in self.import_order:
             name_bytes(imp, "rt")
             name_bytes(imp, sym)
@@ -1561,6 +1647,10 @@ class Emitter:
         for r in self.relocs:
             uleb(reloc, r)
         section(out, 0, reloc)
+        if "exceptions" in attrs:
+            marker = bytearray()
+            name_bytes(marker, "pystachy.eh")
+            section(out, 0, marker)
         return out
 
 

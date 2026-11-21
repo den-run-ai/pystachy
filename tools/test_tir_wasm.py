@@ -192,11 +192,75 @@ entry:
             with self.subTest(t=t), self.assertRaisesRegex(T.Refused, "requires a fixed tuple"):
                 emit(program.replace("slot kind=2 : tuple[int]", f"slot kind=2 : {t}"))
 
+    @unittest.skipUnless(shutil.which("node"), "node runs the module")
+    def test_invoke_restores_tuple_and_runtime_frames_before_handler(self):
+        program = """module complete exceptions {
+}
+function @main.init() -> None kind=block {
+  %stk.1 = slot kind=2 : tuple[int]
+  %h.2 = slot : exc
+entry:
+  br -> body
+body: handler=caught
+  call callee=@inner -> done, caught : None
+caught:
+  ~%t3 ~%t4 = landing(%addr %h.2) -> handler : exc
+handler:
+  %t5 = mach.load(%ptr %h.2) : exc
+  rt entry=on_stack (%ptr %t5) : int
+  br -> done
+done:
+  rt entry=on_stack (%ptr %stk.1) : int
+  ret
+}
+function @inner() -> None {
+  %stk.1 = slot kind=2 : tuple[int]
+entry:
+  rt entry=on_stack (%ptr %stk.1) : int
+  rt entry=list.get (list[int] null, int 0) : *int
+  ret.none
+}
+"""
+        script = """
+const assert = require('node:assert/strict');
+const mod = new WebAssembly.Module(require('node:fs').readFileSync(process.argv[1]));
+const sp = new WebAssembly.Global({value: 'i32', mutable: true}, 512);
+const tag = new WebAssembly.Tag({parameters: ['i32']});
+const seen = [];
+const instance = new WebAssembly.Instance(mod, {
+  env: {memory: new WebAssembly.Memory({initial: 1}), data: 128, pystachy_exception: tag},
+  rt: {
+    __stack_pointer: sp,
+    pys_recursion_state: 0,
+    pys_recursion_stack_error() { throw Error('stack floor'); },
+    pys_on_stack(pointer) { seen.push([pointer, sp.value]); return 1n; },
+    pys_list_get() {
+      sp.value -= 32; // Model a C frame whose epilogue is skipped by the exception.
+      throw new WebAssembly.Exception(tag, [73]);
+    },
+  },
+});
+instance.exports.init();
+assert.deepEqual(seen, [[480, 480], [73, 496], [496, 496]]);
+assert.equal(sp.value, 512);
+"""
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "unwind.wasm"
+            path.write_bytes(emit(program))
+            subprocess.run(["node", "-e", script, str(path)], check=True, timeout=10)
+        for before, after, reason in [
+            ("-> done, caught", "-> done", "exception edges"),
+            ("-> done, caught", "-> done, handler", "without a landing"),
+            ("slot : exc", "slot : int", "exception slot"),
+        ]:
+            with self.subTest(after=after), self.assertRaisesRegex(T.Refused, reason):
+                emit(program.replace(before, after))
+
     def test_refusals_name_what(self):
         cases = {
             HELLO.replace("entry=write", "entry=unknown"): "runtime entry unknown",
             HELLO.replace("module complete", "module"): "complete",
-            HELLO.replace("opts=[allocelide]", "opts=[allocelide] exceptions"): "exceptions",
+            HELLO.replace("opts=[allocelide]", "opts=[allocelide] dynamic"): "dynamic",
             HELLO.replace("  ret\n", "  %t9 = gen.start : int\n  ret\n"): "operation gen.start",
             HELLO.replace("  ret\n", "  %t9 = mach.addr element=dyntype (%ptr null, int 3) : %ptr\n  ret\n"): "mach.addr element dyntype",
             HELLO.replace("L6:\n", "L6: handler=L5\n"): "handler",
@@ -205,6 +269,14 @@ entry:
             with self.assertRaises(T.Refused) as raised:
                 emit(text)
             self.assertIn(what, raised.exception.what)
+
+    def test_finalized_block_handler_syntax(self):
+        program = HELLO.replace("module complete", "module complete exceptions")
+        # A region can name a pad that finalization removed when it had no callers.
+        self.assertEqual(emit(program), emit(program.replace("L6:", 'L6: handler="unused pad"')))
+        for suffix in (" handler=", ' handler=""', ' handler="unterminated', " handler=pad extra", " handler=pad["):
+            with self.subTest(suffix=suffix), self.assertRaisesRegex(T.Refused, "handler"):
+                T.parse(program.replace("L6:", "L6:" + suffix))
 
 
 if __name__ == "__main__":

@@ -92,3 +92,42 @@ test("a deadline applies to a directly compiled Python loop", async () => {
   const countdown = "i = 1073741824\nwhile i > 0:\n    i -= 1\n";
   await assert.rejects(run(countdown, { executionTimeoutMs: 25 }), { code: "ERR_SCRIPT_EXECUTION_TIMEOUT" });
 });
+
+test("direct exception handling matches the CPython recordings", async t => {
+  const compile = createCompiler({ fallback: false });
+  const run = createRunner();
+  const dir = await mkdtemp(join(tmpdir(), "pystachy-exceptions-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const cases = ["exc_handler_loop_values", "exc_raise", "exc_finally", "exc_recursion_unwind", "exc_uncaught", "exc_exit"];
+  for (const name of cases) {
+    await t.test(name, async t => {
+      const prefix = `tests/programs/exceptions/${name}`;
+      const { module } = await compile(await readFile(`${prefix}.py`, "utf8"));
+      const out = join(dir, `${name}.out`), err = join(dir, `${name}.err`);
+      const stdout = await open(out, "w"), stderr = await open(err, "w");
+      t.after(() => Promise.all([stdout.close(), stderr.close()]));
+      const status = await run(module, { stdout: stdout.fd, stderr: stderr.fd });
+      assert.equal(await readFile(out, "utf8") + `[exit ${status}]\n`, await readFile(`${prefix}.out`, "utf8"));
+      const expectedError = name === "exc_uncaught" ? await readFile(`${prefix}.err`, "utf8") : "";
+      assert.equal(await readFile(err, "utf8"), expectedError);
+    });
+  }
+});
+
+test("Python handlers cannot catch a host tool failure", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "pystachy-tool-trap-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const err = join(dir, "err");
+  const stderr = await open(err, "w");
+  t.after(() => stderr.close());
+  const program = `from codemode import call
+try:
+    call("lookup", "")
+except BaseException:
+    raise SystemExit(77)
+`;
+  const tools = new Map([["lookup", () => { throw new Error("host tool failed"); }]]);
+  const status = await createCodeMode({ fallback: false })(program, { tools, stderr: stderr.fd });
+  assert.equal(status, 134);
+  assert.equal(await readFile(err, "utf8"), "wasm trap: host tool failed\n");
+});

@@ -40,7 +40,7 @@ def instruction(i: Ins) -> Inst:
     return out
 
 
-def function(fn: IFn, closed: bool) -> Func:
+def function(fn: IFn, closed: bool, exceptions: bool) -> Func:
     f = fn.f
     if fn.coro:
         raise Refused(f"{f.ll} is a generator")
@@ -60,8 +60,9 @@ def function(fn: IFn, closed: bool) -> Func:
     for slot in fn.slots:
         out.add_slot(slot_register(slot), slot.t, slot.k)
     for b in fn.blocks:
-        if b.handler != "":
-            raise Refused(f"block {b.label} has a handler (exceptions)")
+        # Finalization writes the actual unwind edge on the invoking instruction.
+        if b.handler != "" and not exceptions:
+            raise Refused(f"block {b.label} has a handler without module exceptions")
         block = Block(b.label)
         block.code = [instruction(i) for i in b.code]
         out.blocks.append(block)
@@ -72,8 +73,6 @@ def wasm_module(gen: Gen) -> Module:
     if gen.pipeline.stage != "finalize" or gen.pipeline.active != "":
         raise Refused("typed IR is not finalized")
     # Tables which require hooks that the shared runtime cannot supply.
-    if gen.eh:
-        raise Refused("module attribute exceptions")
     if diagnostics.dynamic_program():
         raise Refused("module attribute dynamic")
     if diagnostics.int_program():
@@ -88,6 +87,8 @@ def wasm_module(gen: Gen) -> Module:
         raise Refused("module declaration extern")
     m = Module()
     m.attrs["complete"] = ""
+    if gen.eh:
+        m.attrs["exceptions"] = ""
     m.attrs["opts"] = "[" + " ".join(gen.opts) + "]"
     for name in gen.classes:
         ci = gen.classes[name]
@@ -110,7 +111,7 @@ def wasm_module(gen: Gen) -> Module:
     m.keykinds = gen.keykinds
     m.builtkinds = gen.builtkinds
     for fn in gen.fns:
-        m.funcs.append(function(fn, fn.f.ll in gen.rdpass))
+        m.funcs.append(function(fn, fn.f.ll in gen.rdpass, gen.eh))
     return m
 
 

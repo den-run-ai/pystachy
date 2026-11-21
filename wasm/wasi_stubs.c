@@ -2,8 +2,8 @@
 /* What runtime.c calls that WASI (wasm32-wasi, preview 1) does not provide: processes, signals,
    users, dynamic loading and threads fail with ENOSYS, as on a platform without them, so that a
    program reaching them raises the OSError the runtime makes of errno; the rest of the runtime
-   runs unchanged. The unwinder never finds a handler: a raise ends the program with CPython's
-   report, as runtime.c's raises do before pys_eh_on (wasm/README.md). */
+   runs unchanged. LLVM/WASI commands have no unwinder. The direct reactor supplies its own
+   _Unwind_ForcedUnwind to reach the emitted program's handlers. */
 #include <errno.h>
 #include <pthread.h>
 #include <pwd.h>
@@ -69,6 +69,7 @@ int pthread_attr_setstacksize(pthread_attr_t *a, size_t n) { (void)a; return n <
 
 /* the unwinder: no frame has a handler (llc lowers a landing pad's invoke to a call), so a forced
    unwind returns at once, and the raise ends the program as runtime.c's throw_ then does */
+__attribute__((weak))
 _Unwind_Reason_Code _Unwind_ForcedUnwind(struct _Unwind_Exception *e, _Unwind_Stop_Fn stop, void *arg) {
   (void)e; (void)stop; (void)arg;
   return _URC_END_OF_STACK;
