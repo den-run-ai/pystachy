@@ -53,7 +53,7 @@ jobs:
               ! git rev-parse --verify 'HEAD^2^{commit}' >/dev/null 2>&1 ||
               ! git diff --quiet HEAD^ HEAD -- tools/lean_boundary \
                 'tools/check_lean_*.py' 'tools/test_lean_*.py' tools/setup_lean.py \
-                src pystachy.py tools/inspect_compiler.py \
+                src pystachy.py tools/inspect_compiler.py wasm/tir_wasm.py \
                 Makefile .github/workflows/lint.yml tools/requirements-dev.txt .python-version; then
             echo 'run=true' >> "$GITHUB_OUTPUT"
           else
@@ -76,6 +76,7 @@ jobs:
           lean_bin=$(python3 tools/setup_lean.py --output "$lean_boundary_dir")
           cd tools/lean_boundary
           PATH="$lean_bin:$PATH" lake build
+          PATH="$lean_bin:$PATH" python3 ../check_lean_wasm_frame.py
 
       - name: Validate GitHub Actions workflows (actionlint)
         env:
