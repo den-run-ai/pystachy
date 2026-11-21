@@ -331,6 +331,15 @@ if "union.raw" in IROPS:
 
 
 class UnionProofTests(unittest.TestCase):
+    def test_union_store_into_recursive_alias_admits_all_source_members(self):
+        g = Gen()
+        g.recursive["Tree"] = "opt[union[int,float,list[rec[Tree]]]]"
+        self.assertEqual(ircheck.type_view(g, U, "rec[Tree]", False, ""), "alias")
+        self.assertEqual(ircheck.type_view(g, "opt[" + U + "]", "rec[Tree]", False, ""), "alias")
+        self.assertEqual(ircheck.type_view(g, W, "rec[Tree]", False, ""), "")
+        g.recursive["Tree"] = "union[int,float,list[rec[Tree]]]"
+        self.assertEqual(ircheck.type_view(g, "opt[" + U + "]", "rec[Tree]", False, ""), "optional")
+
     def test_repeated_declarations_parse_each_type_once_per_proof(self):
         c = Case("repeated_global_domains")
         c.op("mem.load", U, a=[("@g.g0", "&" + U)])

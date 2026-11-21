@@ -233,7 +233,7 @@ def gen_usplit(self, name: str, vals: list[Val], i: int, want: str) -> Val:
         if miss == "":
             self.br(hit)
         elif members[j] == "None":
-            self.cbr(self.ptr_cmp('==', u, Val('null', 'None')).v, hit, miss)
+            self.cbr(self.ptr_cmp('==', vals[i], Val('null', 'None')).v, hit, miss)
         else:
             self.cbr(self.utest(u, [members[j]], False), hit, miss)
         self.place(hit)
