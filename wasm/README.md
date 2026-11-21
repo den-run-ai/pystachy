@@ -56,8 +56,12 @@ of scalar code, runtime calls, direct calls, globals, class fields, tuples and l
 and constants (strings, tuples, field-name tables, class records), whose addresses
 `run.mjs` relocates once it has allocated the program's data.
 
-Python handlers can catch built-in exceptions raised locally, by other Python functions,
-or by the shared runtime. For a call with an unwind edge, a typed Wasm catch restores the
+Python handlers can catch built-in and user-defined exceptions raised locally, by other
+Python functions, or by the shared runtime. An exception class descriptor holds the indices
+of its string, representation and optional exit callbacks in the reactor's function table.
+When instantiating a module with descriptors, its Wasm start function appends these
+callbacks after the runtime's entries. Rebuild older reactors with `wasm/build.sh runtime-wasm`
+to enable table growth. For a call with an unwind edge, a typed Wasm catch restores the
 reactor's stack pointer and branches to the landing pad in the finalized IR. The runtime
 performs exception matching, cleanup and uncaught reporting, including `SystemExit`.
 Each run has its own Python exception tag. Host tool failures and Wasm traps still end
@@ -72,8 +76,8 @@ exception handlers, the build runs Binaryen's `wasm-opt --emit-exnref` after lin
 The default, `WASM_EH=legacy`, also supports early Node 22 releases whose engines
 reject `try_table`. Both encodings use the same runtime and Python exception tag.
 
-The direct emitter gives a named refusal for generators, function values, user-defined
-exception classes that require callback tables, dynamic values and classes that need
+The direct emitter gives a named refusal for generators, function values, dynamic values
+and classes that need
 runtime comparison or printing through the program's dispatchers. `wasm/build.sh tir`
 then builds the program through LLVM, and `WASM_TIR_LOG` records the route taken.
 

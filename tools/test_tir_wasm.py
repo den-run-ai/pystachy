@@ -47,6 +47,21 @@ cold "OverflowError: integer result does not fit in 64 bits" -> L5
 """
 
 
+EXCEPTION = """module complete {
+  class E base=Exception fields=[] exception=Exception
+  const @x.E kind=exception refs=[@s.2 @s.2 @show @show null]
+  const @s.2 kind=string text=E
+}
+function @main.init() -> None kind=block {
+entry:
+  ret
+}
+function @show(self: E) -> str kind=class {
+entry:
+  ret (str @s.2)
+}
+"""
+
 def emit(text):
     return bytes(T.Emitter(T.parse(text)).module())
 
@@ -263,6 +278,47 @@ assert.equal(sp.value, 512);
         ]:
             with self.subTest(after=after), self.assertRaisesRegex(T.Refused, reason):
                 emit(program.replace(before, after))
+
+    def test_exception_callback_signatures(self):
+        self.assertIn(b"__indirect_function_table", emit(EXCEPTION))
+        with self.assertRaisesRegex(T.Refused, "requires string names"):
+            emit(EXCEPTION.replace("refs=[@s.2", "refs=[null"))
+        for before, after in (("self: E", "self: int"), (" -> str kind", " -> int kind"),
+                              ("@show @show null", "@show @missing null"),
+                              ("@show @show null", "@show @show @show")):
+            with self.subTest(after=after), self.assertRaisesRegex(T.Refused, "exception callback"):
+                emit(EXCEPTION.replace(before, after))
+
+    @unittest.skipUnless(shutil.which("node"), "node instantiates the module")
+    def test_callbacks_append_to_the_reactor_table(self):
+        script = """
+const assert = require('node:assert/strict');
+const mod = new WebAssembly.Module(require('node:fs').readFileSync(process.argv[1]));
+const memory = new WebAssembly.Memory({initial: 1});
+const words = new DataView(memory.buffer);
+function load(data, table) {
+  return new WebAssembly.Instance(mod, {env: {memory, data},
+    rt: {pys_recursion_state: 0, __indirect_function_table: table}});
+}
+const table = new WebAssembly.Table({element: 'anyfunc', initial: 2});
+const first = load(128, table);
+table.set(1, first.exports.init);
+load(256, table);
+assert.equal(table.length, 4);
+assert.equal(table.get(1), first.exports.init);
+for (const [data, index] of [[128, 2], [256, 3]]) {
+  assert.equal(words.getUint32(data + 8, true), index);
+  assert.equal(words.getUint32(data + 12, true), index);
+  assert.equal(words.getUint32(data + 16, true), 0);
+  assert.equal(table.get(index)(0), data + 24); // @s.2 after the 20-byte descriptor and alignment padding
+}
+const fixed = new WebAssembly.Table({element: 'anyfunc', initial: 2, maximum: 2});
+assert.throws(() => load(384, fixed), WebAssembly.RuntimeError);
+"""
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "callback.wasm"
+            path.write_bytes(emit(EXCEPTION))
+            subprocess.run(["node", "-e", script, str(path)], check=True, timeout=10)
 
     def test_refusals_name_what(self):
         cases = {

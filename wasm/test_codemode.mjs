@@ -128,7 +128,10 @@ test("direct exception handling matches the CPython recordings", async t => {
   const run = createRunner();
   const dir = await mkdtemp(join(tmpdir(), "pystachy-exceptions-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
-  const cases = ["exc_handler_loop_values", "exc_raise", "exc_finally", "exc_recursion_unwind", "exc_uncaught", "exc_exit"];
+  const cases = [
+    "exc_handler_loop_values", "exc_raise", "exc_finally", "exc_recursion_unwind", "exc_uncaught", "exc_exit",
+    "exc_class_try", "exc_class_exit", "exc_class_exit_msg",
+  ];
   for (const name of cases) {
     await t.test(name, async t => {
       const prefix = `tests/programs/exceptions/${name}`;
@@ -138,7 +141,7 @@ test("direct exception handling matches the CPython recordings", async t => {
       t.after(() => Promise.all([stdout.close(), stderr.close()]));
       const status = await run(module, { stdout: stdout.fd, stderr: stderr.fd });
       assert.equal(await readFile(out, "utf8") + `[exit ${status}]\n`, await readFile(`${prefix}.out`, "utf8"));
-      const expectedError = name === "exc_uncaught" ? await readFile(`${prefix}.err`, "utf8") : "";
+      const expectedError = ["exc_uncaught", "exc_class_try", "exc_class_exit_msg"].includes(name) ? await readFile(`${prefix}.err`, "utf8") : "";
       assert.equal(await readFile(err, "utf8"), expectedError);
     });
   }

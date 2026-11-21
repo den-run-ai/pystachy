@@ -15,7 +15,7 @@ A function's blocks are laid out in forward order inside nested blocks. Function
 backedge also have a dispatch loop: a backward branch sets the next block's index and
 continues the loop, whose br_table dispatches it. A phi's values are assigned on each edge, all read first.
 
-It lowers scalar code, runtime calls and built-in exception handlers (wasm/README.md).
+It lowers scalar code, runtime calls and exception handlers (wasm/README.md).
 Generators, function values, dynamic dispatch and collector roots remain unsupported (the
 runtime's collector is off). For an unsupported operation it exits with status 3 after one
 line `tir_wasm: refused: WHAT` on stderr, and wasm/build.sh then compiles the program through
@@ -541,6 +541,7 @@ class Emitter:
         self.data = bytearray()
         self.addr: dict[str, int] = {}
         self.relocs: list[int] = []
+        self.callbacks: dict[str, list[int]] = {}
         self.recursion = False
         self.stack_frames = False
         self.catches = False
@@ -568,6 +569,8 @@ class Emitter:
             at = (at + 7) // 8 * 8
             self.addr[c.name] = at
             at += const_size(c)
+        functions: dict[str, Func] = {}
+        strings: set[str] = set()
         for c in self.m.consts:
             self.align8()
             if len(self.data) != self.addr[c.name]:
@@ -595,6 +598,11 @@ class Emitter:
             elif c.kind == "fieldnames":
                 for r in c.refs:
                     self.ref(r)
+            elif c.kind == "exception":
+                if not functions:
+                    functions = {fn.name: fn for fn in self.m.funcs}
+                    strings = {data.name for data in self.m.consts if data.kind == "string"}
+                self.exception_descriptor(c, functions, strings)
             elif c.kind == "classrec" and len(c.refs) == 5 and len(c.items) == 3:
                 # {ptr, ptr, ptr, i64, i64, ptr, i64, ptr}, at wasm32's offsets 0 4 8 16 24 32 40 48
                 for r in c.refs[0:3]:
@@ -617,6 +625,29 @@ class Emitter:
             for _ in range(n):
                 self.data.append(0)
         self.align8()
+
+    def exception_descriptor(self, c: Const, functions: dict[str, Func], strings: set[str]) -> None:
+        # runtime.c's ExcClass: two string pointers, then three wasm32 function
+        # pointers (table indices). SystemExit subclasses supply the last callback.
+        cls = c.name[3:]
+        if not c.name.startswith("@x.") or cls not in self.m.classes or len(c.refs) != 5:
+            raise Refused(f"exception descriptor {c.name}")
+        if c.refs[0] not in strings or c.refs[1] not in strings:
+            raise Refused(f"exception descriptor {c.name} requires string names")
+        self.ref(c.refs[0])
+        self.ref(c.refs[1])
+        for j in range(2, 5):
+            target = c.refs[j]
+            if j == 4 and target == "null":
+                self.ref("null")
+                continue
+            result = "exc" if j == 4 else "str"
+            if target not in functions or functions[target].ptypes != [cls] or functions[target].ret != result:
+                raise Refused(f"exception callback {target} must take {cls} and return {result}")
+            if target not in self.callbacks:
+                self.callbacks[target] = []
+            self.callbacks[target].append(len(self.data))
+            self.data.extend(bytes(4))
 
     def ref(self, name: str) -> None:
         # a 4-byte address: null, or a constant's (relocated)
@@ -1572,6 +1603,37 @@ class Emitter:
             most = max(most, size)
         return max(most, (at + most - 1) // most * most)
 
+    def callback_initializer(self) -> bytearray:
+        # Start runs once after the data segment is installed. Append the program's
+        # passive element segment after the reactor's own C function pointers.
+        self.code = bytearray([1, 1, I32])  # one local for the old table size
+        self.code.extend(b"\xd0\x70")  # ref.null func
+        self.i32c(len(self.callbacks))
+        self.code.extend(b"\xfc\x0f\x00")  # table.grow 0
+        self.set(0)
+        self.get(0)
+        self.i32c(-1)
+        self.op(0x46)  # i32.eq
+        self.code.extend(b"\x04\x40\x00\x0b")  # if growth failed, trap before installing any callback
+        self.get(0)
+        self.i32c(0)
+        self.i32c(len(self.callbacks))
+        self.code.extend(b"\xfc\x0c\x00\x00")  # table.init 0 0
+        j = 0
+        for target in self.callbacks:
+            for offset in self.callbacks[target]:
+                self.code.extend(b"\x23\x00")  # global.get env.data
+                self.get(0)
+                self.i32c(j)
+                self.op(0x6A)  # i32.add
+                self.mem(0x36, 2, offset)  # i32.store
+            j += 1
+        self.op(0x0B)
+        out = bytearray()
+        uleb(out, len(self.code))
+        out.extend(self.code)
+        return out
+
     # -- the module --
     def module(self) -> bytearray:
         attrs = self.m.attrs
@@ -1590,8 +1652,10 @@ class Emitter:
             self.fnindex[sym] = len(self.fnindex)
         own: list[int] = []
         for fn in self.m.funcs:
-            if fn.attrs.get("kind", "def") not in ("def", "block") or "export" in fn.attrs or "extern" in fn.attrs:
-                raise Refused(f"function {fn.name} of kind {fn.attrs.get('kind', 'def')}")
+            kind = fn.attrs.get("kind", "def")
+            callback = kind == "class" and fn.name in self.callbacks
+            if (kind not in ("def", "block") and not callback) or "export" in fn.attrs or "extern" in fn.attrs:
+                raise Refused(f"function {fn.name} of kind {kind}")
             params = [wasm_type(value_ll(t)) for t in fn.ptypes if t != "None"]
             results: list[int] = [] if fn.ret == "None" else [wasm_type(value_ll(fn.ret))]
             own.append(self.types.of(params, results))
@@ -1601,11 +1665,14 @@ class Emitter:
         bodies: list[bytearray] = []
         for fn in self.m.funcs:
             bodies.append(self.function(fn))
+        if self.callbacks:
+            own.append(self.types.of([], []))
+            bodies.append(self.callback_initializer())
         out = bytearray(b"\x00asm\x01\x00\x00\x00")
         section(out, 1, self.types.encode())
         imp = bytearray()
         stack = self.stack_frames or self.catches
-        uleb(imp, 3 + len(self.import_order) + int(stack) + int(self.catches))
+        uleb(imp, 3 + len(self.import_order) + int(stack) + int(self.catches) + int(len(self.callbacks) != 0))
         name_bytes(imp, "env")
         name_bytes(imp, "memory")
         imp.append(0x02)
@@ -1633,6 +1700,10 @@ class Emitter:
             imp.append(0x04)  # tag import
             imp.append(0x00)  # exception tag
             uleb(imp, tag_type)
+        if self.callbacks:
+            name_bytes(imp, "rt")
+            name_bytes(imp, "__indirect_function_table")
+            imp.extend(b"\x01\x70\x00\x01")  # a funcref table, at least one slot (zero is NULL)
         for sym in self.import_order:
             name_bytes(imp, "rt")
             name_bytes(imp, sym)
@@ -1650,6 +1721,15 @@ class Emitter:
         exp.append(0x00)
         uleb(exp, self.fnindex["@main.init"])
         section(out, 7, exp)
+        if self.callbacks:
+            start = bytearray()
+            uleb(start, len(self.import_order) + len(self.m.funcs))
+            section(out, 8, start)
+            elements = bytearray([1, 1, 0])  # one passive segment of function indices
+            uleb(elements, len(self.callbacks))
+            for target in self.callbacks:
+                uleb(elements, self.fnindex[target])
+            section(out, 9, elements)
         code = bytearray()
         uleb(code, len(bodies))
         for b in bodies:
@@ -1702,6 +1782,8 @@ def const_size(c: Const) -> int:
         return 8 * len(c.items)
     if c.kind == "fieldnames":
         return 4 * len(c.refs)
+    if c.kind == "exception":
+        return 20
     if c.kind == "classrec":
         return 56
     raise Refused(f"constants of kind {c.kind}")
