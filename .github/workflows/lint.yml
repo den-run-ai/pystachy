@@ -127,6 +127,8 @@ jobs:
           python3 -m unittest discover -s tools -p test_tir_wasm.py
           python3 -m unittest discover -s tools -p test_wasm_from_source.py
           node --no-warnings --test wasm/test_runner.mjs wasm/test_tools.mjs
+          python3 -m pip install --only-binary=:all: wasmtime==51.0.0
+          python3 -m unittest wasm.test_wasmtime
 
       - name: Example benchmark validation tests
         run: python3 -m unittest discover -s tools -p test_example_bench.py
