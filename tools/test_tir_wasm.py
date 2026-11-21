@@ -145,6 +145,58 @@ console.log(new DataView(memory.buffer).getBigInt64(0, true).toString());
                     self.assertEqual(result.strip(), "42")
 
     @unittest.skipUnless(shutil.which("node"), "node runs the module")
+    def test_recursive_locals_follow_cfg_edges_and_keep_addressable_slots(self):
+        text = """module complete {
+  global @result type=int
+}
+function @main.init() -> None kind=block {
+  %total.1 = slot : int
+  %top.2 = slot : int
+entry:
+  rt entry=recursion.enter : int
+  mem.store (&int %total.1, int 40)
+  mem.store (&int %top.2, int 2)
+  br -> setup
+work:
+  %t0 = scalar.bin add (int 1, int 2) : int
+  br -> loop
+setup:
+  %t1 = mem.load (&int %total.1) : int
+  br -> work
+loop:
+  %t2 = phi (int 0, int %t3) -> work, again : int
+  %t3 = scalar.bin add (int %t2, int 1) : int
+  %t4 = num.cmp < (int %t3, int 2) : bool
+  cbr (bool %t4) -> again, done
+again:
+  br -> loop
+done:
+  %t5 = scalar.bin add (int %t1, int %t3) : int
+  mem.store (&int @result, int %t5)
+  ret
+}
+function @unused() -> None {
+}
+"""
+        script = """
+const mod = new WebAssembly.Module(require("node:fs").readFileSync(process.argv[1]));
+const memory = new WebAssembly.Memory({ initial: 1 });
+const view = new DataView(memory.buffer);
+view.setBigInt64(8, 1000n, true);
+const rt = {pys_recursion_state: 0, pys_recursion_error() { throw Error("depth"); }};
+new WebAssembly.Instance(mod, { env: { memory, data: 64 }, rt }).exports.init();
+require("node:assert/strict").equal(view.getBigInt64(64, true), 42n);
+"""
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "recursive.wasm"
+            path.write_bytes(emit(text))
+            subprocess.run(["node", "-e", script, str(path)], check=True, timeout=10)
+        with self.assertRaisesRegex(T.Refused, "from unknown block missing"):
+            emit(text.replace("int %t3) -> work, again", "int %t3, int %t0) -> work, again, missing"))
+        with self.assertRaisesRegex(T.Refused, "unequal input and predecessor counts"):
+            emit(text.replace("int %t3) -> work, again", "int %t3) -> work"))
+
+    @unittest.skipUnless(shutil.which("node"), "node runs the module")
     def test_tuple_frames_share_and_restore_the_runtime_stack(self):
         program = """module complete {
 }

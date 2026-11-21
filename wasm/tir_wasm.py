@@ -9,8 +9,9 @@ an i32 global), the runtime functions it calls (rt.SYMBOL) and the recursion sta
 (rt.pys_recursion_state). It exports its module code as `init`; wasm/run.mjs --runtime loads both.
 Its custom section `pystachy.data` holds the data block's size, which the loader reads first.
 
-Each typed-IR value is a WebAssembly local of its LLVM type's WebAssembly type (i64, f64, or i32
-for i1, i8, i32 and pointers); a slot whose address only loads and stores read is a local too.
+Typed-IR values use WebAssembly locals of the corresponding machine type (i64, f64, or i32
+for i1, i8, i32 and pointers). Recursion-counted functions reuse locals when SSA values of
+the same type have disjoint lifetimes. Addressable slots and emitter state have dedicated locals.
 A function's blocks are laid out in forward order inside nested blocks. Functions with a
 backedge also have a dispatch loop: a backward branch sets the next block's index and
 continues the loop, whose br_table dispatches it. A phi's values are assigned on each edge, all read first.
@@ -103,6 +104,97 @@ class Func:
             self.frame_bytes += 8 * max(1, tslots(t))
         else:
             self.slots[name] = t
+
+
+def register_colors(fn: Func, labels: dict[str, int], locals_: dict[str, int], types: list[int]) -> tuple[list[int], list[int]]:
+    # Non-SSA locals (arguments, addressable slots and emitter state) own a register throughout
+    # the call. SSA values of the same type may share a register if their lifetimes do not meet.
+    values = {name: locals_[name] for name in locals_ if name.startswith("%t") and name[2:].isdigit() and name not in fn.slots}
+    count = len(fn.blocks)
+    uses: list[set[int]] = [set() for _ in range(count)]
+    defs: list[set[int]] = [set() for _ in range(count)]
+    successors: list[set[int]] = [set() for _ in range(count)]
+    edge_uses: list[set[int]] = [set() for _ in range(count)]
+    for b in range(count):
+        for i in fn.blocks[b].code:
+            if i.op == "phi":
+                # goto reads all phi inputs before assigning any destination.
+                for j in range(len(i.args)):
+                    if i.args[j].v in values:
+                        edge_uses[labels[i.targets[j]]].add(values[i.args[j].v])
+            else:
+                for arg in i.args:
+                    if arg.v in values and values[arg.v] not in defs[b]:
+                        uses[b].add(values[arg.v])
+                for label in i.targets:
+                    successors[b].add(labels[label])
+                if i.op == "check":
+                    key = i.fields.get("key", "") or i.fields.get("message", "")
+                    successors[b].add(labels[fn.cold[key]])
+            for name in i.res:
+                if name in values:
+                    defs[b].add(values[name])
+
+    live_in = [u.copy() for u in uses]
+    live_out = [u.copy() for u in edge_uses]
+    changed = True
+    while changed:
+        changed = False
+        for b in range(count - 1, -1, -1):
+            for succ in successors[b]:
+                live_out[b].update(live_in[succ])
+            before = uses[b] | (live_out[b] - defs[b])
+            if before != live_in[b]:
+                live_in[b] = before
+                changed = True
+
+    edges: dict[int, set[int]] = {idx: set() for idx in values.values()}
+    for b in range(count):
+        live = live_out[b].copy()
+        phis: set[int] = set()
+        for j in range(len(fn.blocks[b].code) - 1, -1, -1):
+            inst = fn.blocks[b].code[j]
+            written = {values[name] for name in inst.res if name in values}
+            if inst.op == "phi":
+                phis.update(written)
+                continue
+            read = {values[arg.v] for arg in inst.args if arg.v in values}
+            # An operation can write a result before its final operand read (e.g. vtuple.make).
+            interfere(edges, written, live | read | written, types)
+            live.difference_update(written)
+            live.update(read)
+        interfere(edges, phis, live | phis, types)
+
+    slots = [-1] * len(types)
+    packed: list[int] = []
+    for k in range(len(types)):
+        if k not in edges:
+            slots[k] = len(packed)
+            packed.append(types[k])
+    # Color the most constrained values first. Keep the original allocation order on ties.
+    order = sorted([(-len(edges[k]), k) for k in edges])
+    colors: dict[int, list[int]] = {I32: [], I64: [], F64: []}
+    for pair in order:
+        k = pair[1]
+        wt = types[k]
+        taken = {slots[other] for other in edges[k]}
+        for slot in colors[wt]:
+            if slot not in taken:
+                slots[k] = slot
+                break
+        if slots[k] < 0:
+            slots[k] = len(packed)
+            colors[wt].append(len(packed))
+            packed.append(wt)
+    return (slots, packed)
+
+
+def interfere(edges: dict[int, set[int]], written: set[int], live: set[int], types: list[int]) -> None:
+    for dst in written:
+        for src in live:
+            if dst != src and types[dst] == types[src]:
+                edges[dst].add(src)
+                edges[src].add(dst)
 
 
 class ClassDecl:
@@ -553,6 +645,9 @@ class Emitter:
         self.fn = Func("")
         self.locals: dict[str, int] = {}
         self.ltypes: list[int] = []
+        self.compact_locals = False
+        self.local_sites: list[tuple[int, int, int]] = []
+        self.remap: list[int] = []
         self.nparams = 0
         self.code = bytearray()
         self.bindex: dict[str, int] = {}
@@ -751,13 +846,21 @@ class Emitter:
     def op(self, b: int) -> None:
         self.code.append(b)
 
+    def local_op(self, opcode: int, k: int) -> None:
+        self.code.append(opcode)
+        if self.remap:
+            uleb(self.code, self.remap[k])
+        else:
+            at = len(self.code)
+            uleb(self.code, k)
+            if self.compact_locals:
+                self.local_sites.append((at, len(self.code), k))
+
     def get(self, k: int) -> None:
-        self.code.append(0x20)
-        uleb(self.code, k)
+        self.local_op(0x20, k)
 
     def set(self, k: int) -> None:
-        self.code.append(0x21)
-        uleb(self.code, k)
+        self.local_op(0x21, k)
 
     def i32c(self, v: int) -> None:
         self.code.append(0x41)
@@ -840,6 +943,9 @@ class Emitter:
     def function(self, fn: Func) -> bytearray:
         self.fn = fn
         self.locals = {}
+        self.remap = []
+        self.local_sites = []
+        self.compact_locals = False
         self.ltypes = []
         self.code = bytearray()
         self.depth_local = -1
@@ -860,12 +966,25 @@ class Emitter:
         for j in range(len(fn.blocks)):
             self.bindex[fn.blocks[j].label] = j
         self.phis = {}
+        # Finalization marks functions whose activations can recur with recursion.enter.
+        # Compact only those frames, so ordinary one-shot calls keep the short lowering path.
+        if fn.blocks:
+            for i in fn.blocks[0].code:
+                if i.op == "rt" and i.fields.get("entry", "") == "recursion.enter":
+                    self.compact_locals = True
         for b in fn.blocks:
             for i in b.code:
+                if i.op != "phi" and i.targets and i is not b.code[-1]:
+                    self.compact_locals = False  # only terminal edges are modeled in textual IR
                 if self.exception_local < 0 and i.is_invoke():
                     self.exception_local = self.scratch(I32)
                     self.handler_stack = self.frame_local if self.frame_local >= 0 else self.scratch(I32)
                 elif i.op == "phi":
+                    if len(i.args) != len(i.targets):
+                        raise Refused(f"phi in {b.label} with unequal input and predecessor counts")
+                    for pred in i.targets:
+                        if pred not in self.bindex:
+                            raise Refused(f"phi in {b.label} from unknown block {pred}")
                     self.define(i.res[0], i.t)
                     if b.label not in self.phis:
                         self.phis[b.label] = []
@@ -883,7 +1002,17 @@ class Emitter:
                     self.invoke(i)
                 else:
                     self.inst(i)
+        packed = self.ltypes
         blocks = self.code
+        if self.compact_locals:
+            self.remap, packed = register_colors(fn, self.bindex, self.locals, self.ltypes)
+            blocks = bytearray()
+            at = 0
+            for site in self.local_sites:
+                blocks.extend(self.code[at:site[0]])
+                uleb(blocks, self.remap[site[2]])
+                at = site[1]
+            blocks.extend(self.code[at:])
         self.code = bytearray()
         if fn.frame_bytes:
             self.enter_frame()
@@ -917,10 +1046,10 @@ class Emitter:
         decls = bytearray()
         groups = 0
         j = self.nparams
-        while j < len(self.ltypes):
-            wt = self.ltypes[j]
+        while j < len(packed):
+            wt = packed[j]
             end = j + 1
-            while end < len(self.ltypes) and self.ltypes[end] == wt:
+            while end < len(packed) and packed[end] == wt:
                 end += 1
             uleb(decls, end - j)
             decls.append(wt)
@@ -932,6 +1061,8 @@ class Emitter:
         out = bytearray()
         uleb(out, len(body))
         out.extend(body)
+        self.remap = []
+        self.compact_locals = False
         return out
 
     def enter_frame(self) -> None:
@@ -956,8 +1087,7 @@ class Emitter:
         uleb(self.code, 2)
         self.i32c(size)
         self.op(0x6B)  # i32.sub
-        self.op(0x22)  # local.tee frame
-        uleb(self.code, self.frame_local)
+        self.local_op(0x22, self.frame_local)  # local.tee frame
         self.op(0x24)  # global.set rt.__stack_pointer
         uleb(self.code, 2)
 
@@ -1385,8 +1515,8 @@ class Emitter:
             self.mem(0x37, 3, 0)
 
     def overflow(self, i: Inst) -> None:
-        a = self.scratch(I64)
-        b = self.scratch(I64)
+        a = self.local("overflow.left", I64) if self.compact_locals else self.scratch(I64)
+        b = self.local("overflow.right", I64) if self.compact_locals else self.scratch(I64)
         v = self.local(i.res[1], I64)
         f = self.local(i.res[2], I32)
         self.push(i.args[0], "i64")

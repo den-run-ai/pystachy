@@ -195,3 +195,15 @@ except TypeError as e:
   assert.equal(await readFile(join(dir, "out"), "utf8"),
     "2\n0\nexpected an array of issues\nexpected an issue object\nIllegal trailing comma before end of array 4\n");
 });
+
+test("the direct JSON codec reaches the recorded nesting limit on the default Node stack", async t => {
+  const prefix = "tests/programs/library/json_depth";
+  const dir = await mkdtemp(join(tmpdir(), "pystachy-json-depth-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const output = await open(join(dir, "out"), "w");
+  t.after(() => output.close());
+  const run = createCodeMode({ fallback: false });
+  const status = await run(await readFile(`${prefix}.py`, "utf8"), { stdout: output.fd });
+  assert.equal(await readFile(join(dir, "out"), "utf8") + `[exit ${status}]\n`,
+    await readFile(`${prefix}.out`, "utf8"));
+});
