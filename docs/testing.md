@@ -256,8 +256,9 @@ not the compiler: `exec_signal` (its `/bin/sh` is bash, whose job message names 
 `float_power_rounding`, `lib_statistics` and `upstream_math_testfiles`, whose last digits come
 from libm, as CPython's do on the same system. The
 [manylinux workflow](../.github/workflows/manylinux.yml) runs the script daily, on demand and
-on relevant `main` pushes, with AlmaLinux 8's LLVM 22 on x86-64. LLVM 18.1.8's JIT lets some
-exceptions escape their handlers there, so the workflow does not use it.
+on relevant `main` pushes with AlmaLinux 8's LLVM 22 on x86-64. The script also checks a
+handler with both JIT launchers and both code generation levels. To check a different LLVM,
+point `PYSTACHY_LLVM` at its bin directory inside the container.
 
 ## Compiler coverage
 
