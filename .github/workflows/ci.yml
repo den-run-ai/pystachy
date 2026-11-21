@@ -179,6 +179,8 @@ jobs:
           for source in "${direct_cases[@]}"; do
             grep -Fxq "$source emitted" "$routes" || { cat "$routes"; exit 1; }
           done
+          # Include a user-defined exception whose uncaught __str__ also raises.
+          tests/run.sh "$PYSTACHY" wasm tests/programs/exceptions/exc_class_strfail.py
 
       # These hosted/native controls run sequentially after a short GC JIT group.
       # PRs use the second native JIT worker below; neither placement adds a job.

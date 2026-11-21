@@ -37,6 +37,23 @@ class Wasm32Ir(unittest.TestCase):
         self.assertEqual(W.line_of("define i32 @main(i32 %argc, ptr %argv) {"), "define i32 @__main_argc_argv(i32 %argc, ptr %argv) {")
         self.assertEqual(W.line_of("declare i32 @memcmp(ptr, ptr, i64)"), "declare i32 @pys_wasi_memcmp(ptr, ptr, i64)")
 
+    def test_retarget_only_exception_instructions(self):
+        literal = '@s = private constant [49 x i8] c"  invoke void @f() to label %ok unwind label %pad"'
+        src = "\n".join([literal, "define i32 @main(i32 %argc, ptr %argv) {", "  call void @pys_eh_on()",
+                         "  ret i32 0", "}", "define void @f() personality ptr @pys_personality {",
+                         "  invoke void @g() to label %ok unwind label %land, !dbg !5", "land:",
+                         "  %x = landingpad { ptr, i32 } catch ptr null, !dbg !5",
+                         "  %e = extractvalue { ptr, i32 } %x, 0, !dbg !5", "  br label %ok",
+                         "ok:", "  ret void", "}"])
+        result = W.adapt_module(src)
+        self.assertIn(literal, result)
+        self.assertIn("unwind label %pys.wasi.dispatch.land, !dbg !5", result)
+        self.assertIn("catchret from %pys.wasi.pad.land.token to label %land\nland:\n  br label %ok", result)
+        self.assertIn("%e = call ptr @llvm.wasm.get.exception(token %pys.wasi.pad.land.token), !dbg !5", result)
+        with self.assertRaisesRegex(ValueError, "unsupported WASI landing pad"):
+            W.adapt_module(src.replace("catch ptr null", "cleanup"))
+        self.assertEqual(W.adapt_module(literal), literal)
+
     def test_wasi_symbols_preserve_literal_bytes_and_comments(self):
         literal = r'@s.0 = private constant [10 x i8] c"\22@memcmp(\00"'
         self.assertEqual(W.line_of(literal), literal)

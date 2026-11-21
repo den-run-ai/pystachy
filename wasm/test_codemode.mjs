@@ -17,6 +17,36 @@ for v in values():
 `;
 const generator = source + generatorBody;
 
+test("LLVM fallback catches Python exceptions and lets host errors escape", async t => {
+  const script = `from codemode import call
+
+def parse():
+    yield int(call("value", "number"))
+
+try:
+    for value in parse():
+        print(value)
+except BaseException as e:
+    print("caught", str(e))
+`;
+  const artifact = await createCompiler()(script);
+  assert.equal(artifact.backend, "llvm");
+  const run = createRunner();
+  const directory = await mkdtemp(join(tmpdir(), "pystachy-command-eh-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const out = await open(join(directory, "out"), "w");
+  const err = await open(join(directory, "err"), "w");
+  t.after(() => Promise.all([out.close(), err.close()]));
+  const execute = value => run(artifact.module, {
+    tools: new Map([["value", value]]), stdout: out.fd, stderr: err.fd,
+  });
+  assert.equal(await execute(() => "7"), 0);
+  assert.equal(await execute(() => "bad"), 0);
+  assert.equal(await execute(() => { throw new Error("tool failed"); }), 134);
+  assert.equal(await readFile(join(directory, "out"), "utf8"), "7\ncaught invalid literal for int() with base 10: 'bad'\n");
+  assert.match(await readFile(join(directory, "err"), "utf8"), /wasm trap: .*tool failed/);
+});
+
 test("source strings and a generator fallback call the host once per run", async t => {
   const dir = await mkdtemp(join(tmpdir(), "pystachy-tools-"));
   t.after(() => rm(dir, { recursive: true, force: true }));

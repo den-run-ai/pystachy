@@ -2,8 +2,7 @@
 /* What runtime.c calls that WASI (wasm32-wasi, preview 1) does not provide: processes, signals,
    users, dynamic loading and threads fail with ENOSYS, as on a platform without them, so that a
    program reaching them raises the OSError the runtime makes of errno; the rest of the runtime
-   runs unchanged. LLVM/WASI commands have no unwinder. The direct reactor supplies its own
-   _Unwind_ForcedUnwind to reach the emitted program's handlers. */
+   runs unchanged. */
 #include <errno.h>
 #include <pthread.h>
 #include <pwd.h>
@@ -67,8 +66,8 @@ int pthread_attr_init(pthread_attr_t *a) { (void)a; return 0; }
 int pthread_attr_destroy(pthread_attr_t *a) { (void)a; return 0; }
 int pthread_attr_setstacksize(pthread_attr_t *a, size_t n) { (void)a; return n < 16384 ? EINVAL : 0; }
 
-/* the unwinder: no frame has a handler (llc lowers a landing pad's invoke to a call), so a forced
-   unwind returns at once, and the raise ends the program as runtime.c's throw_ then does */
+/* Commands without handlers use this fallback. command_eh.c and reactor.c supply
+   strong definitions for their respective Wasm exception ABIs. */
 __attribute__((weak))
 _Unwind_Reason_Code _Unwind_ForcedUnwind(struct _Unwind_Exception *e, _Unwind_Stop_Fn stop, void *arg) {
   (void)e; (void)stop; (void)arg;
