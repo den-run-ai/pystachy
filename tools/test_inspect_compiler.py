@@ -585,6 +585,41 @@ print(kernel(3))
         self.assertEqual(set(report["pass_contracts"]), {"charslots", "listget", "listguard", "dictfuse", "unionslots", "nullcheck"})
         self.assertIn("read-effect-bounds", report["pass_contracts"]["unionslots"]["invalidates"])
 
+    def test_stored_typed_iterators_share_one_concrete_consumer(self):
+        # The corpus exercises unrelated sources through the same stored interface;
+        # passing outputs alone would not establish that their consumer shares code.
+        program = ROOT / "tests/programs/apps/example_typed_iterator.py"
+        env = self.env | {"PYSTACHY_PATH": str(ROOT / "examples/typed_iterator")}
+        completed, destination = self.inspect(
+            program, args=("--typed-after-only", "--function", "drain"), env=env,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        report = self.report(destination)
+        self.assertEqual(report["status"], "ok")
+        snapshot = self.snapshot(destination, "typed-after")
+        consumer = self.named_function(snapshot, "drain")
+        self.assertEqual(len(consumer["parameters"]), 1)
+        parameter = consumer["parameters"][0]
+        self.assertEqual(parameter["type"], "TypedIterator[int]")
+        self.assertEqual(consumer["return_representation"], "list[int]")
+        attempt = report["attempts"][-1]
+        self.assertEqual(attempt["status"], "completed")
+        specializations = attempt["class_specializations"]
+        wrapper = specializations[parameter["representation"]]
+        self.assertEqual(list(wrapper["bindings"].values()), ["int"])
+        self.assertEqual(wrapper["fields"], {"_advance": "callable[int]"})
+        matching = [identity for identity, cls in specializations.items()
+                    if cls["template"] == wrapper["template"] and cls["bindings"] == wrapper["bindings"]]
+        self.assertEqual(matching, [parameter["representation"]])
+        boundary = attempt["dynamic_boundary"]
+        self.assertFalse(boundary["dynamic_any_enabled"])
+        self.assertEqual(boundary["tracked_modules"], [])
+        for footprint in boundary["footprints"].values():
+            self.assertEqual(footprint["status"], "completed")
+            self.assertGreater(footprint["totals"]["functions"], len(snapshot["functions"]))
+            self.assertEqual(footprint["totals"]["dynamic_operations"], {})
+            self.assertEqual(footprint["totals"]["dynamic_runtime_calls"], {})
+
     def test_rejected_class_is_explained_without_publishing_its_tentative_key(self):
         program = self.source("class Kept:\n    def __init__(self, value):\n        self.value = value\n"
                               "class Broken:\n    def __init__(self, value):\n        self.value = missing\n"

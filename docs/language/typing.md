@@ -1174,6 +1174,11 @@ with the same signature share a specialization. This also works for
 `Callable[[A, B], Result]` where `Result` is a class template: the actual returned specialization
 determines the callable's result type.
 
+The [stored iterator tutorial](../../examples/typed_iterator/README.md) applies this
+to a `Callable[[], T]` field: a small adapter specializes for each source iterator,
+while a typed field or list retains the shared wrapper. It is an explicit source
+adaptation, not a general stored `Iterator[T]` representation.
+
 ### Explicit generic classes
 
 `Generic[T]` and `Generic[*Ts, R]` support `TypeVar` and at most one unpacked `TypeVarTuple`.

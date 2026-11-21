@@ -106,6 +106,14 @@ Choose a component with a small interface and output you can compare byte for by
 The [JSON repair companion](../examples/json_repair/README.md) shows how to keep
 a CPython host and verify the actual native extension against upstream results.
 
+For a component that stores several iterator implementations, follow the
+[typed iterator tutorial](../examples/typed_iterator/README.md). It uses an explicitly
+annotated `Callable` field to share one typed consumer across list, tuple, custom
+iterator and generator sources. The tutorial includes a CPython recording, native
+JIT/AOT and GC-stress commands, and inspection of the actual compiled interface.
+This is a bounded adaptation with an integer item contract; broader `Iterable[T]`
+and `Protocol` storage remains a separate language feature.
+
 Experiments with mypy and mypyc illustrate two ways to choose that boundary.
 
 | Component | What the experiment checked |
