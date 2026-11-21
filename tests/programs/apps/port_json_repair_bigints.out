@@ -30,4 +30,5 @@ float True True True
 {"n": 12345678901234567890}
 {"n": 12345678901234567890}
 strict Missing opening object brace in strict mode.
+logged document and log aliases preserved
 [exit 0]

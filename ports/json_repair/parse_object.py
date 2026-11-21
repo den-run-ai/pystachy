@@ -1,7 +1,7 @@
-# pystachy: dynamic-any
-# Pystachy port: specialize schema-free parsing; recursive values use dynamic Any.
+# Pystachy port: schema-free parsing fills the parser's dictionary of JSON values.
 from typing import Any
 
+from . import json_parser
 from .utils.constants import STRING_DELIMITERS
 from .utils.json_context import ContextValues
 
@@ -55,8 +55,17 @@ def _strip_comments_for_empty_object_classification(body: str) -> str:
 def _classify_empty_object_repair(
     self,
     start_index: int,
-    schema: dict[str, Any] | bool | None,
 ) -> tuple[str, str | None]:
+    body = self.json_str[start_index : self.index - 1]
+    if self.get_char_at(-1) == "}" and not _strip_comments_for_empty_object_classification(body).strip():
+        return "keep", None
+
+    if self.strict:
+        self.log(
+            "Parsed object is empty but contains extra characters in strict mode, raising an error",
+        )
+        raise ValueError("Parsed object is empty but contains extra characters in strict mode.")
+
     attempted_object = self.json_str[start_index - 1 : self.index + 1]
     body = attempted_object[1:]
     body = body.removesuffix("}")
@@ -195,54 +204,35 @@ def _parse_object_value(
     try:
         self.skip_whitespace_and_comments(skip_bare_slashes=True)
         char = self.get_char_at()
-        if char in [",", "}"]:
-            self.log(
-                f"While parsing an object value we found a stray {char}, ignoring it",
-            )
-            return ""
-
-        return self.parse_json()
+        if char not in [",", "}"]:
+            return self.parse_json()
+        self.log(f"While parsing an object value we found a stray {char}, ignoring it")
+        return ""
     finally:
         self.context.reset()
 
 
-def _repair_empty_object_result(
+def _reparse_empty_object(
     self,
-    obj: dict[str, Any],
     start_index: int,
+    normalized_object: str | None,
     schema: dict[str, Any] | bool | None,
     path: str,
-) -> tuple[bool, Any]:
-    if obj or self.index - start_index <= 2:
-        return False, None
-
-    body = self.json_str[start_index : self.index - 1]
-    if self.get_char_at(-1) == "}" and not _strip_comments_for_empty_object_classification(body).strip():
-        return False, None
-
-    if self.strict:
-        self.log(
-            "Parsed object is empty but contains extra characters in strict mode, raising an error",
-        )
-        raise ValueError("Parsed object is empty but contains extra characters in strict mode.")
-
-    empty_object_repair, normalized_object = _classify_empty_object_repair(self, start_index, schema)
-    if empty_object_repair == "object" and normalized_object is not None:
+) -> Any:
+    if normalized_object is not None:
         end_index = self.index + 1
         self.json_str = self.json_str[: start_index - 1] + normalized_object + self.json_str[end_index:]
         self.index = start_index
         with self.context.enter(ContextValues.OBJECT_KEY):
             repaired_value = self.parse_object(schema, path)
         self.deferred_contexts.append(ContextValues.OBJECT_KEY)
-        return True, repaired_value
-    if empty_object_repair == "array":
-        self.log("Parsed object is empty, we will try to parse this as an array instead")
-        self.index = start_index
-        with self.context.enter(ContextValues.OBJECT_KEY):
-            repaired_array = self.parse_array()
-        self.deferred_contexts.append(ContextValues.OBJECT_KEY)
-        return True, repaired_array
-    return False, None
+        return repaired_value
+    self.log("Parsed object is empty, we will try to parse this as an array instead")
+    self.index = start_index
+    with self.context.enter(ContextValues.OBJECT_KEY):
+        repaired_array = self.parse_array()
+    self.deferred_contexts.append(ContextValues.OBJECT_KEY)
+    return repaired_array
 
 
 def _complete_object_parse(
@@ -283,7 +273,7 @@ def parse_object(
     path: str = "$",
 ) -> Any:
     # <object> ::= '{' [ <member> *(', ' <member>) ] '}' ; A sequence of 'members'
-    obj: dict[str, Any] = {}
+    obj = json_parser._new_object()
     start_index = self.index
     parsing_object_value = self.context.current == ContextValues.OBJECT_VALUE
     # Pystachy port: the public entry point rejects schemas.
@@ -357,15 +347,10 @@ def parse_object(
             break
     self.index += 1
 
-    repaired_empty_object, repaired_value = _repair_empty_object_result(
-        self,
-        obj,
-        start_index,
-        schema,
-        path,
-    )
-    if repaired_empty_object:
-        return repaired_value
+    if not obj and self.index - start_index > 2:
+        repair, normalized_object = _classify_empty_object_repair(self, start_index)
+        if repair != "keep":
+            return _reparse_empty_object(self, start_index, normalized_object, schema, path)
 
     return _complete_object_parse(
         self,
