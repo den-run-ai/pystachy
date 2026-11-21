@@ -201,6 +201,7 @@ class ClassDecl:
     def __init__(self, name: str):
         self.name = name
         self.ftypes: list[str] = []
+        self.legacy_header = False
         self.nflag = 0
         self.nbox = 0
 
@@ -221,10 +222,30 @@ class Module:
         self.globals: dict[str, str] = {}
         self.order: list[str] = []
         self.classes: dict[str, ClassDecl] = {}
+        self.objects: list[str] = []
+        self.compared: dict[str, bool] = {}
+        self.hashed: dict[str, bool] = {}
         self.holes: dict[int, str] = {}
         self.keykinds: dict[str, str] = {}
         self.builtkinds: dict[str, str] = {}
         self.funcs: list[Func] = []
+
+    def set_object_tables(self, objects: dict[str, int], compared: dict[str, bool], hashed: dict[str, bool]) -> None:
+        # Descriptors hold the numeric ID, independent of declaration or attribute order.
+        names = [""] * len(objects)
+        for cls in objects:
+            idx = objects[cls]
+            if cls == "" or cls not in self.classes:
+                raise Refused(f"unknown object dispatch class {cls}")
+            if idx < 0 or idx >= len(names) or names[idx] != "":
+                raise Refused("object dispatch IDs must be distinct and dense from zero")
+            names[idx] = cls
+        for cls in list(compared) + list(hashed):
+            if cls not in objects:
+                raise Refused(f"no object dispatch ID for {cls}")
+        self.objects = names
+        self.compared = compared
+        self.hashed = hashed
 
 
 def unquote(text: str, at: int) -> tuple[str, int]:
@@ -310,6 +331,8 @@ def fields(text: str, at: int, end: int, const: Const | None = None) -> dict[str
         while k < end and text[k] != "=" and text[k] != " ":
             k += 1
         name = text[at:k]
+        if name in ("objects", "compared", "hashed") and name in out:
+            raise Refused(f"duplicate module attribute {name}")
         if k < end and text[k] == "=":
             if name == "items" and const is not None:
                 const.items, at = operands(text, k + 1)
@@ -443,7 +466,44 @@ def parse(text: str) -> Module:
                 block.code.append(ins)
         else:
             raise Refused(f"unexpected line {line!r}")
+    if "objects" in m.attrs or "compared" in m.attrs or "hashed" in m.attrs:
+        objects = object_table(m.attrs.get("objects", "[]"), "objects")
+        compared = {c: True for c in object_table(m.attrs.get("compared", "[]"), "compared")}
+        hashed = {c: True for c in object_table(m.attrs.get("hashed", "[]"), "hashed")}
+        m.set_object_tables(objects, compared, hashed)
     return m
+
+
+def object_table(text: str, key: str) -> dict[str, int]:
+    # objects=[Name:ID ...], compared=[Name ...] and hashed=[Name ...].
+    # The IR printer quotes class names containing spaces or punctuation.
+    if not text.startswith("[") or not text.endswith("]"):
+        raise Refused(f"invalid object dispatch table {key}")
+    table: dict[str, int] = {}
+    at = 1
+    while at < len(text) - 1:
+        name, at = atom(text, at, ":" if key == "objects" else "")
+        if not name or name in table:
+            raise Refused(f"empty or duplicate class name in {key}")
+        idx = len(table)
+        if key == "objects":
+            if text[at] != ":":
+                raise Refused(f"missing object dispatch ID for {name}")
+            start = at + 1
+            at = start
+            while at < len(text) and "0" <= text[at] <= "9":
+                at += 1
+            digits = text[start:at]
+            # A dense ID is smaller than even the text encoding the table.
+            if digits == "" or len(digits) > len(str(len(text))) or (digits[0] == "0" and len(digits) > 1):
+                raise Refused(f"invalid object dispatch ID for {name}")
+            idx = int(digits)
+        table[name] = idx
+        if at != len(text) - 1:
+            if text[at] != " " or at + 1 >= len(text) - 1:
+                raise Refused(f"invalid separator in {key}")
+            at += 1
+    return table
 
 
 def header(line: str) -> Func:
@@ -489,8 +549,10 @@ def declaration(m: Module, line: str) -> None:
         f = fields(line, at, len(line))
         cd = ClassDecl(name)
         if "fields" in f:
-            for item in typed_items(f["fields"]):
-                cd.ftypes.append(item)
+            for field, typ in typed_items(f["fields"]):
+                if field in (" list.0", " dict.0") and typ == "str":
+                    cd.legacy_header = True
+                cd.ftypes.append(typ)
         cd.nflag = len(items_of(f["flags"])) if "flags" in f else 0
         cd.nbox = len(items_of(f["boxes"])) if "boxes" in f else 0
         m.classes[name] = cd
@@ -507,17 +569,17 @@ def declaration(m: Module, line: str) -> None:
         raise Refused(f"module declaration {keyword}")
 
 
-def typed_items(text: str) -> list[str]:
-    # fields=[name:type " hidden":type ...]: their types, in order
-    out: list[str] = []
+def typed_items(text: str) -> list[tuple[str, str]]:
+    # fields=[name:type " hidden":type ...] in layout order
+    out: list[tuple[str, str]] = []
     at = 1
     while at < len(text) - 1:
         if text[at] == " ":
             at += 1
             continue
-        _, at = atom(text, at, ":")
+        field, at = atom(text, at, ":")
         t, at = atom(text, at + 1, "")
-        out.append(t)
+        out.append((field, t))
     return out
 
 
@@ -634,6 +696,7 @@ class Emitter:
         self.addr: dict[str, int] = {}
         self.relocs: list[int] = []
         self.callbacks: dict[str, list[int]] = {}
+        self.object_rows = 0
         self.recursion = False
         self.stack_frames = False
         self.catches = False
@@ -720,6 +783,23 @@ class Emitter:
             for _ in range(n):
                 self.data.append(0)
         self.align8()
+        if self.m.objects:
+            self.object_rows = len(self.data)
+            functions = {fn.name: fn for fn in self.m.funcs}
+            if len(functions) != len(self.m.funcs):
+                raise Refused("duplicate function in object dispatch module")
+            for cls in self.m.objects:
+                # wasm/reactor.c indexes these four wasm32 function pointers by class ID.
+                for op in ("repr", "eq", "cmp", "hash"):
+                    if (op in ("eq", "cmp") and cls not in self.m.compared) or (op == "hash" and cls not in self.m.hashed):
+                        self.ref("null")
+                        continue
+                    target = "@o." + op + "." + cls
+                    params = ["int", cls, cls] if op == "cmp" else [cls] if op == "hash" else [cls, cls]
+                    result = "str" if op == "repr" else "int" if op == "hash" else "bool"
+                    if target not in functions or functions[target].ptypes != params or functions[target].ret != result:
+                        raise Refused(f"object callback {target} must take {params} and return {result}")
+                    self.callback_ref(target)
 
     def exception_descriptor(self, c: Const, functions: dict[str, Func], strings: set[str]) -> None:
         # runtime.c's ExcClass: two string pointers, then three wasm32 function
@@ -739,10 +819,13 @@ class Emitter:
             result = "exc" if j == 4 else "str"
             if target not in functions or functions[target].ptypes != [cls] or functions[target].ret != result:
                 raise Refused(f"exception callback {target} must take {cls} and return {result}")
-            if target not in self.callbacks:
-                self.callbacks[target] = []
-            self.callbacks[target].append(len(self.data))
-            self.data.extend(bytes(4))
+            self.callback_ref(target)
+
+    def callback_ref(self, target: str) -> None:
+        if target not in self.callbacks:
+            self.callbacks[target] = []
+        self.callbacks[target].append(len(self.data))
+        self.data.extend(bytes(4))
 
     def ref(self, name: str) -> None:
         # a 4-byte address: null, or a constant's (relocated)
@@ -795,6 +878,10 @@ class Emitter:
 
     def collect_imports(self) -> None:
         # every runtime function the functions call, before function indexes are assigned
+        if self.m.objects:
+            sym = "pys_wasi_set_object_dispatch"
+            self.imports[sym] = Import(sym, ["void", "ptr", "i32"], self.types.of([I32, I32], []))
+            self.import_order.append(sym)
         for fn in self.m.funcs:
             if fn.frame_bytes:
                 self.stack_frames = True
@@ -922,12 +1009,17 @@ class Emitter:
             if wt != I32:
                 raise Refused(f"null as {ll}")
             self.i32c(0)
-        elif v.startswith("ptrtoint (ptr @") and v.endswith(" to i64)") and wt == I64:
-            # (a constant's address as an int: a dict's tuple-key descriptor)
+        elif v.startswith("ptrtoint (ptr ") and v.endswith(" to i64)") and wt == I64:
+            # A dict/set key descriptor. A populated dict can retain the KTAG bit
+            # (2) in its aligned descriptor address as gen_key_kind specifies.
             sym = v[len("ptrtoint (ptr "):len(v) - len(" to i64)")]
+            tag = 0
+            if sym.startswith("getelementptr (i8, ptr @") and sym.endswith(", i64 2)"):
+                sym = sym[len("getelementptr (i8, ptr "):len(sym) - len(", i64 2)")]
+                tag = 2
             if sym not in self.addr:
                 raise Refused(f"symbol {sym} as a value")
-            self.data_addr(sym, 0)
+            self.data_addr(sym, tag)
             self.op(0xAD)
         elif wt == F64:
             self.op(0x44)
@@ -1196,9 +1288,7 @@ class Emitter:
             if hole > 0 and (key == "dict.new" or key == "set.new"):
                 h = self.m.holes.get(hole, "")
                 kind = self.m.keykinds.get(h, "0") if h != "" else "0"
-                if not kind.lstrip("-").isdigit():
-                    raise Refused(f"key kind {kind} of {key}")
-                args = [Operand("int", kind)] + args[1:]
+                args = [key_kind_operand(kind)] + args[1:]
             self.call_import(imp, args)
             if imp.ll[0] != "void":
                 if len(i.res) == 0:
@@ -1240,14 +1330,12 @@ class Emitter:
             hole = int(i.fields.get("hole", "0"))
             t = self.m.holes.get(hole, "") if hole > 0 else i.args[0].t
             kind = self.m.builtkinds.get(t, "") if t != "" else "0"
-            if not kind.lstrip("-").isdigit():
-                raise Refused(f"empty.kind of {t}")
             self.address(i.args[0])
             self.i32c(8)
             self.op(0x6A)
             self.set(self.local(i.res[0], I32))
             self.get(self.locals[i.res[0]])
-            self.i64c(int(kind))
+            self.push(key_kind_operand(kind), "i64")
             self.mem(0x37, 3, 0)
         elif op == "ret":
             if len(i.args) > 0 and i.args[0].v in self.fn.tuple_offsets:
@@ -1723,6 +1811,10 @@ class Emitter:
         if c not in self.m.classes:
             raise Refused(f"layout of {c}")
         d = self.m.classes[c]
+        # Older IR reserved a pointer per LP64 header word and copied eight
+        # bytes into each. Using that layout on wasm32 overwrites user fields.
+        if d.legacy_header:
+            raise Refused(f"legacy container header of {c}")
         return [lt(t) for t in d.ftypes] + ["i1" for _ in range(d.nflag)] + ["ptr" for _ in range(d.nbox)]
 
     def field_offset(self, c: str, k: int) -> int:
@@ -1774,6 +1866,13 @@ class Emitter:
                 self.op(0x6A)  # i32.add
                 self.mem(0x36, 2, offset)  # i32.store
             j += 1
+        if self.m.objects:
+            self.code.extend(b"\x23\x00")  # global.get env.data
+            self.i32c(self.object_rows)
+            self.op(0x6A)
+            self.i32c(len(self.m.objects))
+            self.op(0x10)
+            uleb(self.code, self.fnindex["pys_wasi_set_object_dispatch"])
         self.op(0x0B)
         out = bytearray()
         uleb(out, len(self.code))
@@ -1788,7 +1887,7 @@ class Emitter:
         for flag in ("dynamic", "promoting", "protocol", "rtmode", "extension"):
             if flag in attrs:
                 raise Refused(f"module attribute {flag}")
-        for table in ("objects", "compared", "hashed", "unequal", "crossed", "unsupported"):
+        for table in ("unequal", "crossed", "unsupported"):
             if table in attrs and attrs[table] != "[]":
                 raise Refused(f"module attribute {table}")
         self.lay_out_data()
@@ -1905,6 +2004,13 @@ class Emitter:
             name_bytes(marker, "pystachy.eh")
             section(out, 0, marker)
         return out
+
+
+def key_kind_operand(kind: str) -> Operand:
+    digits = kind[1:] if kind.startswith("-") else kind
+    if (digits.isascii() and digits.isdigit()) or kind.startswith("ptrtoint (ptr "):
+        return Operand("int", kind)
+    raise Refused(f"dict/set key kind {kind}")
 
 
 def is_number(v: str) -> bool:

@@ -79,8 +79,8 @@ def wasm_module(gen: Gen) -> Module:
         raise Refused("module attribute promoting")
     if gen.gproto or gen.ext != "" or gen.rtmode:
         raise Refused("module requires generators, extension exports or runtime mode")
-    if len(gen.ocls) + len(gen.ocmp) + len(gen.hcls) + len(gen.one) + len(gen.xobj) != 0:
-        raise Refused("module requires object dispatch")
+    if gen.one or gen.xobj:
+        raise Refused("module requires dynamic object comparisons")
     if len(gen.rtdatas) != 0:
         raise Refused("module declaration rtdata")
     if len(gen.externs) != 0:
@@ -94,9 +94,11 @@ def wasm_module(gen: Gen) -> Module:
         ci = gen.classes[name]
         cd = ClassDecl(name)
         cd.ftypes = [ci.ftypes[field] for field in ci.fields]
+        cd.legacy_header = ci.ftypes.get(" list.0", "") == "str" or ci.ftypes.get(" dict.0", "") == "str"
         cd.nflag = ci.nflag
         cd.nbox = ci.nbox
         m.classes[name] = cd
+    m.set_object_tables(gen.ocls, gen.ocmp, gen.hcls)
     for k in range(1, len(gen.holes)):
         m.holes[k] = gen.holes[k]
     for g in gen.globs:
