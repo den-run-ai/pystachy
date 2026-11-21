@@ -38,7 +38,11 @@ class ClosureCellTests(unittest.TestCase):
             self.assertEqual(access.run_checker(access.DEFAULT_CHECKER, access.encode(candidate), metadata), expected)
 
     def test_repeated_cell_reads_retain_the_same_guarded_dict(self):
-        self.assert_verdict(self.snapshot(), True)
+        snapshot = self.snapshot()
+        for stride in ("int", "%ptr"):
+            with self.subTest(stride=stride):
+                snapshot["functions"][0]["blocks"][0]["operations"][0]["text"] = stride
+                self.assert_verdict(snapshot, True)
 
     def test_writes_through_same_or_unknown_alias_kill_cell_identity(self):
         for address in ("%t21", "%a2"):

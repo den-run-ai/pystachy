@@ -95,7 +95,7 @@ class EffectSummaryTests(unittest.TestCase):
         cell = [op("rt", [("8", "int")], [1], text="alloc", typ="%ptr"),
                 op("mem.store", [("%t1", "&int"), ("%a0", "int")])]
         environment = [op("rt", [("16", "int")], [2], text="alloc", typ="%ptr"),
-                       op("mach.addr", [("%t2", "%ptr"), ("1", "int")], [3], text="%ptr", typ="%ptr"),
+                       op("mach.addr", [("%t2", "%ptr"), ("1", "int")], [3], text="int", typ="%ptr"),
                        op("mach.store", [("%t3", "%ptr"), ("null", "%ptr")])]
         obj = [op("alloc.fixed", [], [4], typ="Thing"),
                op("field.addr", [("%t4", "Thing")], [5], typ="&int", immediate=1),
@@ -103,7 +103,7 @@ class EffectSummaryTests(unittest.TestCase):
         # (a promoting program's closure cell: 23 bytes requested for a 24-byte slot, its identity
         # box in the third word, functions.py)
         identity_cell = [op("rt", [("23", "int")], [8], text="alloc", typ="%ptr"),
-                         op("mach.addr", [("%t8", "%ptr"), ("2", "int")], [9], text="%ptr", typ="%ptr"),
+                         op("mach.addr", [("%t8", "%ptr"), ("2", "int")], [9], text="int", typ="%ptr"),
                          op("mem.store", [("%t9", "&dyn"), ("null", "dyn")])]
         # (a fixed tuple's last word: lru_cache's _call copies its key into a new tuple)
         pair = [op("alloc.fixed", [], [6], typ="tuple[str,int,int]"),

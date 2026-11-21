@@ -430,20 +430,21 @@ def gen_closure(self, n: Node) -> Val:
         f.dglob[j] = f"&{offset}"
         offset += 2 if value.t == "int+" else 1
         dvals.append(value)
+    # The environment mixes defaults and pointers. Each slot is an eight-byte word on every target.
     env = self.rt("pys_alloc", "ptr", [f"i64 {8 * max(len(c.caps) + closure_default_slots(c) + len(c.iflags) + (len(c.defs) if dynamic_program() else 0), 1)}"])
     for i in range(len(c.caps)):
         if c.ctypes[i] != "None":
             x = c.caps[i]
-            a = self.maddr('%ptr', env, f'{i}', True)
+            a = self.maddr('int', env, f'{i}', True)
             self.mstore('%ptr', self.cells[x] if x in self.cells else self.lreg[x], a)
     for j in range(len(dvals)):
         a = self.maddr('int', env, f'{f.dglob[c.defs[j]][1:]}', True)
         self.mstore(dvals[j].t, dvals[j].v, a)
         if self.idhere() and numeric_identity(dvals[j].t):
-            b = self.maddr('%ptr', env, f'{len(c.caps) + closure_default_slots(c) + len(c.iflags) + j}', True)
+            b = self.maddr('int', env, f'{len(c.caps) + closure_default_slots(c) + len(c.iflags) + j}', True)
             self.mstore('dyn', dvals[j].idfrom, b)
     for j in range(len(c.iflags)):
-        a = self.maddr('%ptr', env, f'{len(c.caps) + closure_default_slots(c) + j}', True)
+        a = self.maddr('int', env, f'{len(c.caps) + closure_default_slots(c) + j}', True)
         self.mstore('%ptr', self.iflag[c.iflags[j]], a)
     self.nn[env] = True
     return Val(env, c.t)
