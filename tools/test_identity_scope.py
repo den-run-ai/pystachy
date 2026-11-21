@@ -475,6 +475,38 @@ print(p.step('def'), inertlib.decode('1000'))
         baseline, _ = self.compile(source, hints=False)
         self.assertIn("%C.inertlib$Cursor = type {i64, ptr}", baseline)
 
+    def test_arithmetic_arguments_keep_hinted_kernel(self):
+        source = "# pystachy: dynamic-any\nimport inertlib\nprint(inertlib.mandel(5, 3, 12))\n"
+        helper = "# pystachy: identity-inert\n" + (ROOT / "bench/mandel.py").read_text().split("img = mandel")[0]
+        ir, generations = self.compile(source, helper)
+        self.assertEqual([g.idevent for g in generations], [""])
+        self.assertIn("inertlib", generations[-1].idhint)
+        kernel = "@f.inertlib$mandel"
+        self.assertIsNone(BOXING.search(functions(ir)[kernel]))
+        baseline, _ = self.compile(source, helper, hints=False)
+        self.assertIn("@pys_dyn_float_box(", functions(baseline)[kernel])
+
+    def test_observable_inputs_restore_unhinted_ir(self):
+        source = "# pystachy: dynamic-any\nimport inertlib\nprint(inertlib.check(float('nan')))\n"
+        prelude = "# pystachy: identity-inert\n"
+        cases = [
+            ("", "y = x\n    return bool(y)"),
+            ("", "return x in (x,)"),
+            ("", "return bool(+x)"),
+            ("def observe(a: float) -> bool:\n    return a > 0\n", "return observe(x)"),
+            ("saved = 1.5\n", "global saved\n    saved = x\n    return True"),
+            ("", "def capture() -> float:\n        return x\n    return capture() > 0"),
+            ("class Peer:\n    def __eq__(self, y: float) -> bool:\n        return y > 0\n", "return Peer() == x"),
+            ("def range(a: float) -> list[int]:\n    return [int(a)]\n", "for i in range(x):\n        pass\n    return False"),
+        ]
+        for extra, body in cases:
+            with self.subTest(body=body):
+                helper = prelude + extra + "def check(x: float) -> bool:\n    " + body + "\n"
+                ir, generations = self.compile(source, helper)
+                self.assertTrue(generations[0].idevent)
+                baseline, _ = self.compile(source, helper, hints=False)
+                self.assertEqual(ir, baseline)
+
     def test_json_keeps_typed_parser_without_numeric_companions(self):
         source = (ROOT / "bench/pyperformance/json_loads.py").read_text()
         ir, generations = self.compile(source)

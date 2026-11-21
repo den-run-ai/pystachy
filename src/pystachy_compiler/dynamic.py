@@ -243,6 +243,16 @@ def gen_identity_call(self, f: FnInfo) -> None:
     if (home in self.idhint) != (here in self.idhint):
         if all(self.identity_inert(t, [], True) for t in f.ptypes) and self.identity_inert(f.ret, [], True):
             return
+        # A tracked direct call may pass raw numbers to a hinted scalar kernel. Its body
+        # must prove every input read before this compilation can finish (function_body).
+        if (home in self.idhint and here != "?" and here not in self.idoff and
+                (f.inert_sites is not None or f.ll not in self.compiled) and f.node.kind == "def" and
+                not f.synthetic and f.cls == "" and f.clo < 0 and not f.gen and not f.generic and
+                not f.inst and not f.infer and f.vararg < 0 and f.kwarg < 0 and
+                all(t in ["int", "float", "bool"] for t in f.ptypes) and self.identity_inert(f.ret, [], True)):
+            if f.inert_sites is None:
+                f.inert_sites = {}
+            return
         self.identity_event(f"hinted call of {f.name}()")
     if home == "?" or here == "?" or (home in self.idoff) == (here in self.idoff):
         return

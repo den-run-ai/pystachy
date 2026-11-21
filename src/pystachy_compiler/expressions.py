@@ -1086,6 +1086,12 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     self.line = n.line
     want = self.rec_type(want)
     k = n.kind
+    sites = self.curfn.inert_sites
+    if sites is not None and (k == "binop" or k == "cmp") and n in sites:
+        if not self.scalar_read_value(n):
+            self.identity_event(f"hinted call of {self.curfn.name}()")
+        if self.drying == 0:
+            sites[n] = True
     if k == "superbound":
         # Bound arm of a nullable super call, already split from its own-object method.
         return self.super_call(n.kids[0], n.s, n.kids[2:], own_bound=True, captured=self.expr(n.kids[1], ""))

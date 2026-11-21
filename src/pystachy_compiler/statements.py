@@ -1865,6 +1865,9 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
         fn = it.kids[0].s
         args = it.kids[1:]
         if fn == "range":
+            sites = self.curfn.inert_sites
+            if sites is not None and self.drying == 0 and n in sites:
+                sites[n] = True
             vs = self.range_args(args)
             self.for_range(tgt, vs[0], vs[1], vs[2], body, hide, arg)
             return

@@ -1606,7 +1606,15 @@ module's dependencies.
 
 Calls may exchange strings, bytes, bools, `None`, boxed values and
 representations that already carry no numeric companion, including recursive `JSONValue`
-storage. Numeric scalars, scalar unions and numeric lists do not qualify.
+storage. A tracked caller can also pass plain `int` and `float` arguments to a
+hinted module's top-level, nongeneric function when it takes only numeric arguments
+(including bools) and returns an already eligible type. Each numeric argument must
+be used only directly in builtin range loops, primitive `+`, `-`, `*`, `/` or
+value comparisons. The compiler checks the operand types when emitting the body.
+Forwarding an argument, observing its identity, a shadowed range, or an unproved
+operation restores normal tracking. This check is available when the crossing is
+known before the callee body is built. Numeric scalar returns, scalar unions and
+numeric lists keep the usual fallback.
 
 A hinted class may
 cross directly as a typed handle; observing its numeric fields, boxing it, mixing tracked and

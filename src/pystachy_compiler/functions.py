@@ -1,6 +1,6 @@
 """Functions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends, targets
+from src.pystachy_compiler.analysis import globals_in, inert_input_sites, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends, targets
 from src.pystachy_compiler.diagnostics import Rejoin, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Try, Val
 from src.pystachy_compiler.symbols import FnInfo
@@ -174,6 +174,9 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     del self.building[f.ll]
     self.selfcls = sel
     self.xtry = tried
+    sites = f.inert_sites
+    if sites is not None and not all(sites.values()):
+        self.identity_event(f"hinted call of {f.name}()")
     self.number_casts()  # (after its last value: gen_cast)
     self.instantiate(self.fn)
     self.fn.n = self.n
@@ -251,6 +254,13 @@ def gen_receiver_fields(self, c: str, me: str, body: list[Node], names: dict[str
 def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
     # one compilation of f's code into a new IFn (gen_function)
     self.enter(f, body)
+    sites = f.inert_sites
+    if sites is not None:
+        sites.clear()  # a replay must validate the body and operand types it actually emits
+        inputs = [f.params[j] for j in range(len(f.params)) if f.ptypes[j] in ["int", "float"]]
+        plain_range = "range" not in self.assigned and "range" not in f.params and "range" not in self.aliases and "range" not in self.gtypes and "range" not in self.fglobals and not self.bound("range")
+        if not all(inert_input_sites(n, inputs, sites, plain_range) for n in body):
+            self.identity_event(f"hinted call of {f.name}()")
     if f.infer and f.ret == "" and len(self.hints) > 0 and self.fnkey(f) + "|return" in self.hints:
         f.ret = self.hints[self.fnkey(f) + "|return"]  # (a join's type: as if annotated, see join_hint)
         self.ret = f.ret
