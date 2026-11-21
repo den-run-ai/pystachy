@@ -1182,6 +1182,7 @@ from src.pystachy_compiler.lowering import (
     gen_field_tag as lowering_field_tag,
     gen_list_tag as lowering_list_tag,
     gen_invoke as lowering_invoke,
+    gen_key_kinds as lowering_key_kinds,
     gen_lower as lowering_lower,
     gen_lower_ins as lowering_lower_ins,
     gen_tuple_rets as lowering_tuple_rets,
@@ -1861,6 +1862,12 @@ class Gen:
         self.lkk: dict[str, str] = {}  # a local's holes, space-separated
         self.gkk: dict[str, str] = {}  # a global's
         self.holes: list[str] = [""]  # each hole's type, "" until a use shows it (0: no hole)
+        # the key kinds that lowering stores for those of dicts and sets, by the container's type:
+        # a new one's (rt dict.new, set.new) and a result's (empty.kind, built). Gen.key_kinds
+        # fills them once the typed program is final, and only lowering reads them: no frontend
+        # or speculative compilation (dry, Frame) sees them, and Rejoin starts from a new Gen
+        self.keykinds: dict[str, str] = {}
+        self.builtkinds: dict[str, str] = {}
         # globals that hold the same empty container (X = Y at module level), one type: each one's
         # class of twins (named by a member), and each class's members
         self.twin_of: dict[str, str] = {}
@@ -4046,6 +4053,9 @@ class Gen:
 
     def tuple_rets(self) -> None:
         return lowering_tuple_rets(self)
+
+    def key_kinds(self) -> None:
+        return lowering_key_kinds(self)
 
     def alloc_call(self, size: str, t: str) -> str:
         return lowering_alloc_call(self, size, t)

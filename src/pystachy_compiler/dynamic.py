@@ -18,6 +18,7 @@ the program's classes, functions the compiler writes once every class that is bo
 from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
 from src.pystachy_compiler.bigints import held
+from src.pystachy_compiler.class_values import boxed_class_record
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, TupleBoxes, dynamic_file, dynamic_program, int_lists, int_program, static_file
 from src.pystachy_compiler.frames import Reduce
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
@@ -3231,7 +3232,7 @@ def gen_dyn_identity(self, op: str, a: Val, b: Val) -> Val:
     sp = self.num_cmp("==", self.dyn_raw(x), self.dyn_raw(y)).v
     nf = self.ptr_cmp("!=", ta, Val(self.rtdata("pys_dyntype_float"), "dyntype")).v
     ni = self.ptr_cmp("!=", ta, Val(self.rtdata("pys_dyntype_int"), "dyntype")).v
-    fl = self.mload("int", self.maddr("int", ta.v, "5"))  # (its DynType's flags)
+    fl = self.mload("int", self.maddr("dyntype", ta.v, "5"))  # (its DynType's flags)
     nb = self.num_cmp("==", Val(self.scalar("and", [Val(fl, "int"), Val(str(DF_BOXID), "int")]), "int"), Val("0", "int")).v
     nf = self.scalar("and", [Val(self.scalar("and", [Val(nf, "bool"), Val(ni, "bool")]), "bool"), Val(nb, "bool")])
     alike = self.scalar("and", [Val(st, "bool"), Val(self.scalar("and", [Val(sp, "bool"), Val(nf, "bool")]), "bool")])
@@ -3474,7 +3475,7 @@ def gen_dyn_slice(self, o: Val, bs: list[Node]) -> Val:
 def gen_dyn_type_name(self, v: Val) -> Val:
     # type(v).__name__: its DynType's name
     t = self.dyn_typeof(v)
-    return Val(self.mload("str", self.maddr("%ptr", t, "2", True)), "str")
+    return Val(self.mload("str", self.maddr("dyntype", t, "2", True)), "str")
 
 
 # ---- the dispatchers: functions of the program that the compiler writes once every class that
@@ -3565,7 +3566,7 @@ def gen_dyn_body(self, key: str) -> None:
             self.ret_(Val("false", "bool"))
             return
         typ = self.dyn_typeof(o)
-        cid = Val(self.mload("int", self.maddr("int", typ, "3")), "int")
+        cid = Val(self.mload("int", self.maddr("dyntype", typ, "3")), "int")
         hit = self.label()
         miss = self.label()
         self.switch(cid, [str(self.ocls[c]) for c in classes], [hit for _ in classes], miss)
@@ -3605,7 +3606,7 @@ def gen_dyn_body(self, key: str) -> None:
         # This metatype's payload is an internal record pointer, not a native
         # Python value type for dyn.payload. Read its proven pointer slot with
         # the ordinary typed-memory operation instead.
-        rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+        rec = Val(boxed_class_record(self, o), "%ptr")
         word = "0" if key == "get.__name__" else "1" if key == "get.__qualname__" else "2"
         self.ret_(self.dyn_box(Val(self.mload("str", self.maddr("%ptr", rec.v, word)), "str")))
         self.place(miss)
@@ -3613,7 +3614,7 @@ def gen_dyn_body(self, key: str) -> None:
         dyn_class_members(self, f, key, o, ps[1:])
     arith = (key.startswith("op") or key.startswith("iop")) and dunder != ""
     r = "__r" + dunder[2:] if arith else ""
-    # the case of the receiver's class, by one switch on its DynType's class id (word 3: a class's
+    # the case of the receiver's class, by one switch on its DynType's class id (field 3: a class's
     # dense O<id>, which its DynType holds, or -1 for a builtin or function DynType, which takes
     # the rest), which LLVM can make a jump table, rather than a comparison with each class's
     # DynType in turn (#799). A subclass has a DynType of its own, so its case is exact too
@@ -3621,7 +3622,7 @@ def gen_dyn_body(self, key: str) -> None:
     labels = [self.label() for x in arms]
     rest = self.label()
     if len(arms) > 0:
-        cid = Val(self.mload("int", self.maddr("int", t.v, "3")), "int")
+        cid = Val(self.mload("int", self.maddr("dyntype", t.v, "3")), "int")
         self.switch(cid, [str(self.ocls[x]) for x in arms], labels, rest)
     for j in range(len(arms)):
         c = arms[j]
@@ -4494,7 +4495,7 @@ def dyn_class_calls(self, key: str, o: Val, args: list[Val]) -> None:
     # A class box identifies its canonical record, not one instance layout.
     # Reuse the program's adapters/initializers, including the annotation-backed
     # factories prepared separately under the whole-compilation retry contract.
-    rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+    rec = Val(boxed_class_record(self, o), "%ptr")
     an = self.dyn_call_args(key, args)
     classes = [c for c in self.classes if "@pys.refl.c." + c in self.reflrecs and self.classes[c].origin == "" and "__init__" in self.classes[c].methods]
     for c in classes:
@@ -4723,7 +4724,7 @@ def dyn_class_members(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> Non
     other = self.label()
     self.cbr(self.ptr_cmp("==", Val(self.dyn_typeof(o), "dyntype"), Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, box, other)
     self.place(box)
-    rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+    rec = Val(boxed_class_record(self, o), "%ptr")
     lacking = self.label()
     for c in kinds:
         kind = kinds[c]
@@ -5442,7 +5443,7 @@ def dyn_packed_name(self, o: Val, method: str) -> None:
     rest = self.label()
     self.cbr(self.ptr_cmp("==", typ, Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, meta, rest)
     self.place(meta)
-    rec = self.mload("%ptr", self.maddr("%ptr", o.v, "1"))
+    rec = boxed_class_record(self, o)
     mod = Val(self.mload("str", self.maddr("%ptr", rec, "2")), "str")
     qual = Val(self.mload("str", self.maddr("%ptr", rec, "1")), "str")
     self.ret_(self.concat([mod, Val(self.sconst("."), "str"), qual, Val(self.sconst("()"), "str")]))
@@ -5472,7 +5473,7 @@ def dyn_packed_default(self, f: FnInfo, pre: list[Val], j: int) -> Val:
         if self.fn_identity(f) and numeric_identity(t):
             clo = self.closures[f.clo]
             offset = len(clo.caps) + closure_default_slots(clo) + len(clo.iflags) + clo.defs.index(j)
-            value.idfrom = self.mload("dyn", self.maddr("%ptr", pre[0].v, str(offset), True))
+            value.idfrom = self.mload("dyn", self.maddr("int", pre[0].v, str(offset), True))
     elif df.dglob[j] != "":
         t = t if t != "" else df.dtypes[j]
         value = Val(self.mload(t, df.dglob[j]), t)
@@ -5660,7 +5661,7 @@ def dyn_packed_body(self, f: FnInfo, o: Val, pos: Val, kws: Val, method: str) ->
     other = self.label()
     self.cbr(self.ptr_cmp("==", typ, Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, meta, other)
     self.place(meta)
-    rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+    rec = Val(boxed_class_record(self, o), "%ptr")
     for c in [x for x in self.classes if "@pys.refl.c." + x in self.reflrecs and self.classes[x].origin == "" and "__init__" in self.classes[x].methods]:
         hit = self.label()
         rest = self.label()

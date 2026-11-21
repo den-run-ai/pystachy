@@ -9,7 +9,7 @@ from src.pystachy_compiler.ir import Data, Val
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import COMPLEXC, CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_DEPTH_TYPE, TBAA_FIELDS, TBAA_FLOOR, TBAA_FLOOR_TYPE, TBAA_LEN, TBAA_LIMIT, TBAA_LIMIT_TYPE, TBAA_NAMES, TBAA_SIZES
+from src.pystachy_compiler.specs import CLASSREC_LL, COMPLEXC, CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_DEPTH_TYPE, TBAA_FIELDS, TBAA_FLOOR, TBAA_FLOOR_TYPE, TBAA_LEN, TBAA_LIMIT, TBAA_LIMIT_TYPE, TBAA_NAMES, TBAA_SIZES
 from src.pystachy_compiler.utils import RtFn, float_slot, lt, runtime_decl, typestr
 
 # pystachy run on Linux, which loads the runtime as a shared library (the driver's RTSO, #704): a
@@ -340,7 +340,7 @@ def lower_data(d: Data) -> str:
         # the sorted name table and the field table with their lengths (null and 0 until a site
         # needs them). Internal, and its address is the class's identity: never merged
         r = d.refs
-        return (f"{d.name} = internal constant {{ptr, ptr, ptr, i64, i64, ptr, i64, ptr}} {{ptr {r[0]}, ptr {r[1]}, ptr {r[2]}, "
+        return (f"{d.name} = internal constant {CLASSREC_LL} {{ptr {r[0]}, ptr {r[1]}, ptr {r[2]}, "
                 f"i64 {d.items[0].v}, i64 {d.items[1].v}, ptr {r[3]}, i64 {d.items[2].v}, ptr {r[4]}}}, align 8")
     if d.kind == "classnames":
         # the names a class's objects answer to, sorted by their bytes, each with its kind

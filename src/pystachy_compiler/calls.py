@@ -1681,7 +1681,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
                 vals[j] = Val(self.mload(t, da), t)
                 if self.fn_identity(f) and numeric_identity(t):
                     closure = self.closures[f.clo]
-                    ba = self.maddr('%ptr', pre[0].v, str(len(closure.caps) + closure_default_slots(closure) + len(closure.iflags) + closure.defs.index(j)), True)
+                    ba = self.maddr('int', pre[0].v, str(len(closure.caps) + closure_default_slots(closure) + len(closure.iflags) + closure.defs.index(j)), True)
                     vals[j].idfrom = self.mload('dyn', ba)
             elif df.dglob[j] != "":
                 t = t if t != "" else df.dtypes[j]

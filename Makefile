@@ -574,7 +574,7 @@ check-repository:
 # sources; pip install -r tools/requirements-dev.txt gives the versions CI uses
 lint: lint-python
 	$(PY) tools/runtime_roots.py
-	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh)
+	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh wasm/*.sh)
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c tools/bytescanprobe.c tools/floatprobe.c pyext.c pyembed.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -std=c11 -D_GNU_SOURCE -DLLVM_VERSION_MAJOR=18 lljit.c

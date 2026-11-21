@@ -1,4 +1,4 @@
-function @f.score_samples(samples: list[float]) -> float effects="R rL" {
+function @f.score_samples(samples: list[float]) -> float effects="R rL" name=score_samples {
   %samples.2 = slot name=samples : list[float]
   %score.3 = slot name=score : float
   %h.5 = slot : int
