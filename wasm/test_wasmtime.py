@@ -3,6 +3,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from threading import Thread
 
 import wasmtime as wt
 
@@ -109,6 +110,35 @@ class HostTests(unittest.TestCase):
         with self.assertRaises(wt.Trap):
             self.runner.run(program, memory_limit=65536)
         self.assertEqual(self.runner.run(program, memory_limit=131072), 0)
+
+    def test_callback_can_reenter_and_detects_an_overlapping_thread(self):
+        outer = self.compile('''(module
+          (import "codemode" "call" (func $call (param i32 i32 i32 i32) (result i32)))
+          (memory (export "memory") 1) (data (i32.const 0) "tool")
+          (func (export "_start") (drop (call $call (i32.const 0) (i32.const 4)
+            (i32.const 0) (i32.const 0)))))''')
+        other = Runner()
+        inner = other.compile(wt.wat2wasm('(module (func (export "_start")))'))
+        results = []
+
+        def parallel():
+            try:
+                results.append(other.run(inner))
+            except RuntimeError as exc:
+                results.append(str(exc))
+
+        def tool(_):
+            results.append(other.run(inner))
+            thread = Thread(target=parallel, daemon=True)
+            thread.start()
+            thread.join(5)
+            self.assertFalse(thread.is_alive())
+            return ""
+
+        self.assertEqual(self.runner.run(outer, tools={"tool": tool}), 0)
+        self.assertEqual(results[0], 0)
+        self.assertIn("another thread", results[1])
+        self.assertEqual(other.run(inner), 0)
 
     def test_fuel_is_per_call(self):
         program = self.compile('(module (func (export "_start") (loop $l br $l)))')

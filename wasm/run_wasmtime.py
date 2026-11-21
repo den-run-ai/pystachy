@@ -4,14 +4,30 @@ import argparse
 import io
 import sys
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+from threading import RLock
 
 import wasmtime as wt
 
 
 DEFAULT_RUNTIME = Path(__file__).resolve().parents[1] / "build/wasm/runtime.wasm"
 U32_MAX = (1 << 32) - 1
+# wasmtime-py 51 stores a callback's pending Python exception in a process-global
+# slot. A callback can reenter on the same thread or join another thread without
+# deadlocking. Overlapping guest execution on separate threads fails immediately.
+_guest_lock = RLock()
+
+
+@contextmanager
+def guest_execution():
+    if not _guest_lock.acquire(blocking=False):
+        raise RuntimeError("another thread is running Wasmtime; use a separate host process")
+    try:
+        yield
+    finally:
+        _guest_lock.release()
 
 # Keep the exception inside Wasm, including when it crosses a C runtime frame.
 # The table links guest.init after the reactor and its imported tag exist.
@@ -148,7 +164,7 @@ class Runner:
             raise ValueError("fuel must fit an unsigned 64-bit integer")
         if memory_limit is not None and not 0 <= memory_limit < 1 << 63:
             raise ValueError("memory_limit must fit a nonnegative signed 64-bit integer")
-        with wt.Store(self.engine) as store, wt.Linker(self.engine) as linker:
+        with guest_execution(), wt.Store(self.engine) as store, wt.Linker(self.engine) as linker:
             store.set_fuel(fuel)
             if memory_limit is not None:
                 store.set_limits(memory_size=memory_limit)

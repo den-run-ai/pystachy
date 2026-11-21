@@ -171,7 +171,10 @@ its own tool grants, empty stdin, arguments (including argv[0]) and environment 
 default). Both interfaces inherit stdout and stderr and grant no directory mounts. The
 Python API also accepts `stdout` and `stderr` file paths, truncating each file on each run.
 `run` returns the guest exit status. Wasmtime traps and host callback errors propagate to
-the Python caller. The CLI prints a trap diagnostic and exits with status 134.
+the Python caller. The CLI prints a trap diagnostic and exits with status 134. Calls to
+this runner from overlapping threads raise `RuntimeError` because wasmtime-py 51 shares
+its pending callback exception across threads. A callback may run another guest on the
+same thread. Use separate processes for parallel execution.
 
 `fuel` bounds Wasm execution in engine-defined units. It excludes host callback time and
 compilation. `memory_limit` caps each guest linear memory in bytes. A cap below the initial
