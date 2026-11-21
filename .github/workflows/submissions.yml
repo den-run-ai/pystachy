@@ -1,24 +1,24 @@
-# Metadata only: checkout trusted base/default code, never a PR's head.
+# Check PR titles and bodies with a read-only token, including same-repository PRs.
+# The job's own check is the result; issue labeling has a separate workflow.
 name: Submission format
 
 on:
-  issues:
-    types: [opened, edited, reopened]
-  pull_request_target:
+  pull_request:
     types: [opened, edited, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
-  issues: write
-  statuses: write
+  pull-requests: read
 
 concurrency:
-  group: submission-${{ github.event.issue.number || github.event.pull_request.number }}
+  # Keep this distinct from the legacy submission-<number> group during migration.
+  group: submission-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   description:
-    name: Check title and description
+    # Keep the required-check name aligned with tools/check_submission.py's CHECK.
+    name: Submission format
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:

@@ -1,18 +1,21 @@
-"""Reading budgets, metadata updates and safe event handling."""
+"""Reading budgets, metadata updates, safe event handling and the PR check's workflow."""
 
 import io
 import json
 from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
 import urllib.error
 
+import yaml
+
 import check_submission as check
+
+ROOT = Path(__file__).resolve().parents[1]
 
 ISSUE = "## Problem\nA supported input fails.\n## Scope\nA small repro.\n## Done when\nThe repro passes."
 PR = "## Problem\nA supported input fails.\n## Change\nPreserve the value.\n## Validation\nRegression passed."
-
-BOT_COMMENT = {"body": check.ACK_BODY, "user": {"login": "github-actions[bot]", "type": "Bot"}}
 
 
 class FormatTests(unittest.TestCase):
@@ -99,79 +102,45 @@ class FormatTests(unittest.TestCase):
                 self.assertEqual(check.validate("Small change", disclosed, True), [])
 
     def test_templates_need_answers(self):
-        root = Path(__file__).resolve().parents[1]
-        for path in (root / ".github/ISSUE_TEMPLATE").glob("*.md"):
+        for path in (ROOT / ".github/ISSUE_TEMPLATE").glob("*.md"):
             self.assertTrue(check.validate("Example", path.read_text()))
-        self.assertTrue(check.validate("Example", (root / ".github/pull_request_template.md").read_text(), True))
+        self.assertTrue(check.validate("Example", (ROOT / ".github/pull_request_template.md").read_text(), True))
 
 
 class EventTests(unittest.TestCase):
     def current(self, body=ISSUE):
-        return {"state": "open", "title": "Small change", "body": body, "head": {"sha": "live-head"}}
+        return {"state": "open", "title": "Small change", "body": body}
 
-    def test_pr_uses_live_metadata_and_head_not_stale_event(self):
-        with patch.object(check, "api", side_effect=[self.current(PR), None]) as api:
+    def test_pr_uses_live_metadata_not_the_stale_event(self):
+        with patch.object(check, "api", return_value=self.current(PR)):
             self.assertEqual(check.check({"pull_request": {"number": 12, "body": "stale"}}), [])
-        self.assertEqual(api.call_args_list[0].args, ("GET", "/pulls/12"))
-        self.assertEqual(api.call_args.args[:2], ("POST", "/statuses/live-head"))
-        self.assertEqual(api.call_args.args[2]["state"], "success")
-        self.assertEqual(api.call_args.args[2]["context"], "Submission format")
+        with patch.object(check, "api", return_value=self.current("")) as api:
+            self.assertTrue(check.check({"pull_request": {"number": 12, "title": "Small change", "body": PR}}))
+        api.assert_called_once_with("GET", "/pulls/12")
 
-    def test_opened_pr_receives_nonblocking_reminder(self):
-        event = {"action": "opened", "pull_request": {"number": 12}}
-        with patch.object(check, "api", side_effect=[self.current(PR), None, [], None]) as api:
-            self.assertEqual(check.check(event), [])
-        self.assertEqual(api.call_args_list[2].args[1], "/issues/12/comments?per_page=100&page=1")
-        self.assertEqual(api.call_args_list[3].args[1], "/issues/12/comments")
-        self.assertIn("AI: none", api.call_args_list[3].args[2]["body"])
-
-    def test_opened_pr_rerun_does_not_duplicate_reminder(self):
-        event = {"action": "opened", "pull_request": {"number": 12}}
-        with patch.object(check, "api", side_effect=[self.current(PR), None,
-                                                    [BOT_COMMENT]]) as api:
-            self.assertEqual(check.check(event), [])
-        self.assertEqual(api.call_count, 3)
-
-    def test_later_pr_events_retry_a_missing_reminder(self):
-        for action in ("edited", "synchronize", "reopened", "ready_for_review"):
-            event = {"action": action, "pull_request": {"number": 12}}
-            with self.subTest(action=action), patch.object(
-                    check, "api", side_effect=[self.current(PR), None, [], None]) as api:
-                self.assertEqual(check.check(event), [])
-                self.assertEqual(api.call_args.args[:2], ("POST", "/issues/12/comments"))
-
-    def test_reminder_failures_do_not_change_valid_or_invalid_format_results(self):
-        failures = [urllib.error.HTTPError("url", 403, "Forbidden", {}, None),
-                    urllib.error.URLError("offline"), TimeoutError("timed out"),
-                    json.JSONDecodeError("bad response", "", 0)]
-        for body in (PR, ""):
-            for error in failures:
-                for replies in ([error], [[], error]):
-                    with self.subTest(body=body, error=error, post=len(replies) == 2), patch.object(
-                            check, "api", side_effect=[self.current(body), None, *replies]) as api, \
-                            patch("sys.stderr", new_callable=io.StringIO) as stderr:
-                        errors = check.check({"action": "opened", "pull_request": {"number": 12}})
-                        self.assertEqual(bool(errors), not bool(body))
-                        self.assertEqual(api.call_args_list[1].args[2]["state"],
-                                         "success" if body else "failure")
-                        self.assertIn("metadata validation is unchanged", stderr.getvalue())
+    def test_pr_events_only_read_so_a_fork_token_suffices(self):
+        # pull_request gives a fork's run a read-only token: a status, label or comment would fail.
+        for action in ("opened", "edited", "synchronize", "reopened", "ready_for_review"):
+            for body in (PR, ""):
+                with self.subTest(action=action, valid=bool(body)), patch.object(
+                        check, "api", return_value=self.current(body)) as api:
+                    errors = check.check({"action": action, "pull_request": {"number": 12}})
+                    self.assertEqual(bool(errors), not body)
+                    api.assert_called_once_with("GET", "/pulls/12")
 
     def test_metadata_api_failures_are_not_swallowed(self):
         error = urllib.error.HTTPError("url", 403, "Forbidden", {}, None)
-        for replies in ([error], [self.current(PR), error]):
-            with self.subTest(replies=len(replies)), patch.object(check, "api", side_effect=replies):
+        for event, replies in (({"action": "opened", "pull_request": {"number": 12}}, [error]),
+                               ({"issue": {"number": 3}}, [error]),
+                               ({"issue": {"number": 3}}, [self.current(""), error])):
+            with self.subTest(event=event, replies=len(replies)), patch.object(check, "api", side_effect=replies):
                 with self.assertRaises(urllib.error.HTTPError):
-                    check.check({"action": "opened", "pull_request": {"number": 12}})
+                    check.check(event)
 
-    def test_closed_pr_does_not_receive_a_reminder(self):
+    def test_closed_pr_passes_without_judging_metadata(self):
         with patch.object(check, "api", return_value={"state": "closed"}) as api:
             self.assertEqual(check.check({"action": "opened", "pull_request": {"number": 12}}), [])
         self.assertEqual(api.call_count, 1)
-
-    def test_invalid_pr_reports_failure(self):
-        with patch.object(check, "api", side_effect=[self.current(""), None]) as api:
-            self.assertTrue(check.check({"pull_request": {"number": 12}}))
-        self.assertEqual(api.call_args.args[2]["state"], "failure")
 
     def test_invalid_issue_creates_label_without_comments_or_replacing_labels(self):
         with patch.object(check, "api", side_effect=[self.current(""), None, {}, None]) as api:
@@ -206,53 +175,72 @@ class EventTests(unittest.TestCase):
         with patch.dict("os.environ", {"GITHUB_REPOSITORY": "example/repo", "GITHUB_TOKEN": "test"}):
             with patch("urllib.request.urlopen") as urlopen:
                 urlopen.return_value.__enter__.return_value.read.return_value = b'{}'
-                check.api("POST", "/statuses/head", {"body": "$(false)\n`command`"})
+                check.api("POST", "/issues/3/labels", {"body": "$(false)\n`command`"})
             request = urlopen.call_args.args[0]
             self.assertEqual(json.loads(request.data), {"body": "$(false)\n`command`"})
             missing = urllib.error.HTTPError("url", 404, "missing", {}, None)
             with patch("urllib.request.urlopen", side_effect=missing):
                 self.assertIsNone(check.api("GET", "/labels/missing", missing_ok=True))
                 with self.assertRaises(urllib.error.HTTPError):
-                    check.api("POST", "/statuses/head", {})
+                    check.api("POST", "/issues/3/labels", {})
 
 
-class ReminderTests(unittest.TestCase):
-    def test_marker_on_a_later_page_is_not_duplicated(self):
-        with patch.object(check, "api", side_effect=[[{"body": "discussion"}] * 100,
-                                                    [BOT_COMMENT]]) as api:
-            check.remind_contributor(12)
-        self.assertEqual(api.call_count, 2)
-        self.assertEqual(api.call_args.args, ("GET", "/issues/12/comments?per_page=100&page=2"))
+class MainTests(unittest.TestCase):
+    def run_main(self, body):
+        with tempfile.TemporaryDirectory() as directory:
+            event = Path(directory) / "event.json"
+            event.write_text(json.dumps({"action": "edited", "pull_request": {"number": 12}}))
+            summary = Path(directory) / "summary.md"
+            current = {"state": "open", "title": "Small change", "body": body}
+            with patch.dict("os.environ", {"GITHUB_EVENT_PATH": str(event), "GITHUB_STEP_SUMMARY": str(summary)}), \
+                    patch.object(check, "api", return_value=current), patch("sys.stdout", new_callable=io.StringIO):
+                return check.main(), summary.read_text()
 
-    def test_all_full_pages_are_scanned_before_posting(self):
-        with patch.object(check, "api", side_effect=[[{"body": "discussion"}] * 100,
-                                                    [], None]) as api:
-            check.remind_contributor(12)
-        self.assertEqual(api.call_count, 3)
-        self.assertEqual(api.call_args.args, ("POST", "/issues/12/comments", {"body": check.ACK_BODY}))
+    def test_exit_status_is_the_pr_check_and_the_summary_names_the_errors(self):
+        status, summary = self.run_main(PR)
+        self.assertEqual(status, 0)
+        self.assertTrue(summary.startswith("## Submission format\n"))
+        status, summary = self.run_main("")
+        self.assertEqual(status, 1)
+        self.assertIn("Use these sections in order", summary)
 
-    def test_only_our_bot_can_supply_the_deduplication_marker(self):
-        for user in ({}, {"login": "contributor", "type": "User"},
-                     {"login": "other[bot]", "type": "Bot"},
-                     {"login": "github-actions[bot]", "type": "User"}):
-            with self.subTest(user=user), patch.object(
-                    check, "api", side_effect=[[{"body": check.ACK_BODY, "user": user}], None]) as api:
-                check.remind_contributor(12)
-                self.assertEqual(api.call_args.args[0], "POST")
 
-    def test_unrelated_bot_comments_and_null_bodies_are_not_reminders(self):
-        comments = [{**BOT_COMMENT, "body": "Another check"}, {**BOT_COMMENT, "body": None}]
-        with patch.object(check, "api", side_effect=[comments, None]) as api:
-            check.remind_contributor(12)
-        self.assertEqual(api.call_args.args[0], "POST")
+class WorkflowTests(unittest.TestCase):
+    def workflow(self, name):
+        # BaseLoader keeps "on" a string key instead of YAML 1.1's boolean.
+        return yaml.load((ROOT / ".github/workflows" / name).read_text(), Loader=yaml.BaseLoader)
 
-    def test_later_page_failure_does_not_post_a_duplicate(self):
-        with patch.object(check, "api", side_effect=[[{"body": "discussion"}] * 100,
-                                                    TimeoutError("offline")]) as api, \
-                patch("sys.stderr", new_callable=io.StringIO):
-            check.remind_contributor(12)
-        self.assertEqual(api.call_count, 2)
-        self.assertTrue(all(call.args[0] == "GET" for call in api.call_args_list))
+    def test_pull_requests_get_the_required_check_from_pull_request(self):
+        workflow = self.workflow("submissions.yml")
+        self.assertEqual(set(workflow["on"]), {"pull_request"})
+        self.assertEqual(workflow["on"]["pull_request"]["types"],
+                         ["opened", "edited", "synchronize", "reopened", "ready_for_review"])
+        self.assertEqual([job["name"] for job in workflow["jobs"].values()], [check.CHECK])
+        for job in workflow["jobs"].values():
+            self.assertEqual(job.get("permissions", workflow["permissions"]),
+                             {"contents": "read", "pull-requests": "read"})
+
+    def test_only_the_issue_workflow_can_write_labels(self):
+        workflow = self.workflow("issue-submissions.yml")
+        self.assertEqual(workflow["on"], {"issues": {"types": ["opened", "edited", "reopened"]}})
+        self.assertNotEqual(workflow["name"], check.CHECK)
+        for job in workflow["jobs"].values():
+            self.assertNotEqual(job["name"], check.CHECK)
+            self.assertEqual(job.get("permissions", workflow["permissions"]),
+                             {"contents": "read", "issues": "write"})
+            checkout = next(step for step in job["steps"] if step.get("uses", "").startswith("actions/checkout@"))
+            self.assertEqual(checkout["with"], {"persist-credentials": "false"})
+
+    def test_migration_runs_cannot_cancel_the_legacy_status_producer(self):
+        # Both triggers run while this PR targets a base with the old workflow.
+        legacy = "submission-${{ github.event.issue.number || github.event.pull_request.number }}"
+        pr = self.workflow("submissions.yml")["concurrency"]
+        issue = self.workflow("issue-submissions.yml")["concurrency"]
+        self.assertEqual(pr["group"], "submission-pr-${{ github.event.pull_request.number }}")
+        self.assertEqual(issue["group"], "submission-issue-${{ github.event.issue.number }}")
+        self.assertNotIn(legacy, (pr["group"], issue["group"]))
+        self.assertEqual(pr["cancel-in-progress"], "true")
+        self.assertEqual(issue["cancel-in-progress"], "true")
 
 
 if __name__ == "__main__":

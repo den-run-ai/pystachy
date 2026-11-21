@@ -40,13 +40,13 @@ numbers with their units and state each limit once. GitHub shows every newline i
 as a line break, so write each paragraph and list item on one line. Disclose AI
 assistance in a sentence; generated-by footers and session links are not accepted.
 
-The metadata workflow flags incomplete issues with `needs-description` and removes
-it after correction; it also flags hard-wrapped paragraphs and tool footers. PRs
-receive a `Submission format` commit status, refreshed on edits and pushes without
-rerunning compiler tests. Maintainers must require that
-status in branch protection/rulesets to block merges. Issues cannot be blocked at
-creation; API-created issues use the same check as the web templates. The workflow
-starts after it lands on the default branch; it does not audit untouched older items.
+The issue metadata workflow flags incomplete issues with `needs-description` and removes
+it after correction; it also flags hard-wrapped paragraphs and tool footers. A separate
+PR workflow uses a read-only token and reports a `Submission format` check, rerun on edits
+and pushes without rerunning compiler tests. Maintainers must require that check in
+branch protection/rulesets to block merges. Issues cannot be blocked at creation;
+API-created issues use the same check as the web templates. Issue labeling starts after
+its workflow lands on the default branch; it does not audit untouched older items.
 
 ## Repository contents
 
@@ -111,7 +111,8 @@ and the tools used in the PR description or a PR comment. Review and understand
 the diff, verify test claims, check provenance, and be able to explain the work.
 The submitting human is accountable; owner-authorized coding agents may prepare
 PRs and post review comments. Private prompts and transcripts are not required.
-A bot sends a one-time, non-blocking acknowledgment reminder to new PRs.
+The pull request template repeats the rights acknowledgment and asks for AI disclosure;
+no bot posts a reminder.
 
 Before approving fork workflows, maintainers inspect the full diff, especially workflows,
 build/test scripts, dependency changes and executable test fixtures. Run untrusted code
@@ -120,10 +121,8 @@ Pending workflow approval is not a test failure. Approval permits CI execution, 
 
 Merge requires maintainer review and passing applicable checks on the current revision.
 For `main`, configure GitHub branch protection to require the GitHub Actions checks
-`Verification` and `make lint (ruff, shellcheck, clang -Wall -Wextra)`, plus the
-`Submission format` commit status. A temporary always-skipped DCO job preserves
-branch-protection compatibility until its required status is removed.
-Apply the rule to administrators and other
+`Verification`, `make lint (ruff, shellcheck, clang -Wall -Wextra)` and
+`Submission format`. Apply the rule to administrators and other
 credentials with bypass access. Documentation-only changes still receive `Verification`.
 
 New changes need renewed review and validation. Passing CI does not resolve open design
