@@ -397,7 +397,8 @@ class Observer:
         # representation tables before LLVM lowering can consume or mutate them.
         self.after = [self.snapshot(fn) for fn in gen.fns if self.selected(fn)]
         self.after_metadata = {"dynamic_types": self.dynamic_types(gen),
-                               "dynamic_layouts": self.dynamic_layouts(gen), "classes": self.classes(gen)}
+                               "dynamic_layouts": self.dynamic_layouts(gen), "classes": self.classes(gen),
+                               "lowering": self.lowering(gen)}
         if self.guard_evidence:
             self.after_metadata.update(
                 class_layouts=self.class_layouts(gen), union_tags=dict(gen.utags), holes=list(gen.holes),
@@ -464,6 +465,19 @@ class Observer:
                        "flags": dict(sorted(info.fflag.items(), key=lambda item: item[1])),
                        "boxes": dict(sorted(info.fbox.items(), key=lambda item: item[1]))}
                 for name, info in sorted(gen.classes.items())}
+
+    @staticmethod
+    def lowering(gen) -> dict:
+        # Everything else that LLVM lowering reads of the generator at this boundary (its
+        # settings, globals, constants, runtime and extern declarations, holes' key kinds,
+        # dispatch tables and each function's attributes), so that a module printed from this
+        # snapshot compiles to the LLVM the compiler emits: tools/typed_ir_text.py's
+        # lowering_state, which names what it cannot hold yet
+        try:
+            from typed_ir_text import lowering_state
+        except ModuleNotFoundError:  # (this module imported as tools.inspect_compiler)
+            from tools.typed_ir_text import lowering_state
+        return lowering_state(gen)
 
     @staticmethod
     def key_descriptors(gen, functions) -> dict:

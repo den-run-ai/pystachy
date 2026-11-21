@@ -338,6 +338,59 @@ rejected(g.finalize_program)
 """)
         self.succeeded(result)
 
+    def test_alternate_backend_returns_its_artifact_and_releases_class_names(self):
+        path = self.source('from collections import namedtuple\nPair = namedtuple("Coordinates", "x y")\n'
+                           'print(Pair(1, 2))\n')
+        actual = self.run_stage(path, """
+from src.pystachy_compiler.names import RENAMED
+
+artifact = bytearray(b'compiled')
+def emit(g):
+    assert g.pipeline.history == stages[:-1]
+    assert RENAMED['Pair'] == 'Coordinates'
+    return artifact
+
+def fail(g):
+    emit(g)
+    raise ValueError('emission failed')
+
+with patch.object(Gen, 'lower_program', forbidden):
+    assert driver.compile_program(str(path), source, dirs, '', emit) is artifact
+    assert not RENAMED, RENAMED
+    try:
+        driver.compile_program(str(path), source, dirs, '', fail)
+    except ValueError as error:
+        assert str(error) == 'emission failed'
+    else:
+        raise AssertionError('backend failure did not propagate')
+    assert not RENAMED, RENAMED
+""")
+        self.succeeded(actual)
+
+    def test_fallback_consumes_the_attempt_that_declined(self):
+        path = self.source("def values():\n    yield 42\nprint(next(values()))\n")
+        actual = self.run_stage(path, """
+from tools.wasm_from_source import WasmBackend, WasmRefusal
+finalized = []
+consumed = []
+finalize, lower = Gen.finalize_program, Gen.lower_program
+def record_finalize(g):
+    finalize(g)
+    finalized.append(g)
+def record_lower(g):
+    consumed.append(g)
+    return lower(g)
+with patch.object(Gen, 'finalize_program', record_finalize), patch.object(Gen, 'lower_program', record_lower):
+    result = driver.compile_program(str(path), source, dirs, '', WasmBackend(True).lower)
+assert isinstance(result, WasmRefusal) and result.reason
+assert len(finalized) == 1 and finalized == consumed
+print(result.llvm, end='')
+""")
+        self.succeeded(actual)
+        expected = self.ordinary(path)
+        self.succeeded(expected)
+        self.assertEqual(actual.stdout, expected.stdout)
+
     def test_driver_retries_with_fresh_stage_state(self):
         path = self.source(RETRY)
         expected = self.ordinary(path)

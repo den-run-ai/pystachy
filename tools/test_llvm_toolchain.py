@@ -226,10 +226,50 @@ class FingerprintTests(unittest.TestCase):
         self.assertIn("no compile_commands.json", result.stderr)
 
 
+class NoticesTests(unittest.TestCase):
+    def test_third_party_terms_are_files_and_the_comments_before_the_code(self):
+        paths = setting("THIRD_PARTY").split()
+        self.assertEqual(len(paths), 8)
+        with tempfile.TemporaryDirectory() as directory:
+            for path in paths:
+                file = Path(directory) / path
+                file.parent.mkdir(parents=True, exist_ok=True)
+                file.write_text(f"terms of {path}\n" if not path.endswith(".cpp") else
+                                f"// {path}\n\n/*\nterms of {path}\nwithout a marker\n*/\n\n  /* one line */\n"
+                                "#include <x>\n// a later comment\nint code;\n")
+            result = run("notices", directory)
+            self.assertEqual((result.returncode, result.stderr), (0, ""))
+            sections = result.stdout.split("==== ")[1:]
+            self.assertEqual([section.split(" ====\n")[0] for section in sections], paths)
+            for path, section in zip(paths, sections, strict=True):
+                self.assertIn(f"terms of {path}\n", section)
+                if path.endswith(".cpp"):
+                    self.assertTrue(section.endswith("without a marker\n*/\n\n  /* one line */\n\n"), section)
+            # A release that drops or moves one of them fails the build.
+            (Path(directory) / paths[-1]).write_text("")
+            result = run("notices", directory)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn(f"no third-party notice in {paths[-1]}", result.stderr)
+
+
 class WorkflowTests(unittest.TestCase):
+    ARCHES = ["x86_64", "aarch64"]
+    CACHED = "needs.generators.outputs[format('cached-{0}', matrix.arch)]"
+    KEY = "${{ needs.generators.outputs[format('key-{0}', matrix.arch)] }}"
+
     def setUp(self):
         # BaseLoader keeps "on" and the slices as text.
         self.workflow = yaml.load(WORKFLOW.read_text(), Loader=yaml.BaseLoader)
+
+    def test_each_architecture_builds_on_its_own_runners(self):
+        jobs = self.workflow["jobs"]
+        for name in ("generators", "compile", "package", "bootstrap"):
+            with self.subTest(job=name):
+                self.assertEqual(jobs[name]["strategy"]["matrix"]["arch"], self.ARCHES)
+                self.assertEqual(jobs[name]["runs-on"], "${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}")
+                self.assertIn("${{ matrix.arch }}", jobs[name]["name"])
+        self.assertEqual(jobs["publish"]["runs-on"], "ubuntu-24.04")
+        self.assertNotIn("strategy", jobs["publish"])
 
     def test_one_job_compiles_each_slice_of_the_count_it_passes(self):
         job = self.workflow["jobs"]["compile"]
@@ -247,37 +287,54 @@ class WorkflowTests(unittest.TestCase):
         download = next(number for number, step in enumerate(steps) if "download-artifact" in step.get("uses", ""))
         compile_ = next(number for number, step in enumerate(steps) if "llvm_toolchain.sh compile" in step.get("run", ""))
         self.assertLess(download, compile_)
+        self.assertEqual(upload["name"], "llvm-objects-${{ matrix.arch }}-generators")
         self.assertEqual(steps[download]["with"]["name"], upload["name"])
         self.assertEqual(steps[download]["with"]["path"], upload["path"].rstrip("/"))
         self.assertEqual(upload["path"], steps[-1]["with"]["path"])
 
-    def test_packing_waits_for_every_slice_and_reads_their_objects(self):
+    def test_packing_waits_for_every_slice_and_reads_its_architecture_s_objects(self):
         package = self.workflow["jobs"]["package"]
         self.assertEqual(package["needs"], ["generators", "compile"])
         upload = self.workflow["jobs"]["compile"]["steps"][-1]["with"]
         download = next(step["with"] for step in package["steps"] if "download-artifact" in step.get("uses", ""))
-        self.assertEqual(upload["name"], "llvm-objects-${{ matrix.slice }}")
-        self.assertEqual((download["pattern"], download["merge-multiple"]), ("llvm-objects-*", "true"))
+        self.assertEqual(upload["name"], "llvm-objects-${{ matrix.arch }}-${{ matrix.slice }}")
+        # An object's key does not name the machine that compiled it: the other architecture's stay out.
+        self.assertEqual((download["pattern"], download["merge-multiple"]), ("llvm-objects-${{ matrix.arch }}-*", "true"))
         self.assertEqual(upload["path"].rstrip("/"), download["path"])
         commands = "".join(step.get("run", "") for step in package["steps"])
         self.assertIn('LLVM_TOOLCHAIN_OBJECTS="$OUT/objects"', commands)
         self.assertEqual(download["path"], "${{ env.OUT }}/objects")
+        archive = package["steps"][-1]["with"]["name"]
+        self.assertEqual(archive, "pystachy-llvm-linux-${{ matrix.arch }}")
+        bootstrap = self.workflow["jobs"]["bootstrap"]
+        self.assertEqual(next(step["with"]["name"] for step in bootstrap["steps"] if "download-artifact" in step.get("uses", "")), archive)
 
     def test_cached_objects_replace_the_compiling(self):
         jobs = self.workflow["jobs"]
-        generators, package = jobs["generators"], jobs["package"]
+        generators, compile_, package = jobs["generators"], jobs["compile"], jobs["package"]
         steps = generators["steps"]
         hashing = next(step for step in steps if "llvm_toolchain.sh fingerprint '$OUT'" in step.get("run", ""))
         lookup = next(step for step in steps if step.get("uses", "").startswith("actions/cache/restore@"))
-        self.assertEqual(generators["outputs"], {"key": f"${{{{ steps.{hashing['id']}.outputs.key }}}}",
-                                                 "cached": f"${{{{ steps.{lookup['id']}.outputs.cache-hit }}}}"})
-        self.assertEqual(lookup["with"], {"path": "${{ env.OUT }}/objects", "key": generators["outputs"]["key"], "lookup-only": "true"})
+        told = steps[steps.index(lookup) + 1]
+        # One set of outputs for the matrix: each architecture writes the key and the answer that carry its name.
+        self.assertEqual(generators["outputs"],
+                         {f"key-{arch}": f"${{{{ steps.{hashing['id']}.outputs.key-{arch} }}}}" for arch in self.ARCHES}
+                         | {f"cached-{arch}": f"${{{{ steps.{told['id']}.outputs.cached-{arch} }}}}" for arch in self.ARCHES})
+        self.assertEqual(generators["env"], {"ARCH": "${{ matrix.arch }}"})
+        self.assertIn('echo "key-$ARCH=llvm-toolchain-objects-$fingerprint" >> "$GITHUB_OUTPUT"', hashing["run"])
+        self.assertEqual(lookup["with"], {"path": "${{ env.OUT }}/objects", "key": f"${{{{ steps.{hashing['id']}.outputs.key }}}}",
+                                          "lookup-only": "true"})
+        self.assertEqual((told["env"], told["run"]), ({"HIT": f"${{{{ steps.{lookup['id']}.outputs.cache-hit }}}}"},
+                                                      'echo "cached-$ARCH=$HIT" >> "$GITHUB_OUTPUT"'))
         # With the objects cached nothing compiles, and the jobs after the skipped slices still run.
-        after = steps[steps.index(lookup) + 1:]
+        after = steps[steps.index(told) + 1:]
         self.assertEqual(len(after), 2)
         for step in after:
             self.assertEqual(step["if"], f"steps.{lookup['id']}.outputs.cache-hit != 'true'")
-        self.assertEqual(jobs["compile"]["if"], "needs.generators.outputs.cached != 'true'")
+        # A job's condition cannot name its matrix: both cached skips every slice, one cached skips its steps.
+        self.assertEqual(compile_["if"], " || ".join(f"needs.generators.outputs.cached-{arch} != 'true'" for arch in self.ARCHES))
+        for step in compile_["steps"]:
+            self.assertEqual(step["if"], f"{self.CACHED} != 'true'")
         self.assertIn("needs.compile.result == 'skipped'", package["if"])
         self.assertIn("needs.package.result == 'success'", jobs["bootstrap"]["if"])
 
@@ -288,12 +345,11 @@ class WorkflowTests(unittest.TestCase):
         self.assertLess(max(restore, download), build)
         self.assertLess(build, save)
         restore, download, save = (package["steps"][number] for number in (restore, download, save))
-        self.assertEqual(restore["if"], "needs.generators.outputs.cached == 'true'")
-        self.assertEqual(restore["with"], {"path": lookup["with"]["path"], "key": "${{ needs.generators.outputs.key }}",
-                                           "fail-on-cache-miss": "true"})
-        self.assertEqual(save["with"], {"path": download["with"]["path"], "key": restore["with"]["key"]})
+        self.assertEqual(restore["if"], f"{self.CACHED} == 'true'")
+        self.assertEqual(restore["with"], {"path": lookup["with"]["path"], "key": self.KEY, "fail-on-cache-miss": "true"})
+        self.assertEqual(save["with"], {"path": download["with"]["path"], "key": self.KEY})
         for step in (download, save):
-            self.assertEqual(step["if"], "needs.generators.outputs.cached != 'true'")
+            self.assertEqual(step["if"], f"{self.CACHED} != 'true'")
 
     def test_workflow_builds_in_the_documented_image(self):
         self.assertIn(self.workflow["env"]["IMAGE"], DOCUMENT.read_text())
@@ -315,13 +371,14 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(self.workflow["permissions"], {"contents": "read"})
         self.assertEqual({name: job["permissions"] for name, job in self.workflow["jobs"].items() if "permissions" in job},
                          {"publish": {"contents": "write"}})
+        # Both architectures' archives, in one release.
         download = next(step["with"] for step in publish["steps"] if "download-artifact" in step.get("uses", ""))
-        self.assertEqual(download["name"], self.workflow["jobs"]["package"]["steps"][-1]["with"]["name"])
+        self.assertEqual(download, {"pattern": "pystachy-llvm-linux-*", "path": "${{ env.OUT }}", "merge-multiple": "true"})
         step = publish["steps"][-1]
         self.assertEqual(step["env"], {"GH_TOKEN": "${{ github.token }}", "REVISION": "${{ inputs.revision }}"})
         self.assertIn("[[ $GITHUB_REF == refs/heads/main ]]\n", step["run"])
         self.assertIn('llvm_toolchain_release.py --repository "$GITHUB_REPOSITORY" --commit "$GITHUB_SHA"', step["run"])
-        self.assertIn('--revision "$REVISION" "$OUT/$(tools/llvm_toolchain.sh name).tar.xz"', step["run"])
+        self.assertIn('--revision "$REVISION" "$OUT"/pystachy-llvm-*.tar.xz', step["run"])
 
 
 class Releases:
@@ -356,10 +413,12 @@ class Releases:
         elif action == "upload":
             if not entry["draft"] or "--clobber" not in rest:
                 raise AssertionError(arguments)
-            for path in map(Path, rest[1:3]):
+            for path in map(Path, rest[1:rest.index("--clobber")]):
                 entry["assets"][path.name] = b"other bytes" if self.damage else path.read_bytes()
         elif action == "download":
             name, directory = rest[rest.index("--pattern") + 1], rest[rest.index("--dir") + 1]
+            if name not in entry["assets"]:
+                return subprocess.CompletedProcess(arguments, 1, "", "no assets match the file pattern\n")
             (Path(directory) / name).write_bytes(entry["assets"][name])
         elif action == "edit":
             if rest[1:3] != ["--draft=false", "--prerelease=false"]:
@@ -376,44 +435,67 @@ class Releases:
 
 class PublishTests(unittest.TestCase):
     NAME = "pystachy-llvm-18.1.8-linux-x86_64.tar.xz"
+    ARM = "pystachy-llvm-18.1.8-linux-aarch64.tar.xz"
     TAG = "llvm-toolchain-18.1.8-3"
     COMMIT = "c" * 40
 
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.archive = Path(temporary.name) / self.NAME
+        self.directory = Path(temporary.name)
+        self.archive = self.directory / self.NAME
         self.write(b"an archive")
 
-    def write(self, content: bytes) -> str:
-        self.archive.write_bytes(content)
+    def write(self, content: bytes, name: str = NAME) -> str:
+        (self.directory / name).write_bytes(content)
         digest = hashlib.sha256(content).hexdigest()
-        self.archive.with_name(self.NAME + ".sha256").write_text(f"{digest}  {self.NAME}\n")
+        (self.directory / (name + ".sha256")).write_text(f"{digest}  {name}\n")
         return digest
 
-    def publish(self, releases: Releases, revision: str = "3") -> str:
-        return llvm_toolchain_release.publish("owner/repo", self.COMMIT, revision, self.archive, run=releases)
+    def publish(self, releases, revision: str = "3", names=(NAME,)) -> str:
+        return llvm_toolchain_release.publish("owner/repo", self.COMMIT, revision,
+                                              [self.directory / name for name in names], run=releases)
 
     def test_archive_is_read_back_from_a_draft_before_it_is_published(self):
         releases = Releases()
         digest = hashlib.sha256(b"an archive").hexdigest()
-        self.assertEqual(self.publish(releases), f"published {self.TAG} with {self.NAME}, SHA-256 {digest}")
+        self.assertEqual(self.publish(releases), f"published {self.TAG} with {self.NAME} (SHA-256 {digest})")
         self.assertEqual(releases.commands, ["view", "create", "upload", "download", "edit", "list"])
         entry = releases.releases[self.TAG]
         self.assertEqual((entry["draft"], entry["target"], entry["title"]), (False, self.COMMIT, "LLVM toolchain 18.1.8-3"))
         self.assertEqual(entry["assets"], {self.NAME: b"an archive", self.NAME + ".sha256": f"{digest}  {self.NAME}\n".encode()})
-        self.assertIn(f"`{self.NAME}` has SHA-256 `{digest}`", entry["notes"])
+        self.assertIn(f"- `{self.NAME}`: SHA-256 `{digest}`\n", entry["notes"])
         self.assertIn(f"https://github.com/owner/repo/blob/{self.COMMIT}/docs/llvm-toolchain.md", entry["notes"])
         self.assertEqual(releases.latest, "v0.6.0")
+
+    def test_one_release_holds_each_architecture_s_archive(self):
+        releases = Releases()
+        digests = {self.NAME: hashlib.sha256(b"an archive").hexdigest(), self.ARM: self.write(b"an ARM archive", self.ARM)}
+        self.publish(releases, names=(self.NAME, self.ARM))
+        self.assertEqual(releases.commands, ["view", "create", "upload", "download", "download", "edit", "list"])
+        entry = releases.releases[self.TAG]
+        self.assertEqual(sorted(entry["assets"]), sorted(name + suffix for name in digests for suffix in ("", ".sha256")))
+        for name, digest in digests.items():
+            self.assertIn(f"- `{name}`: SHA-256 `{digest}`", entry["notes"])
+        # The same two again change nothing; one of them with other bytes, or a release that lacks one, fails.
+        releases.commands.clear()
+        self.assertIn("already holds", self.publish(releases, names=(self.NAME, self.ARM)))
+        self.assertEqual(releases.commands, ["view", "download", "download"])
+        self.write(b"another ARM archive", self.ARM)
+        with self.assertRaisesRegex(RuntimeError, "published with other archives: these need the next revision"):
+            self.publish(releases, names=(self.NAME, self.ARM))
+        del entry["assets"][self.ARM]
+        with self.assertRaisesRegex(RuntimeError, "gh release download exited 1"):
+            self.publish(releases, names=(self.NAME, self.ARM))
 
     def test_published_release_is_not_changed(self):
         releases = Releases()
         self.publish(releases)
         releases.commands.clear()
-        self.assertEqual(self.publish(releases), f"{self.TAG} already holds {self.NAME}")
+        self.assertIn(f"{self.TAG} already holds {self.NAME}", self.publish(releases))
         self.assertEqual(releases.commands, ["view", "download"])
         self.write(b"another archive")
-        with self.assertRaisesRegex(RuntimeError, "published with another archive: this one needs the next revision"):
+        with self.assertRaisesRegex(RuntimeError, "published with other archives: these need the next revision"):
             self.publish(releases)
         self.assertEqual(releases.releases[self.TAG]["assets"][self.NAME], b"an archive")
         self.publish(releases, "4")
@@ -429,7 +511,7 @@ class PublishTests(unittest.TestCase):
     def test_draft_that_reads_back_differently_is_not_published(self):
         releases = Releases()
         releases.damage = True
-        with self.assertRaisesRegex(RuntimeError, "holds other bytes .* it stays a draft"):
+        with self.assertRaisesRegex(RuntimeError, "holds other bytes than were uploaded: it stays a draft"):
             self.publish(releases)
         self.assertTrue(releases.releases[self.TAG]["draft"])
 
@@ -451,12 +533,16 @@ class PublishTests(unittest.TestCase):
         for revision in ("", "0", "01", "1a", "-1", "1.0"):
             with self.assertRaisesRegex(ValueError, "revision must be a positive number"):
                 self.publish(releases, revision)
-        self.archive.with_name(self.NAME + ".sha256").write_text(f"{'0' * 64}  {self.NAME}\n")
+        self.write(b"an older release", "pystachy-llvm-18.1.7-linux-aarch64.tar.xz")
+        for names in ((self.NAME, self.NAME), (self.NAME, "pystachy-llvm-18.1.7-linux-aarch64.tar.xz")):
+            with self.assertRaisesRegex(ValueError, "of one LLVM release, one for each architecture"):
+                self.publish(releases, names=names)
+        (self.directory / (self.NAME + ".sha256")).write_text(f"{'0' * 64}  {self.NAME}\n")
         with self.assertRaisesRegex(ValueError, "is not the checksum of"):
             self.publish(releases)
-        self.archive = self.archive.with_name("llvm.tar.xz")
+        (self.directory / "llvm.tar.xz").touch()
         with self.assertRaisesRegex(ValueError, "is not a toolchain archive"):
-            self.publish(releases)
+            self.publish(releases, names=("llvm.tar.xz",))
         self.assertEqual((releases.commands, releases.releases), ([], {}))
 
     def test_archive_name_is_the_recipe_s(self):

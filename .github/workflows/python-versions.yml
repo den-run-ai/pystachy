@@ -1,6 +1,7 @@
 # Other CPython versions (docs/testing.md#other-cpython-versions): under each, the hosted compiler must
 # emit the verified bootstrap's IR for itself and runtime.py and pass a corpus sample in JIT and AOT,
-# and the FFI suite must pass with that CPython's libpython (tools/python_versions.sh). Daily, on
+# and the FFI suite must pass with that CPython's libpython (tools/python_versions.sh); pip and uv
+# install the compiler with it (tools/compiler_install_smoke.py). Daily, on
 # demand and on relevant pushes to main: pull requests keep their 19-job budget.
 name: Python versions
 
@@ -18,7 +19,9 @@ on:
       - pyext.c
       - pyproject.toml
       - tests/ffi/**
+      - tools/compiler_install_smoke.py
       - tools/python_versions.sh
+      - tools/requirements-packaging.txt
       - tools/rt_cpython/**
       - tools/verification_bootstrap.py
 concurrency:
@@ -104,3 +107,12 @@ jobs:
         env:
           TARGET: ${{ steps.target.outputs.python-path }}
         run: tools/python_versions.sh "$TARGET" "$COMPILER" build/verify
+
+      # The pip and uv installation outside the checkout, with this CPython (Installation runs it
+      # with the pinned one)
+      - name: tools/compiler_install_smoke.py
+        env:
+          TARGET: ${{ steps.target.outputs.python-path }}
+        run: |
+          "$TARGET" -m pip install -r tools/requirements-packaging.txt
+          "$TARGET" tools/compiler_install_smoke.py

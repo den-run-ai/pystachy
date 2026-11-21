@@ -1,0 +1,4 @@
+TypeError expected a str key, got int
+{'a': 1}
+['zero', 2]
+[exit 0]

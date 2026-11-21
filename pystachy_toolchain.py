@@ -150,7 +150,8 @@ def available(bin_dir: Path, version: str) -> bool:
     )
 
 
-def ensure_toolchain() -> Path | None:
+def managed_toolchain() -> tuple[Path, str, str] | None:
+    """Expected installation directory, LLVM version and package architecture."""
     machine = platform.machine()
     if sys.platform == "linux" and machine in ("x86_64", "aarch64"):
         try:
@@ -163,18 +164,27 @@ def ensure_toolchain() -> Path | None:
         key = f"ubuntu-{UBUNTU_REVISION}-{arch}"
         version = "18.1.3"
     elif sys.platform == "darwin" and machine == "arm64":
+        arch = "arm64"
         key = f"macos-{MACOS_VERSION}-arm64"
         version = MACOS_VERSION
     else:
         return None
 
-    import fcntl
-
     cache_home = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
     cache = Path(os.environ.get("PYSTACHY_LLVM_CACHE") or cache_home / "pystachy/toolchains")
-    cache = cache.expanduser().resolve()
+    return cache.expanduser().resolve() / key, version, arch
+
+
+def ensure_toolchain() -> Path | None:
+    installation = managed_toolchain()
+    if installation is None:
+        return None
+
+    import fcntl
+
+    destination, version, arch = installation
+    cache, key = destination.parent, destination.name
     cache.mkdir(parents=True, exist_ok=True)
-    destination = cache / key
     with (cache / f"{key}.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         if available(destination / "bin", version):

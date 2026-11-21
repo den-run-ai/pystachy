@@ -12,6 +12,7 @@ from src.pystachy_compiler.specs import (
     BIG,
     BIGOPT,
     CODECS,
+    COMPLEXC,
     EMPTYFS,
     FSETMETHODS,
     FX,
@@ -116,6 +117,8 @@ def lt(t: str) -> str:
         return "i8"
     if t == "%i32":
         return "i32"
+    if t == "%i128":
+        return "i128"  # (the wide products and dividends of runtime.py's mul_hi and urem_wide)
     if t == "None":
         return "void"
     if t == "%slot" or t.startswith("*"):
@@ -1402,6 +1405,18 @@ def is_union(t: str) -> bool:
 def umembers(t: str) -> list[str]:
     # the member types of union t, in their (sorted) order
     return targs(t)
+
+def nullable_union_members(members: list[str], classes: dict[str, ClassInfo]) -> bool:
+    # A union of references, or a union containing a native class beside scalars,
+    # can hold a null box without opt[]. Complex beside scalars is a scalar member.
+    references = True
+    for member in members:
+        if member in classes:
+            if member != COMPLEXC:
+                return True
+        elif member != "file":
+            references = False
+    return references
 
 def recnames(t: str) -> str:
     # t (a type, or a message that names types) with each rec[A], recursive alias A's named edge,

@@ -4,7 +4,7 @@ from src.pystachy_compiler.diagnostics import fail, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, slot_register, tmpname, one_num
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.lower_module import const_slot, struct_types
-from src.pystachy_compiler.specs import CHECKED, COMPLEXC, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
+from src.pystachy_compiler.specs import CHECKED, CLASSREC_LL, COMPLEXC, DYNTYPE_LL, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, gelem, generator_identity, generator_slots, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
 
 
@@ -203,6 +203,24 @@ def gen_tuple_rets(self) -> None:
                 self.vcalls[f"{fn.f.ll} {v}"] = True
                 self.vrets[calls[v]] = fns[calls[v]]
 
+def gen_key_kinds(self) -> None:
+    # The key kinds that lowering stores for the dicts and sets of holes, whose types a later use
+    # decided (Gen.keykinds: a new one's, rt dict.new and set.new; Gen.builtkinds: a result's,
+    # empty.kind), once the program's IR is final, in the order lowering reads them. A kind may
+    # name a descriptor's string constant or number an object class (key_kind, hash_desc), which
+    # the constants and dispatchers lowering prints then hold: lowering asks the frontend nothing
+    for fn in self.fns:
+        for b in fn.blocks:
+            for i in b.code:
+                if i.op == "rt" and i.k > 0 and (i.s == "dict.new" or i.s == "set.new"):
+                    t = self.holes[i.k]
+                    if t != "" and t not in self.keykinds:
+                        self.keykinds[t] = self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t))
+                elif i.op == "empty.kind":
+                    t = self.holes[i.k] if i.k > 0 else i.a[0].t
+                    if t != "" and t not in self.builtkinds:
+                        self.builtkinds[t] = self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t), True)
+
 def fresh_rets(fn: IFn) -> dict[str, bool]:
     # the tuples that fn returns (tupleret), if each is made by an alloc.fixed of its ret's block,
     # of fn's fixed tuple type, and nothing but tuple.stores and the ret reach it, or is a constant
@@ -303,7 +321,15 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         else:
             o.append(f"  store {lt(i.a[1].t)} {i.a[1].v}, ptr {i.a[0].v}{metadata}")
     elif op == "mach.addr":
-        o.append(f"  {tmpname(i.r[0])} = getelementptr{' inbounds' if i.k == 1 else ''} {lt(i.s)}, ptr {i.a[0].v}, i64 {i.a[1].v}")
+        # Record indices select fields. LLVM's target layout places them,
+        # including the padding between pointers and 64-bit integers.
+        if i.s == "dyntype" or i.s == "classrec":
+            element = DYNTYPE_LL if i.s == "dyntype" else CLASSREC_LL
+            index = f"i32 0, i32 {i.a[1].v}"
+        else:
+            element = lt(i.s)
+            index = f"i64 {i.a[1].v}"
+        o.append(f"  {tmpname(i.r[0])} = getelementptr{' inbounds' if i.k == 1 else ''} {element}, ptr {i.a[0].v}, {index}")
     elif op == "mem.load":
         o.append(f"  {tmpname(i.r[0])} = load {'ptr' if i.t == 'None' else lt(i.t)}, ptr {i.a[0].v}{self.ftags.get(i.a[0].v, '')}")
     elif op == "mem.store":
@@ -456,9 +482,10 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         vs = [ll[j + 1] + " " + i.a[j].v for j in range(len(i.a))]
         if i.k > 0 and (i.s == "dict.new" or i.s == "set.new"):
             # the key kind of a dict (the element kind of a set) created empty: what its first
-            # use showed (0 if nothing did; refine made a tuple key's descriptor a string constant)
+            # use showed (0 if nothing did; refine made a tuple key's descriptor a string constant),
+            # as Gen.key_kinds resolved it
             h = self.holes[i.k]
-            vs[0] = f"i64 {self.key_kind(targs(h)[0] if is_dict(h) else selem(h), is_dict(h)) if h != '' else '0'}"
+            vs[0] = f"i64 {self.keykinds[h] if h != '' else '0'}"
         c = self.invoke(f"call {ll[0]} @{f.sym}({', '.join(vs)})", i)
         o.append("  " + c if ll[0] == "void" else f"  {tmpname(i.r[0])} = {c}")
     elif op == "call" and i.s in self.rdpass and fn.f.ll in self.rdpass:
@@ -487,7 +514,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         # Only fresh empty results may change their dict/set key layout. A later
         # return can resolve the hole; an outer caller types an unresolved result.
         t = self.holes[i.k] if i.k > 0 else i.a[0].t
-        kind = self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t), True) if t != "" else "0"
+        kind = self.builtkinds[t] if t != "" else "0"  # (as Gen.key_kinds resolved it)
         o.append(f"  {tmpname(i.r[0])} = getelementptr i64, ptr {i.a[0].v}, i64 1")
         o.append(f"  store i64 {kind}, ptr {tmpname(i.r[0])}")
     elif op == "list.load":

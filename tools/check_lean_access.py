@@ -1325,8 +1325,9 @@ def normalize_program(snapshot, function, effects_of=None, derefs=None, record=N
                      if used]
         return [other for other in field_classes if not related(cls, other)] + (
             raw_cells if known_class(cls) else [])
-    # An env is an array of pointers to closure cells. Recognize only constant
-    # pointer-slot loads from a value whose definition/parameter has env type.
+    # Each capture slot holds a pointer to a cell. Current snapshots index eight-byte
+    # words; older native snapshots use pointer strides. Require a constant slot
+    # and an explicit pointer load from an environment in either representation.
     # The captured cell itself is mutable: reuse read_field's heap invalidation,
     # never private-slot persistence. Do not infer a cell from an arbitrary ptr.
     environments = {f"%t{number}" for op in definitions.values() if op["type"] == "env"
@@ -1334,7 +1335,7 @@ def normalize_program(snapshot, function, effects_of=None, derefs=None, record=N
     environments.update(f"%a{index}" for index, parameter in enumerate(fn.get("parameters", []))
                         if parameter.get("representation") == "env")
     environment_slots = {f"%t{op['results'][0]}" for op in definitions.values()
-                         if op["op"] == "mach.addr" and op["text"] == "%ptr"
+                         if op["op"] == "mach.addr" and op["text"] in ("int", "%ptr")
                          and len(op["results"]) == 1 and len(op["operands"]) == 2
                          and op["operands"][0]["value"] in environments
                          and isinstance(operand_of(op["operands"][1]["value"]), int)

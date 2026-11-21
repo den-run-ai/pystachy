@@ -1,0 +1,5 @@
+mods: init mods
+mods.shapes: init mods.shapes
+view <3> wide QUIET view 7
+True False
+[exit 0]

@@ -520,8 +520,9 @@ exception behavior. Each operand evaluates once, left to right, before dispatch;
 `None` raises `TypeError`. Results remain `int` or `float` according to the actual
 operands; when both are possible the result is `int | float`, including when all
 current calls happen to pass integers. Declare that result bound explicitly in
-returns and mutable storage. Power, bitwise operations, and unions containing
-strings or other nonnumeric members still require narrowing.
+returns and mutable storage. Power and bitwise operations still require narrowing.
+A union that also holds a str, a list or a dict takes the same operators by each
+pair of member types ([operations on closed unions](#operations-on-closed-unions)).
 
 `format(value, spec)` and f-string format specifications select the native member's
 formatter after evaluating the value and specification once. Numeric and string
@@ -530,9 +531,10 @@ members retain their supported formats; `None` accepts only an empty specificati
 Ordering comparisons (`<`, `<=`, `>`, `>=`) of numeric unions, and calls of builtin
 functions with a scalar-union argument (`abs()`, `round()`, `int()`, `float()`, `min()` and
 `max()` of values, `math` functions and others), use each member's native operation, chosen by
-the tag. Each operand and argument is evaluated once, in CPython's order. Narrow before other
-arithmetic, ordering and member methods; lists of numeric union items also order and sum, as
-described above. Recursive JSON-shaped types use the
+the tag. Each operand and argument is evaluated once, in CPython's order. Unions with a str
+member order, add and call methods by the member too
+([operations on closed unions](#operations-on-closed-unions)); lists of numeric union items
+also order and sum, as described above. Recursive JSON-shaped types use the
 [bounded recursive alias form](#recursive-value-aliases-prototype). Arbitrary `Any`,
 runtime compilation and speculative type assumptions are out of scope.
 Boxing may allocate; this feature expands supported programs and makes no performance
@@ -769,9 +771,95 @@ or `None`-only displays retain context from an unambiguous declared member.
 Dictionary equality keeps hashed lookup for matching key layouts. Different key
 layouts compare keys pairwise, which can take quadratic time; ordinary string-keyed
 JSON-shaped dictionaries use hashed lookup. User objects, files, functions and sets
-inside mixed-value equality remain unsupported. Narrow before ordering, container
-methods on a union receiver or indexing; there is no generic method dispatch.
-Container members are not [inferred](#inferred-unions).
+inside mixed-value equality remain unsupported. Loops, method calls, arithmetic,
+orderings and membership select the member's own operation
+([below](#operations-on-closed-unions)). Container members are not
+[inferred](#inferred-unions).
+
+### Operations on closed unions
+
+A union of scalars, lists and dictionaries, with or without `None`, performs an
+operation by the member that its box's tag names, so JSON-shaped values need no
+`isinstance()` for them:
+
+```python
+import json
+
+doc = json.loads('{"rows": [{"id": 7, "tags": ["a", "b"]}, {"id": 8.5, "tags": []}]}')
+total = 0.0
+for row in doc["rows"]:
+    total += row["id"] * 2
+    row["tags"].append("seen")
+    if "a" in row["tags"] and row["id"] < 8:
+        print(row["tags"][0].upper(), int(row["id"]))  # A 7
+print(total, len(doc["rows"]))  # 31.0 2
+doc["count"] = 2
+```
+
+| Operation | Selected member | Another member raises |
+| --- | --- | --- |
+| `v[i]`, `v[i] = x`, `len(v)` | list, dict or str | `TypeError`, as below |
+| `for x in v`, comprehensions, `enumerate()`, `zip()` | list items, dict keys, str characters | `TypeError: 'int' object is not iterable` |
+| `for k, x in v.items()`, `keys()`, `values()` | the dict | `AttributeError` |
+| `v.method(...)` | each member whose type has the method | `AttributeError: 'int' object has no attribute 'upper'` |
+| `+ - * / // %`, unary `+ -`, `x += y`, `o[k] *= n` | each pair of types that has the operation | `TypeError: unsupported operand type(s) for +: 'int' and 'str'` |
+| `< <= > >=` | numbers with numbers, strs with strs | `TypeError: '<' not supported between instances of 'str' and 'int'` |
+| `x in v`, `x not in v` | list, dict or str | `TypeError: argument of type 'int' is not iterable` |
+| `int(v)`, `float(v)`, `abs(v)`, `round(v)`, `ord(v)`, `chr(v)` | the types the builtin takes | the builtin's `TypeError` |
+
+Each operand is evaluated once, in order, before the tags are read, and an
+`AttributeError` is raised before a call's arguments are evaluated, as CPython looks
+the method up first. `None` raises as any other member that lacks the operation does.
+A result is the union of the selected members' results: `doc["n"] + 1` is an
+`int | float`, and a loop's variable is the union of a list's items, a dict's keys and
+`str`. A local that takes such a result becomes that union; `int(v)` or `float(v)`
+gives one type. A loop steps through a list by index against its current length and
+fails if a dict changes size, as those types' own loops do. `x += y` and `x *= n`
+change a list in `x` in place, so another reference to it sees the new items, and
+`o[k] op= y` evaluates `o` and `k` once.
+
+What every member rejects stays an error: `x + "a"` for an `int | float` is rejected
+as `int + str` is, and so is a method that no member has. A method that CPython's type
+has and the compiler lacks, such as `str.translate()`, is rejected rather than raising
+`AttributeError` for a str. `pop`, `index` and `count`, which a list shares with a dict
+or a str, raise CPython's error for arguments the selected type does not take.
+
+Narrowing is still needed for:
+
+- the ordering of two values that may both be lists, whose items are the union's;
+- `**`, bit operations and shifts;
+- `reversed()`, `str.join()` of a union value, and `sum()`, `min()`, `max()` and
+  `sorted()` of the union's values;
+- `is` where both operands may hold a number or a str (`held is rows` is compiled for a list
+  `rows`: a number or str is never that list);
+- methods of unions that hold two list types or two dict types, objects or tuples.
+
+`value % number` takes the remainder of a number in `value`. A str there that holds no
+conversion raises CPython's `TypeError: not all arguments converted during string
+formatting`; one that holds a conversion raises `TypeError` too, where CPython formats
+with it ([deviation](../../tests/deviations/union_percent_format.py)): a format string
+computed at run time is not compiled. The fixtures are
+`tests/programs/inference/union_value_loops.py`, `union_value_methods.py`,
+`union_value_operators.py` and `union_value_inplace.py`, and
+`tests/errors/inference/union_value_*.py`.
+
+For an index, the value is evaluated first and the index, an `int`, a `bool` or a
+`str`, once after it. A
+member that cannot take the operation raises the error CPython raises for that object:
+`'int' object is not subscriptable`, `list indices must be integers or slices, not str`,
+`object of type 'float' has no len()` or `'str' object does not support item
+assignment`. A dict whose keys have another type than the index raises `KeyError` on
+a read. The result of an index is the union of the members' item types, which a
+[recursive alias](#recursive-value-aliases-prototype) is itself, so chains such as
+`doc["rows"][0]["id"]` keep one type. A display stored through a union takes that item
+type, as one stored into a list or dict of the union does.
+
+An item assigned at an index whose type the selected dict's keys do not have raises
+`TypeError`, where CPython adds the key
+([deviation](../../tests/deviations/union_store_key.py)): `value[0] = x` works for a
+list in `value` and raises for a `dict[str, T]` there. Slices, a union that holds
+objects or tuples, and other index types still need narrowing
+([cases](../../tests/programs/inference/recursive_alias_index.py)).
 
 A union may hold one `Callable[[...], R]` beside scalars, lists and dictionaries, for a
 parameter that takes a value or a function that decides it:
@@ -877,8 +965,12 @@ that the tag selects performs it:
 A `None` value raises CPython's `TypeError` there, or is `None`'s own text and truth. A `str`
 member has no arithmetic to select, and members whose results have no union (two differently
 typed tuples from `divmod()`) are rejected: narrow first. So are a method call, an attribute,
-`is` between two such values, `hash()`, `callable()` where a member's class or one derived from
+`hash()`, `callable()` where a member's class or one derived from
 it defines `__call__`, and use as a set element, a dict key or in `sorted()`.
+`is` and `is not` compare such a value with an object, as in `key.fileobj is sock` for a
+`Socket | int` field: the same object or not, and never a number or str. Where both operands
+may hold a number or str, as two `Socket | int` values may, `is` is rejected, because the
+identity of two numbers is not modeled: narrow one operand to the class first.
 A comparison method whose parameter is such a union (`other: Money | int`) takes each member.
 No union with a class member is [inferred](#inferred-unions): annotate the variable, as in
 `total: int | Money = 0`. [`sum()` of objects](semantics.md#sums-of-objects) returns one.
@@ -1146,6 +1238,10 @@ dependencies before a subclass is used. For example, `errors = Errors(Options(..
 can precede `Checker(errors)` when `Options` has independently annotated storage.
 This retry also supports imported, aliased, qualified and quoted parameter annotations;
 it does not activate unrelated imported subclasses or make variable-layout fields nominal.
+
+A class in a hierarchy can take such a class as a constructor parameter before any code
+uses that class's own subclass, as `pathlib`'s `_PurePathParents(path: PurePosixPath)` does
+in a program that never names `Path`.
 
 An imported subclass becomes available when compiled code needs it, including class
 tests and annotations of a called helper. Its activation recompiles earlier dispatch sites

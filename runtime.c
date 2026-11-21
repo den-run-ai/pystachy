@@ -51,6 +51,16 @@
 #include <unistd.h>
 #include <unwind.h>
 #include <utime.h>
+/* Before 2.33, glibc's libc.so exports __xstat, __lxstat, __fxstat and __fxstatat, and stat,
+   lstat, fstat and fstatat only come from libc_nonshared.a: a linker adds that archive, but a JIT
+   (the JIT runner, lli) resolves symbols from the process alone. Call what libc.so exports, as
+   the headers' inline definitions do. 2.33 removed _STAT_VER with the wrappers. */
+#ifdef _STAT_VER
+#define stat(path, buf) __xstat(_STAT_VER, path, buf)
+#define lstat(path, buf) __lxstat(_STAT_VER, path, buf)
+#define fstat(fd, buf) __fxstat(_STAT_VER, fd, buf)
+#define fstatat(fd, path, buf, flag) __fxstatat(_STAT_VER, fd, path, buf, flag)
+#endif
 
 /* Research counters are compiled out of ordinary runtimes. These count requests
    through C helpers, not physical memory traffic: generated LLVM/runtime.py copy
@@ -105,8 +115,13 @@ _Static_assert(offsetof(Str, len) == 0 && offsetof(Str, dict_hash) == 8 &&
                offsetof(Str, chars1) == 16 && offsetof(Str, s) == 24 && sizeof(Str) == 24,
                "Str ABI: len, dict_hash, chars1, bytes");
 typedef struct { I len, cap; I *a, *ids; } List; /* optional scanned numeric identity companion: kind, then boxes */
+#ifndef __wasi__
 _Static_assert(offsetof(List, len) == 0 && offsetof(List, cap) == 8 && offsetof(List, a) == 16 &&
                offsetof(List, ids) == 24 && sizeof(List) == 32, "List ABI: raw prefix and identity companion");
+#else
+_Static_assert(offsetof(List, len) == 0 && offsetof(List, cap) == 8 && offsetof(List, a) == 16 &&
+               offsetof(List, ids) == 20 && sizeof(List) == 24, "List ABI under WASI: wasm32's 4-byte pointers");
+#endif
 typedef struct { I len; I *ids; I a[]; } VTuple; /* immutable raw slots and optional scanned numeric identities */
 _Static_assert(offsetof(VTuple, len) == 0 && offsetof(VTuple, ids) == 8 &&
                offsetof(VTuple, a) == 16 && sizeof(VTuple) == 16, "VTuple ABI: length, identities, raw items");
@@ -258,6 +273,15 @@ static W *sfl[NK];                     /* its stand-in under stress */
 static Seg *avail[NK], *chunks, *bigs, *hcache, ***pmap;   /* hcache: freed mappings of large objects */
 /* GC_NO_ROOT(regs, bins): page-heap metadata, malloc'd, which holds no reference. */
 static Region *regs;                   /* the page heap's regions */
+#if defined(__wasi__) && UINTPTR_MAX == UINT32_MAX
+#define WASI_STATIC_HEAP 1
+/* A wasm32 address has just two bits above the page table's low 18 index bits. The
+   first GiB needs no table allocation. Fresh Wasm linear memory also supplies a zeroed
+   first region, page-aligned for pmap_set. Both arrays live in zero-initialized storage. */
+static Seg *wasi_low_pages[1 << 18];
+static Seg **wasi_tables[4] = {wasi_low_pages};
+static _Alignas(PAGE) char wasi_first_region[REGION];
+#endif
 static PRun *bins[2][NBIN];            /* its free runs, by length (rebuilt by each sweep): [0] those
                                           with dirty pages, which allocation takes first, [1] clean */
 static I nregs, cregs, nbin[2][NBIN], cbin[2][NBIN];
@@ -338,7 +362,7 @@ static I cls(I n) {                    /* size class for n bytes plus one byte o
   return 16 + (e - 7) * 4 + (I)((y + (1ULL << (e - 2)) - 1) >> (e - 2)) - 5;
 }
 __attribute__((noinline)) static void pmap_set(uintptr_t a, uintptr_t e, Seg *v) {
-  if (e >> 48) oom();                  /* map the pages of [a, e) to v (or unmap) */
+  if ((uint64_t)e >> 48) oom();        /* map the pages of [a, e) to v (or unmap) */
   if (v && (!gc_hi || a < gc_lo)) gc_lo = a;
   if (v && e > gc_hi) gc_hi = e;
   for (; a < e; a += PAGE) {
@@ -400,7 +424,8 @@ __attribute__((noinline)) static void rebuild(Seg *s) {   /* free list of unmark
 }
 /* ---------- the page heap ----------
    Chunks and large objects take runs of whole pages from regions of 2 MiB, which the runtime maps
-   itself, aligned to 2 MiB (no allocator header or spare page beside them); an object of more pages
+   itself on native targets, aligned to 2 MiB. Wasm32 reserves its first region in static storage,
+   aligned to the 4 KiB page map. An object of more pages
    than a region's gets a mapping of its own. A region's bitmaps tell its used pages and those that
    may be dirty. A page mapped or purged since it was last written reads as zero, so a zeroed
    allocation clears only the dirty pages it takes (it never faults a fresh page in), and one whose
@@ -422,6 +447,13 @@ static I os_page(void) {               /* the system's page size; 0 if unusable 
 }
 static void heap_add(I bytes) { if ((gc_heap += bytes) > gc_peak) gc_peak = gc_heap; }
 static char *map_pages(I bytes) {      /* bytes (whole system pages) of zero pages, aligned to REGION */
+#ifdef __wasi__
+  /* (WASI, wasm/README.md: linear memory has no mappings; the C library's allocator gives the aligned
+     pages, and munmap, of a whole mapping only, frees them: wasm/wasi_stubs.c) */
+  char *z = aligned_alloc(REGION, (size_t)bytes);
+  if (!z) oom();
+  return memset(z, 0, (size_t)bytes);
+#endif
   size_t len = (size_t)bytes + REGION;
   char *p = mmap(0, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   if (p == MAP_FAILED) oom();
@@ -432,6 +464,9 @@ static char *map_pages(I bytes) {      /* bytes (whole system pages) of zero pag
 }
 static I purge(uintptr_t a, uintptr_t e) {   /* the whole system pages in [a, e) back to the system,
                                                 zero when next read: their bytes (0: none) */
+#ifdef __wasi__
+  return 0;                            /* (WASI: linear memory cannot give pages back) */
+#endif
   I page = os_page();
   if (!page) return 0;
   a = (a + page - 1) & ~(uintptr_t)(page - 1); e &= ~(uintptr_t)(page - 1);
@@ -496,7 +531,11 @@ static char *pages_take(I np, I *rg, int *dirty) {
       nregs++;
     }
     memset(&regs[r], 0, sizeof *regs);
+#ifdef WASI_STATIC_HEAP
+    regs[r].base = r == 0 ? wasi_first_region : map_pages(REGION);
+#else
     regs[r].base = map_pages(REGION);
+#endif
     if (np < RPAGES) run_push(1, r, np, RPAGES - np);
   }
   Region *g = &regs[r];
@@ -557,6 +596,9 @@ __attribute__((noinline)) static void pages_settle(Seg *freed, I keep) {
   for (I r = nregs - 1; r >= 0 && d > keep; r--) {   /* regions all free: unmapped */
     Region *g = &regs[r];
     if (!g->base || g->nused) continue;
+#ifdef WASI_STATIC_HEAP
+    if (g->base == wasi_first_region) continue;
+#endif
     I c = nbits(g->dirty, 0, RPAGES) * PAGE;
     munmap(g->base, REGION); g->base = 0; heap_add(-c); d -= c;
   }
@@ -870,17 +912,45 @@ static void gc_report(void) {
   I ex, n = trk_report(&ex);
   if (n >= 0) fprintf(stderr, "gc: Python references released: %lld after collections, %lld at exit\n", (long long)n, (long long)ex);
 }
+/* The decimal number that s begins with, as strtoll(s, end, 10) reads it: whitespace, a sign, digits,
+   the nearest limit for a number past one, and *end at s where there are no digits. The runtime
+   reads its numbers with this and hexnum, not with libc's: glibc 2.38 gives strtol(), atoi() and
+   sscanf() C23 names (__isoc23_strtol) that an older glibc lacks, and the runtime's bitcode would
+   then link only where it was built. */
+static long long decnum(const char *s, const char **end) {
+  const char *p = s;
+  while (*p == ' ' || (*p >= 9 && *p <= 13)) p++;
+  int neg = *p == '-', over = 0;
+  if (*p == '-' || *p == '+') p++;
+  const char *d = p;
+  unsigned long long v = 0, lim = (unsigned long long)LLONG_MAX + (unsigned)neg;
+  for (; *p >= '0' && *p <= '9'; p++) {
+    unsigned c = (unsigned)(*p - '0');
+    if (v > (lim - c) / 10) over = 1; else v = v * 10 + c;
+  }
+  if (end) *end = p == d ? s : p;
+  if (over) v = lim;
+  return neg ? (long long)(0 - v) : (long long)v;
+}
+static int decint(const char *s) { return (int)decnum(s, 0); }   /* atoi(s) */
 static void gc_init(char *sb, I **roots, I nroots) {
   const char *e = getenv("PYSTACHY_GC");
   gc_bottom = sb + STACK_PAST;         /* sb is @main's frame address: include its frame record */
   gc_roots = roots; gc_nroots = nroots;
+#ifdef WASI_STATIC_HEAP
+  pmap = wasi_tables;
+#else
   if (!(pmap = calloc(1 << 18, sizeof *pmap))) oom();
+#endif
   gc_off = e && !strcmp(e, "off");
+#ifdef __wasi__
+  gc_off = 1;                          /* (WASI, wasm/README.md: the stack scan cannot see WebAssembly's locals) */
+#endif
   gc_stats = e && !strcmp(e, "stats");
-  if (!gc_off && (e = getenv("PYSTACHY_GC_STRESS")) && atoll(e) > 0) gc_stress = atoll(e);
+  if (!gc_off && (e = getenv("PYSTACHY_GC_STRESS")) && decnum(e, 0) > 0) gc_stress = decnum(e, 0);
   /* PYSTACHY_GC_MIN=N: N MiB (1 to 2^20) of allocation between collections at least, for GC_MIN's 32
      (#650): a program trades memory for fewer collections, or the reverse */
-  if ((e = getenv("PYSTACHY_GC_MIN")) && atoll(e) > 0 && atoll(e) <= (I)1 << 20) gc_limit = gc_min = (I)atoll(e) << 20;
+  if ((e = getenv("PYSTACHY_GC_MIN")) && decnum(e, 0) > 0 && decnum(e, 0) <= (I)1 << 20) gc_limit = gc_min = (I)decnum(e, 0) << 20;
 }
 
 /* errors end the program after flushing stdout; a flush that fails is reported at exit, as
@@ -948,6 +1018,29 @@ __attribute__((noinline)) static void put(Buf *b, const char *s, I n) {   /* not
 Str *pys_str(const char *p, I n) {
   Str *s = gc_raw(sizeof(Str) + n + 1);   /* (every byte written: the header, the bytes and the NUL) */
   s->len = n; s->dict_hash = 0; s->chars1 = n < 2 ? n + 1 : 0; if (n) memcpy(s->s, p, n); s->s[n] = 0; return s;
+}
+
+#ifdef __wasi__
+/* Both Wasm backends use these imports. Splitting the copy from the call lets C allocate
+   exactly one Str without reentering the guest allocator from JavaScript. */
+__attribute__((import_module("codemode"), import_name("call")))
+uint32_t wasi_tool_call(const char *name, uint32_t n, const char *payload, uint32_t size);
+__attribute__((import_module("codemode"), import_name("read")))
+void wasi_tool_read(char *dst, uint32_t size);
+#endif
+Str *pys_tool_call(Str *name, Str *payload) {
+#ifdef __wasi__
+  I n = wasi_tool_call(name->s, (uint32_t)name->len, payload->s, (uint32_t)payload->len);
+  if (n > (I)SIZE_MAX - (I)sizeof(Str) - 1) pys_fail("MemoryError");
+  Str *s = gc_raw(sizeof(Str) + n + 1);
+  s->len = n; s->dict_hash = 0; s->chars1 = n < 2 ? n + 1 : 0;
+  wasi_tool_read(s->s, (uint32_t)n);
+  s->s[n] = 0;
+  return s;
+#else
+  (void)name; (void)payload;
+  pys_fail("NotImplementedError: codemode.call requires a WebAssembly host");
+#endif
 }
 static Str *cstr(const char *p) { return pys_str(p, strlen(p)); }
 static Str *done(Buf *b) { return pys_str(b->p, b->n); }
@@ -1415,7 +1508,7 @@ Str *pys_str_join(Str *sep, List *l);
 List *pys_str_split(Str *s, Str *sep, I maxsplit);
 List *pys_str_rsplit(Str *s, Str *sep, I maxsplit);
 List *pys_str_splitlines(Str *s, I keep);
-Str *pys_str_int(I v) { char b[32]; return pys_str(b, snprintf(b, 32, "%lld", (long long)v)); }
+Str *pys_str_int(I v);                        /* str(int): runtime.py counts and writes the digits */
 Str *pys_str_float(double d) {               /* Python repr(): shortest round-trip digits */
   char b[40], dig[24], o[64], *w = o;
   if (isnan(d)) return cstr("nan");
@@ -1429,7 +1522,7 @@ Str *pys_str_float(double d) {               /* Python repr(): shortest round-tr
   int nd = 0, neg = b[0] == '-';
   char *q = b + neg;
   for (; *q != 'E'; q++) if (*q != '.') dig[nd++] = *q;
-  int e = atoi(q + 1) + 1;                      /* position of the decimal point */
+  int e = decint(q + 1) + 1;                    /* position of the decimal point */
   while (nd > 1 && dig[nd - 1] == '0') nd--;
   if (neg) *w++ = '-';
   if (e > -4 && e <= 16) {
@@ -1443,11 +1536,18 @@ Str *pys_str_float(double d) {               /* Python repr(): shortest round-tr
   }
   return pys_str(o, w - o);
 }
-Str *pys_float_hex(double d) {                /* float.hex(): CPython spells zero 0x0.0p+0, NaN unsigned */
-  char b[40];
+Str *pys_float_hex(double d) {
   if (isnan(d)) return cstr("nan");
+  if (isinf(d)) return cstr(signbit(d) ? "-inf" : "inf");
   if (d == 0) return cstr(signbit(d) ? "-0x0.0p+0" : "0x0.0p+0");
-  return pys_str(b, fsnprintf(b, 40, "%.13a", d));
+  /* float.hex() keeps all 52 fraction bits and the minimum normal exponent for a
+     subnormal. libc %a may instead normalize it to a leading 1 and a lower exponent. */
+  uint64_t bits = double_to_bits(d);
+  int exponent = (int)(bits >> 52 & 0x7ff);
+  unsigned long long fraction = bits & ((1ULL << 52) - 1);
+  char b[40];
+  return pys_str(b, snprintf(b, sizeof b, "%s0x%d.%013llxp%+d", bits >> 63 ? "-" : "",
+                             exponent != 0, fraction, exponent ? exponent - 1023 : -1022));
 }
 I pys_float_is_integer(double d) {          /* below 2**52 in magnitude, d is whole where its truncation equals it;
                                                 from there every finite float is (no floor(): see pys_floor) */
@@ -1501,34 +1601,12 @@ static Str *asciinum(Str *s) {         /* CPython's first step for int()/float()
   }
   return done(&b);
 }
-I pys_int_str(Str *s, I base) {               /* CPython's PyLong_FromString on the ASCII form, checks in its order */
-  if (base != 0 && (base < 2 || base > 36)) pys_fail("ValueError: int() base must be >= 2 and <= 36, or 0");
-  Str *t = asciinum(s);
-  const char *p = t->s, *e = t->s + t->len, *q; I b0 = base, nd = 0;
-  while (p < e && aws(*p)) p++;
-  while (e > p && aws(e[-1])) e--;
-  int neg = 0, octal = 0, prev = 0;            /* octal: base 0 and a leading 0, which only 0 may have */
-  if (p < e && (*p == '+' || *p == '-')) neg = *p++ == '-';
-  if (e - p >= 2 && p[0] == '0') {
-    int pb = (p[1] | 32) == 'x' ? 16 : (p[1] | 32) == 'o' ? 8 : (p[1] | 32) == 'b' ? 2 : 0;
-    if (pb && (base == 0 || base == pb)) { base = pb; p += 2; if (p < e && *p == '_') p++; }
-  }
-  if (base == 0) { base = 10; octal = p < e && *p == '0'; }
-  uint64_t u = 0, lim = neg ? (uint64_t)1 << 63 : ((uint64_t)1 << 63) - 1; int ovf = 0;
-  for (q = p; q < e && (digitv(*q) < base || (*q == '_' && q > p && prev != '_')); prev = *q++) {
-    if (*q == '_') continue;                   /* digits, with single underscores between them */
-    int dv = digitv(*q); nd++;
-    if (u > (lim - dv) / base) ovf = 1; else u = u * base + dv;
-  }
-  while (q < e && aws(*q)) q++;                /* whitespace before an embedded NUL, where CPython's C string ends */
-  if (!nd || prev == '_' || (q < e && *q)) badlit("ValueError: invalid literal for int()", b0, s);
-  if ((base & (base - 1)) && nd > 4300)        /* CPython's limit for its quadratic conversion */
-    failf("ValueError: Exceeds the limit (4300 digits) for integer string conversion: value has %lld digits; "
-          "use sys.set_int_max_str_digits() to increase the limit", (long long)nd);
-  if (q < e || (octal && u)) badlit("ValueError: invalid literal for int()", b0, s);
-  if (ovf) pys_fail("OverflowError: int() result does not fit in 64 bits");
-  return neg ? (I)(0 - u) : (I)u;
-}
+/* int(s, base) reads its digits in runtime.py (pys_int_str), which calls these two: for the ASCII
+   form of a str that has other characters, and for the error of a str that is no int, whose
+   message holds the str's repr */
+Str *pys_num_ascii(Str *s) { return asciinum(s); }
+_Noreturn void pys_int_badlit(Str *s, I base) { badlit("ValueError: invalid literal for int()", base, s); }
+I pys_int_str(Str *s, I base);
 /* Explicit arbitrary-precision integers; ordinary int keeps its checked i64 ABI. */
 #include "mpz/mpz.c"
 
@@ -1581,60 +1659,17 @@ double pys_float_str(Str *s) {
 
 /* ---------- arithmetic with Python semantics ----------
    ints are 64-bit: a result CPython would represent as a big int raises OverflowError */
-#define ZDE "ZeroDivisionError: integer division or modulo by zero"
 #define OVF "OverflowError: integer result does not fit in 64 bits"
-I pys_floordiv(I a, I b) {
-  if (!b) pys_fail(ZDE);
-  if (b == -1) { if (a == INT64_MIN) pys_fail(OVF); return -a; }
-  I q = a / b; return (a % b && (a < 0) != (b < 0)) ? q - 1 : q;
-}
-I pys_mod(I a, I b) {
-  if (!b) pys_fail("ZeroDivisionError: integer modulo by zero");
-  if (b == -1) return 0;
-  I r = a % b; return (r && (r < 0) != (b < 0)) ? r + b : r;
-}
+I pys_floordiv(I a, I b);
+I pys_mod(I a, I b);
 I pys_pow(I a, I b);
-I pys_powmod(I a, I b, I m) {                 /* pow(a, b, m) as CPython's long_pow, in 128 bits: products cannot overflow */
-  if (!m) pys_fail("ValueError: pow() 3rd argument cannot be 0");
-  __int128 n = m < 0 ? -(__int128)m : m, x = a, r = 1;
-  if (n == 1) return 0;
-  if (b < 0) {                                 /* a negative exponent: the power of a's inverse modulo |m| */
-    __int128 p = x, q = n, s = 1, t = 0;       /* long_invmod: Euclid with floor division */
-    while (q) {
-      __int128 d = p / q - (p % q && (p < 0) != (q < 0)), u = p - d * q, w = s - d * t;
-      p = q; q = u; s = t; t = w;
-    }
-    if (p != 1) pys_fail("ValueError: base is not invertible for the given modulus");
-    x = s;
-  }
-  x %= n;
-  if (x < 0) x += n;
-  for (unsigned __int128 e = b < 0 ? -(__int128)b : b; e; e >>= 1) { if (e & 1) r = r * x % n; x = x * x % n; }
-  return (I)(m < 0 && r ? r - n : r);          /* the result has the sign of m */
-}
-I pys_shl(I a, I b) {
-  if (b < 0) pys_fail("ValueError: negative shift count");
-  if (!a) return 0;
-  I r = b > 63 ? 0 : (I)((uint64_t)a << b);
-  if (b > 63 || r >> b != a) pys_fail(OVF);
-  return r;
-}
-I pys_shr(I a, I b) { if (b < 0) pys_fail("ValueError: negative shift count"); return a >> (b > 63 ? 63 : b); }
-I pys_int_bit_length(I a) {                  /* int.bit_length() and bit_count() count the bits of |a|: 2**63 for -2**63 */
-  uint64_t x = a < 0 ? 0 - (uint64_t)a : (uint64_t)a;
-  return x ? 64 - __builtin_clzll(x) : 0;    /* (clz(0) is undefined) */
-}
-I pys_int_bit_count(I a) { return __builtin_popcountll(a < 0 ? 0 - (uint64_t)a : (uint64_t)a); }
+I pys_powmod(I a, I b, I m);                 /* pow(a, b, m): runtime.py's, with its products in 128 bits */
+I pys_shl(I a, I b);
+I pys_shr(I a, I b);
+I pys_int_bit_length(I a);
+I pys_int_bit_count(I a);
 double pys_fdiv(double a, double b) { if (b == 0) pys_fail("ZeroDivisionError: float division by zero"); return a / b; }
-double pys_idiv(I a, I b) {                  /* int / int, rounded once like CPython's true division */
-  if (!b) pys_fail("ZeroDivisionError: division by zero");
-  uint64_t x = a < 0 ? 0 - (uint64_t)a : (uint64_t)a, y = b < 0 ? 0 - (uint64_t)b : (uint64_t)b;
-  if (!x || (x <= (1ULL << 53) && y <= (1ULL << 53))) return (double)a / (double)b;   /* both exact: one rounding; 0 / b is a signed 0 (and clz(0) below is undefined) */
-  int k = 55 + (63 - __builtin_clzll(y)) - (63 - __builtin_clzll(x)); if (k < 0) k = 0;
-  unsigned __int128 num = (unsigned __int128)x << k, q = num / y; int sticky = num % y != 0;
-  double r = ldexp((double)(uint64_t)(q | sticky), -k);   /* q has 55+ bits: the sticky bit makes the conversion round once */
-  return (a < 0) != (b < 0) ? -r : r;
-}
+double pys_idiv(I a, I b);                    /* int / int, rounded once in runtime.py */
 static __attribute__((noinline, const)) I cmp_if_whole(I i, double d) {   /* pys_cmp_if past 2**53 */
   if (isnan(d)) return 2;
   if (d >= 9223372036854775808.0) return -1;
@@ -2042,12 +2077,6 @@ void **pys_m_modf(double x) {         /* (fractional part, integral part); an in
 }
 double pys_m_nextafter(double x, double y) { return nextafter(x, y); }
 double pys_m_remainder(double x, double y) { return mchk(remainder(x, y), x, y, 0); }
-double pys_m_fma(double x, double y, double z) {   /* x * y + z, rounded once */
-  double r = fma(x, y, z);
-  if (isnan(r) && !isnan(x) && !isnan(y) && !isnan(z)) pys_fail("ValueError: invalid operation in fma");
-  if (isinf(r) && isfinite(x) && isfinite(y) && isfinite(z)) pys_fail("OverflowError: overflow in fma");
-  return r;
-}
 double pys_m_ulp(double x) {          /* the distance from |x| to the next float away from zero (or below the largest) */
   if (isnan(x) || isinf(x)) return fabs(x);
   double a = fabs(x), b = nextafter(a, INFINITY);
@@ -2070,37 +2099,11 @@ __attribute__((no_builtin("fmod"))) double pys_m_fmod(double x, double y) {
   return fmod(x, y);
 }
 double pys_m_atan2(double y, double x) { return atan2(y, x); }
-/* math.hypot is CPython's vector_norm, not libm's hypot, so its last bit agrees: lossless scaling
-   by a power of two, exact squares (fma), compensated summation and a differential correction of
-   the square root; it never raises (inf on overflow) */
-typedef struct { double hi, lo; } DL;
-static DL dl_fast_sum(double a, double b) { double x = a + b; return (DL){x, (a - x) + b}; }
-static DL dl_mul(double x, double y) { double z = x * y; return (DL){z, fma(x, y, -z)}; }
-static double vnorm(double *v, I n, double max) {
-#pragma clang fp contract(off)
-  double csum = 1.0, frac1 = 0.0, frac2 = 0.0, x, h, scale; DL pr, sm; int e;
-  if (max == 0.0 || n <= 1) return max;
-  frexp(max, &e);
-  if (e < -1023) { for (I i = 0; i < n; i++) v[i] /= 0x1p-1022; return 0x1p-1022 * vnorm(v, n, max / 0x1p-1022); }
-  scale = ldexp(1.0, -e);
-  for (I i = 0; i < n; i++) {
-    x = v[i] * scale; pr = dl_mul(x, x); sm = dl_fast_sum(csum, pr.hi);
-    csum = sm.hi; frac1 += pr.lo; frac2 += sm.lo;
-  }
-  h = sqrt(csum - 1.0 + (frac1 + frac2));
-  pr = dl_mul(-h, h); sm = dl_fast_sum(csum, pr.hi);
-  csum = sm.hi; frac1 += pr.lo; frac2 += sm.lo;
-  x = csum - 1.0 + (frac1 + frac2);
-  h += x / (2.0 * h);
-  return h / scale;
-}
-double pys_m_hypot(double x, double y) {
-  double v[2] = {fabs(x), fabs(y)}, max = 0.0;
-  for (int i = 0; i < 2; i++) if (v[i] > max) max = v[i];   /* a NaN is never the max */
-  if (isinf(max)) return max;
-  if (isnan(x) || isnan(y)) return NAN;
-  return vnorm(v, 2, max);
-}
+/* math.hypot, math.dist and math.fma are runtime.py's: CPython's vector_norm, not libm's hypot */
+double pys_m_hypot(double x, double y);
+double pys_m_hypot_list(List *p);
+double pys_m_dist(List *p, List *q);
+double pys_m_fma(double x, double y, double z);
 double pys_m_copysign(double x, double y) { return copysign(x, y); }
 /* complex numbers (lib/_pystachy_complex.py): CPython 3.13's Objects/complexobject.c, its division
    (_Py_c_quot), power (complex_pow) and absolute value (_Py_c_abs) with their errors, through libm
@@ -2595,18 +2598,7 @@ I pys_round(double d) {                      /* round(d): half to even, nearbyin
   if (fabs(d) < 0x1p52) { double big = copysign(0x1p52, d), r = d + big; return (I)(r - big); }
   return round_far(d);
 }
-I pys_round_int(I x, I n) {                  /* round(x, n) of an int: x, or for n < 0 the nearest multiple of
-                                                10**-n, ties to the even multiple */
-  if (n >= 0) return x;
-  __int128 m = 1, q, r;
-  for (I i = 0; i < -n && i < 20; i++) m *= 10;   /* (10**20 > 2 * |x|: a farther n gives 0 too) */
-  q = x / m; r = x % m;
-  if (r < 0) { r += m; q--; }                     /* x = q * m + r, 0 <= r < m */
-  if (2 * r > m || (2 * r == m && (q & 1))) q++;
-  q *= m;
-  if (q > INT64_MAX || q < INT64_MIN) pys_fail(OVF);
-  return (I)q;
-}
+I pys_round_int(I x, I n);                  /* round(x, n) of an int: runtime.py's */
 double pys_round_n(double x, I n) {           /* round(x, n): half-even on the exact decimal value */
   static char b[1500], o[1500];
   if (!isfinite(x) || n > 400) return x;
@@ -2706,7 +2698,7 @@ void *pys_box(I v) { I *p = gc_box(1); p[0] = v; p[1] = 0; return p; }
    Mpz, in a box the collector scans */
 void *pys_big_box(I lo, void *hi) {
   if (!hi) return pys_box(lo);
-  I *p = gc_box(0); p[0] = INT64_MIN; ((void **)p)[1] = hi; return p;
+  I *p = gc_box(0); p[0] = INT64_MIN; p[1] = (I)(uintptr_t)hi; return p;
 }
 /* Closed union: a program-wide tag and the value's 8-byte slot. The collector
    scans the box for str, container or native reference payloads. None remains null. */
@@ -4330,31 +4322,14 @@ Dyn *pys_list_minmax_identity(List *l, Str *d, I max, I kind) {
   }
   return (Dyn *)l->ids[at + 1];
 }
-I pys_any(List *l) { for (I i = 0; i < l->len; i++) if (l->a[i]) return 1; return 0; }
-I pys_all(List *l) { for (I i = 0; i < l->len; i++) if (!l->a[i]) return 0; return 1; }
-I pys_sum_int(List *l, I s) { list_narrow(l); for (I i = 0; i < l->len; i++) if (__builtin_add_overflow(s, l->a[i], &s)) pys_fail(OVF); return s; }
+/* any(), all() and the sums of a list are runtime.py's (the compiler narrows the list of an int sum
+   first, in a program whose lists may hold an int past 64 bits: NARROWED) */
+I pys_any(List *l);
+I pys_all(List *l);
+I pys_sum_int(List *l, I s);
 double pys_sum_float(List *l, double s);
 double pys_sum_float_int(List *l, I s);
-double pys_sum_int_float(List *l, double s) { for (I i = 0; i < l->len; i++) s += (double)l->a[i]; return s; }   /* ints: not compensated */
-double pys_m_dist(List *p, List *q) {   /* math.dist: hypot's vnorm of the differences of two lists of floats */
-  if (p->len != q->len) pys_fail("ValueError: both points must have the same number of dimensions");
-  double b[16], *v = p->len > 16 ? pys_alloc_atomic(p->len * 8) : b, max = 0.0; int nan = 0;
-  for (I i = 0; i < p->len; i++) {
-    v[i] = fabs(dbl(p->a[i]) - dbl(q->a[i])); nan |= isnan(v[i]);
-    if (v[i] > max) max = v[i];   /* a NaN is never the max */
-  }
-  if (isinf(max)) return max;
-  return nan ? NAN : vnorm(v, p->len, max);
-}
-double pys_m_hypot_list(List *p) {   /* math.hypot of other than two coordinates (math_hypot): vnorm of a list of floats */
-  double b[16], *v = p->len > 16 ? pys_alloc_atomic(p->len * 8) : b, max = 0.0; int nan = 0;
-  for (I i = 0; i < p->len; i++) {
-    v[i] = fabs(dbl(p->a[i])); nan |= isnan(v[i]);
-    if (v[i] > max) max = v[i];
-  }
-  if (isinf(max)) return max;
-  return nan ? NAN : vnorm(v, p->len, max);
-}
+double pys_sum_int_float(List *l, double s);
 I pys_range_len(I a, I b, I s);
 I pys_range_has(I x, I a, I b, I s);
 List *pys_range_list(I a, I b, I s) {   /* list(range(a, b, s)): allocated once at its length, as CPython does */
@@ -6805,7 +6780,7 @@ Str *pys_fmt_float(double m, I type, I prec, I alt) {   /* |x| = m for type (0: 
   else if (!type) {                          /* like 'g', but the exponent starts at p-1 and a ".0" stays */
     int pr = prec ? (int)prec : 1;
     fsnprintf(t, tsz, "%.*e", pr - 1, m);
-    int X = atoi(strchr(t, 'e') + 1), ex = X < -4 || X >= pr - 1;
+    int X = decint(strchr(t, 'e') + 1), ex = X < -4 || X >= pr - 1;
     n = ex ? fsnprintf(t, tsz, alt ? "%#.*e" : "%.*e", pr - 1, m) : fsnprintf(t, tsz, alt ? "%#.*f" : "%.*f", pr - 1 - X, m);
     if (!alt) {                              /* drop the mantissa's trailing zeros, as 'g' does */
       char *e = strchr(t, 'e'); I me = e ? e - t : n;
@@ -6817,7 +6792,7 @@ Str *pys_fmt_float(double m, I type, I prec, I alt) {   /* |x| = m for type (0: 
        the notation from the rounded exponent, as CPython does, and keep every digit */
     int pr = prec < 0 ? 6 : prec ? (int)prec : 1;
     fsnprintf(t, tsz, "%.*e", pr - 1, m);
-    int X = atoi(strchr(t, 'e') + 1);
+    int X = decint(strchr(t, 'e') + 1);
     n = X < -4 || X >= pr ? fsnprintf(t, tsz, type == 'G' ? "%#.*E" : "%#.*e", pr - 1, m) : fsnprintf(t, tsz, "%#.*f", pr - 1 - X, m);
   } else {
     char c = type == 'n' ? 'g' : type == '%' ? 'f' : type, f[16]; int pr = prec < 0 ? 6 : (int)prec;
@@ -7823,7 +7798,7 @@ static int *proc_open_fds(I *n) {       /* the open descriptors past the standar
   I cap = 64, len = 0;
   int *v = pys_alloc_atomic((size_t)cap * sizeof *v);
   for (struct dirent *e; (e = readdir(d));) {
-    char *end; long fd = strtol(e->d_name, &end, 10);
+    const char *end; long long fd = decnum(e->d_name, &end);
     if (*end || end == e->d_name || fd < 3 || fd > INT_MAX) continue;
     if (len == cap) {
       int *w = pys_alloc_atomic((size_t)(cap *= 2) * sizeof *w);
@@ -7968,6 +7943,9 @@ I pys_proc_write(I fd, Str *data, I at, I n) {   /* os.write(fd, data[at:at + n]
   do r = write((int)fd, data->s + at, (size_t)n); while (r < 0 && errno == EINTR);
   if (r < 0) ioerr(errno);              /* (EPIPE where the reader is gone: the runtime ignores SIGPIPE) */
   return r;
+}
+I pys_os_write(I fd, Str *data) {     /* os.write(fd, data) returns the count of one write, including a short write */
+  return pys_proc_write(os_fd(fd), data, 0, data->len);
 }
 void pys_proc_close(I fd) { if (close((int)fd) < 0) ioerr(errno); }   /* os.close(fd) */
 /* The selector of Popen.communicate(): which of two descriptors to read (1 and 2) and one to write
@@ -8163,15 +8141,30 @@ _Noreturn void pys_recursion_stack_error(void) {
    not 1 MiB on every target. Never discard the stack's already mapped part. A failed inspection
    retains the platform bounds; /proc and mappings changed after initialization are not a promise.
    Read once only for extensions or glibc's fallback, keeping ordinary program startup cheap. */
+static const char *hexnum(const char *s, unsigned long *v) {   /* past the hex digits at s, their value in *v: 0 for none, or too many */
+  const char *p = s;
+  for (*v = 0;; p++) {
+    int c = *p | 32, d = *p >= '0' && *p <= '9' ? *p - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 : -1;
+    if (d < 0) break;
+    if (*v >> (sizeof *v * 8 - 4)) return 0;
+    *v = *v << 4 | (unsigned)d;
+  }
+  return p == s ? 0 : p;
+}
 static uintptr_t stack_mapping_bottom(uintptr_t here, uintptr_t page) {
   FILE *f = fopen("/proc/self/maps", "r");
   if (!f) return 0;
   uintptr_t previous = 0, bottom = 0;
   int accessible = 0;
-  char line[512], perm[5];
+  char line[512];
   unsigned long from, to;
   while (fgets(line, sizeof line, f)) {
-    if (sscanf(line, "%lx-%lx %4s", &from, &to, perm) != 3 || strlen(perm) != 4 || from >= to || previous > from) break;
+    /* "from-to perm": two hex addresses and four permission characters, in the kernel's form alone */
+    const char *perm = hexnum(line, &from);
+    int np = 0;
+    if (!perm || *perm != '-' || !(perm = hexnum(perm + 1, &to)) || *perm++ != ' ') break;
+    while (np < 4 && perm[np] && perm[np] != ' ' && !(perm[np] >= 9 && perm[np] <= 13)) np++;
+    if (np != 4 || from >= to || previous > from) break;
     if (from <= here && here < to) {
       bottom = previous;
       if (bottom && accessible) {
@@ -8193,7 +8186,12 @@ static uintptr_t stack_mapping_bottom(uintptr_t here, uintptr_t page) {
 static void stack_floor_at(uintptr_t here, int mapped) {   /* (here: the caller's frame address) */
   uintptr_t lo = 0, hi = 0;
   (void)mapped;
-#if defined(__APPLE__)
+#if defined(__wasi__)
+  /* wasm-ld lays out the linear-memory stack shared with directly emitted frames. */
+  extern char __stack_low, __stack_high;
+  lo = (uintptr_t)&__stack_low;
+  hi = (uintptr_t)&__stack_high;
+#elif defined(__APPLE__)
   pthread_t self = pthread_self();
   size_t size = pthread_get_stacksize_np(self);
   hi = (uintptr_t)pthread_get_stackaddr_np(self);   /* (the highest address) */
@@ -8302,13 +8300,7 @@ double pys_getctime(Str *p) { return stat_secs(stat1(p).st_ctimespec); }
 double pys_getmtime(Str *p) { return stat_secs(stat1(p).st_mtim); }
 double pys_getctime(Str *p) { return stat_secs(stat1(p).st_ctim); }
 #endif
-Str *pys_path_join(Str *a, Str *b) {     /* os.path.join(a, b), as posixpath.join steps through its parts */
-  if ((b->len && b->s[0] == '/') || !a->len) return b;
-  if (a->s[a->len - 1] == '/') return pys_str_add(a, b);
-  Str *s = pys_alloc_atomic(sizeof(Str) + a->len + b->len + 2);
-  s->len = a->len + 1 + b->len; memcpy(s->s, a->s, a->len); s->s[a->len] = '/'; memcpy(s->s + a->len + 1, b->s, b->len);
-  return s;
-}
+Str *pys_path_join(Str *a, Str *b);     /* os.path.join(a, b): runtime.py's, with the other functions of os.path */
 /* POSIX environment text uses UTF-8 with surrogateescape, as CPython's os.environ.
    Keep the common ASCII paths allocation-free until a value is returned. These
    codec functions are implemented in runtime.py and share the ordinary codec checks. */
@@ -8512,8 +8504,8 @@ static Exc *exc_line(const char *m) {  /* pys_fail's "Kind: message"; the args i
   const char *c = strstr(m, ": "), *t, *r;
   Str *k = pys_str(m, c ? c - m : (I)strlen(m)), *s = cstr(c ? c + 2 : ""), *a = 0;
   if (s->len > 1 && s->s[0] == '(' && !strcmp(k->s, "OverflowError")) a = pys_str(s->s + 1, s->len - 2);   /* (34, '...') */
-  else if (!strncmp(s->s, "[Errno ", 7) && (t = strstr(s->s, "] ")) && !strcmp(k->s, errcls(atoi(s->s + 7)))) {
-    Buf b = {0}; int n = atoi(s->s + 7);     /* an OSError, of n's class (a ValueError can show a repr like it): */
+  else if (!strncmp(s->s, "[Errno ", 7) && (t = strstr(s->s, "] ")) && !strcmp(k->s, errcls(decint(s->s + 7)))) {
+    Buf b = {0}; int n = decint(s->s + 7);   /* an OSError, of n's class (a ValueError can show a repr like it): */
     put(&b, s->s + 7, t - s->s - 7); put(&b, ", ", 2);   /* (errno, strerror), without the filenames after */
     r = strerror(n); t += 2;                             /* strerror, which can hold ": " */
     repr_str(&b, strncmp(t, r, strlen(r)) ? pys_str(t, s->s + s->len - t) : cstr(r));   /* another text: all of it */

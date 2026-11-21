@@ -33,6 +33,12 @@ DYNPRAGMA = "# pystachy: dynamic-any"
 # Checked optimization hints, never a promise to ignore observable identity.
 IDINERT: dict[int, bool] = {}
 IDPRAGMA = "# pystachy: identity-inert"
+# the files of the modules that hold no dynamic value (docs/dynamic-any.md#static-modules): those
+# whose lines before their first line of code hold STATICPRAGMA. An expression that is an Any
+# value there, or a value boxed as one, is a compile error (Gen.static_value, dyn_box)
+STATICFILES: dict[int, bool] = {}
+STATICPRAGMA = "# pystachy: static"
+STATICBOTH = "'# pystachy: static' and '# pystachy: dynamic-any' cannot both apply to a module: static rejects the Any values that dynamic-any makes"
 
 
 def dynamic_pragma(src: str) -> bool:
@@ -57,6 +63,10 @@ def leading_pragma(src: str, pragma: str) -> bool:
 
 def dynamic_file(k: int) -> bool:
     return k in DYNFILES
+
+
+def static_file(k: int) -> bool:
+    return k in STATICFILES
 
 
 # the files of the modules whose ints promote past 64 bits, as CPython's do (docs/python-int.md),

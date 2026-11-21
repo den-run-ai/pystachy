@@ -6,10 +6,16 @@ stable. It keeps one state per block, not a product of whole-function execution 
 """
 from __future__ import annotations
 from src.pystachy_compiler.dataflow import forward_fixpoint, live_values
-from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, slot_register
-from src.pystachy_compiler.specs import BIG, RUNTIME
+from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, slot_register, tmpname
+from src.pystachy_compiler.specs import BIG, FXBIT, RUNTIME
+from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join, union_tags
-from src.pystachy_compiler.utils import gelem, is_gen, is_opt, is_union, rt_generic, rtsig, targs, umembers
+from src.pystachy_compiler.utils import gelem, is_dict, is_gen, is_opt, is_set, is_union, is_vtuple, nullable_union_members, rt_generic, rtsig, targs, umembers
+
+
+def has_length_word(t: str) -> bool:
+    # The first word of runtime.c's Str (including bytes), Dict, Set and VTuple.
+    return t == "str" or t == "bytes" or is_dict(t) or is_set(t) or is_vtuple(t)
 
 
 def proof_number(v: str, start: int, limit: int) -> int:
@@ -70,7 +76,7 @@ def proof_origin(v: str, fn: IFn, definitions: list[Ins | None], origins: list[i
     return -1
 
 
-def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None = None, successors: list[list[str]] | None = None, types: dict[str, list[str]] | None = None) -> bool:
+def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None = None, successors: list[list[str]] | None = None, types: dict[str, list[str]] | None = None, classes: dict[str, ClassInfo] | None = None) -> bool:
     """Certify immutable parameter narrowing without allocating dataflow states.
 
     This is a sufficient proof, never a rejection rule. Unrecognized sources, mutable
@@ -78,10 +84,13 @@ def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None
     general solver. No fact comes from an operand's narrowed type annotation.
     """
     domains: dict[str, list[str]] = {} if types is None else types
+    class_types: dict[str, ClassInfo] = {} if classes is None else classes
     found = False
     for t in fn.f.ptypes:
         if is_union(t):
             ts = domains[t] if t in domains else umembers(t)
+            if nullable_union_members(ts, class_types):
+                return False
             for member in ts:
                 if member == "" or member == "None" or is_opt(member) or is_union(member):
                     return False
@@ -229,9 +238,196 @@ def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None
     return True
 
 
+
+def private_optional_reads(fn: IFn, narrowed: dict[str, dict[str, bool]], at: dict[str, int], successors: list[list[str]]) -> bool:
+    """Prove loads from private local slots with nonnull facts on every incoming edge.
+
+    This certificate only accepts reads of SSA values whose own load already had
+    a nonnull slot. Unfamiliar origins, control flow or bounds use UnionProof.
+    """
+    if fn.n < 0 or fn.n > 262144 or len(fn.blocks) == 0:
+        return False
+    seen = [False] * (fn.n + 1)
+    loads: dict[str, str] = {}
+    origin: dict[str, int] = {}
+    locals_: dict[str, bool] = {}
+    for i in fn.slots:
+        n = i.r[0]
+        name = slot_register(i)
+        if n < 0 or n > fn.n or name in locals_:
+            return False
+        seen[n] = True
+        locals_[name] = i.k == 0 and is_opt(i.t)
+    slots: dict[str, int] = {}
+    for k in range(len(fn.blocks)):
+        for i in fn.blocks[k].code:
+            for n in i.r:
+                if n < 0 or n > fn.n or seen[n]:
+                    return False
+                seen[n] = True
+                v = tmpname(n)
+                if v in narrowed:
+                    if i.op != "mem.load" or not locals_.get(i.a[0].v, False):
+                        return False
+                    slot = i.a[0].v
+                    if slot not in slots:
+                        if len(slots) >= 62:
+                            return False
+                        slots[slot] = 1 << len(slots)
+                    loads[v] = slot
+                    origin[v] = k
+    if len(loads) != len(narrowed):
+        return False
+    # An operand outside its load's block is accepted only along an unambiguous
+    # chain from that load. Count handler edges even before EH lowering.
+    pred = [-1] * len(fn.blocks)
+    incoming_edges = [0] * len(fn.blocks)
+    for k in range(len(fn.blocks)):
+        last = fn.blocks[k].code[-1]
+        targets = successors[k]
+        if last.op == "cbr":
+            if len(last.b) != 2 or last.b[0] == last.b[1] or targets != last.b:
+                return False
+        elif last.op == "check":
+            cold = fn.cold.get(last.x if last.x != "" else last.s, "")
+            if len(last.b) != 1 or cold == "" or last.b[0] == cold or len(targets) != 2 or targets[0] != last.b[0] or targets[1] != cold:
+                return False
+        for label in targets:
+            if label not in at:
+                return False
+            dest = at[label]
+            pred[dest] = k if pred[dest] == -1 else -2
+            incoming_edges[dest] += 1
+        handler = fn.blocks[k].handler
+        if handler != "":
+            if handler not in at:
+                return False
+            pred[at[handler]] = -2
+            incoming_edges[at[handler]] += 1
+    edges: list[list[int]] = []
+    guards: list[int] = []
+    orders: list[bool] = []
+    steps: list[list[tuple[int, int]]] = []
+    starts = [-1] * len(fn.blocks)
+    starts[0] = 0
+    for k in range(len(fn.blocks)):
+        b = fn.blocks[k]
+        if b.handler != "":
+            starts[at[b.handler]] = 0
+        last = b.code[-1]
+        branch = last.a[0].v if last.op == "cbr" or last.op == "check" else ""
+        current: dict[str, int] = {}
+        localdefs: dict[str, bool] = {}
+        ops: list[tuple[int, int]] = []
+        guard = 0
+        first = False
+        for i in b.code:
+            for j in range(len(i.a)):
+                a = i.a[j]
+                if a.v in slots and (j != 0 or (i.op != "mem.load" and i.op != "mem.store")):
+                    return False
+                if a.v in narrowed and a.t in narrowed[a.v]:
+                    if i.op == "phi":
+                        return False
+                    p = k
+                    for depth in range(16):
+                        if p == origin[a.v] or p < 0:
+                            break
+                        p = pred[p]
+                    if p != origin[a.v] or (p == k and a.v not in localdefs):
+                        return False
+            if i.op == "mem.load" and i.a[0].v in slots:
+                v = tmpname(i.r[0])
+                bit = slots[i.a[0].v]
+                current[v] = bit
+                if v in narrowed:
+                    localdefs[v] = True
+                    ops.append((0, bit))
+            elif i.op == "mem.store" and i.a[0].v in slots:
+                bit = slots[i.a[0].v]
+                ops.append((bit, current.get(i.a[1].v, 0)))
+                if bit == guard:
+                    guard = 0
+                for old in list(current):
+                    if current[old] == bit:
+                        del current[old]
+            elif i.op == "ptr.cmp" and (i.s == "==" or i.s == "!=") and tmpname(i.r[0]) == branch:
+                if i.a[0].v == "null" or i.a[1].v == "null":
+                    guard = current.get(i.a[0].v if i.a[1].v == "null" else i.a[1].v, 0)
+                    first = (i.s == "!=") == (last.op == "cbr")
+        out: list[int] = []
+        for j in range(len(successors[k])):
+            label = successors[k][j]
+            if last.op == "cbr" and ((branch == "true" and j == 1) or (branch == "false" and j == 0)):
+                continue
+            d = at[label]
+            destblock = fn.blocks[d]
+            # Short-circuit "and"/"or" branches through a Boolean phi. On the
+            # incoming condition's own edge the phi result is already known.
+            if len(destblock.code) == 2 and destblock.code[0].op == "phi" and destblock.code[1].op == "cbr":
+                phi = destblock.code[0]
+                destbr = destblock.code[1]
+                if phi.t == "bool" and tmpname(phi.r[0]) == destbr.a[0].v:
+                    if len(phi.a) != 2 or len(phi.b) != 2 or incoming_edges[d] != 2:
+                        return False
+                    for parent in phi.b:
+                        if phi.b.count(parent) != 1 or parent not in at or label not in successors[at[parent]]:
+                            return False
+                    if b.label not in phi.b:
+                        return False
+                    incoming = phi.a[phi.b.index(b.label)].v
+                    if incoming == "true" or incoming == "false":
+                        d = at[destbr.b[0 if incoming == "true" else 1]]
+                    elif last.op == "cbr" and incoming == branch and last.b[0] != last.b[1]:
+                        d = at[destbr.b[j]]
+            out.append(d)
+        edges.append(out)
+        guards.append(guard)
+        orders.append(first)
+        steps.append(ops)
+    todo = [k for k in range(len(starts)) if starts[k] >= 0]
+    while len(todo) > 0:
+        k = todo.pop()
+        facts = starts[k]
+        for action in steps[k]:
+            bit = action[0]
+            source = action[1]
+            if bit == 0:
+                if facts & source == 0:
+                    return False
+            elif facts & source != 0:
+                facts |= bit
+            else:
+                facts &= ~bit
+        for j in range(len(edges[k])):
+            d = edges[k][j]
+            give = facts | guards[k] if (j == 0) == orders[k] else facts
+            joined = give if starts[d] < 0 else starts[d] & give
+            if starts[d] != joined:
+                starts[d] = joined
+                todo.append(d)
+    return True
+
+
 class UnionProof:
-    def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None, raises: dict[str, bool] | None = None, declarations: list[Val] | None = None, consts: dict[str, Data] | None = None):
+    def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None, raises: dict[str, bool] | None = None, declarations: list[Val] | None = None, consts: dict[str, Data] | None = None, narrowed: dict[str, dict[str, bool]] | None = None, written: dict[str, int] | None = None, kin: dict[str, dict[str, bool]] | None = None, unions: bool = True, classes: dict[str, ClassInfo] | None = None):
         self.fn = fn
+        self.classes: dict[str, ClassInfo] = {} if classes is None else classes
+        # (the storage classes each call writes, its effects' wL wD wO and wG bits, where they
+        # are known: a call that writes no global keeps the facts of globals' storage, and one
+        # that writes no object those of the fields that field keys name, field_key)
+        self.written: dict[str, int] = {} if written is None else written
+        # (for the class of each object whose field fn addresses, those that may be the same
+        # object, ircheck's kin; and the class of each field key's object)
+        self.kin: dict[str, dict[str, bool]] = {} if kin is None else kin
+        self.keyclass: dict[str, str] = {}
+        self.keys_by_owner: dict[str, list[str]] = {}
+        self.fieldobjs: dict[str, bool] = {}
+        # (the values that operands read at a type without None, which their definitions give as
+        # opt[U], by the types they read them at: ircheck.optional_reads; and the blocks whose
+        # edges carry such a read of a phi's)
+        self.narrowed: dict[str, dict[str, bool]] = {} if narrowed is None else narrowed
+        self.phireads: dict[str, bool] = {}
         self.writes: dict[str, bool] = {} if writes is None else writes
         self.raises: dict[str, bool] = {} if raises is None else raises
         self.tags: dict[str, str] = {}
@@ -271,6 +467,8 @@ class UnionProof:
         named: dict[str, bool] = {}
         for b in fn.blocks:
             for i in b.code:
+                if i.op == "field.addr" and len(self.narrowed) > 0:
+                    self.fieldobjs[i.a[0].v] = True
                 for a in i.a:
                     references[a.v] = True
                     if a.v.startswith("@g."):
@@ -317,18 +515,18 @@ class UnionProof:
             self.blocks[b.label] = bn
             for i in b.code:
                 for number in i.r:
-                    v = "%t" + str(number)
+                    v = tmpname(number)
                     self.defs[v] = i
                     self.native[v] = i.t
                 if i.op == "ovf":
-                    self.native["%t" + str(i.r[1])] = "int"
-                    self.native["%t" + str(i.r[2])] = "bool"
+                    self.native[tmpname(i.r[1])] = "int"
+                    self.native[tmpname(i.r[2])] = "bool"
                 if (i.op == "tuple.load" or i.op == "dyn.payload"):
                     # Their element/member contracts are checked by their own typed
                     # operations; closed-union proof tracking starts at union reads.
-                    self.native["%t" + str(i.r[-1])] = i.s
+                    self.native[tmpname(i.r[-1])] = i.s
                 if i.op == "alloc.fixed" or (i.op == "rt" and (i.s == "alloc" or i.s == "alloc_atomic")):
-                    v = "%t" + str(i.r[0])
+                    v = tmpname(i.r[0])
                     self.roots[v] = v
                 for a in i.a:
                     if consts is not None and a.v in consts:
@@ -341,9 +539,9 @@ class UnionProof:
                     # (an address, or the packed slot of a list read or a runtime call; a packed
                     # slot that another op makes is a value, as its %slot type made it)
                     held = i.t.startswith("&") or (i.t.startswith("*") and (i.op == "list.load" or i.op == "rt"))
-                    self.typebase(("MU:" if held else "U:") + "%t" + str(i.r[0]), i.t[1:] if held else i.t)
+                    self.typebase(("MU:" if held else "U:") + tmpname(i.r[0]), i.t[1:] if held else i.t)
                     if held and i.op != "rt":
-                        self.memtypes["%t" + str(i.r[0])] = i.t[1:]
+                        self.memtypes[tmpname(i.r[0])] = i.t[1:]
                 for j in range(len(i.a)):
                     v = i.a[j].v
                     if v in self.private and (j != 0 or (i.op != "mem.load" and i.op != "mem.store")):
@@ -351,16 +549,22 @@ class UnionProof:
                 if (i.op == "union.tag" or i.op == "union.payload" or i.op == "union.raw"):
                     wanted["U:" + i.a[0].v] = True
                     if i.op == "union.tag":
-                        self.tagvals["%t" + str(i.r[0])] = True
+                        self.tagvals[tmpname(i.r[0])] = True
                     else:
-                        self.raw["%t" + str(i.r[1])] = True
-                        self.bitsneeded["%t" + str(i.r[1])] = True
-                        self.addresses["%t" + str(i.r[0])] = True
+                        self.raw[tmpname(i.r[1])] = True
+                        self.bitsneeded[tmpname(i.r[1])] = True
+                        self.addresses[tmpname(i.r[0])] = True
                 if i.op == "ptr.cmp":
                     for a in i.a:
-                        wanted["U:" + a.v] = True
+                        # (without union obligations only a test of what may be None matters:
+                        # an optional value's, whose read may lean on it)
+                        if unions or is_opt(a.t) or is_union(a.t):
+                            wanted["U:" + a.v] = True
+                if i.op == "scalar.cmp" and (i.s == "eq" or i.s == "ne") and i.a[0].t == "%ptr" and (i.a[0].v == "null" or i.a[1].v == "null"):
+                    for a in i.a:
+                        wanted["U:" + a.v] = True  # (a test of a pointer word against null: a None test)
                 if i.op == "rt" and (i.s == "ubox" or i.s == "ubox_opt"):
-                    wanted["U:%t" + str(i.r[0])] = True
+                    wanted["U:" + tmpname(i.r[0])] = True
                     if i.a[0].v.startswith("%"):
                         self.tagvals[i.a[0].v] = True
                     if i.s == "ubox" and i.a[1].v.startswith("%"):
@@ -368,7 +572,7 @@ class UnionProof:
         for b in fn.blocks:
             for i in b.code:
                 if (i.op == "rt" and len(i.r) == 1) or i.op == "list.load":
-                    self.native["%t" + str(i.r[0])] = self.runtime_type(i, i.t, 0)
+                    self.native[tmpname(i.r[0])] = self.runtime_type(i, i.t, 0)
                 if i.op == "rt" and i.s == "vtuple.get" and len(i.r) == 1 and len(i.a) == 2:
                     # A tuple[U, ...]'s item at an index, which pys_vtuple_get checks against its
                     # length: a box of that union, as an item slot's (below) or a list's (list.get)
@@ -376,7 +580,7 @@ class UnionProof:
                     owner = owner[4:-1] if is_opt(owner) else owner
                     item = targs(owner)[0] if owner.startswith("vtuple[") else ""
                     if is_union(item[4:-1] if is_opt(item) else item):
-                        self.typebase("U:%t" + str(i.r[0]), item)
+                        self.typebase("U:" + tmpname(i.r[0]), item)
                 if i.op == "mach.addr" and len(i.r) == 1 and len(i.a) == 2:
                     # An item slot of a tuple whose items are all of one union type (a fixed
                     # tuple's, or a tuple[U, ...]'s past its header) holds a box of that union:
@@ -387,19 +591,40 @@ class UnionProof:
                     owner = owner[4:-1] if is_opt(owner) else owner
                     items = targs(owner) if owner.startswith("tuple[") or owner.startswith("vtuple[") else []
                     if len(items) > 0 and all(x == items[0] for x in items) and is_union(items[0][4:-1] if is_opt(items[0]) else items[0]) and self.item_slot(i, owner.startswith("vtuple["), len(items)):
-                        self.typebase("MU:%t" + str(i.r[0]), items[0])
+                        self.typebase("MU:" + tmpname(i.r[0]), items[0])
         # Backward relevance for boxed values and forward/backward transport closure for
         # tags and bits. Literals never become tainted: the same integer spelling in an
         # unrelated loop index does not make that index a payload.
+        # (unions: fn has closed-union obligations, whose boxes each have more than one member;
+        # without them the proof runs for reads of optional values alone, which need only their
+        # own values, what tests compare and what those are loaded from, below)
         for k in self.base:
-            if len(self.base[k]) > 1:
+            if unions and len(self.base[k]) > 1:
                 wanted[k] = True
+        for v in self.narrowed:
+            wanted["U:" + v] = True
+        if len(self.narrowed) > 0:
+            # (an object whose optional field a field key names, and the slot it is loaded from:
+            # a narrowed read of the field may lean on a test of an earlier read of it)
+            for b in fn.blocks:
+                for i in b.code:
+                    if i.op == "field.addr" and i.a[0].v.startswith("%") and is_opt(i.t[1:]):
+                        wanted["U:" + i.a[0].v] = True
+                        if "U:" + i.a[0].v not in self.base:
+                            self.typebase("U:" + i.a[0].v, self.native.get(i.a[0].v, ""))
+        for b in fn.blocks:
+            for i in b.code:
+                if i.op != "phi":
+                    break
+                for j in range(len(i.a)):
+                    if i.a[j].v in self.narrowed and i.a[j].t in self.narrowed[i.a[j].v]:
+                        self.phireads[i.b[j]] = True
         changed = True
         while changed:
             before = len(wanted) + len(self.raw) + len(self.rawslots) + len(self.bitsneeded) + len(self.bitsslots) + len(self.tagvals) + len(self.tagslots) + len(self.roots)
             for b in fn.blocks:
                 for i in b.code:
-                    r = "%t" + str(i.r[0]) if len(i.r) > 0 else ""
+                    r = tmpname(i.r[0]) if len(i.r) > 0 else ""
                     if (i.op == "mach.addr" or i.op == "field.addr") and i.a[0].v in self.roots:
                         self.roots[r] = self.roots[i.a[0].v]
                     if "U:" + r in wanted:
@@ -443,7 +668,7 @@ class UnionProof:
         self.livevalues: dict[str, dict[str, bool]] = live_values(fn, self.blocks)
 
     def transport_closure(self, i: Ins, vals: dict[str, bool], slots: dict[str, bool], bits: bool) -> None:
-        r = "%t" + str(i.r[0]) if len(i.r) > 0 else ""
+        r = tmpname(i.r[0]) if len(i.r) > 0 else ""
         if (i.op == "phi" or i.op == "select" or i.op == "slot.pack" or i.op == "cast") and (bits or (i.t == "int" or i.t == "%slot" or i.t.startswith("*"))):
             aa = i.a[1:] if i.op == "select" else i.a
             for a in aa:
@@ -506,7 +731,7 @@ class UnionProof:
         elif t != "" and not t.startswith("%") and not t.startswith("*") and not t.startswith("&") and t != "#":
             ts = [u]
         if len(ts) > 0:
-            if is_opt(t) and "None" not in ts:
+            if (is_opt(t) or (is_union(u) and nullable_union_members(ts, self.classes))) and "None" not in ts:
                 ts.append("None")
             ts.sort()
             for v in ts:
@@ -539,6 +764,18 @@ class UnionProof:
         # members of v's domain. The compiler checks None before such a read where it must.
         t = self.declared(v)
         return is_opt(t) and t[4:-1].startswith("vtuple[")
+
+    def length_header(self, s: UnionState, addr: str) -> bool:
+        # Establish the owner of the integer length word from its
+        # declaration or from the proved member of an unpacked union payload.
+        # A machine load's result annotation alone cannot establish either.
+        t = self.declared(addr)
+        if has_length_word(t):
+            return True
+        if is_opt(t) and has_length_word(t[4:-1]):
+            return s.dom("U:" + addr) == [t[4:-1]]
+        i = self.defs[addr] if addr in self.defs else None
+        return i is not None and i.op == "slot.unpack" and has_length_word(i.t) and i.a[0].v in self.raw and s.dom("B:" + i.a[0].v) == [i.t]
 
     def declared(self, v: str) -> str:
         # The type that value v's definition declares: a load's is that of its storage
@@ -590,6 +827,10 @@ class UnionProof:
         k = "U:" + v
         if v == "null":
             s.set(k, ["None"])
+        elif v.startswith("@") and not v.startswith("@g.") and k not in s.d:
+            # (a constant's symbol, a string's, a tuple's or a function's, is never None; a
+            # global's, @g., is its storage's address, which a load reads)
+            s.set(k, [t for t in self.full if t != "None"])
         return k
 
     def bits(self, s: UnionState, a: Val) -> str:
@@ -616,12 +857,56 @@ class UnionProof:
             s.set(k, [self.tags[v] if v in self.tags else "?"])
         return k
 
-    def killmem(self, s: UnionState, address: str = "") -> None:
+    def killmem(self, s: UnionState, address: str = "", effects: int = -1) -> None:
+        # forget what storage that a write may change held: a store's to address (whose root, if
+        # known, limits it), or a call's whose effects give the storage classes it writes (-1:
+        # any). A global's storage changes only by a write of globals (wG), a field's that a
+        # field key names only by one of objects (wO)
+        if effects == -1 or effects & FXBIT["wG"] != 0:
+            for v in list(s.loaded):
+                if s.loaded[v].startswith("@g."):
+                    del s.loaded[v]
         written = self.roots.get(address, "")
+        # (a store to a field of an object of class c changes no field of an object that cannot
+        # be the same object, of a class unrelated to c; a field key of a global's object is the
+        # field of what the global holds, which a write of globals changes)
+        d = self.defs[address] if address in self.defs else None
+        c = d.a[0].t if d is not None and d.op == "field.addr" and d.a[0].t in self.kin else ""
         for k in list(s.d):
-            if (k.startswith("MU:") or k.startswith("MB:") or k.startswith("MT:")) and k[3:] not in self.private:
+            if k.startswith("MF:"):
+                if c != "" and not self.kin[c].get(self.keyclass.get(k, ""), True):
+                    continue
+                if effects == -1 or effects & FXBIT["wO"] != 0 or (k.startswith("MF:g.") and effects & FXBIT["wG"] != 0):
+                    s.forget(k)
+            elif (k.startswith("MU:") or k.startswith("MB:") or k.startswith("MT:")) and k[3:] not in self.private:
+                if effects != -1 and effects & FXBIT["wG"] == 0 and k[3:].startswith("@g."):
+                    continue
                 root = self.roots.get(k[3:], "")
                 if written == "" or root == "" or root == written:
+                    s.forget(k)
+
+    def field_key(self, s: UnionState, obj: str, index: int, cls: str) -> str:
+        # Share facts between separate loads of the same private slot or global
+        # only while it still holds that object. Otherwise a field of a value
+        # can be shared only with another use of that very SSA value.
+        if not (obj in self.defs or (obj.startswith("%a") and obj[2:].isdigit())):
+            return ""
+        base = s.loaded.get(obj, obj)
+        owner = base[1:]
+        key = "MF:" + owner + "#" + str(index)
+        if key not in self.keyclass:
+            if owner not in self.keys_by_owner:
+                self.keys_by_owner[owner] = []
+            self.keys_by_owner[owner].append(key)
+        self.keyclass[key] = cls
+        return key
+
+    def forget_fields(self, s: UnionState, slot: str) -> None:
+        # Only this owner's field keys can name a field of the old object.
+        owner = slot[1:]
+        if owner in self.keys_by_owner:
+            for k in self.keys_by_owner[owner]:
+                if k in s.d:
                     s.forget(k)
 
     def compare(self, s: UnionState, r: str, key: str, allowed: list[str], equal: bool) -> None:
@@ -655,12 +940,52 @@ class UnionProof:
         if v in self.raw and s.dom("B:" + v) != [t]:
             self.error(b, op + " interprets payload " + v + " as " + t + " without its tag proof")
 
+    def check_some(self, s: UnionState, a: Val, b: str, where: str) -> None:
+        # an operand that reads a value of type opt[U] at a type without None (ircheck.optional_reads)
+        # needs facts that it is not None: a test, on every path to the read, of it or of what it
+        # was loaded from since the last store there (facts that no path has, as where a select's
+        # condition never selects the value, need none)
+        if s.live and a.v in self.narrowed and a.t in self.narrowed[a.v] and "None" in s.dom(self.box(s, a.v)):
+            self.error(b, where + " reads " + a.v + " as " + a.t + " without a proof that it is not None")
+
+    def check_phis(self, starts: dict[str, UnionState]) -> None:
+        # a phi reads its operand on the edge from the block that the operand's label names: each
+        # such read that narrows is checked with the facts on that edge, as transfer checks the
+        # reads of other ops with the facts before them
+        for label in starts:
+            if label not in self.phireads:
+                continue
+            dests: list[str] = []
+            edges: list[UnionState] = []
+            self.flow(self.fn.blocks[self.blocks[label]], starts[label].clone(), dests, edges)
+            for j in range(len(dests)):
+                if not edges[j].live or dests[j] not in self.blocks:
+                    continue
+                for i in self.fn.blocks[self.blocks[dests[j]]].code:
+                    if i.op != "phi":
+                        break
+                    if label in i.b:
+                        self.check_some(edges[j], i.a[i.b.index(label)], dests[j], "phi operand from " + label)
+
     def transfer(self, s: UnionState, i: Ins, b: str, checking: bool) -> None:
         op = i.op
         a = i.a
-        r = "%t" + str(i.r[0]) if len(i.r) > 0 else ""
+        r = tmpname(i.r[0]) if len(i.r) > 0 else ""
+        if checking and len(self.narrowed) > 0 and op != "phi":
+            for j in range(len(a)):
+                if a[j].v not in self.narrowed or a[j].t not in self.narrowed[a[j].v]:
+                    continue
+                if (op == "union.tag" or op == "union.payload" or op == "union.raw") and j == 0:
+                    continue  # (their own nonnull proof below names the read more closely)
+                # (a select's value reads count where its condition selects them, as for a phi)
+                facts = s.conditional(a[0].v, j == 1) if op == "select" and j > 0 else s
+                self.check_some(facts, a[j], b, op + " operand " + str(j))
         for n in i.r:
-            v = "%t" + str(n)
+            v = tmpname(n)
+            if v in self.fieldobjs:
+                self.forget_fields(s, v)  # a loop may redefine the SSA value
+                if v in s.loaded:
+                    del s.loaded[v]
             if self.native[v] == "bool":
                 if v in s.truth:
                     del s.truth[v]
@@ -670,7 +995,7 @@ class UnionProof:
                     del s.bf[v]
         if (op != "phi" and op != "select" and op != "mem.load" and op != "mach.load" and op != "union.payload" and op != "union.raw" and op != "slot.pack" and op != "cast"):
             for n in i.r:
-                v = "%t" + str(n)
+                v = tmpname(n)
                 if v in self.bitsneeded:
                     s.set("B:" + v, [self.native[v]])
         if checking:
@@ -685,18 +1010,32 @@ class UnionProof:
             if op == "union.tag":
                 s.copy("T:" + r, u)
             else:
-                s.copy("B:%t" + str(i.r[1]), u)
+                s.copy("B:" + tmpname(i.r[1]), u)
                 if checking and op == "union.payload" and d != [i.s]:
                     self.error(b, "union.payload needs tag " + i.s + " for " + a[0].v)
             return
+        if op == "field.addr" and len(self.narrowed) > 0 and "MU:" + r in self.base:
+            key = self.field_key(s, a[0].v, i.k, a[0].t)
+            if key != "":
+                if key not in s.d:
+                    s.set(key, self.base["MU:" + r])
+                s.copy("MU:" + r, key)
         if (op == "mem.load" or op == "mach.load"):
             addr = a[0].v
-            if op == "mach.load" and i.t == "int" and ("U:" + addr in self.base or "U:" + addr in s.d) and not self.length_read(addr):
-                u = self.box(s, addr)
-                if checking and "None" in s.dom(u):
-                    self.error(b, "mach.load needs a nonnull proof for " + addr)
-                s.copy("T:" + r, u)
-                return
+            if r in self.fieldobjs and (addr in self.private or addr.startswith("@g.")):
+                s.loaded[r] = addr
+            if op == "mach.load" and i.t == "int":
+                tracked = "U:" + addr in self.base or "U:" + addr in s.d
+                if (r in self.bitsneeded or tracked) and self.length_header(s, addr):
+                    if r in self.bitsneeded:
+                        s.set("B:" + r, ["int"])
+                    return
+                if tracked and not self.length_read(addr):
+                    u = self.box(s, addr)
+                    if checking and "None" in s.dom(u):
+                        self.error(b, "mach.load needs a nonnull proof for " + addr)
+                    s.copy("T:" + r, u)
+                    return
             if "U:" + r in self.base:
                 mk = "MU:" + addr
                 if mk not in s.d:
@@ -713,6 +1052,11 @@ class UnionProof:
             t = a[1].t
             if addr not in self.private:
                 self.killmem(s, addr)
+            else:
+                self.forget_fields(s, addr)
+                for obj in list(s.loaded):
+                    if s.loaded[obj] == addr:
+                        del s.loaded[obj]
             if "MU:" + addr in self.base or "U:" + v in self.base or "U:" + v in s.d:
                 s.copy("MU:" + addr, self.box(s, v))
             else:
@@ -789,7 +1133,7 @@ class UnionProof:
                 self.checkbits(s, a[0].v, i.t, b, op)
             if (i.t == "str" or i.t == "bytes") and a[0].v in self.raw and "U:" + r in self.base:
                 s.copy("U:" + r, "B:" + a[0].v)
-        elif (op == "num.cmp" or op == "scalar.cmp") and (i.s == "==" or i.s == "!=" or i.s == "eq" or i.s == "ne"):
+        elif (op == "num.cmp" or op == "scalar.cmp") and (i.s == "==" or i.s == "!=" or i.s == "eq" or i.s == "ne") and not (a[0].t == "%ptr" and (a[0].v == "null" or a[1].v == "null")):
             x = a[0].v
             y = a[1].v
             if self.integer(x):
@@ -798,10 +1142,11 @@ class UnionProof:
                 y = tmp
             if x in self.tagvals and self.integer(y):
                 self.compare(s, r, self.tag(s, x), [self.tags[y] if y in self.tags else "?"], (i.s == "==" or i.s == "eq"))
-        elif op == "ptr.cmp" and (a[0].v == "null" or a[1].v == "null"):
+        elif (op == "ptr.cmp" or (op == "scalar.cmp" and (i.s == "eq" or i.s == "ne") and a[0].t == "%ptr")) and (a[0].v == "null" or a[1].v == "null"):
+            # (a test of a reference against None, also of its pointer as a machine word)
             v = a[0].v if a[1].v == "null" else a[1].v
             if "U:" + v in self.base or "U:" + v in s.d:
-                self.compare(s, r, self.box(s, v), ["None"], i.s == "==")
+                self.compare(s, r, self.box(s, v), ["None"], i.s == "==" or i.s == "eq")
         elif op == "scalar.bin" and i.t == "bool":
             x = a[0].v
             y = a[1].v
@@ -852,7 +1197,7 @@ class UnionProof:
                         t = gelem(self.fn.f.ret)
                     self.checkbits(s, operand.v, t, b, op)
         if (op == "rt" or op == "call" or op == "icall" or op == "init" or op == "gen.resume") and self.writes.get(op + "|" + i.s + "|" + i.x, True):
-            self.killmem(s)
+            self.killmem(s, "", self.written.get(op + "|" + i.s + "|" + i.x, -1))
 
     def edge(self, s: UnionState, frm: str, to: str) -> UnionState:
         z = s.clone()
@@ -866,7 +1211,9 @@ class UnionProof:
             if frm not in i.b:
                 continue
             a = i.a[i.b.index(frm)]
-            r = "%t" + str(i.r[0])
+            r = tmpname(i.r[0])
+            if r in self.fieldobjs:
+                self.forget_fields(z, r)
             if i.t == "bool":
                 bools.append(r)
                 bsources.append(a.v)
@@ -958,4 +1305,6 @@ class UnionProof:
                 edges.append(s.clone())
 
     def run(self) -> None:
-        forward_fixpoint(self)
+        starts = forward_fixpoint(self)
+        if len(self.phireads) > 0:
+            self.check_phis(starts)

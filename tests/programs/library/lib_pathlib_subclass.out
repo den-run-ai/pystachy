@@ -1,0 +1,14 @@
+tagged:a/b b True Tagged Tagged:a/b:b
+/srv/data DATA /srv True True Rooted:/srv/data:data
+PosixPath:x/y/z:z PurePosixPath:/a/b:b
+True True 1
+b/c True True
+argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'int'
+argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'NoneType'
+argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'float'
+argument should be a str or an os.PathLike object where __fspath__ returns a str, not 'int'
+PurePosixPath:/a/b:b
+PurePosixPath:/a:a
+PurePosixPath:/:
+['PosixPath:/a:a', 'PosixPath:/:'] 3
+[exit 0]

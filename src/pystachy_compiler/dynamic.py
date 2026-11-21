@@ -18,7 +18,8 @@ the program's classes, functions the compiler writes once every class that is bo
 from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
 from src.pystachy_compiler.bigints import held
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, TupleBoxes, dynamic_file, dynamic_program, int_lists, int_program
+from src.pystachy_compiler.class_values import boxed_class_record
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, TupleBoxes, dynamic_file, dynamic_program, int_lists, int_program, static_file
 from src.pystachy_compiler.frames import Reduce
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
@@ -74,6 +75,19 @@ def dyn_builtin_type(t: str) -> str:
 def gen_dyn_policy(self, line: int) -> bool:
     # does the module of source line line compile Any as dyn
     return dynamic_file(line // LINES)
+
+
+STATICMOD = "this module is marked '# pystachy: static', which holds no Any value"
+
+
+def gen_static_value(self, v: Val) -> Val:
+    # v, an expression's value, where the module being compiled is static (STATICFILES): an Any
+    # value, or a container or Callable of them, is an error there, at the line that makes it.
+    # Speculative typing (dry) reports nothing, and the compiler's own dispatchers, which other
+    # modules' operations ask for, are no module's code
+    if self.drying == 0 and not self.curfn.synthetic and static_file(self.line // LINES) and holds_dyn(v.t):
+        self.err(f"{STATICMOD}: this expression is one ({typestr(v.t)}). Give it a concrete type, or narrow it with isinstance() in a module without the marker")
+    return v
 
 
 def gen_identity_modules(self, mods: list[Mod]) -> None:
@@ -229,6 +243,16 @@ def gen_identity_call(self, f: FnInfo) -> None:
     here = self.fn_home(self.curfn)
     if (home in self.idhint) != (here in self.idhint):
         if all(self.identity_inert(t, [], True) for t in f.ptypes) and self.identity_inert(f.ret, [], True):
+            return
+        # A tracked direct call may pass raw numbers to a hinted scalar kernel. Its body
+        # must prove every input read before this compilation can finish (function_body).
+        if (home in self.idhint and here != "?" and here not in self.idoff and
+                (f.inert_sites is not None or f.ll not in self.compiled) and f.node.kind == "def" and
+                not f.synthetic and f.cls == "" and f.clo < 0 and not f.gen and not f.generic and
+                not f.inst and not f.infer and f.vararg < 0 and f.kwarg < 0 and
+                all(t in ["int", "float", "bool"] for t in f.ptypes) and self.identity_inert(f.ret, [], True)):
+            if f.inert_sites is None:
+                f.inert_sites = {}
             return
         self.identity_event(f"hinted call of {f.name}()")
     if home == "?" or here == "?" or (home in self.idoff) == (here in self.idoff):
@@ -1665,6 +1689,8 @@ def gen_dyn_xbody(self, c: str) -> None:
 def gen_dyn_box(self, v: Val) -> Val:
     # v as a dyn value (dyn_boxable says which values can be)
     t = self.rec_type(v.t)
+    if t != DYN and self.drying == 0 and not self.curfn.synthetic and static_file(self.line // LINES):
+        self.err(f"{STATICMOD}: a value of type {typestr(v.t)} would be boxed as one here (what takes it is annotated Any, in a module that opts in to dynamic Any)")
     if t == BIG:
         return box_big(self, v)
     if t == DYN:
@@ -3206,7 +3232,7 @@ def gen_dyn_identity(self, op: str, a: Val, b: Val) -> Val:
     sp = self.num_cmp("==", self.dyn_raw(x), self.dyn_raw(y)).v
     nf = self.ptr_cmp("!=", ta, Val(self.rtdata("pys_dyntype_float"), "dyntype")).v
     ni = self.ptr_cmp("!=", ta, Val(self.rtdata("pys_dyntype_int"), "dyntype")).v
-    fl = self.mload("int", self.maddr("int", ta.v, "5"))  # (its DynType's flags)
+    fl = self.mload("int", self.maddr("dyntype", ta.v, "5"))  # (its DynType's flags)
     nb = self.num_cmp("==", Val(self.scalar("and", [Val(fl, "int"), Val(str(DF_BOXID), "int")]), "int"), Val("0", "int")).v
     nf = self.scalar("and", [Val(self.scalar("and", [Val(nf, "bool"), Val(ni, "bool")]), "bool"), Val(nb, "bool")])
     alike = self.scalar("and", [Val(st, "bool"), Val(self.scalar("and", [Val(sp, "bool"), Val(nf, "bool")]), "bool")])
@@ -3449,7 +3475,7 @@ def gen_dyn_slice(self, o: Val, bs: list[Node]) -> Val:
 def gen_dyn_type_name(self, v: Val) -> Val:
     # type(v).__name__: its DynType's name
     t = self.dyn_typeof(v)
-    return Val(self.mload("str", self.maddr("%ptr", t, "2", True)), "str")
+    return Val(self.mload("str", self.maddr("dyntype", t, "2", True)), "str")
 
 
 # ---- the dispatchers: functions of the program that the compiler writes once every class that
@@ -3540,7 +3566,7 @@ def gen_dyn_body(self, key: str) -> None:
             self.ret_(Val("false", "bool"))
             return
         typ = self.dyn_typeof(o)
-        cid = Val(self.mload("int", self.maddr("int", typ, "3")), "int")
+        cid = Val(self.mload("int", self.maddr("dyntype", typ, "3")), "int")
         hit = self.label()
         miss = self.label()
         self.switch(cid, [str(self.ocls[c]) for c in classes], [hit for _ in classes], miss)
@@ -3580,7 +3606,7 @@ def gen_dyn_body(self, key: str) -> None:
         # This metatype's payload is an internal record pointer, not a native
         # Python value type for dyn.payload. Read its proven pointer slot with
         # the ordinary typed-memory operation instead.
-        rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+        rec = Val(boxed_class_record(self, o), "%ptr")
         word = "0" if key == "get.__name__" else "1" if key == "get.__qualname__" else "2"
         self.ret_(self.dyn_box(Val(self.mload("str", self.maddr("%ptr", rec.v, word)), "str")))
         self.place(miss)
@@ -3588,7 +3614,7 @@ def gen_dyn_body(self, key: str) -> None:
         dyn_class_members(self, f, key, o, ps[1:])
     arith = (key.startswith("op") or key.startswith("iop")) and dunder != ""
     r = "__r" + dunder[2:] if arith else ""
-    # the case of the receiver's class, by one switch on its DynType's class id (word 3: a class's
+    # the case of the receiver's class, by one switch on its DynType's class id (field 3: a class's
     # dense O<id>, which its DynType holds, or -1 for a builtin or function DynType, which takes
     # the rest), which LLVM can make a jump table, rather than a comparison with each class's
     # DynType in turn (#799). A subclass has a DynType of its own, so its case is exact too
@@ -3596,7 +3622,7 @@ def gen_dyn_body(self, key: str) -> None:
     labels = [self.label() for x in arms]
     rest = self.label()
     if len(arms) > 0:
-        cid = Val(self.mload("int", self.maddr("int", t.v, "3")), "int")
+        cid = Val(self.mload("int", self.maddr("dyntype", t.v, "3")), "int")
         self.switch(cid, [str(self.ocls[x]) for x in arms], labels, rest)
     for j in range(len(arms)):
         c = arms[j]
@@ -4469,7 +4495,7 @@ def dyn_class_calls(self, key: str, o: Val, args: list[Val]) -> None:
     # A class box identifies its canonical record, not one instance layout.
     # Reuse the program's adapters/initializers, including the annotation-backed
     # factories prepared separately under the whole-compilation retry contract.
-    rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+    rec = Val(boxed_class_record(self, o), "%ptr")
     an = self.dyn_call_args(key, args)
     classes = [c for c in self.classes if "@pys.refl.c." + c in self.reflrecs and self.classes[c].origin == "" and "__init__" in self.classes[c].methods]
     for c in classes:
@@ -4698,7 +4724,7 @@ def dyn_class_members(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> Non
     other = self.label()
     self.cbr(self.ptr_cmp("==", Val(self.dyn_typeof(o), "dyntype"), Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, box, other)
     self.place(box)
-    rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+    rec = Val(boxed_class_record(self, o), "%ptr")
     lacking = self.label()
     for c in kinds:
         kind = kinds[c]
@@ -5417,7 +5443,7 @@ def dyn_packed_name(self, o: Val, method: str) -> None:
     rest = self.label()
     self.cbr(self.ptr_cmp("==", typ, Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, meta, rest)
     self.place(meta)
-    rec = self.mload("%ptr", self.maddr("%ptr", o.v, "1"))
+    rec = boxed_class_record(self, o)
     mod = Val(self.mload("str", self.maddr("%ptr", rec, "2")), "str")
     qual = Val(self.mload("str", self.maddr("%ptr", rec, "1")), "str")
     self.ret_(self.concat([mod, Val(self.sconst("."), "str"), qual, Val(self.sconst("()"), "str")]))
@@ -5447,7 +5473,7 @@ def dyn_packed_default(self, f: FnInfo, pre: list[Val], j: int) -> Val:
         if self.fn_identity(f) and numeric_identity(t):
             clo = self.closures[f.clo]
             offset = len(clo.caps) + closure_default_slots(clo) + len(clo.iflags) + clo.defs.index(j)
-            value.idfrom = self.mload("dyn", self.maddr("%ptr", pre[0].v, str(offset), True))
+            value.idfrom = self.mload("dyn", self.maddr("int", pre[0].v, str(offset), True))
     elif df.dglob[j] != "":
         t = t if t != "" else df.dtypes[j]
         value = Val(self.mload(t, df.dglob[j]), t)
@@ -5635,7 +5661,7 @@ def dyn_packed_body(self, f: FnInfo, o: Val, pos: Val, kws: Val, method: str) ->
     other = self.label()
     self.cbr(self.ptr_cmp("==", typ, Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, meta, other)
     self.place(meta)
-    rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+    rec = Val(boxed_class_record(self, o), "%ptr")
     for c in [x for x in self.classes if "@pys.refl.c." + x in self.reflrecs and self.classes[x].origin == "" and "__init__" in self.classes[x].methods]:
         hit = self.label()
         rest = self.label()
@@ -5856,7 +5882,7 @@ def gen_dyn_sum(self, xs: Val, start: Val) -> Val:
     return self.dyn_sum_end(r)
 
 
-def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool) -> Val | None:
+def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool, policy: bool = True) -> Val | None:
     # json.loads(), json.dumps(), or the native _raw_decode adapter in an opt-in module:
     # dyn: lib's function of Any values (JSONANY, which the loader adds to a program that has such
     # a module and json) where the document is Any values, so that loads() decodes it into Any's
@@ -5864,10 +5890,23 @@ def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool)
     # None, json's own function of JSONValue. _raw_decode explicitly requests Any storage;
     # loads() where its result becomes Any storage (want
     # holds Any values); dumps() where its argument does, or is a list, dict or tuple display or a
-    # list or dict comprehension, which is then Any's
+    # list or dict comprehension, which is then Any's. A module that does not opt in (policy
+    # false) makes no Any value, but dumps() of one an opt-in module gave it is the same call:
+    # json's own function would check it against JSONValue, whose containers Any's are not
     q = JSONANY + "$" + name[name.find("$") + 1 :]
     if q not in self.funcs:
         return None
+    if not policy:
+        objs = [x for x in args if x.kind == "kw" and x.s == "obj"]
+        if len(args) == 0 or args[0].kind == "starred" or args[0].kind == "dstar" or (args[0].kind == "kw" and len(objs) != 1):
+            return None
+        first = args[0] if args[0].kind != "kw" else objs[0].kids[0]
+        # (a variable, an attribute, an item or a call's result: typed as json's parameter
+        # takes it, so that what is no Any value compiles as before, by json's own function)
+        if first.kind not in ["name", "attr", "index", "call"] or not holds_dyn(self.dry(first, self.funcs[name].ptypes[0])):
+            return None
+        self.add(Ins("init", "", JSONANY))
+        return self.call_fn(self.funcs[q], [], args, want, resultsoft=resultsoft)
     if name == "json$loads" or name == "json$_raw_decode":
         if name == "json$loads" and not holds_dyn(want):
             return None

@@ -49,6 +49,7 @@ from src.pystachy_compiler.specs import (
     RANGES,
     TYPESMOD,
     TYPESUSE,
+    UCALLS,
     VERSIONINFO,
     VTUPLE_ITEMS,
 )
@@ -312,6 +313,12 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return Val("null", "None")
     if name == "__pys_exc_repr":
         return self.exc_brepr(self.expr(args[0], ""))  # (exc_helpers)
+    if name == "__pys_tool_call":
+        if (self.curfn.mod != "codemode" or not lib_source(self.curfn.node.line, self.libdir, "codemode.py") or len(args) != 2):
+            self.err(f"name '{name}' is not defined")
+        tool = self.coerce(self.expr(args[0], "str"), "str")
+        payload = self.coerce(self.expr(args[1], "str"), "str")
+        return Val(self.rt("pys_tool_call", "ptr", [f"ptr {tool.v}", f"ptr {payload.v}"]), "str")
     if name == "__pys_gc_collect":
         # gc.collect()'s collection (lib/_pystachy_gc.py): the runtime's, started now
         if self.curfn.mod != "gc" or len(args) != 0:
@@ -1052,6 +1059,11 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             out = self.int_ucmp('>', Val(self.scalar('sub', [Val(nb, 'int'), Val('2', 'int')]), "int"), Val('34', "int")).v
             nonzero = self.num_cmp("!=", Val(nb, "int"), Val("0", "int")).v
             self.guard(self.scalar('and', [Val(out, 'bool'), Val(nonzero, 'bool')]), "ValueError: int() base must be >= 2 and <= 36, or 0")
+    if name in UCALLS and len(vals) > 0 and len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) == 0 and self.value_union(vals[0].t) and len([m for m in umembers(unopt(vals[0].t)) if m not in UCALLS[name]]) > 0 and COMPLEXC not in umembers(unopt(vals[0].t)):
+        # (a closed value union's that may hold what this builtin takes no value of, a str or
+        # a container: each member's call by its tag, and CPython's TypeError for those and
+        # for None: usplit)
+        return self.usplit(name, vals, 0, want)
     for i in range(len(vals)):
         if vals[i].t == "None" and name in NONERET and len(vals) == 1:
             # None itself (a template's parameter whose argument is None): CPython's error
@@ -1064,7 +1076,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             bad = "int() can't convert non-string with explicit base"
         elif (name == "sum" or name == "math.prod") and i == 0:
             bad = "'NoneType' object is not iterable"
-        if bad != "":
+        if bad != "" and name == "len" and self.value_union(vals[i].t):
+            vals[i] = self.unone(vals[i], bad)  # (a branch, as a closed union's subscript tests it: unone)
+        elif bad != "":
             vals[i] = self.unwrap(vals[i], "TypeError: " + bad)
         elif name not in OPTARG:
             if f"{name}({','.join([unopt(v.t) for v in vals])})".replace(BIG, "int") not in CALLS and name not in OPTCALLS:
@@ -1119,7 +1133,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return vals[0]  # a str path is its own file system path, and posixpath's normcase() of it
     if (name == "os.getenv" or name == "os.environ.get") and (len(vals) == 1 or (len(vals) == 2 and vals[1].t == "None")):
         # without a default the result is the variable's value or None
-        return Val(self.rt("pys_getenv", "ptr", [f"ptr {self.coerce(vals[0], 'str', f'argument 1 of {name}()').v}", "ptr null"]), "opt[str]")
+        return Val(self.rt("pys_getenv", "ptr", [f"ptr {self.coerce(vals[0], 'str', f'argument 1 of {name}()').v}", "ptr null"], "", "opt[str]"), "opt[str]")
     if (name == "math.floor" or name == "math.ceil" or name == "math.trunc") and len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool"):
         return self.as_int(vals[0])
     if name == "round" and len(vals) >= 1 and (vals[0].t == "int" or vals[0].t == "bool"):
@@ -1193,7 +1207,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             LINKDL.append("dl")
         spec = CALLS[key].split(":")
         r = spec[1] if spec[1] != "" else vals[0].t
-        return self.rres(self.rt(spec[0], rtt(r), [self.rarg(v) for v in vals]), r)
+        # (getenv's result, the variable's value or else the default, is a str where the default
+        # is one: its RUNTIME result R, which the call gives)
+        return self.rres(self.rt(spec[0], rtt(r), [self.rarg(v) for v in vals], "", r if spec[0] == "pys_getenv" else ""), r)
     if len(vals) == 0:
         self.err(f"unsupported call {name}()")
     v = vals[0]
@@ -1264,8 +1280,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if is_kw(t) and name == "dict" and len(vals) == 1:
         return self.kw_dict(v)  # (a new dict: CPython's dict(kwargs) copies it too)
     if name == "len":
-        if is_union(unopt(t)) and all(m == "str" or is_list(m) or is_dict(m) for m in umembers(unopt(t))):
-            return self.uop(v, "len")
+        if is_union(unopt(t)) and (all(m == "str" or is_list(m) or is_dict(m) for m in umembers(unopt(t))) or (self.value_union(t) and any(m == "str" or is_list(m) or is_dict(m) for m in umembers(unopt(t))))):
+            return self.uop(v, "len")  # (a member without a length raises CPython's TypeError: unions.py)
         if t in self.classes and "__len__" in self.classes[t].methods:
             self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
             return self.objlen(v)

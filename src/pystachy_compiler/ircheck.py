@@ -5,7 +5,7 @@ from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, merged_blocks, operand_kind, slot_register, tmpname, value_definitions
 from src.pystachy_compiler.scalar_ir import SCALAR_INTS
 from src.pystachy_compiler.symbols import ClassInfo
-from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
+from src.pystachy_compiler.union_proof import UnionProof, private_optional_reads, simple_union_proof
 from src.pystachy_compiler.specs import BIG, CAST_KINDS, EMPTYFS, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME, TYPE_CLASSES
 from src.pystachy_compiler.specs import OPS, OP_ENTRY, OP_FIELDS, OP_INVOKE, OP_K, OP_LABELS, OP_MAX, OP_MIN, OP_OPERAND_TYPES, OP_PER_OPERAND, OP_RESULT_TYPE, OP_S, OP_T, OP_TEMPS, OP_X, RESULT_NUMBERS
 from src.pystachy_compiler.utils import RT_VARS, gelem, generator_identity, is_dict, is_gen, is_list, is_opt, is_set, is_tuple, is_union, list_read_error, list_receiver_error, list_write_error, lt, packed_item, rt_generic, rt_instance_error, same_kind, targs, tslots, umembers, unopt
@@ -210,7 +210,7 @@ def read_kinds() -> dict[str, dict[str, str]]:
         kinds[op] = {}
         for c in OP_OPERAND_TYPES[op] + [OP_RESULT_TYPE[op]]:
             p = CONSTRAINT_PARTS[c]
-            if p[2] != "":
+            if p[1] != "" and (p[2] != "" or p[1] not in kinds[op]):
                 kinds[op][p[1]] = p[2]
     return kinds
 
@@ -312,10 +312,10 @@ class OpTypes:
             return "" if t == c else c
         prefix = p[0]
         suffix = p[3]
-        if name in self.bound:
-            want = prefix + self.bound[name] + suffix
+        if self.bound[name] != "":
+            want = self.bound[name] if prefix == "" and suffix == "" else prefix + self.bound[name] + suffix
             return "" if t == want else f"{want} (${name} is {self.bound[name]} at {placed(self.where[name])})"
-        kind = self.kinds[name] if name in self.kinds else ""
+        kind = self.kinds[name]
         inner = ""
         if len(t) > len(prefix) + len(suffix) and t.startswith(prefix) and t.endswith(suffix):
             inner = t[len(prefix) : len(t) - len(suffix)]
@@ -336,10 +336,10 @@ def op_type_error(check: OpTypes, i: Ins) -> str:
     cs = OP_OPERAND_TYPES[i.op]
     result = OP_RESULT_TYPE[i.op]
     check.kinds = OP_KINDS[i.op]
-    if len(check.bound) > 0:
-        # (the previous op's bindings; most ops bind none, and keep the empty ones)
-        check.bound = {}
-        check.where = {}
+    # Each variable starts unbound for this instruction. Reuse the two tables across the
+    # function; where is read only after need has bound the name and written its position.
+    for name in check.kinds:
+        check.bound[name] = ""
     for j in range(len(i.a) if len(cs) > 0 else 0):
         need = check.need(cs[j] if j < len(cs) else cs[len(cs) - 1], i.a[j].t, j)
         if need != "":
@@ -378,6 +378,14 @@ def type_view(self, a: str, b: str, generic: bool, parent: str) -> str:
         return "alias"
     if (a.startswith("rec[") and a[4:-1] in self.recursive and self.recursive[a[4:-1]] == b) or (b.startswith("rec[") and b[4:-1] in self.recursive and self.recursive[b[4:-1]] == a):
         return "alias"
+    if b.startswith("rec[") and b[4:-1] in self.recursive and is_union(unopt(a)):
+        # A smaller closed union stores the same tag and payload in a recursive
+        # value slot. The alias must admit every incoming member, including None.
+        target = self.recursive[b[4:-1]]
+        if is_union(unopt(target)) and (not is_opt(a) or is_opt(target)):
+            members = umembers(unopt(target))
+            if all([m in members for m in umembers(unopt(a))]):
+                return "alias"
     if parent != "" and ((a == "int" and b == BIG) or (a == BIG and b == "int")):
         return "alias"
     if parent == "tuple" and a == "bool" and b == "int":
@@ -491,6 +499,29 @@ def value_view(self, d: str, u: str, rt_result: bool, rt_operand: bool) -> str:
     return ""
 
 
+def optional_reads(self, fn: IFn, types: dict[str, str], makers: dict[str, str]) -> dict[str, dict[str, bool]]:
+    # The values of fn that an operand reads at a type without None where their definition gives
+    # them opt[U] of a reference U (the optional view that narrows, specs.TYPE_VIEWS), with the
+    # types those operands read them at: the closed-union proof must show each such value not
+    # None where an operand reads it so (UnionProof.check_some)
+    found: dict[str, dict[str, bool]] = {}
+    for b in fn.blocks:
+        for i in b.code:
+            for a in i.a:
+                d = types.get(a.v, "")
+                if is_opt(d) and narrows_none(self, d, a.t, makers[a.v] == "rt", i.op == "rt"):
+                    if a.v not in found:
+                        found[a.v] = {}
+                    found[a.v][a.t] = True
+    return found
+
+
+def narrows_none(self, d: str, u: str, rt_result: bool, rt_operand: bool) -> bool:
+    # does an operand of type u read a value of type d, an opt[U], at a type that holds no None
+    # (U, or a type that a view reads U as), so that the read needs a proof that it is not None
+    return u != "None" and not is_opt(u) and lt(u) == "ptr" and value_view(self, d, u, rt_result, rt_operand) == "optional"
+
+
 def related_reads(self, a: str, b: str) -> bool:
     # may two operands read one value, whose definition gives it only a machine type, a runtime
     # type variable or a placeholder, as types a and b: by a view between them
@@ -535,13 +566,14 @@ def cast_error(self, fn: IFn, i: Ins, objects: dict[str, bool], types: dict[str,
     return "" if ok else f"cast {i.s} of a {a} to a {t}, where a cast of kind {i.s} reads {CAST_KINDS[i.s]}"
 
 
-def value_types(self, fn: IFn) -> None:
+def value_types(self, fn: IFn, types: dict[str, str] | None = None, makers: dict[str, str] | None = None) -> None:
     # Each operand reads its value at the type the value's definition gives it (ir.value_definitions),
     # or by a view of specs.TYPE_VIEWS, as an MLIR operand has its value's one type. An address
     # has a type &T and a packed slot a type *T, and no view reads one as the other.
-    types: dict[str, str] = {}
-    makers: dict[str, str] = {}
-    value_definitions(fn, types, makers)
+    if types is None or makers is None:
+        types = {}
+        makers = {}
+        value_definitions(fn, types, makers)
     # (the values whose definition gives them only a machine type, a runtime type variable or a
     # placeholder; the first type an operand of an op but rt reads each at, and where; and the
     # views decided so far, as many operands read alike)
@@ -875,22 +907,43 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         dynamic.run()
         for j in range(len(dynamic.bad)):
             self.bad_ir(fn, fn.blocks[at[dynamic.badblocks[j]]], dynamic.bad[j])
-    if (union_proofs or (machine_tags and has_machine_union_tag(fn))) and not simple_union_proof(fn, self.utags, at, succ, union_types):
+    # Casts, optional reads and operand types use the same immutable definitions.
+    # Without casts, wait until structural checks have validated each instruction.
+    if not casts:
+        value_definitions(fn, defined, makers)
+    narrowed = optional_reads(self, fn, defined, makers)
+    unions = union_proofs or (machine_tags and has_machine_union_tag(fn))
+    if not unions and len(narrowed) > 0 and private_optional_reads(fn, narrowed, at, succ):
+        narrowed.clear()
+    if len(narrowed) > 0 or (unions and not simple_union_proof(fn, self.utags, at, succ, union_types, self.classes)):
         writes: dict[str, bool] = {}
         raises: dict[str, bool] = {}
+        written: dict[str, int] = {}  # (the storage classes each call writes: its RAWW and wG bits)
         for b in fn.blocks:
             for i in b.code:
                 if (i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume"):
                     key = i.op + "|" + i.s + "|" + i.x
                     effects = self.opfx(i, fn.fa)
                     writes[key] = effects & (RAWW | FXBIT["wG"]) != 0
+                    written[key] = effects & (RAWW | FXBIT["wG"])
                     raises[key] = effects & FXBIT["R"] != 0
-        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs, self.tconstdata)
+        # (the classes of the objects whose fields fn addresses, each with those that may be the
+        # same object: related, ClassInfo.overlaps, or equal; a store to one's field may change
+        # another's only so)
+        kin: dict[str, dict[str, bool]] = {}
+        for b in fn.blocks:
+            for i in b.code:
+                if i.op == "field.addr" and i.a[0].t not in kin:
+                    kin[i.a[0].t] = {}
+        for x in kin:
+            for y in kin:
+                kin[x][y] = x == y or x not in self.classes or y not in self.classes or related(self, x, y)
+        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs, self.tconstdata, narrowed, written, kin, unions, self.classes)
         proof.run()
         for j in range(len(proof.bad)):
             self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])
     # (after the proofs above, whose findings name what a reading breaks more closely)
-    value_types(self, fn)
+    value_types(self, fn, defined, makers)
 
 def gen_verify_gen(self, fn: IFn, b: Blk, i: Ins, j: int) -> None:
     # a generator op (docs/internals.md#generators), past its row's shape and types: gen.start

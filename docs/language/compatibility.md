@@ -10,6 +10,7 @@ This is a guide to known limits, not a guarantee that every other Python program
 | Supported language rules | [Types](typing.md), [execution](semantics.md), [modules](modules.md) |
 | Module-specific APIs and gaps | [Library compatibility](../../lib/compatibility.md) |
 | Experimental opt-ins | [Dynamic `Any`](../dynamic-any.md), [promoting ints](../python-int.md) |
+| WebAssembly exception handling and host limits | [Experimental Wasm backend](../../wasm/README.md#what-differs-from-a-native-build) |
 | How compatibility is checked | [Testing](../testing.md) |
 
 ## Deviations from CPython
@@ -134,6 +135,15 @@ applies. Bytes case methods remain ASCII-only.
   `key=`, so size changes are not detected. `intersection()` and
   `intersection_update()` consume a generator expression before testing its items;
   CPython interleaves generation and testing.
+- **A closed union's dict keeps its key type.** An item assigned through a
+  [closed union](typing.md#operations-on-closed-unions) at an index of another type than
+  the selected dict's keys raises `TypeError`; CPython adds the key
+  ([deviation](../../tests/deviations/union_store_key.py)).
+- **A closed union's str is no run-time format.** `value % number`, where a
+  [closed union](typing.md#operations-on-closed-unions)'s value is a str that holds a
+  conversion (`"%d items"`), raises `TypeError`; CPython formats with it
+  ([deviation](../../tests/deviations/union_percent_format.py)). A number there takes the
+  remainder, and a str without a conversion raises CPython's own `TypeError`.
 - **Hash callbacks can repeat.** `dict.fromkeys(set_of_objects)` recomputes user
   hashes; CPython reuses the set's hashes. `cache()`/`lru_cache()` may hash an
   argument more than once per call; CPython does so once.

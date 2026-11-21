@@ -16,7 +16,7 @@ from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, Val, slot_register
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.specs import IROPS
-from src.pystachy_compiler.union_state import UnionState
+from src.pystachy_compiler.union_state import UnionState, union_join
 from src.pystachy_compiler.union_proof import UnionProof, proof_number, simple_union_proof
 
 U = "union[int,float]"
@@ -331,6 +331,70 @@ if "union.raw" in IROPS:
 
 
 class UnionProofTests(unittest.TestCase):
+    def test_cast_and_optional_proofs_share_one_definition_scan(self):
+        for cast in (False, True):
+            with self.subTest(cast=cast):
+                c = Case("definition_scans", ["opt[str]", "%ptr"])
+                if cast:
+                    c.op("cast", "str", "bits", [("%a1", "%ptr")])
+                check = c.op("ptr.cmp", "bool", "!=", [("%a0", "opt[str]"), ("null", "None")])
+                c.op("cbr", a=[(check, "bool")], b=["some", "none"])
+                c.block("some")
+                c.g.runtime("pys_text_len")
+                c.op("rt", "int", "text.len", [("%a0", "str")])
+                c.ret()
+                c.block("none")
+                c.ret()
+                with patch.object(ircheck, "value_definitions", wraps=ircheck.value_definitions) as scans:
+                    c.g.verify(c.fn, False)
+                self.assertEqual(scans.call_count, 1)
+
+    def test_invalidating_an_object_visits_only_its_own_field_keys(self):
+        class NoScan(dict):
+            def __iter__(self):
+                raise AssertionError("scanned every tracked domain for one object")
+
+        c = Case("field_invalidation", ["Node", "Node"])
+        c.ret()
+        proof = UnionProof(c.fn, c.g.utags)
+        state = UnionState(proof.base, proof.full)
+        for obj in ("%a0", "%a1"):
+            for index in (1, 2):
+                state.set(proof.field_key(state, obj, index, "Node"), ["str"])
+        state.d = NoScan(state.d)
+        proof.forget_fields(state, "%a0")
+        self.assertNotIn("MF:a0#1", state.d)
+        self.assertNotIn("MF:a0#2", state.d)
+        self.assertEqual(state.d["MF:a1#1"], ["str"])
+        self.assertEqual(state.d["MF:a1#2"], ["str"])
+
+    def test_field_identity_survives_only_matching_storage_on_all_paths(self):
+        c = Case("field_identity", ["Node"])
+        obj = c.op("mem.load", "Node", a=[("%owner.1", "&Node")])
+        c.ret()
+        proof = UnionProof(c.fn, c.g.utags)
+        left = UnionState(proof.base, proof.full)
+        left.loaded[obj] = "%owner.1"
+        left.set("U:" + obj, ["Node"])
+        left.set("MU:%owner.1", ["Node"])
+        right = left.clone()
+        same = union_join(left, right)
+        self.assertEqual(proof.field_key(same, obj, 1, "Node"), "MF:owner.1#1")
+        del right.loaded[obj]
+        changed = union_join(left, right)
+        self.assertEqual(changed.eq["U:" + obj], changed.eq["MU:%owner.1"])
+        self.assertNotEqual(proof.field_key(changed, obj, 1, "Node"), "MF:owner.1#1")
+        self.assertFalse(left.same(right))
+
+    def test_union_store_into_recursive_alias_admits_all_source_members(self):
+        g = Gen()
+        g.recursive["Tree"] = "opt[union[int,float,list[rec[Tree]]]]"
+        self.assertEqual(ircheck.type_view(g, U, "rec[Tree]", False, ""), "alias")
+        self.assertEqual(ircheck.type_view(g, "opt[" + U + "]", "rec[Tree]", False, ""), "alias")
+        self.assertEqual(ircheck.type_view(g, W, "rec[Tree]", False, ""), "")
+        g.recursive["Tree"] = "union[int,float,list[rec[Tree]]]"
+        self.assertEqual(ircheck.type_view(g, "opt[" + U + "]", "rec[Tree]", False, ""), "optional")
+
     def test_repeated_declarations_parse_each_type_once_per_proof(self):
         c = Case("repeated_global_domains")
         c.op("mem.load", U, a=[("@g.g0", "&" + U)])
@@ -786,12 +850,12 @@ class UnionProofTests(unittest.TestCase):
                 c = make_case()
                 calls = []
 
-                def observe(fn, tags, at, successors, types, calls=calls):
+                def observe(fn, tags, at, successors, types, classes, calls=calls):
                     self.assertIsNotNone(at)
                     self.assertIsNotNone(successors)
                     self.assertIsNotNone(types)
-                    cached = simple_union_proof(fn, tags, at, successors, types)
-                    self.assertEqual(cached, simple_union_proof(fn, tags))
+                    cached = simple_union_proof(fn, tags, at, successors, types, classes)
+                    self.assertEqual(cached, simple_union_proof(fn, tags, classes=classes))
                     self.assertFalse(cached)
                     calls.append(True)
                     return cached
@@ -815,12 +879,12 @@ class UnionProofTests(unittest.TestCase):
         c.b.code[-1].b = NOLABELS
         before = [(i, i.b, list(i.b)) for b in c.fn.blocks for i in b.code]
 
-        def observe(fn, tags, at, successors, types):
+        def observe(fn, tags, at, successors, types, classes):
             self.assertIs(successors[0], shared)
             self.assertIs(successors[1], shared)
             self.assertIs(successors[2], NOLABELS)
             self.assertEqual(successors, [["next", "next"], ["next", "next"], []])
-            return simple_union_proof(fn, tags, at, successors, types)
+            return simple_union_proof(fn, tags, at, successors, types, classes)
 
         with patch.object(ircheck, "simple_union_proof", side_effect=observe) as proof:
             c.g.verify(c.fn, False)
@@ -841,12 +905,12 @@ class UnionProofTests(unittest.TestCase):
             c.ret()
         before = [(i, i.b, list(i.b)) for b in c.fn.blocks for i in b.code]
 
-        def observe(fn, tags, at, successors, types, before=before):
+        def observe(fn, tags, at, successors, types, classes, before=before):
             self.assertEqual(successors[0], ["right", "left"])
             for _, labels, _ in before:
                 self.assertIsNot(successors[0], labels)
             self.assertIsNot(successors[0], NOLABELS)
-            return simple_union_proof(fn, tags, at, successors, types)
+            return simple_union_proof(fn, tags, at, successors, types, classes)
 
         with patch.object(ircheck, "simple_union_proof", side_effect=observe) as proof:
             c.g.verify(c.fn, False)
@@ -1382,6 +1446,35 @@ class UnionProofTests(unittest.TestCase):
                             c.g.verify(c.fn, False)
                         self.assertIn("union.tag needs a nonnull proof", errors.getvalue())
 
+    def test_implicit_null_domain_of_reference_union_boxes(self):
+        for typ, nullable in (("union[Left,Right]", True), ("union[Left,int]", True),
+                              ("union[_pystachy_complex$complex,Left]", True),
+                              ("union[_pystachy_complex$complex,int]", False),
+                              ("union[Left,file]", True), ("union[file,int]", False), (U, False)):
+            for guarded in (False, True):
+                for machine in (False, True):
+                    with self.subTest(typ=typ, guarded=guarded, machine=machine):
+                        c = Case("reference_union_box", [typ])
+                        for cls in ("Left", "Right", "_pystachy_complex$complex"):
+                            c.g.classes[cls] = ClassInfo(cls, Node("class", cls, 1))
+                        if guarded:
+                            nonnull = c.op("ptr.cmp", "bool", "!=", [("%a0", typ), ("null", "None")])
+                            c.op("cbr", a=[(nonnull, "bool")], b=["read", "exit"])
+                            c.block("read")
+                        c.op("mach.load" if machine else "union.tag", "int",
+                             a=[("%a0", "%ptr" if machine else typ)])
+                        c.ret()
+                        if guarded:
+                            c.block("exit")
+                            c.ret()
+                        if nullable and not guarded:
+                            errors = StringIO()
+                            with redirect_stderr(errors), self.assertRaises(SystemExit):
+                                c.g.verify(c.fn, False)
+                            self.assertIn("needs a nonnull proof for %a0", errors.getvalue())
+                        else:
+                            c.g.verify(c.fn, False)
+
     def test_standalone_box_requires_matching_tag_and_payload(self):
         for tag in ("float", "int"):
             with self.subTest(tag=tag):
@@ -1398,6 +1491,33 @@ class UnionProofTests(unittest.TestCase):
                         with self.assertRaises(SystemExit):
                             c.g.verify(c.fn, False)
                         self.assertIn("ubox needs matching tag and payload provenance", errors.getvalue())
+
+    def test_length_box_requires_owner_and_integer_tag(self):
+        # Only a proved header at offset zero supplies an int payload. A fixed tuple
+        # starts with its first item; a list uses its own typed IR operations.
+        owners = ["bytes", "str", "dict[str,int]", "set[int]", "frozenset[str]", "aset[int]", "vtuple[int]"]
+        cases = [(owner, "int", False, True) for owner in owners]
+        cases += [(owner, "float", False, False) for owner in owners]
+        cases += [(owner, "int", True, False) for owner in owners]
+        cases += [("opt[" + owner + "]", "int", False, False) for owner in owners]
+        cases += [(owner, "int", False, False) for owner in ["%ptr", "list[int]", "tuple[int,str]"]]
+        for owner, tag, offset, valid in cases:
+            with self.subTest(owner=owner, tag=tag, offset=offset):
+                c = Case("length_box", [owner])
+                c.g.runtime("pys_ubox")
+                addr = c.op("mach.addr", "%ptr", "int", [("%a0", "%ptr"), ("1", "int")]) if offset else "%a0"
+                value = c.op("mach.load", "int", a=[(addr, "%ptr")])
+                c.op("rt", "%ptr", "ubox", [(str(c.g.utags[tag]), "int"), (value, "*T")])
+                c.ret()
+                if valid:
+                    c.g.verify(c.fn, False)
+                else:
+                    errors = StringIO()
+                    with redirect_stderr(errors), self.assertRaises(SystemExit):
+                        c.g.verify(c.fn, False)
+                    message = ("mach.load needs a nonnull proof" if owner.startswith("opt[") and owner != "opt[vtuple[int]]"
+                               else "ubox needs matching tag and payload provenance")
+                    self.assertIn(message, errors.getvalue())
 
     def test_yielded_payload_is_read_as_the_generator_element_type(self):
         # (gen_slots passes an int member's payload register itself, as the %slot word yielded)

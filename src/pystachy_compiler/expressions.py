@@ -5,7 +5,7 @@ from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrow_type, narrows, search_type
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import DYNPRAGMA, LINES, dynamic_program, int_lists, shown, where
-from src.pystachy_compiler.dynamic import boxed_list_items, comparison_container_pair, comparison_invalid, comparison_property_type
+from src.pystachy_compiler.dynamic import boxed_list_items, comparison_builtin, comparison_container_pair, comparison_invalid, comparison_property_type
 from src.pystachy_compiler.frames import FmtArgs, IterArg
 from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname, one_num
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
@@ -647,12 +647,6 @@ def gen_cabc_isinst(self, t: str, k: str) -> int:
     # classes registered with k (its module registers the builtin types), by k's __subclasshook__,
     # which looks for k's methods (ABC_METHODS), and by derivation from k: a builtin type's answer
     # is CPython's, a class's is cabc_exact's for each class an object of t may be of
-    if self.bkind(t) != "":
-        # (an object of a class deriving from list or dict answers as the builtin's objects do,
-        # unless it is None: builtin_bases.py rejects classes deriving from it and the special
-        # methods that would change the answer)
-        r = self.cabc_isinst("list[?]" if self.bkind(t) == "list" else "dict[?,?]", k)
-        return -2 if r == 1 else r
     if t in self.classes:
         rs = [self.cabc_exact(x, k) for x in self.refl_concrete(t) if x in self.classes]
         if len(rs) > 0 and len([r for r in rs if r != 1]) == 0:
@@ -721,6 +715,9 @@ def gen_cabc_exact(self, c: str, k: str) -> int:
     # the ABCs in CPython), else by k's methods that c has, or by c's deriving from lib's k
     # (CABCS); -1 where c binds such a name to a class attribute, whose value decides
     o = self.classes[c].origin if self.classes[c].origin != "" else c
+    base = self.bkind(c)
+    if base != "" and self.cabc_isinst("list[?]" if base == "list" else "dict[?,?]", k) == 1:
+        return 1  # (the builtin's registered ABCs also recognize its subclass)
     if o == RANGEC:
         return 1 if k in ["Hashable", "Iterable", "Reversible", "Sized", "Container", "Collection", "Sequence"] else 0
     if o == BYTEARRAYC:
@@ -762,7 +759,9 @@ def gen_cabc_methods(self, c: str, names: list[str]) -> int:
             if self.hash_kind(c) == "":
                 return 0
         elif m not in ci.methods:
-            return 0
+            base = self.bkind(c)
+            if base == "" or m not in HASATTR[base].split():
+                return 0
     return 1
 
 def gen_dict_class(self, t: str) -> bool:
@@ -1086,6 +1085,12 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     self.line = n.line
     want = self.rec_type(want)
     k = n.kind
+    sites = self.curfn.inert_sites
+    if sites is not None and (k == "binop" or k == "cmp") and n in sites:
+        if not self.scalar_read_value(n):
+            self.identity_event(f"hinted call of {self.curfn.name}()")
+        if self.drying == 0:
+            sites[n] = True
     if k == "superbound":
         # Bound arm of a nullable super call, already split from its own-object method.
         return self.super_call(n.kids[0], n.s, n.kids[2:], own_bound=True, captured=self.expr(n.kids[1], ""))
@@ -3385,6 +3390,79 @@ def gen_tput(self, v: Val, index: int, x: Val) -> None:
         return
     self.tstore(v, index, self.to_slot(x, BIG in targs(v.t)[index]))  # (a tuple of promoting ints, as its type's item: kept)
 
+def gen_usub_items(self, t: str) -> list[str]:
+    # the item types of closed union t's members that an index selects from: a list's, a
+    # dict's values' and a str's (its characters)
+    items: list[str] = []
+    for m in umembers(t):
+        if is_list(m):
+            items.append(elem(m))
+        elif is_dict(m):
+            items.append(targs(m)[1])
+        elif m == "str":
+            items.append("str")
+    return items
+
+def gen_unone(self, o: Val, msg: str, kind: str = "TypeError") -> Val:
+    # closed union value o, which raises msg (a TypeError, or kind) where it is None, as the union it holds.
+    # A branch tests it, as utest's does, not a check: nullcheck removes a check that an equal
+    # value's test dominates, and the tag's read then has no test of its own box to prove it.
+    if not is_opt(o.t):
+        return o
+    bad = self.label()
+    arm = self.label()
+    self.cbr(self.ptr_cmp('==', o, Val('null', 'None')).v, bad, arm)
+    self.place(bad)
+    self.raise_(kind, self.sconst(msg))
+    self.place(arm)
+    return Val(o.v, unopt(o.t)).identity(o)
+
+def gen_usubscript(self, n: Node, o: Val) -> Val:
+    # o[k] for a closed union o of builtin values (numbers, strs, lists and dicts, as a
+    # recursive alias's value is, which may be None): k is evaluated once, then the member that
+    # the box's tag names is indexed as a value of its own type is. A member whose type takes no
+    # such index raises CPython's TypeError there, and a dict whose keys are of another type its
+    # KeyError: the errors CPython raises for that object. The result is one of the members'
+    # items, which a recursive alias's own type holds (doc["rows"][0]["id"] needs no narrowing).
+    t = unopt(o.t)
+    index = self.expr(n.kids[1], "")
+    kt = index.t
+    if kt not in ["int", "bool", "str", BIG]:
+        self.err(f"indexing a closed union value ({typestr(o.t)}) with {typestr(kt)} is not supported: narrow the value with isinstance() first, or index it with an int or a str")
+    rt = self.union_type(self.usub_items(t))
+    if rt.startswith("!"):
+        self.err(f"indexing a closed union value ({typestr(o.t)}) is not supported ({rt[1:]}): narrow it with isinstance() first")
+    o = self.unone(o, "'NoneType' object is not subscriptable")
+    end = self.label()
+    ph = Ins("phi", rt, "")
+    tag = self.mload('int', o.v)
+    members = umembers(t)
+    for i in range(len(members)):
+        m = members[i]
+        nxt = self.label() if i + 1 < len(members) else ""
+        if nxt != "":
+            arm = self.label()
+            self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(m)), "int")).v, arm, nxt)
+            self.place(arm)
+        bad = comparison_invalid("[]", m, kt)
+        if bad == "" and not (is_list(m) or is_dict(m) or m == "str"):
+            bad = f"'{tname(m)}' object is not subscriptable"
+        if bad != "":
+            self.raise_("TypeError", self.sconst(bad))
+        elif is_dict(m) and (targs(m)[0] == "str") != (kt == "str"):
+            self.raise_("KeyError", self.repr(index).v, self.sconst("KeyError"))  # (no key of that type)
+        else:
+            item = self.uget(Val(o.v, t), m)
+            # (a sequence's index as an int: a bool's, or a promoting int's, bigints.py)
+            at = self.as_int(index) if kt == "bool" or (kt == BIG and not is_dict(m)) else index
+            r = self.subscript(mk("index", "", n.line, [self.vnode(item), self.vnode(at)]), item)
+            self.incoming(ph, self.coerce(r, rt).v, self.cur)
+            self.br(end)
+        if nxt != "":
+            self.place(nxt)
+    self.place(end)
+    return Val(self.phi(ph), rt)
+
 def gen_indexed_ord(self, n: Node) -> Val | None:
     # Code point of an indexed str. Runtime mode indexes bytes, and comparison
     # methods have their own error path for invalid indexing.
@@ -3441,6 +3519,8 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
     sub = "TypeError: 'NoneType' object is not subscriptable"  # (once the index is evaluated)
     if t == "dyn":
         return self.dyn_getitem(o, self.expr(n.kids[1], "dyn"))  # (its box's type's: dynamic.py)
+    if self.value_union(t) and n.kids[1].kind != "slice" and len(self.usub_items(t)) > 0:
+        return self.usubscript(n, o)  # (the member its tag names: below)
     if t in ["fn[b:list]", "fn[b:dict]", "fn[b:tuple]", "fn[b:set]", "fn[b:frozenset]"]:
         self.err(f"{t[5:-1]}[...] as a value is not supported (only annotations may name a type: a type alias is a module-level name = {t[5:-1]}[...] that nothing else binds)")
     if is_kw(t) and n.kids[1].kind == "str":
@@ -5521,11 +5601,14 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         if error != "" and a.infer_from == "" and b.infer_from == "":
             self.raise_("TypeError", self.sconst(error))
             return Val("undef", "int")
-    if len(self.bsubn) > 0 and (op == "+" or op == "*" or op == "|"):
-        # (xs + ys and xs * n of a list subclass's object, d | m of a dict subclass's, make a
-        # plain list or dict: builtin_bases.py)
-        a = self.bdecay(a, BARITH)
-        b = self.bdecay(b, BARITH)
+    if len(self.bsubn) > 0 and op in ["+", "*", "|"]:
+        # Only this operator's forward or reflected method can replace builtin dispatch.
+        # When calling a user method, keep its existing argument representations.
+        m = DUNDER[op]
+        custom = (a.t in self.classes and m in self.classes[a.t].methods) or (a.t != b.t and b.t in self.classes and "__r" + m[2:] in self.classes[b.t].methods)
+        own = BARITH if custom else []
+        a = self.bdecay(a, own)
+        b = self.bdecay(b, own)
     if a.t == "int" and b.t == "int" and a.lit and b.lit and dynamic_program():
         folded = folded_int(op, a.v, b.v)
         if folded != "":
@@ -5850,7 +5933,7 @@ def gen_compare(self, n: Node) -> Val:
     if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and n.kids[1].kind == "attr" and self.dotted(n.kids[1]) == "os.environ":
         # name in os.environ: whether the variable is set
         name = self.coerce(a, "str", "the name tested in os.environ")
-        value = Val(self.rt("pys_getenv", "ptr", [f"ptr {name.v}", "ptr null"]), "opt[str]")
+        value = Val(self.rt("pys_getenv", "ptr", [f"ptr {name.v}", "ptr null"], "", "opt[str]"), "opt[str]")
         return self.ptr_cmp("!=" if ops[0] == "in" else "==", value, Val("null", "None"))
     if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and self.iterator_call(n.kids[1]) and n.kids[1].kids[0].s == "range":
         # x in range(...): arithmetic, as CPython's range.__contains__ does for ints; an int |
@@ -6323,6 +6406,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 ceq = self.eqcall(om["__eq__"], True, obj, cx)
                 return ceq if op == "==" else Val(self.scalar('xor', [Val(ceq.v, 'bool'), Val('true', 'bool')]), "bool")
             return self.ptr_cmp(op, a, b)
+    if op in ["==", "!="] and (unopt(a.t) == BIG or unopt(b.t) == BIG) and self.big_union(b if unopt(a.t) == BIG else a):
+        # Compare the active member with the original integer. A float may equal a number
+        # outside int64, and testing None needs no integer conversion.
+        return self.optcmp(op, a, b) if is_opt(a.t) or is_opt(b.t) else self.ucmp(op, a, b)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and (self.isnum(unopt(a.t)) or unopt(a.t) == BIG) and (self.isnum(unopt(b.t)) or unopt(b.t) == BIG):
         return self.optcmp(op, a, b)  # (an int | None of a module that opts in: None, or its promoting int)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and a.t != "None" and b.t != "None":
@@ -6441,12 +6528,18 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             members = (umembers(unopt(a.t)) if is_union(unopt(a.t)) else [unopt(a.t)]) + (umembers(unopt(b.t)) if is_union(unopt(b.t)) else [unopt(b.t)])
             if all(is_list(t) or is_dict(t) or t in self.classes for t in members):
                 return self.ucmp(op, a, b)  # compare original pointers under member-tag guards
+            if self.uidentity(a.t, b.t):
+                return self.ucmp(op, a, b)  # (... and a number or str is no object, list or dict)
         if (op == "==" or op == "!=") and self.ueq_type(a.t) and self.ueq_type(b.t):
             return self.uequal(op, a, b)
         if (op == "==" or op == "!=") and any([x.t == COMPLEXC or (is_union(unopt(x.t)) and COMPLEXC in umembers(unopt(x.t))) for x in [a, b]]):
             return self.complex_ueq(op, a, b)
         if op in ["<", "<=", ">", ">="] and not is_opt(a.t) and not is_opt(b.t) and self.uorders(a.t, b.t):
             return self.ucmp(op, a, b)  # (each member's ordering: union splitting)
+        if op in ["<", "<=", ">", ">="] and self.uvalue_orders(a.t, b.t):
+            return self.uorder(op, a, b)  # (a closed value union's: its members', or CPython's TypeError)
+        if (op == "in" or op == "not in") and self.value_union(b.t) and (comparison_builtin(unopt(a.t)) != "" or self.value_union(a.t)):
+            return self.ucontains(op, a, b)  # (in the list, dict or str it holds)
         # (a set's or dict's keys that are a union of classes compared by identity, of whose
         # members a's are: runtime.c compares the objects the boxes hold, #1452)
         kt = selem(b.t) if is_set(b.t) else targs(b.t)[0] if is_dict(b.t) else ""

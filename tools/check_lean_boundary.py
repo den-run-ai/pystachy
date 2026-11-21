@@ -52,9 +52,10 @@ BUILTIN_PAYLOADS = {
     "dict[dyn,dyn]": ("@pys_dyntype_dict",), "vtuple[dyn]": ("@pys_dyntype_tuple",),
     "list[dyn]": ("@pys_dyntype_list",), "list[int]": ("@pys_dyntype_intlist", "@pys_dyntype_biglist")}
 # struct DynType's cls word, in i64 words: class dispatchers switch on it
-CLASS_WORD = "3"
+CLASS_FIELD = "3"
 MAX_TAGS = 262144
 MAX_CONDITION = 64
+MAX_INSTRUCTION_TEXT = 4096
 OP_KEYS = {"op", "type", "text", "immediate", "descriptor", "results", "operands", "targets"}
 # An instruction's source location (inspect_compiler.py: the line of the statement it implements,
 # or None where unknown), which no check reads. A snapshot made before locations has none.
@@ -108,8 +109,8 @@ def require(condition, message):
         raise ValueError(message)
 
 
-def name(value, what):
-    require(isinstance(value, str) and 0 < len(value) <= 256 and "\0" not in value,
+def name(value, what, limit=256):
+    require(isinstance(value, str) and 0 < len(value) <= limit and "\0" not in value,
             f"invalid {what}")
     return value
 
@@ -187,7 +188,7 @@ def instruction_fields(value):
 def instruction(value, slot=False):
     require(instruction_fields(value), "invalid instruction fields")
     for key in ("op", "type", "text", "descriptor"):
-        require(isinstance(value[key], str) and len(value[key]) <= 4096, f"invalid instruction {key}")
+        require(isinstance(value[key], str) and len(value[key]) <= MAX_INSTRUCTION_TEXT, f"invalid instruction {key}")
     if value["op"] not in ({"slot"} if slot else SUPPORTED_OPS):
         raise Unsupported(f"unsupported operation: {value['op']}")
     require(type(value["immediate"]) is int and (value["immediate"] in (0, 1, 2) if slot
@@ -202,7 +203,7 @@ def instruction(value, slot=False):
     for operand in value["operands"]:
         require(isinstance(operand, dict) and set(operand) == {"value", "type"}, "invalid operand")
         name(operand["value"], "operand value")
-        name(operand["type"], "operand type")
+        name(operand["type"], "operand type", MAX_INSTRUCTION_TEXT)
     require(isinstance(value["targets"], list) and len(value["targets"]) <= 256,
             "invalid instruction targets")
     for target in value["targets"]:
@@ -595,7 +596,7 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
             read_layouts[payload] = holder
             return tags
         return {holder}
-    name(fn.get("return_representation"), "return representation")
+    name(fn.get("return_representation"), "return representation", MAX_INSTRUCTION_TEXT)
     recursion = fn.get("recursion")
     require(isinstance(recursion, dict), "invalid recursion record")
     if recursion.get("generator") or recursion.get("coroutine"):
@@ -608,7 +609,7 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
     identity_arguments = set()
     for index, parameter in enumerate(parameters):
         require(isinstance(parameter, dict), "invalid parameter")
-        typ = name(parameter.get("representation"), "parameter representation")
+        typ = name(parameter.get("representation"), "parameter representation", MAX_INSTRUCTION_TEXT)
         definitions[f"%a{index}"] = (typ, None, -1)
         if numeric_identity(typ):
             identity_arguments.add(f"%aid{index}")
@@ -628,7 +629,7 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
         # a tuple value rather than storage.
         op = instruction(raw, slot=True)
         shape(op, 0, 1, texts=(op["text"],))
-        name(op["type"], "slot representation")
+        name(op["type"], "slot representation", MAX_INSTRUCTION_TEXT)
         # Name a slot as lowering does (slot_register, src/pystachy_compiler/ir.py): a local's
         # "is assigned" flag and numeric identity companions share its number, which is no name.
         number = op["results"][0]
@@ -940,8 +941,8 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
                 found, test = None, None
                 if kind == "dyn.type" and len(operands) == 1:
                     found = tag_reads, operands[0]["value"]
-                elif (kind == "mach.addr" and op["text"] == "int" and len(operands) == 2
-                      and operands[0]["value"] in tag_reads and operands[1]["value"] == CLASS_WORD):
+                elif (kind == "mach.addr" and op["text"] == "dyntype" and len(operands) == 2
+                      and operands[0]["value"] in tag_reads and operands[1]["value"] == CLASS_FIELD):
                     found = class_addresses, tag_reads[operands[0]["value"]]
                 elif (kind == "mach.load" and op["type"] == "int" and len(operands) == 1
                       and operands[0]["value"] in class_addresses):

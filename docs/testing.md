@@ -237,6 +237,29 @@ It reports diagnostic differences separately from valid Python that Pystachy can
 Current boundaries are in [syntax checks](language/semantics.md#syntax-errors). Earlier test
 counts and syntax-survey results are retained as [historical snapshots](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/archive/verification-snapshots.md).
 
+## Older glibc
+
+Verification runs on Ubuntu 24.04 (glibc 2.39). `tools/manylinux_check.sh`, run in the
+`manylinux_2_28` image (AlmaLinux 8: glibc 2.28, GCC 8's `libgcc_s`, a C compiler that builds
+non-PIE executables by default), bootstraps the compiler with the LLVM of `PYSTACHY_LLVM`, runs
+`tools/linux_abi.py --max-glibc 2.28` over the compiler, an AOT program and an extension module
+it builds, and runs corpus areas in JIT and AOT:
+
+```sh
+docker run --rm -v "$PWD:/src" -w /src -e PYSTACHY_LLVM=/usr/bin \
+  quay.io/pypa/manylinux_2_28_x86_64@sha256:d086f64cddcace250ef0f0073583c51b8298159303290a730c9f59bd91edfd2c \
+  sh -c 'dnf -y -q install clang llvm && tools/manylinux_check.sh'
+```
+
+The default areas leave out four cases whose output differs there for reasons of the system,
+not the compiler: `exec_signal` (its `/bin/sh` is bash, whose job message names the line), and
+`float_power_rounding`, `lib_statistics` and `upstream_math_testfiles`, whose last digits come
+from libm, as CPython's do on the same system. The
+[manylinux workflow](../.github/workflows/manylinux.yml) runs the script daily, on demand and
+on relevant `main` pushes with AlmaLinux 8's LLVM 22 on x86-64. The script also checks a
+handler with both JIT launchers and both code generation levels. To check a different LLVM,
+point `PYSTACHY_LLVM` at its bin directory inside the container.
+
 ## Compiler coverage
 
 `make coverage` measures which statements and branches of `src/pystachy_compiler/` the
@@ -404,18 +427,20 @@ The tests' expected output is what the CPython of `.python-version` prints, and 
 runs under that interpreter. The compiler itself runs under CPython 3.11 or later; compiled
 programs embed CPython, and CPython imports extension modules, from 3.12.
 `make python-versions PYTHONS="python3.11 python3.15t"` (`tools/python_versions.sh`) checks
-each interpreter in three ways:
+each interpreter in these ways:
 
 | Check | Requirement |
 |---|---|
 | IR | Run by that interpreter, the hosted compiler emits the IR of stage 1 of `make` for itself and for `runtime.py`, byte for byte. |
 | Corpus sample | `tests/programs/syntax` and `tests/programs/imports` pass in JIT and AOT with that hosted compiler; `FILES` selects other cases. |
 | FFI | `tests/ffi/run.sh` passes with the interpreter's libpython. It may skip only what that interpreter cannot run: embedding and extension modules before 3.12, extension modules on a free-threaded build before 3.15, and the JSON repair replay, whose oracle is the pinned CPython. |
+| GIL | On a free-threaded build from 3.15, an `abi3t` module's import fails under `PYTHON_GIL=0` and `-X gil=0`. |
 
 The [Python versions workflow](../.github/workflows/python-versions.yml) runs these checks with
 CPython 3.11, 3.12, 3.14 and 3.15 and the free-threaded 3.14t and 3.15t: daily, on demand and
 on relevant `main` pushes. Like Variants, it builds one verified bootstrap and each interpreter's
-job restores it. Pull requests do not run it, because their [job budget](#pr-budget) is full.
+job restores it. Each job also installs the compiler with pip and uv under its interpreter
+(`tools/compiler_install_smoke.py`), which the Installation workflow runs with the pinned one. Pull requests do not run it, because their [job budget](#pr-budget) is full.
 Its interpreters are pinned to exact releases, like `.python-version`, and are updated by hand.
 
 Compiled programs keep the semantics of the pinned CPython whichever interpreter hosts the
@@ -1132,11 +1157,12 @@ does the [Variants workflow](../.github/workflows/variants.yml), which
 
 The [LLVM toolchain workflow](../.github/workflows/llvm-toolchain.yml) runs only when a person
 dispatches it, apart from PR CI; no check requires it. Compiling LLVM and clang
-takes about two CPU-hours, so one job compiles LLVM's table generators, six each compile one
-slice of the object files and another links, checks and packs them: each stays within the job
+takes about two CPU-hours, so for each of x86-64 and ARM64 one job compiles LLVM's table
+generators, six each compile one slice of the object files and another links, checks and packs
+them: each stays within the job
 limit, and a run whose compile commands are an earlier run's takes the objects from its cache
 ([minimal LLVM toolchain](llvm-toolchain.md#build)). Given a revision on `main`, it
-[publishes the archive](llvm-toolchain.md#publish) as a release asset.
+[publishes the archives](llvm-toolchain.md#publish) as the assets of one release.
 
 Every job, including release jobs, has a time limit of at most 15 minutes. Release preparation
 waits at most ten minutes for its exact-commit CI evidence. Expensive new checks must fit the
@@ -1144,6 +1170,9 @@ existing PR budget or run in the full matrix; keep the job and time ceilings unc
 
 Lint also runs the optional [communication buffer/completion probe](../examples/comm/README.md)
 with the hosted compiler, JIT/AOT, GC stress and a sanitized standalone C probe.
+
+The [manylinux workflow](../.github/workflows/manylinux.yml) also runs apart from PR CI;
+[older glibc](#older-glibc) describes it.
 
 Contributions use the [contribution-rights policy](../CONTRIBUTING.md#contribution-rights)
 without DCO certification. The existing submission bot sends a one-time,

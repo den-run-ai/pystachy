@@ -51,6 +51,9 @@ class UnionState:
         self.full = full
         self.d: dict[str, list[str]] = {} if source is None else dict(source.d)
         self.eq: dict[str, str] = {} if source is None else dict(source.eq)
+        # Object loads that still name the value in a private slot or global.
+        # Equal tag domains do not establish identity between two objects.
+        self.loaded: dict[str, str] = {} if source is None else dict(source.loaded)
         # Domains and implication maps are immutable once shared.
         self.bt: dict[str, dict[str, list[str]]] = {} if source is None else dict(source.bt)
         self.bf: dict[str, dict[str, list[str]]] = {} if source is None else dict(source.bf)
@@ -166,13 +169,14 @@ class UnionState:
 
     def same(self, other: UnionState) -> bool:
         # States in one proof share the immutable base and full domain.
-        return self.d == other.d and self.eq == other.eq and self.bt == other.bt and self.bf == other.bf and self.truth == other.truth and self.live == other.live
+        return self.d == other.d and self.eq == other.eq and self.loaded == other.loaded and self.bt == other.bt and self.bf == other.bf and self.truth == other.truth and self.live == other.live
 
     def needed(self, k: str, values: dict[str, bool]) -> bool:
         v = k[k.find(":") + 1:]
         return not v.startswith("%") or v in values
 
     def retain(self, values: dict[str, bool]) -> None:
+        self.loaded = {v: self.loaded[v] for v in self.loaded if v in values}
         self.d = {k: self.d[k] for k in self.d if self.needed(k, values)}
         # Representatives can name dead values. Rebase each surviving equivalence
         # class instead of dropping its relation when that representative dies.
@@ -196,6 +200,7 @@ def union_join(a: UnionState, b: UnionState) -> UnionState:
     if not b.live:
         return a.clone()
     state = UnionState(a.base, a.full)
+    state.loaded = {v: a.loaded[v] for v in a.loaded if b.loaded.get(v, "") == a.loaded[v]}
     keys = list(a.d)
     for k in b.d:
         if k not in a.d:

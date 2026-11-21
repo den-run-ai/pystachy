@@ -472,6 +472,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_dynany_comparisons.py
 	$(PY) -m unittest discover -s tools -p test_dynany_dict_kinds.py
 	$(PY) -m unittest discover -s tools -p test_diagnostic_capture.py
+	$(PY) -m unittest discover -s tools -p test_cli_usage.py
 	$(PY) -m unittest discover -s tools -p test_loader_preprocessing.py
 	$(PY) -m unittest discover -s tools -p test_ctypes_schema.py
 	$(PY) -m unittest discover -s tools -p test_ffi_twin.py
@@ -502,6 +503,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
 	$(PY) -m unittest discover -s tools -p test_lean_layout_metadata.py
 	$(PY) -m unittest discover -s tools -p test_source_lines.py
+	$(PY) -m unittest discover -s tools -p test_pre_commit_check.py
 	$(PY) -m unittest discover -s tools -p test_pystachy_toolchain.py
 	$(PY) -m unittest discover -s tools -p test_retained_ir.py
 	$(PY) -m unittest discover -s tools -p test_jitfdprobe.py
@@ -510,6 +512,7 @@ check-fast: lint-python typecheck check-repository
 # The ordinary compiler and runtime do not invoke Lean.
 check-lean-boundary:
 	cd tools/lean_boundary && lake build
+	$(PY) tools/check_lean_wasm_frame.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_access.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_inline.py
@@ -572,7 +575,7 @@ check-repository:
 # sources; pip install -r tools/requirements-dev.txt gives the versions CI uses
 lint: lint-python
 	$(PY) tools/runtime_roots.py
-	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh)
+	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh wasm/*.sh)
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c tools/bytescanprobe.c tools/floatprobe.c pyext.c pyembed.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -std=c11 -D_GNU_SOURCE -DLLVM_VERSION_MAJOR=18 lljit.c

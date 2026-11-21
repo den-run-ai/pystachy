@@ -46,7 +46,7 @@ specs.TYPING specs.TYPEARGS specs.ABCS specs.ABCSMORE specs.ABC_BASES specs.ABC_
 specs.FUTURE specs.DEFAULTS specs.EXCEPTIONS specs.EXCBASES specs.PLAIN_EXC_BASES specs.EXCATTRS specs.EXCINIT
 specs.EXCKW specs.HASATTR specs.NONEARG specs.OPTARG specs.NONERET specs.OPTCALLS specs.PROTOCOL_MATH
 specs.NOREF specs.UNSUPPORTED specs.INERT_DECOS specs.IDENTITY_DECOS specs.INERT specs.PURE specs.RAISERS
-specs.CODECS specs.ARITY specs.METHODS specs.TEXT_OPS
+specs.CODECS specs.ARITY specs.METHODS specs.TEXT_OPS specs.PYMETHODS specs.UCALLS
 specs.FSETMETHODS specs.SETMETHODS specs.OPS specs.IROPS specs.RESULT_NUMBERS specs.OPTS specs.VALUE_AT specs.FX specs.LIST_READS specs.LIST_WRITES
 specs.OP_ENTRY specs.OP_MIN specs.OP_MAX specs.OP_LABELS specs.OP_FIELDS specs.OP_TEMPS
 specs.OP_OPERAND_TYPES specs.OP_RESULT_TYPE specs.TYPE_CLASSES specs.TYPE_VIEWS specs.CAST_KINDS ircheck.VTUPLE_ELEMS utils.RT_VARS ircheck.CONSTRAINT_PARTS ircheck.OP_KINDS
@@ -67,6 +67,7 @@ REWOUND = {
 RESET = {
     "diagnostics.FILES": "loader rebuilds the program file-index space before parsing",
     "diagnostics.DYNFILES": "loader resets file-index opt-ins with the file table",
+    "diagnostics.STATICFILES": "loader rebuilds static markers with the file table on each load and retry",
     "diagnostics.IDINERT": "loader rebuilds checked identity-inert hints with the file table on each load and retry",
     "diagnostics.INTFILES": "loader resets file-index python-int opt-ins with the file table",
     "diagnostics.INTSPANS": "loader resets the line spans of lib's promoting definitions with the file table",
@@ -104,6 +105,7 @@ WRITERS = {
     "diagnostics.CAPTURED": {"diagnostics.fail"},
     "diagnostics.FILES": {"loader.Loader.program", "loader.Loader.parse"},
     "diagnostics.DYNFILES": {"loader.Loader.program", "loader.Loader.pragmas"},
+    "diagnostics.STATICFILES": {"loader.Loader.program", "loader.Loader.pragmas"},
     "diagnostics.IDINERT": {"loader.Loader.program", "loader.Loader.pragmas"},
     "diagnostics.INTFILES": {"loader.Loader.program", "loader.Loader.pragmas"},
     "diagnostics.INTSPANS": {"loader.Loader.program", "loader.Loader.int_spans"},
@@ -131,7 +133,7 @@ WRITERS = {
     "specs.LINKDL": {"lower_module.gen_cextern", "builtins.gen_builtin", "driver.compile_program"},
     "specs.GLUE": {"loader.Loader.load"},
     "specs.SPECSHOW": {"templates.gen_specialize"},
-    "specs.MODULES": {"driver.runtime_ir", "driver.main"},
+    "specs.MODULES": {"driver.runtime_ir", "driver.prefer_program_ffi"},
     "ir.TMPNAMES": {"ir.tmpname"},
     "ir.ONENUMS": {"ir.one_num"},
 }
