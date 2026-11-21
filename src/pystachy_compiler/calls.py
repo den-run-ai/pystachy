@@ -2,14 +2,14 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names, numeric_statement
 from src.pystachy_compiler.bigints import converts
-from src.pystachy_compiler.builtin_bases import BWORDS, has_def
+from src.pystachy_compiler.builtin_bases import has_def
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, has_hook, hook_missing, hook_prop, hook_read, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, COMPLEXC, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, OBJECTC, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, COMPLEXC, CONTAINER_HEADERS, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, OBJECTC, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.unions import ANNTYPES, ann_open, ann_returns, ann_site, ann_takes, field_value
@@ -901,7 +901,7 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         if s.t != "str":
             self.err(f"fromhex() argument must be str, not {tname(s.t)}")
         return Val(self.rt("pys_bytes_fromhex", "ptr", [f"ptr {s.v}"]), "bytes")
-    if len(self.bsubn) > 0 and o.t.startswith("fn[b:") and o.t[5:-1] in BWORDS and len(args) > 0 and args[0].kind in ["name", "attr"] and self.bkind(unopt(self.target_type(args[0], True))) == o.t[5:-1]:
+    if len(self.bsubn) > 0 and o.t.startswith("fn[b:") and o.t[5:-1] in CONTAINER_HEADERS and len(args) > 0 and args[0].kind in ["name", "attr"] and self.bkind(unopt(self.target_type(args[0], True))) == o.t[5:-1]:
         # list.m(o, args) of an object o of a class deriving from list, as its methods name it
         # (list.append(self, x), list.__init__(self, xs)): list's own m (builtin_bases.py)
         me = self.expr(args[0], "")

@@ -3,7 +3,6 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, nullable_union_members, umembers
 from src.pystachy_compiler.analysis import READS_ONLY_FNS, attr_fills, attr_values, called_only, calls_init, local_names, nonexpr, only_reads_items, stmt_walrus
 from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrow_type, narrowed
-from src.pystachy_compiler.builtin_bases import BWORDS
 from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
@@ -12,6 +11,7 @@ from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, own_name, owner, short
 from src.pystachy_compiler.reflection import hook_class, hook_derived, hook_field, hook_of, hook_problem, hook_type
 from src.pystachy_compiler.specs import (
+    CONTAINER_HEADERS,
     ANYUSE,
     BIG,
     BIGOPT,
@@ -2004,10 +2004,10 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
             if x in b.factory:
                 ci.factory[x] = b.factory[x]
     elif self.bkind(ci.name) != "":
-        # the header of the builtin container it derives from (runtime.c's List), which only that
-        # container's code reads and writes: words that may hold references, by no name
-        for k in range(BWORDS[self.bkind(ci.name)]):
-            self.add_field(ci, f" {self.bkind(ci.name)}.{k}", "str")
+        # Match the C header's integer and pointer widths before laying out user fields.
+        kind = self.bkind(ci.name)
+        for k, t in enumerate(CONTAINER_HEADERS[kind]):
+            self.add_field(ci, f" {kind}.{k}", t)
     elif ci.tag != 0:
         self.add_field(ci, " class", "int")
     elif ci.exc != "":
