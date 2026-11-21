@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 import time
+from typing import Callable, TypeVar, overload
 from src.pystachy_compiler import aot_runtime, cached_run, diagnostics, program_cache
 from src.pystachy_compiler.diagnostics import MAXNEST, RAW, ClassBoxes, NeedHandlers, NeedHierarchy, NeedSliceEH, Rejoin, TupleBoxes, fail
 from src.pystachy_compiler.gen import Gen
@@ -105,7 +106,20 @@ COMPILER_SOURCES: list[str] = [
 ]
 
 
-def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
+BackendResult = TypeVar("BackendResult")
+
+
+@overload
+def compile_program(path: str, src: str, dirs: list[str], ext: str, backend: None = None) -> str: ...
+
+
+@overload
+def compile_program(path: str, src: str, dirs: list[str], ext: str,
+                    backend: Callable[[Gen], BackendResult]) -> BackendResult: ...
+
+
+def compile_program(path: str, src: str, dirs: list[str], ext: str,
+                    backend: Callable[[Gen], BackendResult] | None = None) -> str | BackendResult:
     # the program's IR: where a join finds a location's inferred type too narrow for a value the
     # program stores to it (Gen.join_hint), the program is compiled again with the union of both
     # types, as if annotated, until no join widens one (at most JOINS passes after the first).
@@ -171,9 +185,20 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
             loaded = timing_start()
             mods = ld.program(path, src)
             timing_end("program.load", loaded)
-            ir = g.program(mods)
+            # Alternate backends take the finalized IR before LLVM consumes its
+            # bodies. Keep their optional LLVM fallback inside the same retry scope.
+            if backend is None:
+                result = g.program(mods)
+            else:
+                g.typed_program(mods)
+                try:
+                    result = backend(g)
+                finally:
+                    # LLVM clears the program's class aliases when it consumes the IR.
+                    # Other backends may return or decline without consuming anything.
+                    RENAMED.clear()
             diagnostics.TRIAL = False
-            return ir
+            return result
         except Rejoin as retry:
             if isinstance(retry, NeedHandlers):
                 for k in ld.newkeeps:
@@ -771,6 +796,30 @@ def aot_build(tc: list[str], usebc: str, plain: bool, tmp: str, parts: list[str]
     return why
 
 
+def program_dirs(path: str, home: str) -> list[str]:
+    # where imported modules are found: the directory of the program's real path (symbolic links
+    # resolved, as CPython's sys.path[0]; spelled as given where that is the same), PYSTACHY_PATH,
+    # lib/ of the checkout. In-memory source (empty path) imports from cwd.
+    s = path.rfind("/")
+    d = path[:s] if s > 0 else "/" if s == 0 else "."
+    real = os.path.realpath(path)
+    if path != "" and os.path.realpath(d).rstrip("/") + "/" + path[s + 1 :] != real:
+        d = real[: real.rfind("/")] if real.rfind("/") > 0 else "/"
+    dirs = [d]
+    for d in os.getenv("PYSTACHY_PATH", "").split(":"):
+        if d != "":
+            dirs.append(d)
+    dirs.append(home + "/lib")
+    return dirs
+
+
+def prefer_program_ffi(dirs: list[str]) -> None:
+    for d in dirs[:-1]:
+        if program_cache.tracked_isfile(d + "/ffi.py") or program_cache.tracked_isfile(d + "/ffi/__init__.py"):
+            del MODULES["ffi"]  # (the program's own ffi module comes first, as under CPython: Pystachy's is not imported then)
+            break
+
+
 def main() -> None:
     # the parser and the code generator recurse for each level of nesting (at most MAXNEST), a
     # dozen calls deep each: more than CPython's default limit of 1,000 calls when it runs this file
@@ -865,29 +914,14 @@ def main() -> None:
         sources = [compdir + "/" + p for p in COMPILER_SOURCES]
     sourceborn = [stat3(p) for p in sources]
     home = compiler_home()
-    # where imported modules are found: the directory of the program's real path (symbolic links
-    # resolved, as CPython's sys.path[0]; spelled as given where that is the same), PYSTACHY_PATH,
-    # lib/ of the checkout
-    s = diagnostics.SRC.rfind("/")
-    d = diagnostics.SRC[:s] if s > 0 else "/" if s == 0 else "."
-    real = os.path.realpath(diagnostics.SRC)
-    if os.path.realpath(d).rstrip("/") + "/" + diagnostics.SRC[s + 1 :] != real:
-        d = real[: real.rfind("/")] if real.rfind("/") > 0 else "/"
-    dirs = [d]
-    for d in os.getenv("PYSTACHY_PATH", "").split(":"):
-        if d != "":
-            dirs.append(d)
-    dirs.append(home + "/lib")
+    dirs = program_dirs(diagnostics.SRC, home)
     cache_start = timing_start()
     pcroot, pccontext, pcexe = cached_run.prepare(cmd, diagnostics.SRC, me, home, dirs, llvm_dir(), RTPARTS)
     timing_end("program.cache_lookup", cache_start)
     if pcexe != "":
         timing_end("driver.prepare_run", total)
         cached_run.execute(pcexe, diagnostics.SRC, argv[3:])
-    for d in dirs[:-1]:
-        if program_cache.tracked_isfile(d + "/ffi.py") or program_cache.tracked_isfile(d + "/ffi/__init__.py"):
-            del MODULES["ffi"]  # (the program's own ffi module comes first, as under CPython: Pystachy's is not imported then)
-            break
+    prefer_program_ffi(dirs)
     f = open(diagnostics.SRC, "r", encoding=RAW)
     ext = diagnostics.SRC[diagnostics.SRC.rfind("/") + 1 : -3] if cmd == "ext" and diagnostics.SRC.endswith(".py") else ""
     if pcroot != "":

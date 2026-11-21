@@ -123,7 +123,7 @@ WRITERS = {
     "specs.LINKDL": {"lower_module.gen_cextern", "builtins.gen_builtin", "driver.compile_program"},
     "specs.GLUE": {"loader.Loader.load"},
     "specs.SPECSHOW": {"templates.gen_specialize"},
-    "specs.MODULES": {"driver.runtime_ir", "driver.main"},
+    "specs.MODULES": {"driver.runtime_ir", "driver.prefer_program_ffi"},
     "ir.TMPNAMES": {"ir.tmpname"},
     "ir.ONENUMS": {"ir.one_num"},
 }

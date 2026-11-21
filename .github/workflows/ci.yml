@@ -107,7 +107,7 @@ jobs:
       fail-fast: false
       matrix:
         machine: ${{ fromJSON(github.event_name == 'pull_request' && '["x86_64"]' || '["x86_64","aarch64"]') }}
-        group: ${{ fromJSON(github.event_name == 'pull_request' && '["hosted","native-aot-0","native-aot-1","native-aot-2","native-aot-3","safety-0","safety-1","opt-in","contracts","cache-gc","benchmarks"]' || '["hosted","native-0","native-1","native-2","opt-off-0","opt-off-1","opt-off-2","python-free-0","python-free-1","python-free-2","python-free-3","ubsan-0","ubsan-1","ubsan-2","ubsan-3","ubsan-4","gc-self","gc-ir-0","gc-ir-1","gc-jit-0","gc-jit-1","gc-aot-0","gc-aot-1","gc-aot-2","runtime-cache","dynany-optin-0","dynany-optin-1","dynany-optin-2","python-int-optin-0","python-int-optin-1","python-int-optin-2","contracts","benchmarks","scaling"]') }}
+        group: ${{ fromJSON(github.event_name == 'pull_request' && '["hosted","native-aot-0","native-aot-1","native-aot-2","native-aot-3","safety-0","safety-1","opt-in","contracts","gc-self","benchmarks"]' || '["hosted","native-0","native-1","native-2","opt-off-0","opt-off-1","opt-off-2","python-free-0","python-free-1","python-free-2","python-free-3","ubsan-0","ubsan-1","ubsan-2","ubsan-3","ubsan-4","gc-self","gc-ir-0","gc-ir-1","gc-jit-0","gc-jit-1","gc-aot-0","gc-aot-1","gc-aot-2","runtime-cache","dynany-optin-0","dynany-optin-1","dynany-optin-2","python-int-optin-0","python-int-optin-1","python-int-optin-2","contracts","benchmarks","scaling"]') }}
     env:
       VERIFY_PROFILE: ${{ github.event_name == 'pull_request' && 'pr' || 'full' }}
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
@@ -131,7 +131,7 @@ jobs:
         # New groups keep the full setup until their dependencies have been checked.
         run: |
           case "$VERIFY_GROUP" in
-            hosted|native-[012]|native-aot-[0123]|opt-off-[012]|python-free-[0123]|gc-self|gc-ir-[01]|gc-jit-[01]|gc-aot-[012]|runtime-cache|dynany-optin-[012]|python-int-optin-[012]|contracts|scaling|safety-0|opt-in|cache-gc)
+            hosted|native-[012]|native-aot-[0123]|opt-off-[012]|python-free-[0123]|gc-self|gc-ir-[01]|gc-jit-[01]|gc-aot-[012]|runtime-cache|dynany-optin-[012]|python-int-optin-[012]|contracts|scaling|safety-0|opt-in)
               tools/setup.sh --minimal ;;
             *) tools/setup.sh --verify ;;
           esac
@@ -156,6 +156,29 @@ jobs:
           VERIFY_GROUP: ${{ matrix.group }}
           VERIFY_BOOTSTRAP_DIR: build/ci-bootstrap
         run: tests/verify.sh "$VERIFY_GROUP"
+
+      - name: Run Python tool calls through both Wasm backends
+        if: matrix.machine == 'x86_64' && (matrix.group == 'native-aot-0' || matrix.group == 'native-0')
+        env:
+          PYSTACHY: build/verify/pystachy2
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y wasi-libc libclang-rt-18-dev-wasm32 lld-18
+          export PYSTACHY_HOME="$PWD"
+          wasm/build.sh runtime-wasm
+          wasm/build.sh emitter
+          node --no-warnings --test wasm/test_codemode.mjs
+          direct_cases=(tests/programs/apps/ouro2_*.py tests/programs/runtime/rt_float_hex.py
+                        tests/programs/strings/str_dict_hash.py tests/programs/language/varargs_tuple_lifetime.py)
+          routes=$(mktemp)
+          WASM_TIR_LOG="$routes" tests/run.sh "$PYSTACHY" "wasm wasm-tir" "${direct_cases[@]}" \
+            tests/programs/inference/dynany_bound_methods.py \
+            tests/programs/inference/dynany_identity_promote_generic.py \
+            tests/programs/library/lib_argparse_python_int.py
+          # A matching recording through LLVM fallback must not mask lost direct coverage.
+          for source in "${direct_cases[@]}"; do
+            grep -Fxq "$source emitted" "$routes" || { cat "$routes"; exit 1; }
+          done
 
       # These hosted/native controls run sequentially after a short GC JIT group.
       # PRs use the second native JIT worker below; neither placement adds a job.

@@ -20,6 +20,8 @@ it works: each module supports its own subset, which compiles with the program t
 <a id="3-the-standard-library"></a>
 <a id="31-what-compiles-and-runs-unmodified"></a>
 
+Wasm guests can call host tools through the Pystachy-specific [`codemode` module](../wasm/README.md#calling-tools-from-a-node-host).
+
 ## Library support at a glance
 
 | Status | Meaning |

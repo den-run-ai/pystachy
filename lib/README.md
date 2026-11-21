@@ -20,6 +20,8 @@ and [iteration](../docs/dynamic-any.md#iteration) contracts, including
 [class values, type-keyed registries, generic calls and annotated factories](../docs/dynamic-any.md#class-values-and-type-keyed-registries).
 That protocol support alone does not establish whole-module compatibility.
 
+The Pystachy-specific [`codemode.call`](../wasm/README.md#calling-tools-from-a-node-host) invokes synchronous tools supplied by a Wasm host.
+
 ## Module guide
 
 Each area matches a row of the [library support table](../docs/stdlib.md#library-support-at-a-glance):

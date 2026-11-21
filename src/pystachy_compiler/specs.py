@@ -127,6 +127,7 @@ CALLS: dict[str, str] = {
     "all(list[bool])": "pys_all:bool", "any(list[int])": "pys_any:bool", "all(list[int])": "pys_all:bool",
     "os.system(str)": "pys_system:int", "os.execv(str,list[str])": "pys_execv:None",
     "os.set_inheritable(int,int)": "pys_set_inheritable:None", "os.set_inheritable(int,bool)": "pys_set_inheritable:None",
+    "os.write(int,bytes)": "pys_os_write:int",
     "os.dup(int)": "pys_os_dup:int", "os.dup2(int,int)": "pys_os_dup2:int", "os.close(int)": "pys_os_close:None",
     "os.chdir(str)": "pys_chdir:None",
     "os.getpid()": "pys_getpid:int", "os.getcwd()": "pys_getcwd:str", "os.path.exists(str)": "pys_exists:bool", "os.path.realpath(str)": "pys_realpath:str",
@@ -1277,6 +1278,7 @@ RUNTIME: dict[str, str] = {
     "environ_set": "None:str,str|R A I|", "environ_pop": "str:str,str|R A I|",
     "environ_get": "str:str|R A I|", "environ_del": "None:str|R A I|", "makedirs": "None:str,int,bool|R A I|",
     "set_inheritable": "None:int,int|R A I|",
+    "os_write": "int:int,bytes|R I|",
     "os_dup": "int:int|R A I|", "os_dup2": "int:int,int|R A I|", "os_close": "None:int|R A I|", "chdir": "None:str|R A I|",
     "cache_lock": "int:str|I|", "cache_lock_fd": "int:|I|", "cache_file_hash": "str:str,int|A I|", "ignored_signals": "int:|I|",
     "listdir": "list[str]:str|R A I|", "listdir_cwd": "list[str]:|R A I|", "mkdir": "None:str,int|R A I|", "mkdir_default": "None:str|R A I|",
@@ -1332,6 +1334,7 @@ RUNTIME: dict[str, str] = {
     # runtime mode's primitives (Gen.primitive): a new str's memory, and the C library's searches
     # and copy, over the bytes of strs (a str that _rt.str_new made is written only before
     # _rt.str_done hands it out, so these need no letter either)
+    "tool_call": "str:str,str|R A I|",
     "alloc_atomic": "%ptr:int|A|", "init_lib": "None:%ptr,int|A I|", "cstr": "opt[str]:%ptr,int|R A|", "c_check": "int:int,int|R I|", "c_str": "None:str|R|", "c_at": "%ptr:%ptr,int|R|", "string_at": "str:int,int|R A|", "bytes_at": "bytes:int,int|R A|", "load_library": "int:str|R A I|", "track": "int:%ptr,int,int|A I|", "gc_collect": "None:|A I|", "c_bind": "None:%ptr,%ptr,%ptr|R A I|", "untrack": "None:int|I|", "collected": "int:|I|", "memchr": "%ptr:%ptr,%i32,int||memchr", "memcmp": "%i32:%ptr,%ptr,int||memcmp",
     "memmem": "%ptr:%ptr,int,%ptr,int||memmem", "memmove": "None:%ptr,%ptr,int,%i1||llvm.memmove.p0.p0.i64",
 }
@@ -1340,6 +1343,7 @@ RUNTIME: dict[str, str] = {
 # the runtime's data that programs name (docs/dynamic-any.md): the DynTypes of the builtin types
 # and the constant boxes of None, True and False, with their LLVM types; a module declares those
 # it uses (Gen.rtdata), and tools/check_runtime.py checks that runtime.c defines them
+CLASSREC_LL = "{ptr, ptr, ptr, i64, i64, ptr, i64, ptr}"
 DYNTYPE_LL = "{i64, ptr, ptr, i64, ptr, i64, ptr, ptr, ptr}"
 RTDATA: dict[str, str] = {"pys_dyn_none_box": "{ptr, i64}", "pys_dyn_true_box": "{ptr, i64}", "pys_dyn_false_box": "{ptr, i64}"}
 for _k in "none bool int bigint float str list intlist biglist dict tuple type".split():

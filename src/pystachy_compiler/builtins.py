@@ -311,6 +311,12 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return Val("null", "None")
     if name == "__pys_exc_repr":
         return self.exc_brepr(self.expr(args[0], ""))  # (exc_helpers)
+    if name == "__pys_tool_call":
+        if (self.curfn.mod != "codemode" or not lib_source(self.curfn.node.line, self.libdir, "codemode.py") or len(args) != 2):
+            self.err(f"name '{name}' is not defined")
+        tool = self.coerce(self.expr(args[0], "str"), "str")
+        payload = self.coerce(self.expr(args[1], "str"), "str")
+        return Val(self.rt("pys_tool_call", "ptr", [f"ptr {tool.v}", f"ptr {payload.v}"]), "str")
     if name == "__pys_gc_collect":
         # gc.collect()'s collection (lib/_pystachy_gc.py): the runtime's, started now
         if self.curfn.mod != "gc" or len(args) != 0:

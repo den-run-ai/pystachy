@@ -67,6 +67,17 @@ stages in order, for both ordinary programs and `runtime.py`:
 the whole finalized typed program before function/module LLVM lowering. `Gen.program`
 preserves the ordinary complete-compilation entry point by calling both.
 
+The driver's `compile_program(path, source, dirs, ext)` returns LLVM text for
+the native CLI, JIT and AOT. A caller supplying `backend=emit` receives the
+concrete return type of `emit(gen)`. The driver calls it with the current
+attempt's finalized functions and module tables. A backend can read those
+records and return its artifact directly. If it declines a feature, it can
+call `gen.lower_program()` once, while the records are still intact, to use
+LLVM in the same attempt. Inference retries discard the attempt. Emitters
+should publish bytes, files or diagnostics only after `compile_program` returns.
+The [Wasm source compiler](../tools/wasm_from_source.py) returns either module
+bytes or a named refusal carrying optional fallback LLVM text.
+
 `PipelineState` enforces the stage order. It rejects premature or repeated
 lowering, repeated stages, and attempts to continue a stage that failed or
 requested an inference retry. `PreparedProgram` borrows mutable ASTs and is owned
@@ -202,7 +213,7 @@ conditions that refer to a previous phi value, a class test that admits None, a
 base's test before a subclass's read and a switch on another box's class number.
 A bounded model compares its verdicts on class tests and dispatch with a concrete
 interpreter. [A test](../tools/test_typed_dynamic_tables.py) checks the runtime facts
-it copies (DynType kinds and flags, builtin DynTypes, the class number word and
+it copies (DynType kinds and flags, builtin DynTypes, the class number field and
 constant boxes) against runtime.c, as it does the Lean bridge's.
 
 In a module that opts in to [promoting ints](python-int.md), an `int` value is `int+`, an LLVM
@@ -699,7 +710,9 @@ keeps the 64-bit steps.
 that have no Python value type: closure code/environment pointers, loop/reduction
 temporaries, variable tuple traversal, string headers and bytes. Storage retains native value
 types or one of the finite machine types (`%ptr`, `%byte`, `%i32`); addresses carry
-explicit operands and indices. String alias/range metadata and in-bounds addressing are finite
+explicit operands and indices. For a DynType address the index selects the name, class id or
+flags field of the runtime record. A classrec index selects the reflection record flags.
+Lowering uses the target ABI to place those fields. String alias/range metadata and in-bounds addressing are finite
 choices checked before lowering. These operations preserve the existing effects,
 layout and guard order; they do not introduce unchecked Python operations.
 
