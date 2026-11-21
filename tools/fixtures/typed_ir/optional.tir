@@ -224,3 +224,26 @@ L7:
   %t11 = rt entry=text.len (str %t10) : int
   ret(int %t11)
 }
+
+function @private_short_circuit(s: opt[str]) -> int {
+  %s.20 = slot name=s : opt[str]
+entry:
+  mem.store(&opt[str] %s.20, opt[str] %a0)
+  %t21 = mem.load(&opt[str] %s.20) : opt[str]
+  %t1 = ptr.cmp != (opt[str] %t21, None null) : bool
+  cbr(bool %t1) -> L2, L3
+L2:
+  %t22 = mem.load(&opt[str] %s.20) : opt[str]
+  %t4 = rt entry=text.len (str %t22) : int
+  %t5 = num.cmp > (int %t4, int 0) : bool
+  br -> L3
+L3:
+  %t6 = phi(bool %t1, bool %t5) -> entry, L2 : bool
+  cbr(bool %t6) -> L7, L8
+L7:
+  %t23 = mem.load(&opt[str] %s.20) : opt[str]
+  %t9 = rt entry=text.len (str %t23) : int
+  ret(int %t9)
+L8:
+  ret(int -1)
+}

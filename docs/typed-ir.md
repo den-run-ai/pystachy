@@ -665,6 +665,12 @@ slot or the global forgets, as a store to a field of an object of a class that m
 object, or a call that writes objects, does. A call writes a global's storage only with the
 `wG` effect, and an object's only with `wO`. The verifier runs the general solver for every
 function with such a read.
+For a function whose only obligations are optional reads, a bounded check can prove loads
+from up to 62 private slots. A successful null test marks the slot on its nonnull edge, a
+store replaces the mark, and a join retains it only on every incoming path. The check follows
+short-circuit Boolean phis when the incoming branch decides their value. Escaped slots,
+field and global reads, and control flow it cannot certify go through the general solver.
+
 [`optional.tir`](../tools/fixtures/typed_ir/optional.tir) holds the cases the proof admits and
 those it rejects. A runtime function's signature says `opt[T]` where it takes or returns
 `None` (`bopen`'s encoding, `exc.setcause`'s cause, `exc.cause`'s result), and `getenv`'s

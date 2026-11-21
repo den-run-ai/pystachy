@@ -281,15 +281,29 @@ def private_optional_reads(fn: IFn, narrowed: dict[str, dict[str, bool]], at: di
     # An operand outside its load's block is accepted only along an unambiguous
     # chain from that load. Count handler edges even before EH lowering.
     pred = [-1] * len(fn.blocks)
+    incoming_edges = [0] * len(fn.blocks)
     for k in range(len(fn.blocks)):
-        for label in successors[k]:
+        last = fn.blocks[k].code[-1]
+        targets = successors[k]
+        if last.op == "cbr":
+            if len(last.b) != 2 or last.b[0] == last.b[1] or targets != last.b:
+                return False
+        elif last.op == "check":
+            cold = fn.cold.get(last.x if last.x != "" else last.s, "")
+            if len(last.b) != 1 or cold == "" or last.b[0] == cold or len(targets) != 2 or targets[0] != last.b[0] or targets[1] != cold:
+                return False
+        for label in targets:
+            if label not in at:
+                return False
             dest = at[label]
             pred[dest] = k if pred[dest] == -1 else -2
+            incoming_edges[dest] += 1
         handler = fn.blocks[k].handler
         if handler != "":
             if handler not in at:
                 return False
             pred[at[handler]] = -2
+            incoming_edges[at[handler]] += 1
     edges: list[list[int]] = []
     guards: list[int] = []
     orders: list[bool] = []
@@ -353,7 +367,14 @@ def private_optional_reads(fn: IFn, narrowed: dict[str, dict[str, bool]], at: di
             if len(destblock.code) == 2 and destblock.code[0].op == "phi" and destblock.code[1].op == "cbr":
                 phi = destblock.code[0]
                 destbr = destblock.code[1]
-                if phi.t == "bool" and tmpname(phi.r[0]) == destbr.a[0].v and len(phi.a) == len(phi.b) and phi.b.count(b.label) == 1:
+                if phi.t == "bool" and tmpname(phi.r[0]) == destbr.a[0].v:
+                    if len(phi.a) != 2 or len(phi.b) != 2 or incoming_edges[d] != 2:
+                        return False
+                    for parent in phi.b:
+                        if phi.b.count(parent) != 1 or parent not in at or label not in successors[at[parent]]:
+                            return False
+                    if b.label not in phi.b:
+                        return False
                     incoming = phi.a[phi.b.index(b.label)].v
                     if incoming == "true" or incoming == "false":
                         d = at[destbr.b[0 if incoming == "true" else 1]]

@@ -660,7 +660,7 @@ L1:
         expected = text.expectations(source)
         records = text.parse_functions(source)
         admitted = [r["symbol"] for r, e in zip(records, expected, strict=True) if not e]
-        self.assertEqual((len(admitted), len(expected) - len(admitted)), (8, 6))
+        self.assertEqual((len(admitted), len(expected) - len(admitted)), (9, 6))
         for found in expected:
             for e in found:
                 self.assertRegex(e["message"], r"^(rt operand 0|phi operand from \w+) reads %\w+ as str without a proof that it is not None$")
@@ -672,6 +672,40 @@ L1:
         self.assertEqual(sorted(p.split(":")[0] for p in problems), sorted(a for a in admitted if a != "@a_reload_of_a_stored_str"))
         for problem in problems:
             self.assertRegex(problem, r"reads %\w+ as str without a proof that it is not None$")
+
+    def test_private_optional_certificate_agrees_with_general_proof(self):
+        from src.pystachy_compiler import ircheck
+
+        source = self.OPTIONAL.read_text()
+        results = {}
+        certify = ircheck.private_optional_reads
+
+        def checked(fn, narrowed, at, successors):
+            accepted = certify(fn, narrowed, at, successors)
+            results[fn.f.ll] = accepted
+            if fn.f.ll == "@a_reload_after_a_test":
+                self.assertTrue(accepted)
+                # The two edges of the conditional have a defined order. An
+                # extra or reversed successor must go back to the general proof.
+                label = fn.blocks[0].label
+                for targets in (successors[at[label]][::-1], successors[at[label]] + successors[at[label]][:1]):
+                    changed = list(successors)
+                    changed[at[label]] = targets
+                    self.assertFalse(certify(fn, narrowed, at, changed))
+            if fn.f.ll == "@private_short_circuit":
+                self.assertTrue(accepted)
+                phi = next(i for b in fn.blocks for i in b.code if i.op == "phi")
+                with patch.object(phi, "b", [phi.b[0], phi.b[0]]):
+                    self.assertFalse(certify(fn, narrowed, at, successors))
+            return accepted
+
+        with patch.object(ircheck, "private_optional_reads", checked):
+            self.assertEqual(text.verify_errors(source), [])
+        with patch.object(ircheck, "private_optional_reads", return_value=False):
+            self.assertEqual(text.verify_errors(source), [])
+        self.assertTrue(results["@a_loop_that_tests_in_its_head"])
+        self.assertFalse(results["@a_reload_after_a_store"])
+        self.assertFalse(results["@a_field_read_after_a_store_to_the_field"])
 
     def test_a_modules_classes_are_the_ones_its_class_view_relates(self):
         source = self.CLASSES.read_text()
