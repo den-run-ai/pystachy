@@ -4,12 +4,8 @@ import { writeSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
-import v8 from "node:v8";
 import { WASI } from "node:wasi";
 import { toolImports } from "./tools.mjs";
-
-// Node 22's optimized fast calls into WASI can segfault (wasm/README.md).
-v8.setFlagsFromString("--no-turbo-fast-api-calls");
 
 const defaultRuntime = new URL("../build/wasm/runtime.wasm", import.meta.url);
 
@@ -56,11 +52,16 @@ function runner(runtimeSource, cli) {
     const wasi = new WASI({
       version: "preview1", args, env, preopens: cli ? { "/": "/" } : {}, stdin, stdout, stderr, returnOnExit: true,
     });
-    const imports = wasi.getImportObject();
+    // Keep WASI calls behind JavaScript. Node 22 can crash on direct Wasm fast-API
+    // calls into these native functions. The workaround stays local to this instance.
+    const io = {};
+    for (const [name, fn] of Object.entries(wasi.getImportObject().wasi_snapshot_preview1)) {
+      io[name] = (...args) => fn(...args);
+    }
+    const imports = { wasi_snapshot_preview1: io };
     if (!cli) {
       // Node's WASI uses the actual host descriptors for guest fds 0..2. Only the host may
       // close them. No other descriptors are supplied to embedded runs.
-      const io = imports.wasi_snapshot_preview1;
       const close = io.fd_close, renumber = io.fd_renumber;
       const notSupported = 58; // WASI preview1 ENOTSUP
       io.fd_close = (fd) => (fd >>> 0) < 3 ? notSupported : close(fd);
@@ -90,7 +91,7 @@ function runner(runtimeSource, cli) {
     // A reactor uses initialize(), so WASI.start() cannot handle proc_exit for us.
     const exit = {};
     let status = 0;
-    imports.wasi_snapshot_preview1.proc_exit = (code) => {
+    io.proc_exit = (code) => {
       status = code >>> 0;
       throw exit;
     };

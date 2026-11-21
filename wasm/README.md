@@ -19,8 +19,9 @@ tests/run.sh ./pystachy wasm tests/programs/apps/ouro2_*.py   # the corpus's was
 
 Node 22.23 (V8 12.4) crashed with SIGSEGV in its optimized fast calls of WASI functions: every
 time after a program wrote 48 files of 1 MiB buffers (`io_dropped_buffers`), and now and then
-under load, about ten programs per corpus run. `run.mjs` turns those fast calls off
-(`--no-turbo-fast-api-calls`), after which no run crashed.
+under load, about ten programs per corpus run. The runner wraps each WASI import in a
+JavaScript function. This avoids the affected fast-call path within the guest and leaves
+the embedding process's V8 flags alone.
 
 `wasm/build.sh program` runs `pystachy ir`, adapts the IR to wasm32 (`wasm32_ir.py`),
 compiles it with `clang --target=wasm32-wasi -O2` and links it with `wasm-ld` against the
@@ -84,7 +85,8 @@ print("open", states.count("open"))
 Names, payloads and replies are Unicode strings. An unregistered name, callback exception
 or invalid reply traps the guest (status 134). Compilation errors reject the promise.
 An unsupported snippet takes the LLVM path using the same finalized IR and the checkout's
-prebuilt runtime objects. Hosts can set `fallback: false` to require direct compilation
+prebuilt runtime objects. The streaming fallback uses clang at `-O0` to reduce compile
+latency on short scripts. Set `WASM_OPT=2` for longer-running computations. Hosts can set `fallback: false` to require direct compilation
 and receive the named refusal as error code 3. That configuration needs no LLVM at run time.
 
 `createCodeMode({compiler, runtime, cwd, fallback})` accepts alternate artifact paths and a source
@@ -100,7 +102,8 @@ compiler and runner. The prototype provides neither fuel accounting nor suspend/
 
 Run `node --no-warnings bench/startup/wasm.mjs 11` from the checkout to measure
 source compilation, a fresh guest in a warm host, and source-to-exit latency in warm
-and fresh Node processes. It checks the output of a distinct snippet for every sample.
+and fresh Node processes. It checks a distinct snippet for every sample, covering hello,
+a directly emitted tool-result filter, and a JSON filter using dynamic `Any` and the LLVM fallback.
 
 ## What differs from a native build
 

@@ -10,6 +10,8 @@
 #                                              programs import, if runtime.o or reactor.c changed
 #        wasm/build.sh emitter                 build native tools for source and module-text input
 #        wasm/build.sh direct FILE.py OUT.wasm emit from finalized typed IR, exit 3 on refusal
+#        wasm/build.sh link                    stream retained LLVM IR to a WASI command on stdout
+#                                              at -O0 for one-shot calls (WASM_OPT overrides)
 #        wasm/build.sh tir FILE.py OUT.wasm    same, with LLVM fallback on an emitter refusal
 #                                              WASM_TIR_LOG records emitted or refused per file
 # Environment: PYSTACHY, the compiler (default ./pystachy; "python3 pystachy.py" works too);
@@ -163,7 +165,7 @@ tir() {
 case ${1:-} in
   runtime) runtime ;;
   program) [ $# = 3 ] || { echo "usage: wasm/build.sh program FILE.py OUT.wasm" >&2; exit 2; }; program source "$2" "$3" ;;
-  link) [ $# = 1 ] || { echo "usage: wasm/build.sh link < INPUT.ll > OUT.wasm" >&2; exit 2; }; program ir - - ;;
+  link) [ $# = 1 ] || { echo "usage: wasm/build.sh link < INPUT.ll > OUT.wasm" >&2; exit 2; }; OPT=${WASM_OPT:-0}; program ir - - ;;
   runtime-wasm) runtime_wasm ;;
   emitter) emitter ;;
   direct) [ $# = 3 ] || { echo "usage: wasm/build.sh direct FILE.py OUT.wasm" >&2; exit 2; }; direct "$2" "$3" ;;

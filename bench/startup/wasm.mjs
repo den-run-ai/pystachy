@@ -13,10 +13,25 @@ const runPython = createCodeMode();
 const tools = new Map([["issues", project => {
   assert.equal(project, "pystachy");
   return "closed\nopen\nopen";
+}], ["issue_records", project => {
+  assert.equal(project, "pystachy");
+  return JSON.stringify([{ state: "closed" }, { state: "open" }, { state: "open" }]);
 }]]);
 
 function script(kind, n) {
   if (kind === "hello") return `print("hello", ${n})\n`;
+  if (kind === "json") return `# pystachy: dynamic-any
+import json
+from typing import Any
+from codemode import call
+
+issues: list[dict[str, Any]] = json.loads(call("issue_records", "pystachy"))
+opened = 0
+for issue in issues:
+    if issue["state"] == "open":
+        opened += 1
+print("open", opened, ${n})
+`;
   return `from codemode import call
 states = call("issues", "pystachy").split("\\n")
 opened = 0
@@ -31,10 +46,10 @@ function expectOutput(kind, n) {
   return `${kind === "hello" ? "hello" : "open 2"} ${n}\n`;
 }
 
-function checkedProcess(command, args, input) {
+function checkedProcess(command, args, input, expectedStatus = 0) {
   const result = spawnSync(command, args, { input, env: { ...process.env, PYSTACHY_HOME: process.cwd() } });
   if (result.error) throw result.error;
-  assert.equal(result.status, 0, result.stderr?.toString() || String(result.signal));
+  assert.equal(result.status, expectedStatus, result.stderr?.toString() || String(result.signal));
   return result.stdout;
 }
 
@@ -63,7 +78,7 @@ if (process.argv[2] === "--once") {
     return duration;
   }
   try {
-    for (const kind of ["hello", "tools"]) {
+    for (const kind of ["hello", "tools", "json"]) {
       const samples = { compile_ms: [], fresh_guest_ms: [], warm_source_to_exit_ms: [], cold_source_to_exit_ms: [] };
       for (let n = 0; n <= rounds; n++) {
         const expected = expectOutput(kind, n);
@@ -71,7 +86,8 @@ if (process.argv[2] === "--once") {
         // Distinct source each time. Give each path its own source values so a previously compiled
         // program module cannot satisfy the next path on hosts that cache WebAssembly.compile().
         const start = performance.now();
-        const bytes = checkedProcess(compiler, ["-", "-"], source);
+        const emitted = checkedProcess(compiler, ["-", "-", "-"], source, kind === "json" ? 3 : 0);
+        const bytes = kind === "json" ? checkedProcess("wasm/build.sh", ["link"], emitted) : emitted;
         const compiled = performance.now() - start;
         const guest = await timedRun(stdout => host(bytes, { stdout, tools }), expected);
         const next = n + rounds + 1;
@@ -92,7 +108,7 @@ if (process.argv[2] === "--once") {
         const middle = Math.floor(values.length / 2);
         return [label, Number(((values[middle] + values[Math.floor((values.length - 1) / 2)]) / 2).toFixed(2))];
       }));
-      console.log(JSON.stringify({ program: kind, samples: rounds, node: process.version, ...medians }));
+      console.log(JSON.stringify({ program: kind, backend: kind === "json" ? "llvm" : "direct", samples: rounds, node: process.version, ...medians }));
     }
   } finally {
     rmSync(directory, { recursive: true, force: true });
