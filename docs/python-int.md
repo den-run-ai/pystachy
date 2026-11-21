@@ -61,6 +61,7 @@ can still fail before arithmetic starts.
 | `+`, `-`, `*`, `//`, `%`, bitwise operators, shifts and `**` | Exact integer results, including augmented assignments and unary `+`, `-` and `~`; negative integer exponents remain restricted below. |
 | `/` | Rounds the quotient once to the nearest float, with halfway cases rounded to even; raises `OverflowError` outside the float range. |
 | Comparisons, truth, `min()` and `max()` | Exact, including mixed int/float comparisons: `2 ** 53 + 1 > 9007199254740992.0` is true. |
+| `==` and `!=` with a closed union of builtin values | A promoting integer compares with the active member, including exact comparisons with floats and the `None` case. |
 | `sum()` with an integer start and integer items | Exact for lists, tuples, sets, dict keys, ranges, generators, iterators and `map()`. A float start or mixed float items introduces a boundary. |
 | `abs()`, `pow(x, y)`, `pow(x, y, m)` | Accept large integers. Three-argument `pow` supports negative exponents through modular inversion. |
 | Type and equality checks | Both representations have Python type `int`; `isinstance(x, int)` works. An int never equals a string, bytes value or container. |
@@ -226,7 +227,7 @@ Some of these boundaries reject values CPython accepts. The
 
 | Destination | Limit |
 |---|---|
-| Closed unions other than scalar `int \| None` | Int members stay 64-bit, including inferred bool/int joins, mixed int/float/bool/str container displays and a location annotated `float` that was [given an `int`](language/typing.md#int-values-in-float-locations) ([deviation](../tests/deviations/python_int_float_store.py)). Arithmetic on such a union that could yield an `int` is rejected. |
+| Closed unions other than scalar `int \| None` | Int members stay 64-bit, including inferred bool/int joins, mixed int/float/bool/str container displays, [recursive alias values](../tests/deviations/python_int_recursive_union_width.py) at the root or in lists and dicts, and a location annotated `float` that was [given an `int`](language/typing.md#int-values-in-float-locations) ([deviation](../tests/deviations/python_int_float_store.py)). Arithmetic on such a union that could yield an `int` is rejected. |
 | Unsupported list items, dict keys/values and set elements | Int storage promotes only in the supported integer and tuple forms above. An `int \| None` inside a list or tuple remains 64-bit, including nested tuple items. |
 | Optional tuple results | Dict `get()`/`pop()` results that may be `None`, such as `d.get(k)` for tuple values, retain the 64-bit tuple boundary. |
 | Runtime-length tuples | `tuple[int, ...]` items, including a tuple sliced by a variable, stay 64-bit. |

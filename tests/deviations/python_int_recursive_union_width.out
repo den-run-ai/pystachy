@@ -1,0 +1,7 @@
+root 7 True 1
+[7] {'n': 7}
+root overflow
+list overflow
+dict overflow
+[] {}
+[exit 0]

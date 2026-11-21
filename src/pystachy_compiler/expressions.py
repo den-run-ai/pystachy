@@ -6404,6 +6404,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 ceq = self.eqcall(om["__eq__"], True, obj, cx)
                 return ceq if op == "==" else Val(self.scalar('xor', [Val(ceq.v, 'bool'), Val('true', 'bool')]), "bool")
             return self.ptr_cmp(op, a, b)
+    if op in ["==", "!="] and (unopt(a.t) == BIG or unopt(b.t) == BIG) and self.big_union(b if unopt(a.t) == BIG else a):
+        # Compare the active member with the original integer. A float may equal a number
+        # outside int64, and testing None needs no integer conversion.
+        return self.optcmp(op, a, b) if is_opt(a.t) or is_opt(b.t) else self.ucmp(op, a, b)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and (self.isnum(unopt(a.t)) or unopt(a.t) == BIG) and (self.isnum(unopt(b.t)) or unopt(b.t) == BIG):
         return self.optcmp(op, a, b)  # (an int | None of a module that opts in: None, or its promoting int)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and a.t != "None" and b.t != "None":
