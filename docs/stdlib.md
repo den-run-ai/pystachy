@@ -192,7 +192,11 @@ Pystachy's `lib/`, so CPython's own `re`, `functools` and other files do not hid
 Source-feature counts cannot establish compiler coverage: functions with the same syntax
 may specialize for different types, and unused imported functions may not be compiled.
 The sweep reports excluded modules separately. Preserve the compiler revision, CPython version
-and overlay policy with any result; compare sweeps only when their denominators agree.
+and overlay policy with any result. For a release comparison, pass `--include-ports` for
+both compilers and point them at the same CPython `Lib/` checkout. The sweep then tries
+every import request, including submodules hidden by a shipped top-level package. The
+metadata lists these names in `overlay.port_namespace_modules`. This counts an import
+under a port only when the compiler accepts it.
 Use `--metadata build/import-sweep-meta.json` on a sweep to retain its compiler-file hash,
 source-repository revision, Python environment, overlay exclusions and result counts beside
 the unchanged module-to-result JSON. The source revision describes the checkout; the
