@@ -1482,11 +1482,18 @@ Str *pys_str_float(double d) {               /* Python repr(): shortest round-tr
   }
   return pys_str(o, w - o);
 }
-Str *pys_float_hex(double d) {                /* float.hex(): CPython spells zero 0x0.0p+0, NaN unsigned */
-  char b[40];
+Str *pys_float_hex(double d) {
   if (isnan(d)) return cstr("nan");
+  if (isinf(d)) return cstr(signbit(d) ? "-inf" : "inf");
   if (d == 0) return cstr(signbit(d) ? "-0x0.0p+0" : "0x0.0p+0");
-  return pys_str(b, fsnprintf(b, 40, "%.13a", d));
+  /* float.hex() keeps all 52 fraction bits and the minimum normal exponent for a
+     subnormal. libc %a may instead normalize it to a leading 1 and a lower exponent. */
+  uint64_t bits = double_to_bits(d);
+  int exponent = (int)(bits >> 52 & 0x7ff);
+  unsigned long long fraction = bits & ((1ULL << 52) - 1);
+  char b[40];
+  return pys_str(b, snprintf(b, sizeof b, "%s0x%d.%013llxp%+d", bits >> 63 ? "-" : "",
+                             exponent != 0, fraction, exponent ? exponent - 1023 : -1022));
 }
 I pys_float_is_integer(double d) {          /* below 2**52 in magnitude, d is whole where its truncation equals it;
                                                 from there every finite float is (no floor(): see pys_floor) */
