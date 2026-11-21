@@ -1577,7 +1577,14 @@ module's dependencies.
 
 Calls may exchange strings, bytes, bools, `None`, boxed values and
 representations that already carry no numeric companion, including recursive `JSONValue`
-storage. Numeric scalars, scalar unions and numeric lists do not qualify.
+storage. A tracked caller can also receive a newly computed integer from a hinted
+function whose arguments meet those rules. For a single return expression using
+`+`, `-` or `*`, the compiler checks that the emitted operation is primitive
+checked integer arithmetic and that only the return uses its result. Returning
+a field, a constant or an overloaded operator's shared result restores tracking.
+The JSON repair port uses this rule to read the end character offset after raw
+decoding from the start of a document. Supplying an explicit starting offset
+retains tracking, including the position stored on a decoder error.
 
 A hinted class may
 cross directly as a typed handle; observing its numeric fields, boxing it, mixing tracked and

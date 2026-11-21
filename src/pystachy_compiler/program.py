@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
 from src.pystachy_compiler.analysis import all_imports, chk_names, collect, constant_writes, defines, module_anns, module_ints, module_reads, module_strs, module_values, name_nodes, needs_eh, none_assigns, reads_builtin
 from src.pystachy_compiler.diagnostics import NeedHierarchy, Rejoin, dynamic_program, fail, shown
-from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
+from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage, fresh_int_result
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
 from src.pystachy_compiler.ir import Val
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
@@ -2386,6 +2386,14 @@ def gen_discover_program(self, prepared: PreparedProgram) -> None:
         # (the dispatchers of dynamic values, compiled again while more classes are boxed: dynamic.py)
         if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(xed) + len(self.xctors) == before and not self.dyn_dispatchers():
             break
+    if len(self.idresults) > 0:
+        checked: dict[str, bool] = {}
+        for fn in self.fns:
+            if fn.f.ll in self.idresults and fresh_int_result(fn):
+                checked[fn.f.ll] = True
+        for symbol in self.idresults:
+            if symbol not in checked:
+                self.identity_event(f"hinted call of {self.idresults[symbol]}()")
     self.exc_tables()
     for nm in self.flagged:
         if nm not in self.gtypes and nm not in self.funcs and nm not in self.classes:

@@ -128,6 +128,10 @@ class _Parser:
         self.mark_char = count
         return count
 
+    def end_offset(self) -> int:
+        # raw_decode exposes a computed character offset, independent of private cursor state.
+        return self.char_index(self.pos) + 0
+
     def seek_char(self, idx: int) -> None:
         # raw_decode's idx is a character offset; the scanner itself uses byte offsets.
         if idx < 0:

@@ -269,3 +269,16 @@ def _raw_parse(p: _Parser, idx: int) -> tuple[Any, int]:
     p.seek_char(idx)
     value = _value(p, 0)
     return value, p.char_index(p.pos)
+
+
+def _raw_decode_start(s: str) -> tuple[Any, int]:
+    # An omitted index starts at the fresh parser's initial position.
+    try:
+        return _raw_parse_start(_Parser(s, False))
+    except UnicodeDecodeError:
+        return _raw_parse_start(_Parser(s, True))
+
+
+def _raw_parse_start(p: _Parser) -> tuple[Any, int]:
+    value = _value(p, 0)
+    return value, p.end_offset()

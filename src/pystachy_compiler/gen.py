@@ -1598,6 +1598,7 @@ class Gen:
         # and a restart makes a fresh Gen before disabling hints or tracking everything.
         self.idtry = True  # try checked identity-inert module hints on this pass
         self.idhint: dict[str, bool] = {}  # hinted modules excluded from tracking
+        self.idresults: dict[str, str] = {}  # calls requiring a fresh integer result on this compilation attempt
         self.idevent = ""
         self.idsplit: dict[str, bool] = {}
         # the number of stores into each such slot (a new binding) that the compiler has emitted in
