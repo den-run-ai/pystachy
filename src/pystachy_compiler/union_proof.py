@@ -6,7 +6,7 @@ stable. It keeps one state per block, not a product of whole-function execution 
 """
 from __future__ import annotations
 from src.pystachy_compiler.dataflow import forward_fixpoint, live_values
-from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, slot_register
+from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, slot_register, tmpname
 from src.pystachy_compiler.specs import BIG, FXBIT, RUNTIME
 from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join, union_tags
 from src.pystachy_compiler.utils import gelem, is_dict, is_gen, is_opt, is_set, is_union, is_vtuple, rt_generic, rtsig, targs, umembers
@@ -245,6 +245,7 @@ class UnionProof:
         # object, ircheck's kin; and the class of each field key's object)
         self.kin: dict[str, dict[str, bool]] = {} if kin is None else kin
         self.keyclass: dict[str, str] = {}
+        self.keys_by_owner: dict[str, list[str]] = {}
         self.fieldobjs: dict[str, bool] = {}
         # (the values that operands read at a type without None, which their definitions give as
         # opt[U], by the types they read them at: ircheck.optional_reads; and the blocks whose
@@ -338,18 +339,18 @@ class UnionProof:
             self.blocks[b.label] = bn
             for i in b.code:
                 for number in i.r:
-                    v = "%t" + str(number)
+                    v = tmpname(number)
                     self.defs[v] = i
                     self.native[v] = i.t
                 if i.op == "ovf":
-                    self.native["%t" + str(i.r[1])] = "int"
-                    self.native["%t" + str(i.r[2])] = "bool"
+                    self.native[tmpname(i.r[1])] = "int"
+                    self.native[tmpname(i.r[2])] = "bool"
                 if (i.op == "tuple.load" or i.op == "dyn.payload"):
                     # Their element/member contracts are checked by their own typed
                     # operations; closed-union proof tracking starts at union reads.
-                    self.native["%t" + str(i.r[-1])] = i.s
+                    self.native[tmpname(i.r[-1])] = i.s
                 if i.op == "alloc.fixed" or (i.op == "rt" and (i.s == "alloc" or i.s == "alloc_atomic")):
-                    v = "%t" + str(i.r[0])
+                    v = tmpname(i.r[0])
                     self.roots[v] = v
                 for a in i.a:
                     if consts is not None and a.v in consts:
@@ -362,9 +363,9 @@ class UnionProof:
                     # (an address, or the packed slot of a list read or a runtime call; a packed
                     # slot that another op makes is a value, as its %slot type made it)
                     held = i.t.startswith("&") or (i.t.startswith("*") and (i.op == "list.load" or i.op == "rt"))
-                    self.typebase(("MU:" if held else "U:") + "%t" + str(i.r[0]), i.t[1:] if held else i.t)
+                    self.typebase(("MU:" if held else "U:") + tmpname(i.r[0]), i.t[1:] if held else i.t)
                     if held and i.op != "rt":
-                        self.memtypes["%t" + str(i.r[0])] = i.t[1:]
+                        self.memtypes[tmpname(i.r[0])] = i.t[1:]
                 for j in range(len(i.a)):
                     v = i.a[j].v
                     if v in self.private and (j != 0 or (i.op != "mem.load" and i.op != "mem.store")):
@@ -372,11 +373,11 @@ class UnionProof:
                 if (i.op == "union.tag" or i.op == "union.payload" or i.op == "union.raw"):
                     wanted["U:" + i.a[0].v] = True
                     if i.op == "union.tag":
-                        self.tagvals["%t" + str(i.r[0])] = True
+                        self.tagvals[tmpname(i.r[0])] = True
                     else:
-                        self.raw["%t" + str(i.r[1])] = True
-                        self.bitsneeded["%t" + str(i.r[1])] = True
-                        self.addresses["%t" + str(i.r[0])] = True
+                        self.raw[tmpname(i.r[1])] = True
+                        self.bitsneeded[tmpname(i.r[1])] = True
+                        self.addresses[tmpname(i.r[0])] = True
                 if i.op == "ptr.cmp":
                     for a in i.a:
                         # (without union obligations only a test of what may be None matters:
@@ -387,7 +388,7 @@ class UnionProof:
                     for a in i.a:
                         wanted["U:" + a.v] = True  # (a test of a pointer word against null: a None test)
                 if i.op == "rt" and (i.s == "ubox" or i.s == "ubox_opt"):
-                    wanted["U:%t" + str(i.r[0])] = True
+                    wanted["U:" + tmpname(i.r[0])] = True
                     if i.a[0].v.startswith("%"):
                         self.tagvals[i.a[0].v] = True
                     if i.s == "ubox" and i.a[1].v.startswith("%"):
@@ -395,7 +396,7 @@ class UnionProof:
         for b in fn.blocks:
             for i in b.code:
                 if (i.op == "rt" and len(i.r) == 1) or i.op == "list.load":
-                    self.native["%t" + str(i.r[0])] = self.runtime_type(i, i.t, 0)
+                    self.native[tmpname(i.r[0])] = self.runtime_type(i, i.t, 0)
                 if i.op == "rt" and i.s == "vtuple.get" and len(i.r) == 1 and len(i.a) == 2:
                     # A tuple[U, ...]'s item at an index, which pys_vtuple_get checks against its
                     # length: a box of that union, as an item slot's (below) or a list's (list.get)
@@ -403,7 +404,7 @@ class UnionProof:
                     owner = owner[4:-1] if is_opt(owner) else owner
                     item = targs(owner)[0] if owner.startswith("vtuple[") else ""
                     if is_union(item[4:-1] if is_opt(item) else item):
-                        self.typebase("U:%t" + str(i.r[0]), item)
+                        self.typebase("U:" + tmpname(i.r[0]), item)
                 if i.op == "mach.addr" and len(i.r) == 1 and len(i.a) == 2:
                     # An item slot of a tuple whose items are all of one union type (a fixed
                     # tuple's, or a tuple[U, ...]'s past its header) holds a box of that union:
@@ -414,7 +415,7 @@ class UnionProof:
                     owner = owner[4:-1] if is_opt(owner) else owner
                     items = targs(owner) if owner.startswith("tuple[") or owner.startswith("vtuple[") else []
                     if len(items) > 0 and all(x == items[0] for x in items) and is_union(items[0][4:-1] if is_opt(items[0]) else items[0]) and self.item_slot(i, owner.startswith("vtuple["), len(items)):
-                        self.typebase("MU:%t" + str(i.r[0]), items[0])
+                        self.typebase("MU:" + tmpname(i.r[0]), items[0])
         # Backward relevance for boxed values and forward/backward transport closure for
         # tags and bits. Literals never become tainted: the same integer spelling in an
         # unrelated loop index does not make that index a payload.
@@ -447,7 +448,7 @@ class UnionProof:
             before = len(wanted) + len(self.raw) + len(self.rawslots) + len(self.bitsneeded) + len(self.bitsslots) + len(self.tagvals) + len(self.tagslots) + len(self.roots)
             for b in fn.blocks:
                 for i in b.code:
-                    r = "%t" + str(i.r[0]) if len(i.r) > 0 else ""
+                    r = tmpname(i.r[0]) if len(i.r) > 0 else ""
                     if (i.op == "mach.addr" or i.op == "field.addr") and i.a[0].v in self.roots:
                         self.roots[r] = self.roots[i.a[0].v]
                     if "U:" + r in wanted:
@@ -491,7 +492,7 @@ class UnionProof:
         self.livevalues: dict[str, dict[str, bool]] = live_values(fn, self.blocks)
 
     def transport_closure(self, i: Ins, vals: dict[str, bool], slots: dict[str, bool], bits: bool) -> None:
-        r = "%t" + str(i.r[0]) if len(i.r) > 0 else ""
+        r = tmpname(i.r[0]) if len(i.r) > 0 else ""
         if (i.op == "phi" or i.op == "select" or i.op == "slot.pack" or i.op == "cast") and (bits or (i.t == "int" or i.t == "%slot" or i.t.startswith("*"))):
             aa = i.a[1:] if i.op == "select" else i.a
             for a in aa:
@@ -715,15 +716,22 @@ class UnionProof:
         if not (obj in self.defs or (obj.startswith("%a") and obj[2:].isdigit())):
             return ""
         base = s.loaded.get(obj, obj)
-        key = "MF:" + base[1:] + "#" + str(index)
+        owner = base[1:]
+        key = "MF:" + owner + "#" + str(index)
+        if key not in self.keyclass:
+            if owner not in self.keys_by_owner:
+                self.keys_by_owner[owner] = []
+            self.keys_by_owner[owner].append(key)
         self.keyclass[key] = cls
         return key
 
     def forget_fields(self, s: UnionState, slot: str) -> None:
-        prefix = "MF:" + slot[1:] + "#"
-        for k in list(s.d):
-            if k.startswith(prefix):
-                s.forget(k)
+        # Only this owner's field keys can name a field of the old object.
+        owner = slot[1:]
+        if owner in self.keys_by_owner:
+            for k in self.keys_by_owner[owner]:
+                if k in s.d:
+                    s.forget(k)
 
     def compare(self, s: UnionState, r: str, key: str, allowed: list[str], equal: bool) -> None:
         domain = s.dom(key)
@@ -786,16 +794,18 @@ class UnionProof:
     def transfer(self, s: UnionState, i: Ins, b: str, checking: bool) -> None:
         op = i.op
         a = i.a
-        r = "%t" + str(i.r[0]) if len(i.r) > 0 else ""
+        r = tmpname(i.r[0]) if len(i.r) > 0 else ""
         if checking and len(self.narrowed) > 0 and op != "phi":
             for j in range(len(a)):
+                if a[j].v not in self.narrowed or a[j].t not in self.narrowed[a[j].v]:
+                    continue
                 if (op == "union.tag" or op == "union.payload" or op == "union.raw") and j == 0:
                     continue  # (their own nonnull proof below names the read more closely)
                 # (a select's value reads count where its condition selects them, as for a phi)
                 facts = s.conditional(a[0].v, j == 1) if op == "select" and j > 0 else s
                 self.check_some(facts, a[j], b, op + " operand " + str(j))
         for n in i.r:
-            v = "%t" + str(n)
+            v = tmpname(n)
             if v in self.fieldobjs:
                 self.forget_fields(s, v)  # a loop may redefine the SSA value
                 if v in s.loaded:
@@ -809,7 +819,7 @@ class UnionProof:
                     del s.bf[v]
         if (op != "phi" and op != "select" and op != "mem.load" and op != "mach.load" and op != "union.payload" and op != "union.raw" and op != "slot.pack" and op != "cast"):
             for n in i.r:
-                v = "%t" + str(n)
+                v = tmpname(n)
                 if v in self.bitsneeded:
                     s.set("B:" + v, [self.native[v]])
         if checking:
@@ -824,7 +834,7 @@ class UnionProof:
             if op == "union.tag":
                 s.copy("T:" + r, u)
             else:
-                s.copy("B:%t" + str(i.r[1]), u)
+                s.copy("B:" + tmpname(i.r[1]), u)
                 if checking and op == "union.payload" and d != [i.s]:
                     self.error(b, "union.payload needs tag " + i.s + " for " + a[0].v)
             return
@@ -1025,7 +1035,7 @@ class UnionProof:
             if frm not in i.b:
                 continue
             a = i.a[i.b.index(frm)]
-            r = "%t" + str(i.r[0])
+            r = tmpname(i.r[0])
             if r in self.fieldobjs:
                 self.forget_fields(z, r)
             if i.t == "bool":

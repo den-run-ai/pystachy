@@ -499,14 +499,11 @@ def value_view(self, d: str, u: str, rt_result: bool, rt_operand: bool) -> str:
     return ""
 
 
-def optional_reads(self, fn: IFn) -> dict[str, dict[str, bool]]:
+def optional_reads(self, fn: IFn, types: dict[str, str], makers: dict[str, str]) -> dict[str, dict[str, bool]]:
     # The values of fn that an operand reads at a type without None where their definition gives
     # them opt[U] of a reference U (the optional view that narrows, specs.TYPE_VIEWS), with the
     # types those operands read them at: the closed-union proof must show each such value not
     # None where an operand reads it so (UnionProof.check_some)
-    types: dict[str, str] = {}
-    makers: dict[str, str] = {}
-    value_definitions(fn, types, makers)
     found: dict[str, dict[str, bool]] = {}
     for b in fn.blocks:
         for i in b.code:
@@ -569,13 +566,14 @@ def cast_error(self, fn: IFn, i: Ins, objects: dict[str, bool], types: dict[str,
     return "" if ok else f"cast {i.s} of a {a} to a {t}, where a cast of kind {i.s} reads {CAST_KINDS[i.s]}"
 
 
-def value_types(self, fn: IFn) -> None:
+def value_types(self, fn: IFn, types: dict[str, str] | None = None, makers: dict[str, str] | None = None) -> None:
     # Each operand reads its value at the type the value's definition gives it (ir.value_definitions),
     # or by a view of specs.TYPE_VIEWS, as an MLIR operand has its value's one type. An address
     # has a type &T and a packed slot a type *T, and no view reads one as the other.
-    types: dict[str, str] = {}
-    makers: dict[str, str] = {}
-    value_definitions(fn, types, makers)
+    if types is None or makers is None:
+        types = {}
+        makers = {}
+        value_definitions(fn, types, makers)
     # (the values whose definition gives them only a machine type, a runtime type variable or a
     # placeholder; the first type an operand of an op but rt reads each at, and where; and the
     # views decided so far, as many operands read alike)
@@ -909,7 +907,11 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         dynamic.run()
         for j in range(len(dynamic.bad)):
             self.bad_ir(fn, fn.blocks[at[dynamic.badblocks[j]]], dynamic.bad[j])
-    narrowed = optional_reads(self, fn)
+    # Casts, optional reads and operand types use the same immutable definitions.
+    # Without casts, wait until structural checks have validated each instruction.
+    if not casts:
+        value_definitions(fn, defined, makers)
+    narrowed = optional_reads(self, fn, defined, makers)
     unions = union_proofs or (machine_tags and has_machine_union_tag(fn))
     if len(narrowed) > 0 or (unions and not simple_union_proof(fn, self.utags, at, succ, union_types)):
         writes: dict[str, bool] = {}
@@ -939,7 +941,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         for j in range(len(proof.bad)):
             self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])
     # (after the proofs above, whose findings name what a reading breaks more closely)
-    value_types(self, fn)
+    value_types(self, fn, defined, makers)
 
 def gen_verify_gen(self, fn: IFn, b: Blk, i: Ins, j: int) -> None:
     # a generator op (docs/internals.md#generators), past its row's shape and types: gen.start
