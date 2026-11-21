@@ -38,3 +38,14 @@ def default(flag: bool, tag: Any) -> Annotated[tuple[State | None, Any], "entry"
 
 
 print(default(True, "x") is default(True, "y"))
+plain = (None, "ok")
+print(default(True, "x") is plain)
+
+
+def already_joined(flag: bool, state: State, token: Any) -> tuple[State | None, Any]:
+    if flag:
+        return state, "ok"
+    return state, token
+
+
+print(already_joined(False, State("x"), 3)[1])

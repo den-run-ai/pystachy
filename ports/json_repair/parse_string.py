@@ -259,7 +259,8 @@ def _prepare_string_entry(
         char = self.get_char_at()
 
     if not char:
-        return None, ""
+        # Pystachy port: keep the entry tuple fresh when boxing the empty result.
+        return None, char or ""
 
     fast_path_value = _try_parse_simple_quoted_string(self)
     if fast_path_value is not None:

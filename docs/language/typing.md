@@ -958,8 +958,9 @@ parameter given a `list[int]` cannot append a `str`, and a function annotated `-
 one type for each specialization. When two returns of the same fixed tuple shape cannot join
 a slot by inference, a concrete slot in the return annotation can supply a type that accepts both
 representations. For example, a function annotated `-> tuple[State | None, Any]` can return
-`None, value` on one branch and `state, value` on another. The second slot keeps its inferred
-type for each specialization. An initialized module or local variable whose annotation
+`None, value` on one branch and `state, value` on another when the inferred sibling slots agree
+across returns. A returned tuple literal or an existing tuple must fit the resulting slot layouts
+while keeping its identity. An initialized module or local variable whose annotation
 mentions `Any` is inferred as if unannotated: `x: Any = 5`, `xs: list[Any] = []` followed by
 `xs.append(1)`, and `b: Box[Any] = Box(1)` use the existing assignment inference. This erases
 the whole annotation, including any concrete parts. The same straight-line local retyping

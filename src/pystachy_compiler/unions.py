@@ -1132,7 +1132,23 @@ def gen_join_hint(self, t: str, vt: str) -> bool:
         key = f"global:{self.joinname}"
     elif self.joinkind == "field" or self.joinkind == "return":
         key = self.joinname
-    j = self.join_type(self.newhints.get(key, t), vt, self.joinkind == "return")
+    prior = self.newhints.get(key, t)
+    j = self.join_type(prior, vt)
+    policy = ""
+    if self.joinkind == "return" and len(self.curfn.return_slots) > 0 and is_tuple(prior) and is_tuple(vt):
+        left, right = targs(prior), targs(vt)
+        if len(left) == len(right) and len(left) == len(self.curfn.return_slots):
+            # Remember which specialization needed a declared sibling. Its inferred
+            # siblings must keep their representation across all return statements.
+            policy = self.newhints.get(key + "|slots", self.hints.get(key + "|slots", ""))
+            if any([left[i] != right[i] and self.any_in([self.curfn.return_slots[i]]) for i in range(len(left))]):
+                if policy == "declared":
+                    return False
+                policy = "mixed"
+            elif j == "" and policy != "mixed":
+                j = self.join_type(prior, vt, True)
+                policy = "declared"
+
     if key != "" and (j == "" or j == t or j == self.hints.get(key, "")) and (is_list(t) or is_dict(t)) and self.join_type(t, vt) == t:
         # a list or dict of another item type, which the location's cannot be as it is: where a
         # call of a function or method without a return annotation made it, the function returns
@@ -1156,6 +1172,8 @@ def gen_join_hint(self, t: str, vt: str) -> bool:
     if key == "" or j == "" or j == t or j == self.hints.get(key, ""):
         return False
     self.newhints[key] = j
+    if policy != "":
+        self.newhints[key + "|slots"] = policy
     return True
 
 
