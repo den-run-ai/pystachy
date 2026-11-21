@@ -128,7 +128,10 @@ test("direct exception handling matches the CPython recordings", async t => {
   const run = createRunner();
   const dir = await mkdtemp(join(tmpdir(), "pystachy-exceptions-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
-  const cases = ["exc_handler_loop_values", "exc_raise", "exc_finally", "exc_recursion_unwind", "exc_uncaught", "exc_exit"];
+  const cases = [
+    "exc_handler_loop_values", "exc_raise", "exc_finally", "exc_recursion_unwind", "exc_uncaught", "exc_exit",
+    "exc_class_try", "exc_class_exit", "exc_class_exit_msg",
+  ];
   for (const name of cases) {
     await t.test(name, async t => {
       const prefix = `tests/programs/exceptions/${name}`;
@@ -138,7 +141,7 @@ test("direct exception handling matches the CPython recordings", async t => {
       t.after(() => Promise.all([stdout.close(), stderr.close()]));
       const status = await run(module, { stdout: stdout.fd, stderr: stderr.fd });
       assert.equal(await readFile(out, "utf8") + `[exit ${status}]\n`, await readFile(`${prefix}.out`, "utf8"));
-      const expectedError = name === "exc_uncaught" ? await readFile(`${prefix}.err`, "utf8") : "";
+      const expectedError = ["exc_uncaught", "exc_class_try", "exc_class_exit_msg"].includes(name) ? await readFile(`${prefix}.err`, "utf8") : "";
       assert.equal(await readFile(err, "utf8"), expectedError);
     });
   }
@@ -160,4 +163,47 @@ except BaseException:
   const status = await createCodeMode({ fallback: false })(program, { tools, stderr: stderr.fd });
   assert.equal(status, 134);
   assert.equal(await readFile(err, "utf8"), "wasm trap: host tool failed\n");
+});
+
+test("a JSON tool result runs directly with the typed decoder", async t => {
+  const source = await readFile(new URL("../bench/startup/wasm_json_filter.py", import.meta.url), "utf8");
+  const { module, backend } = await createCompiler({ fallback: false })(source + `
+try:
+    print(count_open_issues())
+except json.JSONDecodeError as e:
+    print(e.msg, e.pos)
+except TypeError as e:
+    print(str(e))
+`);
+  assert.equal(backend, "direct");
+  const dir = await mkdtemp(join(tmpdir(), "pystachy-json-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const out = await open(join(dir, "out"), "w");
+  t.after(() => out.close());
+  const run = createRunner();
+  const replies = [
+    JSON.stringify([{ state: "open", title: "雪" }, { state: null }, { state: "öpen" }, { state: "open" }]),
+    "[]", "{}", "[null]", '["雪",]',
+  ];
+  for (const reply of replies) {
+    const tools = new Map([["issue_records", project => {
+      assert.equal(project, "pystachy");
+      return reply;
+    }]]);
+    assert.equal(await run(module, { tools, stdout: out.fd }), 0);
+  }
+  assert.equal(await readFile(join(dir, "out"), "utf8"),
+    "2\n0\nexpected an array of issues\nexpected an issue object\nIllegal trailing comma before end of array 4\n");
+});
+
+test("the direct JSON codec reaches the recorded nesting limit on the default Node stack", async t => {
+  const prefix = "tests/programs/library/json_depth";
+  const dir = await mkdtemp(join(tmpdir(), "pystachy-json-depth-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const output = await open(join(dir, "out"), "w");
+  t.after(() => output.close());
+  const run = createCodeMode({ fallback: false });
+  const status = await run(await readFile(`${prefix}.py`, "utf8"), { stdout: output.fd });
+  assert.equal(await readFile(join(dir, "out"), "utf8") + `[exit ${status}]\n`,
+    await readFile(`${prefix}.out`, "utf8"));
 });

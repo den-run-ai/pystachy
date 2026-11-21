@@ -139,8 +139,14 @@ def install_tools(linker: wt.Linker, tools: Mapping[str, Callable[[str], str]]) 
 
 
 class Runner:
-    def __init__(self, runtime: Path = DEFAULT_RUNTIME):
+    def __init__(self, runtime: Path = DEFAULT_RUNTIME, *, max_wasm_stack: int | None = None):
         config = wt.Config()
+        if max_wasm_stack is not None:
+            # Engine creation requires 0 < max_wasm_stack <= async_stack_size.
+            # wasmtime-py 51 leaves async_stack_size at Wasmtime's 2 MiB default.
+            if type(max_wasm_stack) is not int or not 0 < max_wasm_stack <= 2 * 1024 * 1024:
+                raise ValueError("max_wasm_stack must be an integer from 1 to 2097152 bytes")
+            config.max_wasm_stack = max_wasm_stack
         config.wasm_exceptions = True
         config.consume_fuel = True
         self.engine = wt.Engine(config)
