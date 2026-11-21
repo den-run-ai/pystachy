@@ -147,6 +147,22 @@ class HostTests(unittest.TestCase):
               (func (export "_start") (call $exit (i32.const {code}))))''')
             self.assertEqual(self.runner.run(program), code & 0xFFFFFFFF)
 
+    def test_engine_stack_budget(self):
+        for invalid in [0, -1, 2 * 1024 * 1024 + 1, False, 1.5]:
+            with self.assertRaisesRegex(ValueError, "max_wasm_stack"):
+                Runner(max_wasm_stack=invalid)
+        binary = wt.wat2wasm('''(module
+          (func $recurse (param i32) (result i32)
+            (if (result i32) (local.get 0)
+              (then (i32.add (call $recurse (i32.sub (local.get 0) (i32.const 1))) (i32.const 1)))
+              (else (i32.const 0))))
+          (func (export "_start") (drop (call $recurse (i32.const 2048)))))''')
+        small = Runner(max_wasm_stack=8 * 1024)
+        with self.assertRaises(wt.Trap) as raised:
+            small.run(small.compile(binary))
+        self.assertEqual(raised.exception.trap_code, wt.TrapCode.STACK_OVERFLOW)
+        self.assertEqual(self.runner.run(self.runner.compile(binary)), 0)
+
     def test_fuel_is_per_call(self):
         program = self.compile('(module (func (export "_start") (loop $l br $l)))')
         for fuel in [0, 1000]:

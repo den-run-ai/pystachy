@@ -189,6 +189,16 @@ compilation. `memory_limit` caps each guest linear memory in bytes. A cap below 
 memory size fails instantiation, and growth beyond the cap returns the Wasm `memory.grow`
 failure value. The limit excludes engine code, tables and host allocations.
 
+`Runner(max_wasm_stack=2 * 1024 * 1024)` configures the engine's native stack budget
+for guest execution. The default is Wasmtime 51's 512 KiB. Deep recursive programs
+can hit a Wasmtime stack-overflow trap before reaching Python's `RecursionError`.
+Only raise the budget when every calling thread has that much native stack available
+on entry, plus headroom for host callbacks, Python frames and the engine. The runner
+never resizes the OS thread stack. The pinned Python binding supports up to 2 MiB.
+On Linux x86-64, the directly emitted `json_depth` fixture matched its Python recording
+at 1 MiB and 2 MiB with over 7 MiB of native stack available on entry. The fixture
+covers a 2,000-container round trip and catching `RecursionError` on deeper inputs.
+
 ## What differs from a native build
 
 - **The collector is off.** The conservative stack scan cannot see WebAssembly locals, so
