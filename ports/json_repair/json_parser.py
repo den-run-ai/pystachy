@@ -28,6 +28,11 @@ def _new_array() -> list[Any]:
     return result
 
 
+def _new_object() -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    return result
+
+
 class JSONParser:
     # Split the parse methods into separate files because this one was like 3000 lines
     def parse_array(

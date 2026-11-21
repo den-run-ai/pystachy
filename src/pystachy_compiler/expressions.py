@@ -647,12 +647,6 @@ def gen_cabc_isinst(self, t: str, k: str) -> int:
     # classes registered with k (its module registers the builtin types), by k's __subclasshook__,
     # which looks for k's methods (ABC_METHODS), and by derivation from k: a builtin type's answer
     # is CPython's, a class's is cabc_exact's for each class an object of t may be of
-    if self.bkind(t) != "":
-        # (an object of a class deriving from list or dict answers as the builtin's objects do,
-        # unless it is None: builtin_bases.py rejects classes deriving from it and the special
-        # methods that would change the answer)
-        r = self.cabc_isinst("list[?]" if self.bkind(t) == "list" else "dict[?,?]", k)
-        return -2 if r == 1 else r
     if t in self.classes:
         rs = [self.cabc_exact(x, k) for x in self.refl_concrete(t) if x in self.classes]
         if len(rs) > 0 and len([r for r in rs if r != 1]) == 0:
@@ -721,6 +715,9 @@ def gen_cabc_exact(self, c: str, k: str) -> int:
     # the ABCs in CPython), else by k's methods that c has, or by c's deriving from lib's k
     # (CABCS); -1 where c binds such a name to a class attribute, whose value decides
     o = self.classes[c].origin if self.classes[c].origin != "" else c
+    base = self.bkind(c)
+    if base != "" and self.cabc_isinst("list[?]" if base == "list" else "dict[?,?]", k) == 1:
+        return 1  # (the builtin's registered ABCs also recognize its subclass)
     if o == RANGEC:
         return 1 if k in ["Hashable", "Iterable", "Reversible", "Sized", "Container", "Collection", "Sequence"] else 0
     if o == BYTEARRAYC:
@@ -762,7 +759,9 @@ def gen_cabc_methods(self, c: str, names: list[str]) -> int:
             if self.hash_kind(c) == "":
                 return 0
         elif m not in ci.methods:
-            return 0
+            base = self.bkind(c)
+            if base == "" or m not in HASATTR[base].split():
+                return 0
     return 1
 
 def gen_dict_class(self, t: str) -> bool:
@@ -5602,11 +5601,14 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         if error != "" and a.infer_from == "" and b.infer_from == "":
             self.raise_("TypeError", self.sconst(error))
             return Val("undef", "int")
-    if len(self.bsubn) > 0 and (op == "+" or op == "*" or op == "|"):
-        # (xs + ys and xs * n of a list subclass's object, d | m of a dict subclass's, make a
-        # plain list or dict: builtin_bases.py)
-        a = self.bdecay(a, BARITH)
-        b = self.bdecay(b, BARITH)
+    if len(self.bsubn) > 0 and op in ["+", "*", "|"]:
+        # Only this operator's forward or reflected method can replace builtin dispatch.
+        # When calling a user method, keep its existing argument representations.
+        m = DUNDER[op]
+        custom = (a.t in self.classes and m in self.classes[a.t].methods) or (a.t != b.t and b.t in self.classes and "__r" + m[2:] in self.classes[b.t].methods)
+        own = BARITH if custom else []
+        a = self.bdecay(a, own)
+        b = self.bdecay(b, own)
     if a.t == "int" and b.t == "int" and a.lit and b.lit and dynamic_program():
         folded = folded_int(op, a.v, b.v)
         if folded != "":
@@ -6404,6 +6406,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 ceq = self.eqcall(om["__eq__"], True, obj, cx)
                 return ceq if op == "==" else Val(self.scalar('xor', [Val(ceq.v, 'bool'), Val('true', 'bool')]), "bool")
             return self.ptr_cmp(op, a, b)
+    if op in ["==", "!="] and (unopt(a.t) == BIG or unopt(b.t) == BIG) and self.big_union(b if unopt(a.t) == BIG else a):
+        # Compare the active member with the original integer. A float may equal a number
+        # outside int64, and testing None needs no integer conversion.
+        return self.optcmp(op, a, b) if is_opt(a.t) or is_opt(b.t) else self.ucmp(op, a, b)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and (self.isnum(unopt(a.t)) or unopt(a.t) == BIG) and (self.isnum(unopt(b.t)) or unopt(b.t) == BIG):
         return self.optcmp(op, a, b)  # (an int | None of a module that opts in: None, or its promoting int)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and a.t != "None" and b.t != "None":
