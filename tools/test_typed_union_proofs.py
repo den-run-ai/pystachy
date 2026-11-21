@@ -1399,6 +1399,24 @@ class UnionProofTests(unittest.TestCase):
                             c.g.verify(c.fn, False)
                         self.assertIn("ubox needs matching tag and payload provenance", errors.getvalue())
 
+    def test_dict_length_box_requires_owner_and_integer_tag(self):
+        for owner, tag, offset in (("dict[str,int]", "int", False), ("dict[str,int]", "float", False),
+                                   ("%ptr", "int", False), ("dict[str,int]", "int", True)):
+            with self.subTest(owner=owner, tag=tag, offset=offset):
+                c = Case("dict_length_box", [owner])
+                c.g.runtime("pys_ubox")
+                addr = c.op("mach.addr", "%ptr", "int", [("%a0", "%ptr"), ("1", "int")]) if offset else "%a0"
+                value = c.op("mach.load", "int", a=[(addr, "%ptr")])
+                c.op("rt", "%ptr", "ubox", [(str(c.g.utags[tag]), "int"), (value, "*T")])
+                c.ret()
+                if owner == "dict[str,int]" and tag == "int" and not offset:
+                    c.g.verify(c.fn, False)
+                else:
+                    errors = StringIO()
+                    with redirect_stderr(errors), self.assertRaises(SystemExit):
+                        c.g.verify(c.fn, False)
+                    self.assertIn("ubox needs matching tag and payload provenance", errors.getvalue())
+
     def test_yielded_payload_is_read_as_the_generator_element_type(self):
         # (gen_slots passes an int member's payload register itself, as the %slot word yielded)
         for element, member in (("int", "int"), ("float", "int"), ("int", "float")):
