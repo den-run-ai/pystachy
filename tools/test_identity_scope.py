@@ -202,6 +202,16 @@ scopelib.keep(outer())
                 forced, _ = self.compile(source, full=True)
                 self.assertEqual(ir, forced)
 
+    def test_percent_padding_limits_numeric_boxes(self):
+        source = 'from _pystachy_percent import percent_format\nprint(percent_format("%+08d", 7))\n'
+        ir, _ = self.compile(source, helper=False)
+        bodies = functions(ir)
+        output = bodies["@f._pystachy_percent$_output"]
+        # The settings can still acquire companions as they enter the typed helper.
+        self.assertLessEqual(len(BOXING.findall(output)), 3)
+        padding = bodies["@f._pystachy_percent$_pad_output"]
+        self.assertLessEqual(len(BOXING.findall(padding)), 2)
+
     def test_tomllib_flags_keep_typed_private_storage(self):
         source = 'import tomllib\nprint(tomllib.loads("a.b = 1\\na.c = 2\\n[x]\\ny = 3"))\n'
         ir, generations = self.compile(source, helper=False)
