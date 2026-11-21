@@ -1,0 +1,83 @@
+dict len 2
+dict [0] KeyError 0
+dict ['a'] [1, {'b': 'deep'}]
+dict [-1] KeyError -1
+dict [True] KeyError True
+list len 4
+list [0] 10
+list ['a'] TypeError list indices must be integers or slices, not str
+list [-1] [1, 2]
+list [True] x
+str len 5
+str [0] h
+str ['a'] TypeError string indices must be integers, not 'str'
+str [-1] o
+str [True] é
+int len TypeError object of type 'int' has no len()
+int [0] TypeError 'int' object is not subscriptable
+int ['a'] TypeError 'int' object is not subscriptable
+int [-1] TypeError 'int' object is not subscriptable
+int [True] TypeError 'int' object is not subscriptable
+float len TypeError object of type 'float' has no len()
+float [0] TypeError 'float' object is not subscriptable
+float ['a'] TypeError 'float' object is not subscriptable
+float [-1] TypeError 'float' object is not subscriptable
+float [True] TypeError 'float' object is not subscriptable
+bool len TypeError object of type 'bool' has no len()
+bool [0] TypeError 'bool' object is not subscriptable
+bool ['a'] TypeError 'bool' object is not subscriptable
+bool [-1] TypeError 'bool' object is not subscriptable
+bool [True] TypeError 'bool' object is not subscriptable
+None len TypeError object of type 'NoneType' has no len()
+None [0] TypeError 'NoneType' object is not subscriptable
+None ['a'] TypeError 'NoneType' object is not subscriptable
+None [-1] TypeError 'NoneType' object is not subscriptable
+None [True] TypeError 'NoneType' object is not subscriptable
+empty list len 0
+empty list [0] IndexError list index out of range
+empty list ['a'] TypeError list indices must be integers or slices, not str
+empty list [-1] IndexError list index out of range
+empty list [True] IndexError list index out of range
+empty dict len 0
+empty dict [0] KeyError 0
+empty dict ['a'] KeyError 'a'
+empty dict [-1] KeyError -1
+empty dict [True] KeyError True
+empty str len 0
+empty str [0] IndexError string index out of range
+empty str ['a'] TypeError string indices must be integers, not 'str'
+empty str [-1] IndexError string index out of range
+empty str [True] IndexError string index out of range
+list [0]= ['zero', 'x', None, [1, 2]]
+list ['k']= TypeError list indices must be integers or slices, not str
+list [-1]= [10, 'x', None, 2.5]
+str [0]= TypeError 'str' object does not support item assignment
+str ['k']= TypeError 'str' object does not support item assignment
+str [-1]= TypeError 'str' object does not support item assignment
+int [0]= TypeError 'int' object does not support item assignment
+int ['k']= TypeError 'int' object does not support item assignment
+int [-1]= TypeError 'int' object does not support item assignment
+float [0]= TypeError 'float' object does not support item assignment
+float ['k']= TypeError 'float' object does not support item assignment
+float [-1]= TypeError 'float' object does not support item assignment
+bool [0]= TypeError 'bool' object does not support item assignment
+bool ['k']= TypeError 'bool' object does not support item assignment
+bool [-1]= TypeError 'bool' object does not support item assignment
+None [0]= TypeError 'NoneType' object does not support item assignment
+None ['k']= TypeError 'NoneType' object does not support item assignment
+None [-1]= TypeError 'NoneType' object does not support item assignment
+empty list [0]= IndexError list assignment index out of range
+empty list ['k']= TypeError list indices must be integers or slices, not str
+empty list [-1]= IndexError list assignment index out of range
+empty str [0]= TypeError 'str' object does not support item assignment
+empty str ['k']= TypeError 'str' object does not support item assignment
+empty str [-1]= TypeError 'str' object does not support item assignment
+deep 3 3 2 4 e
+d p
+deep ['a', '1', 'b']
+TypeError 'int' object is not subscriptable ['a', '1', 'b', 'n', '5']
+changed {'a': ['changed', {'b': 'deep'}], 'n': 3, 's': 'text'}
+{'a': ['changed', {'b': None, 'c': {'new': [True]}}], 'n': 3, 's': 'text', 'm': [1, 2], 'empty': {}} 5 0
+1 7 y
+{'rows': [{'tags': []}, {'id': 7}], 'count': 2}
+[exit 0]

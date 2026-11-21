@@ -580,6 +580,25 @@ for _k in "basename dirname split splitext isabs abspath expanduser".split():
     NONEARG["os.path." + _k] = NONEARG["os.fspath"]  # (posixpath's take os.fspath() of the path first)
 NONEARG["os.path.normpath"] = "_path_normpath: path should be string, bytes or os.PathLike, not NoneType"  # (posix's, in C)
 OPTARG: list[str] = "str repr ascii bool input min max sys.exit exit quit".split()
+# builtins of one value that a closed value union's value splits by its tag (Gen.usplit), and
+# the member types each takes: another member raises CPython's TypeError (NONEARG's, of its type)
+UCALLS: dict[str, list[str]] = {"int": ["int", "float", "bool", "str"], "float": ["int", "float", "bool", "str"],
+                                "abs": ["int", "float", "bool"], "round": ["int", "float", "bool"], "ord": ["str"],
+                                "chr": ["int", "bool"]}
+# the methods of CPython 3.13's str, list, dict, int (bool's too) and float: a closed union's
+# member of another type raises AttributeError for one (Gen.uvalue_method), where one the
+# compiler lacks (utils.has_method) is rejected instead
+PYMETHODS: dict[str, list[str]] = {
+    "str": ("capitalize casefold center count encode endswith expandtabs find format format_map index isalnum isalpha isascii "
+            "isdecimal isdigit isidentifier islower isnumeric isprintable isspace istitle isupper join ljust lower lstrip maketrans "
+            "partition removeprefix removesuffix replace rfind rindex rjust rpartition rsplit rstrip split splitlines startswith "
+            "strip swapcase title translate upper zfill").split(),
+    "list": "append clear copy count extend index insert pop remove reverse sort".split(),
+    "dict": "clear copy fromkeys get items keys pop popitem setdefault update values".split(),
+    "int": "as_integer_ratio bit_count bit_length conjugate from_bytes is_integer to_bytes".split(),
+    "float": "as_integer_ratio conjugate fromhex hex is_integer".split(),
+}
+PYMETHODS["bool"] = PYMETHODS["int"]
 # what those return (for None itself, which always raises)
 NONERET: dict[str, str] = {"len": "int", "int": "int", "float": "float", "ord": "int", "os.system": "int", "os.path.exists": "bool"}
 # builtins whose own code (not CALLS) takes a str, list, dict or tuple

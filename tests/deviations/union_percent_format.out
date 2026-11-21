@@ -1,0 +1,6 @@
+TypeError % formatting with a format string computed at run time is not supported
+TypeError % formatting with a format string computed at run time is not supported
+TypeError not all arguments converted during string formatting
+1
+1.5
+[exit 0]

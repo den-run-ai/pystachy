@@ -1,6 +1,7 @@
 """Gen component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
+from src.pystachy_compiler.diagnostics import STATICFILES
 from src.pystachy_compiler.source_lines import SourceLines
 from src.pystachy_compiler.lowering import gen_lower_scalar as scalar_ir_lower_scalar
 from src.pystachy_compiler.scalar_ir import (
@@ -12,6 +13,10 @@ from src.pystachy_compiler.scalar_ir import (
 )
 from src.pystachy_compiler.union_arithmetic import (
     gen_ucmp as union_arithmetic_ucmp,
+    gen_ucontains as union_arithmetic_ucontains,
+    gen_uorder as union_arithmetic_uorder,
+    gen_uidentity as union_arithmetic_uidentity,
+    gen_uvalue_orders as union_arithmetic_uvalue_orders,
     gen_unumeric as union_arithmetic_unumeric,
     gen_unumeric_case as union_arithmetic_unumeric_case,
     gen_uorders as union_arithmetic_uorders,
@@ -196,6 +201,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_payload as dynamic_dyn_payload,
     gen_dyn_raw as dynamic_dyn_raw,
     gen_dyn_policy as dynamic_dyn_policy,
+    gen_static_value as dynamic_static_value,
     gen_class_identity as dynamic_class_identity,
     gen_fn_home as dynamic_fn_home,
     gen_fn_identity as dynamic_fn_identity,
@@ -272,6 +278,13 @@ from src.pystachy_compiler.unions import (
     gen_uequal as unions_uequal,
     gen_reference_union as unions_reference_union,
     gen_umethod as unions_umethod,
+    gen_ureject as unions_ureject,
+    gen_uonly as unions_uonly,
+    gen_uiter_items as unions_uiter_items,
+    gen_uiterable as unions_uiterable,
+    gen_useq_used as unions_useq_used,
+    gen_useq_next as unions_useq_next,
+    gen_uvalue_method as unions_uvalue_method,
     gen_uboxes as unions_uboxes,
     gen_umember_problem as unions_umember_problem,
     gen_union_type as unions_union_type,
@@ -1041,6 +1054,9 @@ from src.pystachy_compiler.expressions import (
     gen_static_reads as expressions_static_reads,
     gen_static_type as expressions_static_type,
     gen_subscript as expressions_subscript,
+    gen_unone as expressions_unone,
+    gen_usub_items as expressions_usub_items,
+    gen_usubscript as expressions_usubscript,
     gen_tget as expressions_tget,
     gen_tstore as expressions_tstore,
     gen_tput as expressions_tput,
@@ -1239,6 +1255,7 @@ from src.pystachy_compiler.program import (
     gen_fixed_base_properties as program_fixed_base_properties,
     gen_fixed_hierarchy as program_fixed_hierarchy,
     gen_hierarchy_chain as program_hierarchy_chain,
+    gen_request_fixed_params as program_request_fixed_params,
     gen_request_hierarchy as program_request_hierarchy,
     gen_retry_hierarchy as program_retry_hierarchy,
     gen_template_fix as program_template_fix,
@@ -1407,6 +1424,7 @@ from src.pystachy_compiler.variables import (
     gen_ahead as variables_ahead,
     gen_applies as variables_applies,
     gen_assign as variables_assign,
+    gen_ustore as variables_ustore,
     gen_unpack_next as variables_unpack_next,
     gen_list_slot as variables_list_slot,
     gen_assigned_to as variables_assigned_to,
@@ -2276,8 +2294,8 @@ class Gen:
     def dyn_id_box(self, v: Val) -> Val:
         return dynamic_dyn_id_box(self, v)
 
-    def json_any(self, name: str, args: list[Node], want: str, resultsoft: bool) -> Val | None:
-        return dynamic_json_any(self, name, args, want, resultsoft)
+    def json_any(self, name: str, args: list[Node], want: str, resultsoft: bool, policy: bool = True) -> Val | None:
+        return dynamic_json_any(self, name, args, want, resultsoft, policy)
 
     def dyn_id_held(self, v: Val) -> Val:
         return dynamic_dyn_id_held(self, v)
@@ -3580,6 +3598,18 @@ class Gen:
     def ucmp(self, op: str, a: Val, b: Val, nonnull: bool = False) -> Val:
         return union_arithmetic_ucmp(self, op, a, b, nonnull)
 
+    def ucontains(self, op: str, a: Val, b: Val) -> Val:
+        return union_arithmetic_ucontains(self, op, a, b)
+
+    def uorder(self, op: str, a: Val, b: Val, top: bool = True) -> Val:
+        return union_arithmetic_uorder(self, op, a, b, top)
+
+    def uvalue_orders(self, a: str, b: str) -> bool:
+        return union_arithmetic_uvalue_orders(self, a, b)
+
+    def uidentity(self, a: str, b: str) -> bool:
+        return union_arithmetic_uidentity(self, a, b)
+
     def join_hint(self, t: str, vt: str) -> bool:
         return unions_join_hint(self, t, vt)
 
@@ -3777,6 +3807,9 @@ class Gen:
 
     def assign(self, t: Node, v: Val) -> None:
         return variables_assign(self, t, v)
+
+    def ustore(self, o: Val, t: Node, v: Val) -> None:
+        return variables_ustore(self, o, t, v)
 
     def slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] | None = None, values: list[Val] | None = None, written: list[Val] | None = None) -> Val:
         return variables_slice_target(self, t, bnd, nosub, raw, values, written)
@@ -4205,6 +4238,9 @@ class Gen:
 
     def hierarchy_chain(self, name: str, chain: list[str], seen: list[str]) -> bool:
         return program_hierarchy_chain(self, name, chain, seen)
+
+    def request_fixed_params(self, name: str) -> None:
+        program_request_fixed_params(self, name)
 
     def request_hierarchy(self, name: str) -> None:
         return program_request_hierarchy(self, name)
@@ -4822,6 +4858,8 @@ class Gen:
         return expressions_truth(self, v)
 
     def expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
+        if len(STATICFILES) > 0:
+            return dynamic_static_value(self, expressions_expr(self, n, want, returnctx, resultsoft))  # (a static module's: dynamic.py)
         return expressions_expr(self, n, want, returnctx, resultsoft)
 
     def scalar_read_index(self, n: Node) -> bool:
@@ -5036,6 +5074,15 @@ class Gen:
 
     def subscript(self, n: Node, o: Val, want: str = "") -> Val:
         return expressions_subscript(self, n, o, want)
+
+    def unone(self, o: Val, msg: str, kind: str = "TypeError") -> Val:
+        return expressions_unone(self, o, msg, kind)
+
+    def usub_items(self, t: str) -> list[str]:
+        return expressions_usub_items(self, t)
+
+    def usubscript(self, n: Node, o: Val) -> Val:
+        return expressions_usubscript(self, n, o)
 
     def list_find(self, o: Val, v: Val, method: str, start: str = "", stop: str = "") -> Val:
         return containers_list_find(self, o, v, method, start, stop)
@@ -6072,6 +6119,27 @@ class Gen:
 
     def umethod(self, o: Val, m: str, args: list[Node]) -> Val:
         return unions_umethod(self, o, m, args)
+
+    def ureject(self, o: Val, keep: list[str], kind: str, text: str, none: str = "") -> Val:
+        return unions_ureject(self, o, keep, kind, text, none)
+
+    def uonly(self, o: Val, m: str, kind: str, text: str) -> Val:
+        return unions_uonly(self, o, m, kind, text)
+
+    def uiter_items(self, t: str) -> list[str]:
+        return unions_uiter_items(self, t)
+
+    def uiterable(self, v: Val, msg: str) -> Val:
+        return unions_uiterable(self, v, msg)
+
+    def useq_used(self, s: Val) -> str:
+        return unions_useq_used(self, s)
+
+    def useq_next(self, s: Val, pos: str, used: str, i: str, le: str) -> Val:
+        return unions_useq_next(self, s, pos, used, i, le)
+
+    def uvalue_method(self, o: Val, m: str, args: list[Node], want: str, resultsoft: bool) -> Val:
+        return unions_uvalue_method(self, o, m, args, want, resultsoft)
 
     def uboxes(self, a: str, b: str) -> bool:
         return unions_uboxes(self, a, b)

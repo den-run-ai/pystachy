@@ -1,4 +1,3 @@
-# pystachy: dynamic-any
 """Object-oriented filesystem paths.
 
 This module provides classes to represent abstract paths and concrete
@@ -196,6 +195,25 @@ class _NoArg:
 _NOARG = _NoArg()
 
 
+def _add_segment(paths: list[str], arg: Any) -> bool:
+    # (one argument of a path's constructor, as CPython's PurePath.__init__ takes each: its raw
+    # paths are added to paths; False for a parameter past the arguments. Any is inferred from
+    # each call here, as the constructor's parameters are: its code is compiled for the types of
+    # a call's arguments, and an argument that is no path or str raises when the call runs)
+    if isinstance(arg, _NoArg):
+        return False
+    if isinstance(arg, PurePosixPath):
+        paths.extend(arg._raw_paths)
+    elif isinstance(arg, str):
+        paths.append(arg)
+    else:
+        raise TypeError(
+            "argument should be a str or an os.PathLike "
+            "object where __fspath__ returns a str, "
+            f"not {type(arg).__name__!r}")
+    return True
+
+
 class PurePosixPath:
     """Base class for manipulating paths without I/O.
 
@@ -206,24 +224,17 @@ class PurePosixPath:
     directly, regardless of your system.
     """
     # (CPython's PurePosixPath, whose methods are its base PurePath's: PurePath names it here.
-    # Its constructor takes at most eight segments, as its parameters, so that the class is no
+    # Its constructor takes at most eight segments, as its parameters. Any is inferred from each
+    # call there: the constructor's code is compiled for a call's argument types, and the
+    # annotations of the fields it assigns give every path one layout, so that the class is no
     # class template, whose subclasses Path and those of programs could not be)
 
     def __init__(self, p0: Any = _NOARG, p1: Any = _NOARG, p2: Any = _NOARG, p3: Any = _NOARG,
                  p4: Any = _NOARG, p5: Any = _NOARG, p6: Any = _NOARG, p7: Any = _NOARG) -> None:
         paths: list[str] = []
-        for arg in [p0, p1, p2, p3, p4, p5, p6, p7]:
-            if arg is _NOARG:
-                break
-            if isinstance(arg, PurePosixPath):
-                paths.extend(arg._raw_paths)
-            elif isinstance(arg, str):
-                paths.append(arg)
-            else:
-                raise TypeError(
-                    "argument should be a str or an os.PathLike "
-                    "object where __fspath__ returns a str, "
-                    f"not {type(arg).__name__!r}")
+        if (_add_segment(paths, p0) and _add_segment(paths, p1) and _add_segment(paths, p2) and _add_segment(paths, p3)
+                and _add_segment(paths, p4) and _add_segment(paths, p5) and _add_segment(paths, p6)):
+            _add_segment(paths, p7)
         self._raw_paths: list[str] = paths
         if len(paths) == 0:
             raw = ''

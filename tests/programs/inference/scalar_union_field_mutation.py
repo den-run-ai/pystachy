@@ -1,4 +1,4 @@
-# error: closed union arithmetic requires narrowing with isinstance() first
+# A call may change the field: the read after it is the union's, whose str has no + with an int.
 class Event:
     def __init__(self, value: int | str) -> None:
         self.value = value

@@ -1,4 +1,3 @@
-# pystachy: dynamic-any
 """The same bounded, binary-safe scenarios run against stdlib and the C bridge."""
 
 import errno

@@ -880,6 +880,54 @@
       "diagnostic": "tests/programs/library/lib_enum_int_store.py:26: error: expected int, got Color (a member of Color is no promoting int: use its .value)",
       "reason": "A location annotated int that is given an IntEnum or IntFlag member holds an int | member union, but where ints promote it holds promoting ints, which no union with an object holds: the member is rejected, as before.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/scalar_union_operand_str.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/scalar_union_operand_str.py:5: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got int",
+      "reason": "Multiplying an int | str union joins a promoting int result with the str's in a closed union; only scalar int-or-None promotion is supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/scalar_union_operand_str.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/scalar_union_operand_str.py:5: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got int",
+      "reason": "Multiplying an int | str union joins a promoting int result with the str's in a closed union; only scalar int-or-None promotion is supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/union_value_inplace.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/union_value_inplace.py:23: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got int",
+      "reason": "The remainder of a closed value union joins a promoting int result with its float result in a closed union; only scalar int-or-None promotion is supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/union_value_inplace.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/union_value_inplace.py:23: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got int",
+      "reason": "The remainder of a closed value union joins a promoting int result with its float result in a closed union; only scalar int-or-None promotion is supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/union_value_operators.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/union_value_operators.py:19: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got int",
+      "reason": "Arithmetic on a closed value union joins a promoting int result with its float result in a closed union; only scalar int-or-None promotion is supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/union_value_operators.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/union_value_operators.py:19: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got int",
+      "reason": "Arithmetic on a closed value union joins a promoting int result with its float result in a closed union; only scalar int-or-None promotion is supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     }
   ]
 }

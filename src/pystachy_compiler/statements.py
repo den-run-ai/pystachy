@@ -1,7 +1,7 @@
 """Statements component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BREV, BSTORE
-from src.pystachy_compiler.utils import identity_abi, identity_default, is_union
+from src.pystachy_compiler.utils import identity_abi, identity_default, is_union, umembers
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.frames import Exit, IterArg, SeqStart, StopCatch
@@ -1483,6 +1483,12 @@ def gen_augassign(self, n: Node) -> None:
             k = self.dyn_box(self.expr(t.kids[1], "dyn"))  # (o[k] op= v, k evaluated once: dynamic.py)
             self.dyn_setitem(o, k, self.inplace(op, self.dyn_getitem(o, k), n.kids[1]))
             return
+        if self.value_union(self.rec_type(o.t)):
+            # (o[k] op= v through a closed value union's value: o and k are evaluated once,
+            # and the item is read and stored back by the member the tag names, unions.py)
+            target = mk("index", "", t.line, [self.vnode(o), self.vnode(self.expr(t.kids[1], ""))])
+            self.assign(target, self.inplace(op, self.expr(target, ""), n.kids[1]))
+            return
         if is_list(unopt(o.t)):
             et = elem(unopt(o.t))
             ix = self.expr(t.kids[1], "int")
@@ -1942,7 +1948,13 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
     if it.kind == "call" and len(it.kids) == 1 and it.kids[0].kind == "attr":
         m = it.kids[0].s
         if m == "items" or m == "keys" or m == "values":
-            o = self.unwrap(self.expr(it.kids[0].kids[0], ""), f"AttributeError: 'NoneType' object has no attribute '{m}'")
+            o = self.expr(it.kids[0].kids[0], "")
+            dicts = [x for x in umembers(unopt(self.rec_type(o.t))) if is_dict(x)] if self.value_union(self.rec_type(o.t)) else []
+            if len(dicts) == 1:
+                # (a closed value union's dict, as it is: another member has no such method)
+                o = self.uonly(Val(o.v, self.rec_type(o.t)).identity(o), dicts[0], "AttributeError", f"'{{}}' object has no attribute '{m}'")
+            else:
+                o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
             if is_dict(o.t):
                 self.for_seq(tgt, [o], m, body, "0", hide, arg)
             elif o.t == "kw[]" and m != "keys":
@@ -2013,6 +2025,9 @@ def gen_iterable(self, v: Val, msg: str = "TypeError: 'NoneType' object is not i
     # value the runtime's iterator over it (dyniter: dynamic.py)
     if v.t == "dyn":
         return Val(self.rt("pys_dyn_iter", "ptr", [f"ptr {v.v}"]), "dyniter")
+    if self.value_union(self.rec_type(v.t)):
+        # (a closed value union's: the list, dict or str its tag names, unions.py)
+        return self.uiterable(Val(v.v, self.rec_type(v.t)).identity(v), msg)
     v = self.unwrap(self.bdecay(v, BITER), msg)  # (builtin_bases.py)
     if is_kw(v.t):
         return self.kw_list(v)  # (iterating **kwargs gives the names)
@@ -2185,6 +2200,8 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
     # is every sequence's in a zip() with a dynamic value, whose next item may come from user
     # code, a __next__ or a generator, that changes an earlier sequence: #1164)
     now = nexts or len([s for s in seqs if is_gen(s.t)]) > 0 or (len(seqs) > 1 and len([s for s in seqs if s.t == "dyniter"]) > 0)
+    # (and a closed value union's, whose item its member's own test gives: useq_next)
+    now = now or len([s for s in seqs if self.value_union(s.t)]) > 0
     lc = self.label()
     ls = self.label()
     le = self.label()
@@ -2203,6 +2220,15 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
         s = seqs[k]
         if c is not None and self.is_iterator(s.t):
             vals.append(self.next_in(s, c))
+            go = self.label()
+            self.place(go)
+            lp.body = go
+            lp.tests.append(go)
+            lp.idx.append("")
+            at.append("")
+            continue
+        if self.value_union(s.t):
+            vals.append(self.useq_next(s, st[k], used[k], i, le))
             go = self.label()
             self.place(go)
             lp.body = go
@@ -2360,6 +2386,16 @@ def gen_seq_start(self, s: Val, mode: str, made: SeqStart) -> None:
         rf = self.range_fields(s)
         made.st.append(self.rt("pys_range_len", "i64", [f"i64 {rf[0]}", f"i64 {rf[1]}", f"i64 {rf[2]}"]))
         made.used.append("")
+        return
+    if self.value_union(s.t) and not is_opt(s.t):
+        # (a closed value union's, which uiterable has checked: one cursor serves the dict or
+        # the str it may hold, and its size or length then is the member's: unions.py)
+        if mode == "reversed":
+            self.err(f"reversed() of a closed union value ({typestr(s.t)}) is not supported: narrow it with isinstance() first")
+        pos = self.alloca("int", "")
+        self.mstore('int', '0', pos)
+        made.st.append(pos)
+        made.used.append(self.useq_used(s))
         return
     if not (s.t == "str" or s.t == "bytes" or is_list(s.t) or is_vtuple(s.t) or is_dict(s.t) or is_set(s.t) or (s.t == "file" and mode != "reversed") or (is_tuple(s.t) and s.t != "tuple[]") or is_gen(s.t)):
         self.err(f"cannot iterate over {s.t}" if s.t != "file" else "a file is not reversible")

@@ -1,4 +1,3 @@
-# pystachy: dynamic-any
 import json
 from ffi import export
 from json_repair import loads as _loads, repair_json as _repair_json
