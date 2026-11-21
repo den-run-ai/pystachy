@@ -1,7 +1,7 @@
 # WebAssembly (experimental)
 
 This directory builds Pystachy programs for `wasm32-wasi` (WASI preview 1) and runs them
-under Node. Short typed programs can reach WebAssembly directly from finalized typed IR or
+under Node or Wasmtime. Short typed programs can reach WebAssembly directly from finalized typed IR or
 through LLVM. Both routes use the same runtime (`runtime.c` and `runtime.py`).
 
 ## Build and run
@@ -61,8 +61,16 @@ or by the shared runtime. For a call with an unwind edge, a typed Wasm catch res
 reactor's stack pointer and branches to the landing pad in the finalized IR. The runtime
 performs exception matching, cleanup and uncaught reporting, including `SystemExit`.
 Each run has its own Python exception tag. Host tool failures and Wasm traps still end
-the run with status 134. The direct exception fixtures in `wasm/test_codemode.mjs` have
+the Node run with status 134. The direct exception fixtures in `wasm/test_codemode.mjs` have
 been verified on Node 22.23.0 and 24.22.3.
+
+Set `WASM_EH=standard` to emit standard `try_table` handlers for engines such as
+Wasmtime (enable its exceptions proposal). Both the source and module-text frontends
+emit these instructions directly. When LLVM 18/19 produces a WASI command with
+exception handlers, the build runs Binaryen's `wasm-opt --emit-exnref` after linking
+(tested with Binaryen 132). Commands without handlers need no conversion.
+The default, `WASM_EH=legacy`, also supports early Node 22 releases whose engines
+reject `try_table`. Both encodings use the same runtime and Python exception tag.
 
 The direct emitter gives a named refusal for generators, function values, user-defined
 exception classes that require callback tables, dynamic values and classes that need
@@ -133,12 +141,45 @@ during instantiation or execution rejects the promise with
 compilation occur before the timer starts. A blocking native host call can
 delay interruption, and a tool may already have performed external work.
 A hard deadline over the complete request requires a separately supervised
-process. Fuel accounting and suspend/resume remain open.
+process. The Node host has no fuel accounting or suspend/resume API.
 
 Run `node --no-warnings bench/startup/wasm.mjs 11` from the checkout to measure
 source compilation, a fresh guest in a warm host, and source-to-exit latency in warm
 and fresh Node processes. It checks a distinct snippet for every sample, covering hello,
 a directly emitted tool-result filter, and a JSON filter using dynamic `Any` and the LLVM fallback.
+
+## Calling tools from a Wasmtime host
+
+Install `wasmtime==51.0.0` in the Python environment running the host. Build a program with
+`WASM_EH=standard wasm/build.sh tir prog.py prog.wasm` so that any exception handlers use
+standard `try_table` encoding. `python wasm/run_wasmtime.py prog.wasm ARGS...` runs the
+result. Use `--runtime PATH` before the program name for a different reactor. Standalone
+LLVM/WASI commands need only the program file.
+
+```python
+from pathlib import Path
+from wasm.run_wasmtime import Runner
+
+runner = Runner()
+program = runner.compile(Path("prog.wasm").read_bytes())
+status = runner.run(program, tools={"issues": lambda project: "closed\nopen\nopen"},
+                    fuel=1_000_000, memory_limit=64 * 1024 * 1024)
+```
+
+Reuse the runner and compiled program across calls. Each call creates a fresh store with
+its own tool grants, empty stdin, arguments (including argv[0]) and environment (empty by
+default). Both interfaces inherit stdout and stderr and grant no directory mounts. The
+Python API also accepts `stdout` and `stderr` file paths, truncating each file on each run.
+`run` returns the unsigned 32-bit WASI exit status. The CLI exposes its low eight bits. Wasmtime traps and host callback errors propagate to
+the Python caller. The CLI prints a trap diagnostic and exits with status 134. Calls to
+this runner from overlapping threads raise `RuntimeError` because wasmtime-py 51 shares
+its pending callback exception across threads. A callback may run another guest on the
+same thread. Use separate processes for parallel execution.
+
+`fuel` bounds Wasm execution in engine-defined units. It excludes host callback time and
+compilation. `memory_limit` caps each guest linear memory in bytes. A cap below the initial
+memory size fails instantiation, and growth beyond the cap returns the Wasm `memory.grow`
+failure value. The limit excludes engine code, tables and host allocations.
 
 ## What differs from a native build
 
@@ -165,7 +206,7 @@ a directly emitted tool-result filter, and a JSON filter using dynamic `Any` and
 | File | Purpose |
 |---|---|
 | `build.sh` | Runtime, `runtime.wasm`, emitter and program builds |
-| `run.mjs` | Node WASI runner, for a command or a module on `runtime.wasm` |
+| `run.mjs`, `run_wasmtime.py` | Node and Python/Wasmtime runners for commands and direct modules |
 | `codemode.mjs`, `tools.mjs` | String-source host and synchronous tool imports |
 | `../tools/wasm_from_source.py` | Source to Wasm from finalized compiler records |
 | `tir_wasm.py` | Typed IR module text to a WebAssembly module, without LLVM |

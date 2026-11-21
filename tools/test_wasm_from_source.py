@@ -12,8 +12,8 @@ from wasm.tir_wasm import Emitter, parse
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def source_command(*args, stdin=None, cwd=ROOT):
-    env = dict(os.environ, PYTHONPATH=str(ROOT), PYSTACHY_HOME=str(ROOT), PYTHONIOENCODING="utf-8")
+def source_command(*args, stdin=None, cwd=ROOT, eh="legacy"):
+    env = dict(os.environ, PYTHONPATH=str(ROOT), PYSTACHY_HOME=str(ROOT), PYTHONIOENCODING="utf-8", WASM_EH=eh)
     return subprocess.run([sys.executable, str(ROOT / "tools/wasm_from_source.py"), *args],
                           cwd=cwd, env=env, input=stdin, capture_output=True, timeout=30)
 
@@ -44,6 +44,25 @@ class WasmSourceTests(unittest.TestCase):
                     result = source_command(program, "-")
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertEqual(result.stdout, expected)
+
+    def test_standard_and_legacy_handlers_from_source_and_text(self):
+        program = ROOT / "tests/programs/exceptions/exc_raise.py"
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            _, snapshot, _ = typed_ir_text.inspected(program, work)
+            printed = typed_ir_text.format_module(typed_ir_text.module_from_snapshot(snapshot))
+            outputs = []
+            for encoding in ("legacy", "standard"):
+                expected = bytes(Emitter(parse(printed), encoding == "standard").module())
+                result = source_command(program, "-", eh=encoding)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, expected)
+                outputs.append(expected)
+            self.assertNotEqual(*outputs)
+            invalid = source_command(program, "-", "-", eh="invalid")
+            self.assertEqual(invalid.returncode, 2)
+            self.assertIn(b"WASM_EH", invalid.stderr)
+            self.assertEqual(invalid.stdout, b"")
 
     def test_refusal_reuses_finalized_ir_and_frontend_errors_stay_errors(self):
         with tempfile.TemporaryDirectory() as directory:
