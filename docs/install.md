@@ -221,6 +221,13 @@ under CPython. [Compiler commands and settings](internals.md) covers other modes
 
 ## Check or prepare dependencies
 
+Run `pystachy doctor` to see the compiler version, runtime cache, LLVM search
+directory, the five tools' versions and Clang's target triple. It exits with 1
+if a tool cannot report a version or the tools have different major versions.
+For pip and uv installations it also shows whether the managed LLVM is cached
+or pending download, when applicable. An incomplete managed installation also
+exits with 1. The check runs offline and leaves the caches untouched.
+
 ```sh
 tools/setup.sh --check       # validate Python, make and all five supported LLVM tools; no installation
 tools/setup.sh --minimal     # install missing build dependencies with apt/Homebrew

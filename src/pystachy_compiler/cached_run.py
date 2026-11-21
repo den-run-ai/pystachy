@@ -46,6 +46,13 @@ def quote(s: str) -> str:
     return "'" + s.replace("'", "'\\''") + "'"
 
 
+def runtime_cache_dir(home: str) -> str:
+    cache = os.getenv("PYSTACHY_CACHE")
+    if cache is None or cache == "":
+        return home + "/build"
+    return cache
+
+
 def trace(message: str) -> None:
     if os.getenv("PYSTACHY_PROGRAM_CACHE_TRACE", "") == "1":
         print("pystachy program cache: " + message, file=sys.stderr)
@@ -228,7 +235,7 @@ def prepare(cmd: str, source: str, me: str, home: str, dirs: list[str], llvm: st
         fields += [line for line in cpu]
         # Length delimiters keep arbitrary source/import path spelling distinct.
         context = "".join([str(len(x)) + ":" + x for x in fields])
-        root = os.getenv("PYSTACHY_CACHE", "") or home + "/build"
+        root = runtime_cache_dir(home)
         program_root = pc._cache_dir(root)
         if program_root == "" or not acquire(program_root, context):
             trace("bypass cache lock unavailable")
