@@ -55,7 +55,7 @@ runtime() {
   # wasi_stubs.c's pys_wasi_* take those and convert them (a mismatched call would trap)
   # shellcheck disable=SC2086 # (PYSTACHY and W are word lists)
   $PYSTACHY rt runtime.py -o "$t/rt-py.ll"
-  sed -E 's/@(memcmp|memchr|memmem)\(/@pys_wasi_\1(/g' "$t/rt-py.ll" > "$t/rt-py-wasi.ll"
+  "$PY" wasm/wasm32_ir.py "$t/rt-py.ll" "$t/rt-py-wasi.ll"
   # shellcheck disable=SC2086
   "${LLVM}clang" $W -O2 -c -emit-llvm runtime.c -o "$t/rt-c.bc"
   # (runtime.py's module has no data layout: runtime.c's gives the linked one)

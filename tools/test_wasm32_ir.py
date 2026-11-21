@@ -1,12 +1,10 @@
 """wasm/wasm32_ir.py: wasm32's constants keep the layout that native code reads (wasm/README.md)."""
-import importlib.util
 from pathlib import Path
+import sys
 import unittest
 
-ROOT = Path(__file__).resolve().parent.parent
-SPEC = importlib.util.spec_from_file_location("wasm32_ir", ROOT / "wasm" / "wasm32_ir.py")
-W = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(W)
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from wasm import wasm32_ir as W
 
 
 class Wasm32Ir(unittest.TestCase):
@@ -38,6 +36,12 @@ class Wasm32Ir(unittest.TestCase):
     def test_main_and_sized_calls(self):
         self.assertEqual(W.line_of("define i32 @main(i32 %argc, ptr %argv) {"), "define i32 @__main_argc_argv(i32 %argc, ptr %argv) {")
         self.assertEqual(W.line_of("declare i32 @memcmp(ptr, ptr, i64)"), "declare i32 @pys_wasi_memcmp(ptr, ptr, i64)")
+
+    def test_wasi_symbols_preserve_literal_bytes_and_comments(self):
+        literal = r'@s.0 = private constant [10 x i8] c"\22@memcmp(\00"'
+        self.assertEqual(W.line_of(literal), literal)
+        self.assertEqual(W.line_of("  %p = call ptr @memchr(ptr %s, i32 1, i64 2) ; @memmem("),
+                         "  %p = call ptr @pys_wasi_memchr(ptr %s, i32 1, i64 2) ; @memmem(")
 
 
 if __name__ == "__main__":

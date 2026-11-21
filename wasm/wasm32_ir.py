@@ -9,11 +9,20 @@ differ becomes a packed struct of the same layout), and nothing else changes. Co
 constants by its own types (opaque pointers), not by the global's.
 It also renames the program's main for WASI's C library, which calls a main of argc and argv as
 __main_argc_argv (clang renames C's), and its calls of the C library functions whose lengths it
-declares as i64 (SIZED).
+declares as i64.
 """
+import re
 import sys
 
+if __package__:
+    from .wasi_abi import LIBC_WRAPPERS
+else:
+    from wasi_abi import LIBC_WRAPPERS
+
 ADDRESS = "<{ptr, i32}>"
+# LLVM quotes use hexadecimal escapes. Skip whole strings and comments so a
+# Python literal containing "@memcmp(" retains its original bytes and length.
+SYMBOL = re.compile(r'"[^"]*"|;.*|@([-a-zA-Z$._0-9]+)(?=\()')
 
 
 class Parser:
@@ -200,14 +209,14 @@ def rewrite(t: str, v) -> tuple:
     return "<{" + ", ".join(ts) + "}>", "<{" + ", ".join(vs) + "}>"
 
 
-# the C library's functions that the compiler declares with LP64's i64 lengths (a size_t), which
-# wasm/wasi_stubs.c's pys_wasi_* take and convert: a call of wasm32's 32-bit ones would trap
-SIZED = ("memcmp", "memchr", "memmem")
+def wasi_symbol(match: re.Match) -> str:
+    name = match[1]
+    return "@" + LIBC_WRAPPERS[name] if name in LIBC_WRAPPERS else match[0]
 
 
 def line_of(line: str) -> str:
-    for name in SIZED:
-        line = line.replace(f"@{name}(", f"@pys_wasi_{name}(")
+    if "@" in line and "(" in line:
+        line = SYMBOL.sub(wasi_symbol, line)
     if line.startswith("define i32 @main(i32 %argc, ptr %argv)"):
         return "define i32 @__main_argc_argv(i32 %argc, ptr %argv)" + line[len("define i32 @main(i32 %argc, ptr %argv)"):]
     if not line.startswith("@") or "ptrtoint (ptr " not in line or " to i64)" not in line:
