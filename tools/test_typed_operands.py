@@ -46,6 +46,14 @@ REJECTED = [
 
 
 class OperandKindTests(unittest.TestCase):
+    def test_block_labels_share_common_spellings_and_bound_retention(self):
+        for number in (1, 63, 2047):
+            self.assertEqual(ir.block_label(number), f"L{number}")
+            self.assertIs(ir.block_label(number), ir.block_label(number))
+        for number in (-1, 2048, 10**9):
+            self.assertEqual(ir.block_label(number), f"L{number}")
+            self.assertNotIn(number, ir.BLOCK_LABELS)
+
     def test_each_kind_has_its_spellings_and_no_other(self):
         self.assertEqual(ir.OPERAND_KINDS, list(KINDS))
         for kind, spellings in KINDS.items():

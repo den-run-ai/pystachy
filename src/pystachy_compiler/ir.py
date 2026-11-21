@@ -160,6 +160,7 @@ NOLABELS: list[str] = []
 # IR stays until it is lowered, and every collection marks all of it: with the collector
 # running every 5,000 allocations (gc-self), those objects made its cost grow with the square
 # of the compiler's size (#1181)
+BLOCK_LABELS: dict[int, str] = {}
 TMPNAMES: list[str] = []
 ONENUMS: list[list[int]] = []
 
@@ -173,6 +174,16 @@ def merged_blocks(fn: IFn, lines: bool) -> dict[str, bool]:
         for key in fn.cold:
             merged[fn.cold[key]] = True
     return merged
+
+
+def block_label(n: int) -> str:
+    # Functions reuse the same low block numbers. Cache only labels requested by the
+    # compiler, with a fixed bound on what a long-running compiler may retain.
+    if n < 0 or n >= 2048:
+        return f"L{n}"
+    if n not in BLOCK_LABELS:
+        BLOCK_LABELS[n] = f"L{n}"
+    return BLOCK_LABELS[n]
 
 
 def tmpname(n: int) -> str:

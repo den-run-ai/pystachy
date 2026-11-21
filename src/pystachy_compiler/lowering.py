@@ -1,7 +1,7 @@
 """Lowering component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, int_program
-from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, slot_register, tmpname, one_num
+from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, slot_register, block_label, tmpname, one_num
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.lower_module import const_slot, struct_types
 from src.pystachy_compiler.specs import CHECKED, COMPLEXC, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
@@ -654,7 +654,7 @@ def gen_eh_ir(self, fn: IFn) -> None:
             cur.code.append(i)
             if j < len(code) - 1 and (i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume") and self.opfx(i, fn.fa) & raises != 0:
                 fn.n += 1
-                i.b = [f"L{fn.n}", b.handler]
+                i.b = [block_label(fn.n), b.handler]
                 used[b.handler] = True
                 blocks.append(cur)
                 cur = Blk(i.b[0])
