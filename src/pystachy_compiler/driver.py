@@ -1473,6 +1473,13 @@ def main() -> None:
         # What runs the program: Pystachy's JIT runner where it can be built (jit_launcher), else lli,
         # which with PYSTACHY_JIT_CODEGEN=0 links an object of llc's (below). PYSTACHY_TIMING names it
         # (program.jit_runner.lljit, or program.jit_runner.lli.REASON)
+        # Each is given (-mcpu) the CPU that the program cache's clang compiles an executable for,
+        # clang's default: x86-64 on x86-64 Linux, whose tuning (generic) includes LLVM's 64-bit
+        # division bypass, a 32-bit divide where both operands fit. None of them names a CPU by
+        # default, and LLVM's own default tunes for an i586, without the bypass. So a run without the
+        # cache executes, and times, the code that a cached executable runs. AArch64's default CPU is
+        # generic either way
+        targetcpu = " -mcpu=x86-64" if PLATFORM == "linux" and 'target triple = "x86_64-' in layout else ""
         lljit = ""
         if code == 0:
             looked = timing_start()
@@ -1569,11 +1576,11 @@ def main() -> None:
                 program_cache.stop()
             if llcobj:
                 # PYSTACHY_JIT_CODEGEN=0: llc's -O0 code generation, for the CPU lli's ORC compiles
-                # for (the module's triple with LLVM's default CPU: neither tool is given -mcpu, and
-                # no function names one), with lli's flag above, in position-independent code, which
+                # for (the module's triple with targetcpu's CPU: both tools are given it, and no
+                # function names one), with lli's flag above, in position-independent code, which
                 # ORC's JITLink links. ORC runs the constructors of IR modules alone, so lli's main
                 # module holds the program's target and the shared library's callbacks, if any
-                code = timed_sh("program.jit_codegen", f"{llvm}llc -O0 -filetype=obj -relocation-model=pic -profile-guided-section-prefix=false {q(bc)} -o {q(jobj)}")
+                code = timed_sh("program.jit_codegen", f"{llvm}llc -O0 -filetype=obj -relocation-model=pic -profile-guided-section-prefix=false{targetcpu} {q(bc)} -o {q(jobj)}")
                 if code == 0:
                     f = open(jmain, "w", encoding=RAW)
                     f.write(layout + (OBJHOOKS_MAIN if useso != "" else ""))
@@ -1636,7 +1643,7 @@ def main() -> None:
                     archive += '[ -f "$jit_rtlib" ] || { echo "cannot find compiler runtime archive: $jit_rtlib" >&2; exit 1; }; '
                     rt += ' -extra-archive="$jit_rtlib"'
                 # (the runner's -O: its level of code generation, which lli's ORC does not take)
-                launch = f"/dev/fd/{pinned[0].fileno()} -O{codegen}" if lljit != "" else f"{llvm}lli"
+                launch = (f"/dev/fd/{pinned[0].fileno()} -O{codegen}" if lljit != "" else f"{llvm}lli") + targetcpu
                 run = f"unset PYSTACHY_PROGRAM_CACHE_LOCK; {archive}{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {launch}{jitflags}{pe}{rt}{prog} /dev/fd/{inputs[0].fileno()} {' '.join([q(a) for a in rest])}"
                 for p in [bc, jobj, jmain, parto, partso, peo[2]]:
                     if p != "" and os.path.exists(p):

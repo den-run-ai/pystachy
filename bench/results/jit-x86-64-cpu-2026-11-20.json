@@ -1,0 +1,667 @@
+{
+ "notes": "The JIT runner given clang's default CPU on x86-64 Linux (-mcpu=x86-64), as the program cache's clang compiles the same module; before, the runner, lli and llc named no CPU, which LLVM tunes as an i586, without the 64-bit division bypass (a 32-bit divide where both operands fit) that x86-64's generic tuning adds. Sapphire Rapids VM (Xeon 2.1 GHz), Ubuntu LLVM 18.1.3; every process pinned to CPU 1, compilers interleaved with rotating order, 5 rounds; paired median ratios (this branch / main; below 1 is faster) with each round's range. main_runner: main d35417c96 against this branch, program cache off: UMAP probe stages (10,000 points, 16 dimensions, 200 epochs), divmicro (floor division and modulo by run-time divisors, source below), bench/pyperformance at its measured sizes (the programs' own 'seconds'), bench/*.py ('run': wall time minus the driver's preparation, loading and code generation). codegen: the runner's program.jit_codegen. all_drafts: a scratch merge of main with the open performance drafts, where #1468 inlines the runtime's floor division and modulo into JIT code: the runner against the program cache's executable of the same program, before and after this change (PYSTACHY_JIT_CPU=generic, and the host's CPU with #1575 keeping the host's tuning). One executable's kNN stage ranged from 0.94 to 1.35 s over 12 runs on this VM: single-program differences of a few percent are noise.",
+ "main_runner": {
+  "geomean_paired_ratio": 0.99,
+  "timings": 44,
+  "programs": {
+   "b-dictcount.run": {
+    "main": 0.1972,
+    "paired_ratio": 0.981,
+    "ratio_range": [
+     0.702,
+     1.044
+    ],
+    "branch": 0.2007
+   },
+   "b-dictkeys.run": {
+    "main": 0.1957,
+    "paired_ratio": 0.989,
+    "ratio_range": [
+     0.875,
+     1.079
+    ],
+    "branch": 0.1928
+   },
+   "b-dictlookup.run": {
+    "main": 0.5722,
+    "paired_ratio": 1.025,
+    "ratio_range": [
+     0.996,
+     1.184
+    ],
+    "branch": 0.6166
+   },
+   "b-fib.run": {
+    "main": 0.0626,
+    "paired_ratio": 0.994,
+    "ratio_range": [
+     0.961,
+     1.372
+    ],
+    "branch": 0.0622
+   },
+   "b-itertools_loops.run": {
+    "main": 0.2519,
+    "paired_ratio": 0.978,
+    "ratio_range": [
+     0.887,
+     0.991
+    ],
+    "branch": 0.2461
+   },
+   "b-json_records.run": {
+    "main": 0.0215,
+    "paired_ratio": 1.014,
+    "ratio_range": [
+     0.913,
+     1.111
+    ],
+    "branch": 0.0233
+   },
+   "b-list_reads.run": {
+    "main": 0.0191,
+    "paired_ratio": 0.947,
+    "ratio_range": [
+     0.901,
+     1.056
+    ],
+    "branch": 0.0178
+   },
+   "b-listindex.run": {
+    "main": 0.0232,
+    "paired_ratio": 0.988,
+    "ratio_range": [
+     0.951,
+     1.042
+    ],
+    "branch": 0.0237
+   },
+   "b-mandel.run": {
+    "main": 0.0595,
+    "paired_ratio": 1.004,
+    "ratio_range": [
+     0.97,
+     1.023
+    ],
+    "branch": 0.0604
+   },
+   "b-memo.run": {
+    "main": 0.1168,
+    "paired_ratio": 0.985,
+    "ratio_range": [
+     0.918,
+     1.217
+    ],
+    "branch": 0.1123
+   },
+   "b-nbody.run": {
+    "main": 0.0634,
+    "paired_ratio": 0.971,
+    "ratio_range": [
+     0.757,
+     0.991
+    ],
+    "branch": 0.0613
+   },
+   "b-optional_scalars.run": {
+    "main": 0.0191,
+    "paired_ratio": 0.93,
+    "ratio_range": [
+     0.455,
+     1.029
+    ],
+    "branch": 0.0183
+   },
+   "b-setdisplay.run": {
+    "main": 0.2371,
+    "paired_ratio": 1.027,
+    "ratio_range": [
+     0.815,
+     1.161
+    ],
+    "branch": 0.2582
+   },
+   "b-sieve.run": {
+    "main": 0.2454,
+    "paired_ratio": 0.967,
+    "ratio_range": [
+     0.929,
+     1.073
+    ],
+    "branch": 0.243
+   },
+   "b-spectral.run": {
+    "main": 0.0514,
+    "paired_ratio": 1.02,
+    "ratio_range": [
+     1.01,
+     1.074
+    ],
+    "branch": 0.053
+   },
+   "b-words.run": {
+    "main": 0.1031,
+    "paired_ratio": 0.997,
+    "ratio_range": [
+     0.979,
+     1.026
+    ],
+    "branch": 0.1023
+   },
+   "divmicro.seconds": {
+    "main": 0.2324,
+    "paired_ratio": 1.018,
+    "ratio_range": [
+     0.966,
+     1.032
+    ],
+    "branch": 0.2297
+   },
+   "pp-barnes_hut.seconds": {
+    "main": 0.0232,
+    "paired_ratio": 0.948,
+    "ratio_range": [
+     0.667,
+     1.711
+    ],
+    "branch": 0.0231
+   },
+   "pp-bm_logging.seconds": {
+    "main": 0.0025,
+    "paired_ratio": 0.954,
+    "ratio_range": [
+     0.929,
+     1.035
+    ],
+    "branch": 0.0025
+   },
+   "pp-bpe_tokeniser.seconds": {
+    "main": 0.9862,
+    "paired_ratio": 1.052,
+    "ratio_range": [
+     0.929,
+     1.146
+    ],
+    "branch": 1.0324
+   },
+   "pp-chaos.seconds": {
+    "main": 0.0367,
+    "paired_ratio": 1.03,
+    "ratio_range": [
+     0.982,
+     1.152
+    ],
+    "branch": 0.0369
+   },
+   "pp-comprehensions.seconds": {
+    "main": 0.0484,
+    "paired_ratio": 0.986,
+    "ratio_range": [
+     0.954,
+     1.021
+    ],
+    "branch": 0.0491
+   },
+   "pp-fannkuch.seconds": {
+    "main": 0.2061,
+    "paired_ratio": 1.075,
+    "ratio_range": [
+     1.009,
+     1.203
+    ],
+    "branch": 0.2079
+   },
+   "pp-float.seconds": {
+    "main": 0.0504,
+    "paired_ratio": 0.995,
+    "ratio_range": [
+     0.835,
+     1.065
+    ],
+    "branch": 0.0486
+   },
+   "pp-generators.seconds": {
+    "main": 0.1736,
+    "paired_ratio": 0.988,
+    "ratio_range": [
+     0.977,
+     1.064
+    ],
+    "branch": 0.1747
+   },
+   "pp-go.seconds": {
+    "main": 0.0428,
+    "paired_ratio": 0.957,
+    "ratio_range": [
+     0.896,
+     1.03
+    ],
+    "branch": 0.0418
+   },
+   "pp-hexiom.seconds": {
+    "main": 0.0621,
+    "paired_ratio": 0.955,
+    "ratio_range": [
+     0.855,
+     1.041
+    ],
+    "branch": 0.0611
+   },
+   "pp-json_dumps.seconds": {
+    "main": 0.1613,
+    "paired_ratio": 0.985,
+    "ratio_range": [
+     0.975,
+     1.061
+    ],
+    "branch": 0.1572
+   },
+   "pp-json_loads.seconds": {
+    "main": 0.9058,
+    "paired_ratio": 0.957,
+    "ratio_range": [
+     0.867,
+     1.062
+    ],
+    "branch": 0.878
+   },
+   "pp-meteor_contest.seconds": {
+    "main": 0.4173,
+    "paired_ratio": 1.031,
+    "ratio_range": [
+     0.99,
+     1.038
+    ],
+    "branch": 0.4311
+   },
+   "pp-nbody.seconds": {
+    "main": 0.0803,
+    "paired_ratio": 0.965,
+    "ratio_range": [
+     0.886,
+     1.069
+    ],
+    "branch": 0.0806
+   },
+   "pp-nqueens.seconds": {
+    "main": 0.3101,
+    "paired_ratio": 1.009,
+    "ratio_range": [
+     0.986,
+     1.093
+    ],
+    "branch": 0.3216
+   },
+   "pp-pidigits.seconds": {
+    "main": 1.191,
+    "paired_ratio": 0.978,
+    "ratio_range": [
+     0.953,
+     1.031
+    ],
+    "branch": 1.1966
+   },
+   "pp-raytrace.seconds": {
+    "main": 0.0501,
+    "paired_ratio": 0.932,
+    "ratio_range": [
+     0.888,
+     1.105
+    ],
+    "branch": 0.0487
+   },
+   "pp-regex_dna.seconds": {
+    "main": 0.1341,
+    "paired_ratio": 1.01,
+    "ratio_range": [
+     0.929,
+     1.039
+    ],
+    "branch": 0.1379
+   },
+   "pp-regex_effbot.seconds": {
+    "main": 0.2574,
+    "paired_ratio": 1.015,
+    "ratio_range": [
+     0.965,
+     1.052
+    ],
+    "branch": 0.2655
+   },
+   "pp-regex_v8.seconds": {
+    "main": 0.4045,
+    "paired_ratio": 0.953,
+    "ratio_range": [
+     0.868,
+     1.065
+    ],
+    "branch": 0.3875
+   },
+   "pp-richards.seconds": {
+    "main": 0.016,
+    "paired_ratio": 1.025,
+    "ratio_range": [
+     0.97,
+     1.04
+    ],
+    "branch": 0.0163
+   },
+   "pp-richards_super.seconds": {
+    "main": 0.0168,
+    "paired_ratio": 0.996,
+    "ratio_range": [
+     0.819,
+     1.039
+    ],
+    "branch": 0.0167
+   },
+   "pp-scimark.seconds": {
+    "main": 0.0356,
+    "paired_ratio": 0.997,
+    "ratio_range": [
+     0.976,
+     1.025
+    ],
+    "branch": 0.0352
+   },
+   "pp-spectral_norm.seconds": {
+    "main": 0.0236,
+    "paired_ratio": 1.032,
+    "ratio_range": [
+     0.875,
+     1.254
+    ],
+    "branch": 0.0242
+   },
+   "pp-unpack_sequence.seconds": {
+    "main": 0.024,
+    "paired_ratio": 1.004,
+    "ratio_range": [
+     0.536,
+     1.061
+    ],
+    "branch": 0.0241
+   },
+   "umap.knn": {
+    "main": 2.484,
+    "paired_ratio": 0.963,
+    "ratio_range": [
+     0.876,
+     1.039
+    ],
+    "branch": 2.38
+   },
+   "umap.layout": {
+    "main": 5.195,
+    "paired_ratio": 0.974,
+    "ratio_range": [
+     0.955,
+     1.041
+    ],
+    "branch": 5.103
+   }
+  }
+ },
+ "codegen": {
+  "geomean_paired_ratio": 1.014,
+  "programs": 43,
+  "umap": {
+   "main": 0.1297,
+   "paired_ratio": 1.014,
+   "ratio_range": [
+    0.96,
+    1.082
+   ],
+   "branch": 0.1352
+  }
+ },
+ "all_drafts": {
+  "before_generic": {
+   "geomean_runner_over_cached": 1.094,
+   "timings": 3,
+   "programs": {
+    "divmicro.seconds": {
+     "cached_s": 0.0761,
+     "runner_s": 0.1245,
+     "runner_over_cached": 1.632,
+     "range": [
+      1.247,
+      1.708
+     ]
+    },
+    "umap.knn": {
+     "cached_s": 1.234,
+     "runner_s": 1.019,
+     "runner_over_cached": 0.843,
+     "range": [
+      0.797,
+      0.902
+     ]
+    },
+    "umap.layout": {
+     "cached_s": 4.311,
+     "runner_s": 4.122,
+     "runner_over_cached": 0.951,
+     "range": [
+      0.933,
+      1.018
+     ]
+    }
+   }
+  },
+  "after_generic": {
+   "geomean_runner_over_cached": 0.997,
+   "timings": 11,
+   "programs": {
+    "divmicro.seconds": {
+     "cached_s": 0.0757,
+     "runner_s": 0.0762,
+     "runner_over_cached": 1.008,
+     "range": [
+      0.973,
+      1.146
+     ]
+    },
+    "pp-fannkuch.seconds": {
+     "cached_s": 0.2473,
+     "runner_s": 0.208,
+     "runner_over_cached": 0.928,
+     "range": [
+      0.756,
+      1.058
+     ]
+    },
+    "pp-go.seconds": {
+     "cached_s": 0.0416,
+     "runner_s": 0.0412,
+     "runner_over_cached": 1.011,
+     "range": [
+      0.937,
+      1.027
+     ]
+    },
+    "pp-json_loads.seconds": {
+     "cached_s": 0.7651,
+     "runner_s": 0.7663,
+     "runner_over_cached": 1.004,
+     "range": [
+      0.882,
+      1.055
+     ]
+    },
+    "pp-nbody.seconds": {
+     "cached_s": 0.0527,
+     "runner_s": 0.0528,
+     "runner_over_cached": 0.995,
+     "range": [
+      0.917,
+      1.072
+     ]
+    },
+    "pp-nqueens.seconds": {
+     "cached_s": 0.2849,
+     "runner_s": 0.2767,
+     "runner_over_cached": 0.976,
+     "range": [
+      0.832,
+      1.002
+     ]
+    },
+    "pp-raytrace.seconds": {
+     "cached_s": 0.0428,
+     "runner_s": 0.045,
+     "runner_over_cached": 1.043,
+     "range": [
+      0.979,
+      1.092
+     ]
+    },
+    "pp-regex_v8.seconds": {
+     "cached_s": 0.3867,
+     "runner_s": 0.3881,
+     "runner_over_cached": 0.99,
+     "range": [
+      0.98,
+      1.093
+     ]
+    },
+    "pp-richards.seconds": {
+     "cached_s": 0.015,
+     "runner_s": 0.0149,
+     "runner_over_cached": 0.994,
+     "range": [
+      0.962,
+      1.233
+     ]
+    },
+    "umap.knn": {
+     "cached_s": 1.232,
+     "runner_s": 1.261,
+     "runner_over_cached": 1.017,
+     "range": [
+      0.935,
+      1.111
+     ]
+    },
+    "umap.layout": {
+     "cached_s": 4.197,
+     "runner_s": 4.114,
+     "runner_over_cached": 1.003,
+     "range": [
+      0.962,
+      1.013
+     ]
+    }
+   }
+  },
+  "after_host_cpu": {
+   "geomean_runner_over_cached": 0.979,
+   "timings": 11,
+   "programs": {
+    "divmicro.seconds": {
+     "cached_s": 0.0758,
+     "runner_s": 0.0758,
+     "runner_over_cached": 0.969,
+     "range": [
+      0.959,
+      1.204
+     ]
+    },
+    "pp-fannkuch.seconds": {
+     "cached_s": 0.2061,
+     "runner_s": 0.2022,
+     "runner_over_cached": 0.973,
+     "range": [
+      0.95,
+      1.036
+     ]
+    },
+    "pp-go.seconds": {
+     "cached_s": 0.0411,
+     "runner_s": 0.0415,
+     "runner_over_cached": 1.003,
+     "range": [
+      0.997,
+      1.051
+     ]
+    },
+    "pp-json_loads.seconds": {
+     "cached_s": 0.8347,
+     "runner_s": 0.7385,
+     "runner_over_cached": 0.855,
+     "range": [
+      0.852,
+      0.97
+     ]
+    },
+    "pp-nbody.seconds": {
+     "cached_s": 0.053,
+     "runner_s": 0.052,
+     "runner_over_cached": 1.004,
+     "range": [
+      0.928,
+      1.144
+     ]
+    },
+    "pp-nqueens.seconds": {
+     "cached_s": 0.2806,
+     "runner_s": 0.2765,
+     "runner_over_cached": 1.021,
+     "range": [
+      0.904,
+      1.091
+     ]
+    },
+    "pp-raytrace.seconds": {
+     "cached_s": 0.0426,
+     "runner_s": 0.0489,
+     "runner_over_cached": 1.138,
+     "range": [
+      0.916,
+      1.591
+     ]
+    },
+    "pp-regex_v8.seconds": {
+     "cached_s": 0.4066,
+     "runner_s": 0.3655,
+     "runner_over_cached": 0.879,
+     "range": [
+      0.781,
+      0.936
+     ]
+    },
+    "pp-richards.seconds": {
+     "cached_s": 0.0144,
+     "runner_s": 0.0141,
+     "runner_over_cached": 0.993,
+     "range": [
+      0.939,
+      1.013
+     ]
+    },
+    "umap.knn": {
+     "cached_s": 1.176,
+     "runner_s": 1.129,
+     "runner_over_cached": 0.96,
+     "range": [
+      0.834,
+      1.061
+     ]
+    },
+    "umap.layout": {
+     "cached_s": 4.11,
+     "runner_s": 4.117,
+     "runner_over_cached": 1.005,
+     "range": [
+      0.96,
+      1.041
+     ]
+    }
+   }
+  },
+  "note": "Runner (program cache off) over the cached executable of the same program, both from one compiler. before_generic: the scratch merge with the runner naming no CPU (and #1575's -default-tuning), 5 rounds interleaved with other cache variants; after: this change, and #1575 without -default-tuning. regex_v8's cached executable is byte-identical in both after runs (it exceeds the inlining budget, so names no CPU), and its ratio was 0.99 in one and 0.88 in the other: run-to-run variance on this VM."
+ },
+ "sources": {
+  "divmicro": "\"\"\"Division-heavy loop: Python floor division and modulo by run-time divisors whose operands\nfit in 32 bits (what LLVM's 64-bit division bypass speeds up on CPUs with slow 64-bit division).\"\"\"\nimport sys\nimport time\n\n\ndef work(n: int, m: int) -> int:\n    s = 0\n    x = 12345\n    for i in range(m):\n        x = (x * 1103515245 + 12345) % 2147483648\n        s += x % n + x // (n + i % 5 + 1)\n    return s\n\n\ndef main() -> None:\n    n = int(sys.argv[1]) if len(sys.argv) > 1 else 7\n    m = int(sys.argv[2]) if len(sys.argv) > 2 else 20000000\n    t0 = time.perf_counter()\n    print(work(n, m))\n    print(\"seconds\", time.perf_counter() - t0, file=sys.stderr)\n\n\nmain()\n"
+ }
+}

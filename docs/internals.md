@@ -542,10 +542,10 @@ below). The precompiled runtime is not inlined into JIT code.
 
 On Linux, `pystachy run` executes programs with Pystachy's JIT runner, [`lljit.c`](../lljit.c):
 an in-process LLJIT (ORC) launcher on LLVM's C API, which replaces `lli` where it can be built.
-It takes the part of `lli`'s command line that the driver uses (`-dlopen`, `-extra-object`,
-`-extra-archive`, LLVM options such as `-profile-guided-section-prefix=false`, the input and the
-program's arguments) and runs the program as `lli`'s default ORC JIT does: JITLink, the
-process's symbols, the module's constructors in priority order before `main` and its destructors
+It takes the part of `lli`'s command line that the driver uses (`-mcpu`, `-dlopen`,
+`-extra-object`, `-extra-archive`, LLVM options such as `-profile-guided-section-prefix=false`, the
+input and the program's arguments) and runs the program as `lli`'s default ORC JIT does: JITLink,
+the process's symbols, the module's constructors in priority order before `main` and its destructors
 after it, `argv[0]` the input's name and `main`'s result as the exit status. Errors go to stderr
 as `lli`'s do, behind `lljit:`, with status 1. Code with debug information
 (`PYSTACHY_DEBUG_LINES=1`) is registered with debuggers and profilers through the GDB JIT
@@ -738,9 +738,14 @@ generation, `-O2`. The [JIT runner](#the-jit-runner) generates the code at the l
 (`-O0`). `lli`'s ORC ignores `-O` and generates code at LLVM's default level, so for `0` with
 `lli` the driver runs the selected toolchain's `llc -O0` on the cleaned-up module, in
 position-independent code for ORC's JITLink, and `lli` links that object (`-extra-object`) as it
-links the runtime's. Neither the runner nor these tools are given a CPU, and no function names
-one: all generate code for the default CPU of the runtime's target triple, which the module
-carries. ORC runs only an IR module's constructors, so `lli`'s main module then holds the
+links the runtime's. The runner, `lli` and `llc` are all given the CPU that the
+[program cache](program-cache.md)'s clang compiles for: clang's default for the runtime's target
+triple, which the module carries, `-mcpu=x86-64` on x86-64 Linux (AArch64's, `generic`, is also
+LLVM's own). LLVM's own default for x86-64 tunes for an i586, without the 64-bit division bypass
+(a 32-bit divide where both operands fit) that x86-64's generic tuning adds; the bypass changes how
+fast division-heavy loops run and how registers are allocated across a function. So a run without
+the program cache executes the code that a cached executable runs. No function names a CPU. ORC
+runs only an IR module's constructors, so `lli`'s main module then holds the
 program's target and, with the shared runtime library, the constructor that hands it the
 program's callbacks (`OBJHOOKS_MAIN` in `lower_module.py`). `llc` is one more process, which tiny
 programs notice (`program.jit_codegen` in the [stage timings](#compiler-stage-timings)). This

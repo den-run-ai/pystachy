@@ -5,7 +5,7 @@
    Where it cannot be built, or with PYSTACHY_JIT_LAUNCHER=lli, the driver runs lli as before.
 
    It takes the part of lli's command line that the driver's launch uses:
-     lljit [-O0|-O1|-O2|-O3] [-dlopen=LIB]... [-extra-object=OBJ]... [-extra-archive=AR]...
+     lljit [-O0|-O1|-O2|-O3] [-mcpu=CPU] [-dlopen=LIB]... [-extra-object=OBJ]... [-extra-archive=AR]...
            [LLVM-OPTION]... INPUT.bc [ARG]...
    and runs the program as LLVM 18's lli runs it with its default ORC JIT (runOrcJIT): the -dlopen
    libraries are loaded first (dlopen RTLD_LAZY | RTLD_GLOBAL), then LLJIT, with JITLink and the
@@ -294,6 +294,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   LLVMCodeGenOptLevel level = LLVMCodeGenLevelDefault;   /* (lli's ORC level) */
+  const char *cpu = "";   /* (-mcpu=CPU, a name: lli's -mcpu=native has no counterpart here) */
   const char **llvmopts = calloc((size_t)argc + 1, sizeof *llvmopts);
   const char **objects = calloc((size_t)argc + 1, sizeof *objects);
   const char **archives = calloc((size_t)argc + 1, sizeof *archives);
@@ -308,6 +309,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(a, "-O1")) level = LLVMCodeGenLevelLess;
     else if (!strcmp(a, "-O2")) level = LLVMCodeGenLevelDefault;
     else if (!strcmp(a, "-O3")) level = LLVMCodeGenLevelAggressive;
+    else if (!strncmp(a, "-mcpu=", 6)) cpu = a + 6;
     else if (!strcmp(a, "-self-check")) selfcheck = 1;
     else if (!strncmp(a, "-dlopen=", 8)) {
       /* (lli's loadDylibs: before anything else, where the JIT's process symbols find them) */
@@ -346,13 +348,13 @@ int main(int argc, char **argv) {
   int dtors = collect(mod, "llvm.global_dtors", "__pystachy_lljit_fini");
   stage("program.jit_load");
 
-  /* the target: the module's triple (lli: JITTargetMachineBuilder(TT)) and no CPU or features beyond
-     it (lli's -mcpu and -mattr defaults), at the level selected; LLJIT makes JITLink's relocation
-     model PIC and its code model small */
+  /* the target: the module's triple (lli: JITTargetMachineBuilder(TT)), the CPU that -mcpu names, or
+     none (LLVM's default), and no features beyond them (lli's -mcpu and -mattr), at the level
+     selected; LLJIT makes JITLink's relocation model PIC and its code model small */
   char *triple = LLVMGetTarget(mod)[0] ? strdup(LLVMGetTarget(mod)) : LLVMGetDefaultTargetTriple();
   LLVMTargetRef target;
   if (!triple || LLVMGetTargetFromTriple(triple, &target, &msg)) fail(triple ? triple : "no target", msg);
-  LLVMTargetMachineRef tm = LLVMCreateTargetMachine(target, triple, "", "", level, LLVMRelocPIC, LLVMCodeModelJITDefault);
+  LLVMTargetMachineRef tm = LLVMCreateTargetMachine(target, triple, cpu, "", level, LLVMRelocPIC, LLVMCodeModelJITDefault);
   if (!tm) fail(triple, "no target machine");
   LLVMOrcLLJITBuilderRef builder = LLVMOrcCreateLLJITBuilder();
   LLVMOrcLLJITBuilderSetJITTargetMachineBuilder(builder, LLVMOrcJITTargetMachineBuilderCreateFromTargetMachine(tm));

@@ -7,6 +7,9 @@ variants (LLVM 18 to 20, 21 to 23).
 """
 import os
 from pathlib import Path
+import platform
+import re
+import resource
 import shutil
 import signal
 import subprocess
@@ -184,6 +187,36 @@ int main(int argc, char **argv) {
                                  (42, ["program.jit_load", "program.jit_codegen"], 2))
                 check = self.run_jit([path, "-self-check"])
                 self.assertEqual((check.returncode, check.stdout), (0, "two\nlljit\n"))
+
+    def test_cpu_names_the_target_machine(self):
+        # -mcpu=CPU, as lli takes it: the driver gives an x86-64 module clang's default CPU, x86-64, as
+        # the program cache's clang compiles it. A module without clang's target attributes (which the
+        # driver strips from the runtime's IR), so that the target machine's CPU is every function's
+        cpu = "x86-64" if platform.machine() == "x86_64" else "generic"
+        for llvm in toolchains():
+            with self.subTest(llvm=llvm):
+                path, why = self.launcher(llvm)
+                self.assertEqual(why, "")
+                text = Path(self.compile(llvm, "targeted.ll", PROGRAM, "-S", "-emit-llvm")).read_text()
+                untargeted = self.work / "untargeted.ll"
+                untargeted.write_text(re.sub(r' "(target-cpu|target-features|tune-cpu)"="[^"]*"', "", text))
+                self.assertNotIn("target-cpu", untargeted.read_text())
+                program = str(self.work / "untargeted.bc")
+                subprocess.run([str(Path(llvm) / "llvm-as"), str(untargeted), "-o", program], check=True, timeout=60)
+                for level in ("-O0", "-O2"):
+                    result = self.run_jit([path, level, f"-mcpu={cpu}", "-profile-guided-section-prefix=false", program, "a"])
+                    self.assertEqual((result.returncode, result.stdout, result.stderr),
+                                     (42, f"2 1 2|[{program}][a]\nfini\n", ""), level)
+                # (the CPU reaches the target machine: LLVM rejects a name it does not know, in the
+                # runner as in lli, and without the option names none. x86-64's code generation then
+                # stops, a fatal error that no core file need record)
+                for runner in (path, str(Path(llvm) / "lli")):
+                    unknown = subprocess.run([runner, "-mcpu=pystachy-no-such-cpu", program], capture_output=True, text=True,
+                                             timeout=120, env=self.environment, cwd=self.work,
+                                             preexec_fn=lambda: resource.setrlimit(resource.RLIMIT_CORE, (0, 0)))
+                    self.assertIn("'pystachy-no-such-cpu' is not a recognized processor", unknown.stderr, runner)
+                default = self.run_jit([path, program])
+                self.assertEqual((default.returncode, default.stderr), (42, ""))
 
     def test_inputs_and_errors(self):
         for llvm in toolchains():
