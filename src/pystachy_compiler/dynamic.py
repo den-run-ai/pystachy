@@ -5448,7 +5448,7 @@ def dyn_packed_default(self, f: FnInfo, pre: list[Val], j: int) -> Val:
         if self.fn_identity(f) and numeric_identity(t):
             clo = self.closures[f.clo]
             offset = len(clo.caps) + closure_default_slots(clo) + len(clo.iflags) + clo.defs.index(j)
-            value.idfrom = self.mload("dyn", self.maddr("%ptr", pre[0].v, str(offset), True))
+            value.idfrom = self.mload("dyn", self.maddr("int", pre[0].v, str(offset), True))
     elif df.dglob[j] != "":
         t = t if t != "" else df.dtypes[j]
         value = Val(self.mload(t, df.dglob[j]), t)
