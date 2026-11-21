@@ -9,7 +9,12 @@ from src.pystachy_compiler.dataflow import forward_fixpoint, live_values
 from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, slot_register
 from src.pystachy_compiler.specs import BIG, FXBIT, RUNTIME
 from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join, union_tags
-from src.pystachy_compiler.utils import gelem, is_dict, is_gen, is_opt, is_union, rt_generic, rtsig, targs, umembers
+from src.pystachy_compiler.utils import gelem, is_dict, is_gen, is_opt, is_set, is_union, is_vtuple, rt_generic, rtsig, targs, umembers
+
+
+def has_length_word(t: str) -> bool:
+    # The first word of runtime.c's Str (including bytes), Dict, Set and VTuple.
+    return t == "str" or t == "bytes" or is_dict(t) or is_set(t) or is_vtuple(t)
 
 
 def proof_number(v: str, start: int, limit: int) -> int:
@@ -580,17 +585,17 @@ class UnionProof:
         t = self.declared(v)
         return is_opt(t) and t[4:-1].startswith("vtuple[")
 
-    def dict_header(self, s: UnionState, addr: str) -> bool:
-        # A Dict's first word is its integer length. Establish the owner from its
+    def length_header(self, s: UnionState, addr: str) -> bool:
+        # Establish the owner of the integer length word from its
         # declaration or from the proved member of an unpacked union payload.
         # A machine load's result annotation alone cannot establish either.
         t = self.declared(addr)
-        if is_dict(t):
+        if has_length_word(t):
             return True
-        if is_opt(t) and is_dict(t[4:-1]):
+        if is_opt(t) and has_length_word(t[4:-1]):
             return s.dom("U:" + addr) == [t[4:-1]]
         i = self.defs[addr] if addr in self.defs else None
-        return i is not None and i.op == "slot.unpack" and is_dict(i.t) and i.a[0].v in self.raw and s.dom("B:" + i.a[0].v) == [i.t]
+        return i is not None and i.op == "slot.unpack" and has_length_word(i.t) and i.a[0].v in self.raw and s.dom("B:" + i.a[0].v) == [i.t]
 
     def declared(self, v: str) -> str:
         # The type that value v's definition declares: a load's is that of its storage
@@ -831,7 +836,7 @@ class UnionProof:
             addr = a[0].v
             if op == "mach.load" and i.t == "int":
                 tracked = "U:" + addr in self.base or "U:" + addr in s.d
-                if (r in self.bitsneeded or tracked) and self.dict_header(s, addr):
+                if (r in self.bitsneeded or tracked) and self.length_header(s, addr):
                     if r in self.bitsneeded:
                         s.set("B:" + r, ["int"])
                     return

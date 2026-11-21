@@ -1408,25 +1408,32 @@ class UnionProofTests(unittest.TestCase):
                             c.g.verify(c.fn, False)
                         self.assertIn("ubox needs matching tag and payload provenance", errors.getvalue())
 
-    def test_dict_length_box_requires_owner_and_integer_tag(self):
-        for owner, tag, offset in (("dict[str,int]", "int", False), ("dict[str,int]", "float", False),
-                                   ("%ptr", "int", False), ("dict[str,int]", "int", True),
-                                   ("opt[dict[str,int]]", "int", False)):
+    def test_length_box_requires_owner_and_integer_tag(self):
+        # Only a proved header at offset zero supplies an int payload. A fixed tuple
+        # starts with its first item; a list uses its own typed IR operations.
+        owners = ["bytes", "str", "dict[str,int]", "set[int]", "frozenset[str]", "aset[int]", "vtuple[int]"]
+        cases = [(owner, "int", False, True) for owner in owners]
+        cases += [(owner, "float", False, False) for owner in owners]
+        cases += [(owner, "int", True, False) for owner in owners]
+        cases += [("opt[" + owner + "]", "int", False, False) for owner in owners]
+        cases += [(owner, "int", False, False) for owner in ["%ptr", "list[int]", "tuple[int,str]"]]
+        for owner, tag, offset, valid in cases:
             with self.subTest(owner=owner, tag=tag, offset=offset):
-                c = Case("dict_length_box", [owner])
+                c = Case("length_box", [owner])
                 c.g.runtime("pys_ubox")
                 addr = c.op("mach.addr", "%ptr", "int", [("%a0", "%ptr"), ("1", "int")]) if offset else "%a0"
                 value = c.op("mach.load", "int", a=[(addr, "%ptr")])
                 c.op("rt", "%ptr", "ubox", [(str(c.g.utags[tag]), "int"), (value, "*T")])
                 c.ret()
-                if owner == "dict[str,int]" and tag == "int" and not offset:
+                if valid:
                     c.g.verify(c.fn, False)
                 else:
                     errors = StringIO()
                     with redirect_stderr(errors), self.assertRaises(SystemExit):
                         c.g.verify(c.fn, False)
-                    self.assertIn("mach.load needs a nonnull proof" if owner.startswith("opt[") else
-                                  "ubox needs matching tag and payload provenance", errors.getvalue())
+                    message = ("mach.load needs a nonnull proof" if owner.startswith("opt[") and owner != "opt[vtuple[int]]"
+                               else "ubox needs matching tag and payload provenance")
+                    self.assertIn(message, errors.getvalue())
 
     def test_yielded_payload_is_read_as_the_generator_element_type(self):
         # (gen_slots passes an int member's payload register itself, as the %slot word yielded)
