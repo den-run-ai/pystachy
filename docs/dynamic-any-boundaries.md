@@ -40,11 +40,11 @@ neither a path nor a `str` still raises `TypeError` when the call runs, and subc
 path classes compile as before
 ([test](../tests/programs/library/lib_pathlib_subclass.py)). The comment had put `pathlib`
 and the modules it imports in the closure that tracks numeric identity, in every program that
-imports it. `tests/programs/library/lib_pathlib.py` now compiles to 64,093 lines of LLVM IR
+imports it. On [#1632](https://github.com/den-run-ai/pystachy/pull/1632),
+`tests/programs/library/lib_pathlib.py` compiled to 64,093 lines of LLVM IR
 instead of 83,331, with no `pys_dyn_*` call site instead of 1,553 (960 of them integer
-boxes); its AOT executable is 589,936 bytes instead of 776,096. The counts are of the
-program's IR before the runtime is linked, by one compiler, and restoring the comment
-restores the larger ones.
+boxes). The AOT executable shrank from 776,096 to 589,936 bytes. Both IR counts
+precede runtime linking. Restoring the comment reproduced the larger measurements.
 
 ## JSON repair port modules
 
@@ -71,12 +71,13 @@ the same 403 numeric box sites.
 The twelfth, `__main__.py`, only serializes the repair result: `json.dumps()` of a value
 that is already `Any`'s selects the dynamic encoder from the argument's type in any module
 (`tests/programs/inference/dynany_dumps_caller.py`). Its comment was what put `argparse`
-and the modules it imports in the tracked closure, so this removal is a cost result for
-the consumer's own modules. `tests/programs/apps/port_json_repair_cli.py` compiles to
+and the modules it imports in the tracked closure. With the
+[compiler used for the measurement](https://github.com/den-run-ai/pystachy/tree/b3a4d56981125d2da95ac920c7baedaafe5a9898),
+`tests/programs/apps/port_json_repair_cli.py` compiled to
 121,437 lines of LLVM IR instead of 143,887, with 403 numeric box sites instead of 1,696
-and 592 `pys_dyn_*` call sites instead of 2,596; its AOT executable is 949,432 bytes
-instead of 1,085,032. The counts are of the program's IR before the runtime is linked, by
-one compiler, and restoring the comment restores the larger ones. The parser still tracks
+and 592 `pys_dyn_*` call sites instead of 2,596. The AOT executable shrank from 1,085,032
+to 949,432 bytes. Both IR counts precede runtime linking. Restoring the comment
+reproduced the larger measurements. The parser still tracks
 identity, so the repair itself is the same code: the result is compilation work and size,
 not steady-state speed or allocation.
 
