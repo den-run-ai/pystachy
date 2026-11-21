@@ -54,7 +54,9 @@ branch is a `br` to its target's label, and a backward branch sets the next bloc
 and continues the loop, whose `br_table` dispatches it. The emitter handles the operations
 of scalar code, runtime calls, direct calls, globals, class fields, tuples and list items,
 and constants (strings, tuples, field-name tables, class records), whose addresses
-`run.mjs` relocates once it has allocated the program's data.
+`run.mjs` relocates once it has allocated the program's data. Masked integer expressions such
+as `(x * 33 + y) & 0xffffffff` use Wasm `i32` arithmetic when the compiler has reduced them
+to 32 bits. The final widening preserves the unsigned result.
 
 Python handlers can catch built-in and user-defined exceptions raised locally, by other
 Python functions, or by the shared runtime. An exception class descriptor holds the indices
