@@ -491,6 +491,32 @@ def value_view(self, d: str, u: str, rt_result: bool, rt_operand: bool) -> str:
     return ""
 
 
+def optional_reads(self, fn: IFn) -> dict[str, dict[str, bool]]:
+    # The values of fn that an operand reads at a type without None where their definition gives
+    # them opt[U] of a reference U (the optional view that narrows, specs.TYPE_VIEWS), with the
+    # types those operands read them at: the closed-union proof must show each such value not
+    # None where an operand reads it so (UnionProof.check_some)
+    types: dict[str, str] = {}
+    makers: dict[str, str] = {}
+    value_definitions(fn, types, makers)
+    found: dict[str, dict[str, bool]] = {}
+    for b in fn.blocks:
+        for i in b.code:
+            for a in i.a:
+                d = types.get(a.v, "")
+                if is_opt(d) and narrows_none(self, d, a.t, makers[a.v] == "rt", i.op == "rt"):
+                    if a.v not in found:
+                        found[a.v] = {}
+                    found[a.v][a.t] = True
+    return found
+
+
+def narrows_none(self, d: str, u: str, rt_result: bool, rt_operand: bool) -> bool:
+    # does an operand of type u read a value of type d, an opt[U], at a type that holds no None
+    # (U, or a type that a view reads U as), so that the read needs a proof that it is not None
+    return u != "None" and not is_opt(u) and lt(u) == "ptr" and value_view(self, d, u, rt_result, rt_operand) == "optional"
+
+
 def related_reads(self, a: str, b: str) -> bool:
     # may two operands read one value, whose definition gives it only a machine type, a runtime
     # type variable or a placeholder, as types a and b: by a view between them
@@ -875,17 +901,32 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         dynamic.run()
         for j in range(len(dynamic.bad)):
             self.bad_ir(fn, fn.blocks[at[dynamic.badblocks[j]]], dynamic.bad[j])
-    if (union_proofs or (machine_tags and has_machine_union_tag(fn))) and not simple_union_proof(fn, self.utags, at, succ, union_types):
+    narrowed = optional_reads(self, fn)
+    unions = union_proofs or (machine_tags and has_machine_union_tag(fn))
+    if len(narrowed) > 0 or (unions and not simple_union_proof(fn, self.utags, at, succ, union_types)):
         writes: dict[str, bool] = {}
         raises: dict[str, bool] = {}
+        written: dict[str, int] = {}  # (the storage classes each call writes: its RAWW and wG bits)
         for b in fn.blocks:
             for i in b.code:
                 if (i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume"):
                     key = i.op + "|" + i.s + "|" + i.x
                     effects = self.opfx(i, fn.fa)
                     writes[key] = effects & (RAWW | FXBIT["wG"]) != 0
+                    written[key] = effects & (RAWW | FXBIT["wG"])
                     raises[key] = effects & FXBIT["R"] != 0
-        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs, self.tconstdata)
+        # (the classes of the objects whose fields fn addresses, each with those that may be the
+        # same object: related, ClassInfo.overlaps, or equal; a store to one's field may change
+        # another's only so)
+        kin: dict[str, dict[str, bool]] = {}
+        for b in fn.blocks:
+            for i in b.code:
+                if i.op == "field.addr" and i.a[0].t not in kin:
+                    kin[i.a[0].t] = {}
+        for x in kin:
+            for y in kin:
+                kin[x][y] = x == y or x not in self.classes or y not in self.classes or related(self, x, y)
+        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs, self.tconstdata, narrowed, written, kin, unions)
         proof.run()
         for j in range(len(proof.bad)):
             self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])

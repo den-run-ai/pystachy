@@ -5931,7 +5931,7 @@ def gen_compare(self, n: Node) -> Val:
     if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and n.kids[1].kind == "attr" and self.dotted(n.kids[1]) == "os.environ":
         # name in os.environ: whether the variable is set
         name = self.coerce(a, "str", "the name tested in os.environ")
-        value = Val(self.rt("pys_getenv", "ptr", [f"ptr {name.v}", "ptr null"]), "opt[str]")
+        value = Val(self.rt("pys_getenv", "ptr", [f"ptr {name.v}", "ptr null"], "", "opt[str]"), "opt[str]")
         return self.ptr_cmp("!=" if ops[0] == "in" else "==", value, Val("null", "None"))
     if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and self.iterator_call(n.kids[1]) and n.kids[1].kids[0].s == "range":
         # x in range(...): arithmetic, as CPython's range.__contains__ does for ints; an int |

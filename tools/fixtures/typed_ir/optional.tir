@@ -1,0 +1,226 @@
+; Reads of opt[U] values at U, which the verifier admits only where the closed-union proof shows
+; them not None (ircheck.optional_reads, UnionProof.check_some). Each function without an
+; expected error verifies; tools/test_typed_ir_text.py removes their tests to see them fail.
+
+module {
+  class Node tagged fields=[" class":int name:opt[str]]
+  class Other tagged fields=[" class":int label:opt[str]]
+}
+
+function @a_read_without_a_test(s: opt[str]) -> int {
+entry:
+  ; expected-error {{rt operand 0 reads %a0 as str without a proof that it is not None}}
+  %t1 = rt entry=text.len (str %a0) : int
+  ret(int %t1)
+}
+
+function @a_read_after_a_test(s: opt[str]) -> int {
+entry:
+  %t1 = ptr.cmp == (opt[str] %a0, None null) : bool
+  cbr(bool %t1) -> L2, L3
+L2:
+  ret(int 0)
+L3:
+  %t4 = rt entry=text.len (str %a0) : int
+  ret(int %t4)
+}
+
+function @a_read_of_the_tested_value_on_its_none_edge(s: opt[str]) -> int {
+entry:
+  %t1 = ptr.cmp != (opt[str] %a0, None null) : bool
+  cbr(bool %t1) -> L2, L3
+L2:
+  ret(int 0)
+L3:
+  ; expected-error {{rt operand 0 reads %a0 as str without a proof that it is not None}}
+  %t4 = rt entry=text.len (str %a0) : int
+  ret(int %t4)
+}
+
+function @a_reload_after_a_test(s: opt[str]) -> int {
+  %s.1 = slot name=s : opt[str]
+entry:
+  mem.store(&opt[str] %s.1, opt[str] %a0)
+  %t2 = mem.load(&opt[str] %s.1) : opt[str]
+  %t3 = ptr.cmp == (opt[str] %t2, None null) : bool
+  cbr(bool %t3) -> L4, L5
+L4:
+  ret(int 0)
+L5:
+  %t6 = mem.load(&opt[str] %s.1) : opt[str]
+  %t7 = rt entry=text.len (str %t6) : int
+  ret(int %t7)
+}
+
+function @a_reload_after_a_store(s: opt[str], t: opt[str]) -> int {
+  %s.1 = slot name=s : opt[str]
+entry:
+  mem.store(&opt[str] %s.1, opt[str] %a0)
+  %t2 = mem.load(&opt[str] %s.1) : opt[str]
+  %t3 = ptr.cmp == (opt[str] %t2, None null) : bool
+  cbr(bool %t3) -> L4, L5
+L4:
+  ret(int 0)
+L5:
+  mem.store(&opt[str] %s.1, opt[str] %a1)
+  %t6 = mem.load(&opt[str] %s.1) : opt[str]
+  ; expected-error {{rt operand 0 reads %t6 as str without a proof that it is not None}}
+  %t7 = rt entry=text.len (str %t6) : int
+  ret(int %t7)
+}
+
+function @a_reload_of_a_stored_str(s: str) -> int {
+  %s.1 = slot name=s : opt[str]
+entry:
+  mem.store(&opt[str] %s.1, opt[str] %a0)
+  %t2 = mem.load(&opt[str] %s.1) : opt[str]
+  %t3 = rt entry=text.len (str %t2) : int
+  ret(int %t3)
+}
+
+function @a_read_after_a_short_circuit_test(s: opt[str]) -> int {
+entry:
+  %t1 = ptr.cmp != (opt[str] %a0, None null) : bool
+  cbr(bool %t1) -> L2, L3
+L2:
+  %t4 = rt entry=text.len (str %a0) : int
+  %t5 = num.cmp > (int %t4, int 0) : bool
+  br -> L3
+L3:
+  %t6 = phi(bool %t1, bool %t5) -> entry, L2 : bool
+  cbr(bool %t6) -> L7, L8
+L7:
+  %t9 = rt entry=text.len (str %a0) : int
+  ret(int %t9)
+L8:
+  ret(int -1)
+}
+
+function @a_loop_that_tests_in_its_head(s: opt[str]) -> int {
+  %s.1 = slot name=s : opt[str]
+  %n.2 = slot name=n : int
+entry:
+  mem.store(&opt[str] %s.1, opt[str] %a0)
+  mem.store(&int %n.2, int 0)
+  br -> L3
+L3:
+  %t4 = mem.load(&opt[str] %s.1) : opt[str]
+  %t5 = ptr.cmp != (opt[str] %t4, None null) : bool
+  cbr(bool %t5) -> L6, L7
+L6:
+  %t8 = mem.load(&opt[str] %s.1) : opt[str]
+  %t9 = rt entry=text.len (str %t8) : int
+  mem.store(&int %n.2, int %t9)
+  mem.store(&opt[str] %s.1, opt[str] null)
+  br -> L3
+L7:
+  %t10 = mem.load(&int %n.2) : int
+  ret(int %t10)
+}
+
+function @a_phi_from_the_none_edge(s: opt[str]) -> str {
+entry:
+  %t1 = ptr.cmp == (opt[str] %a0, None null) : bool
+  cbr(bool %t1) -> L2, L3
+L2:
+  br -> L4
+L3:
+  br -> L4
+L4:
+  ; expected-error {{phi operand from L2 reads %a0 as str without a proof that it is not None}}
+  %t5 = phi(str %a0, str %a0) -> L2, L3 : str
+  ret(str %t5)
+}
+
+function @a_phi_from_the_tested_edge(s: opt[str], t: str) -> str {
+entry:
+  %t1 = ptr.cmp == (opt[str] %a0, None null) : bool
+  cbr(bool %t1) -> L2, L3
+L2:
+  br -> L3
+L3:
+  %t4 = phi(str %a1, str %a0) -> L2, entry : str
+  ret(str %t4)
+}
+
+function @a_field_read_after_a_test_of_an_earlier_read(n: Node) -> int {
+  %n.1 = slot name=n : Node
+entry:
+  mem.store(&Node %n.1, Node %a0)
+  %t2 = mem.load(&Node %n.1) : Node
+  %t3 = field.addr index=1 (Node %t2) : &opt[str]
+  %t4 = mem.load(&opt[str] %t3) : opt[str]
+  %t5 = ptr.cmp == (opt[str] %t4, None null) : bool
+  cbr(bool %t5) -> L6, L7
+L6:
+  ret(int 0)
+L7:
+  %t8 = mem.load(&Node %n.1) : Node
+  %t9 = field.addr index=1 (Node %t8) : &opt[str]
+  %t10 = mem.load(&opt[str] %t9) : opt[str]
+  %t11 = rt entry=text.len (str %t10) : int
+  ret(int %t11)
+}
+
+function @a_field_read_after_a_store_to_the_field(n: Node, s: opt[str]) -> int {
+  %n.1 = slot name=n : Node
+entry:
+  mem.store(&Node %n.1, Node %a0)
+  %t2 = mem.load(&Node %n.1) : Node
+  %t3 = field.addr index=1 (Node %t2) : &opt[str]
+  %t4 = mem.load(&opt[str] %t3) : opt[str]
+  %t5 = ptr.cmp == (opt[str] %t4, None null) : bool
+  cbr(bool %t5) -> L6, L7
+L6:
+  ret(int 0)
+L7:
+  %t8 = mem.load(&Node %n.1) : Node
+  %t9 = field.addr index=1 (Node %t8) : &opt[str]
+  mem.store(&opt[str] %t9, opt[str] %a1)
+  %t10 = mem.load(&opt[str] %t9) : opt[str]
+  ; expected-error {{rt operand 0 reads %t10 as str without a proof that it is not None}}
+  %t11 = rt entry=text.len (str %t10) : int
+  ret(int %t11)
+}
+
+function @a_field_read_after_a_store_to_another_class(n: Node, o: Other) -> int {
+  %n.1 = slot name=n : Node
+entry:
+  mem.store(&Node %n.1, Node %a0)
+  %t2 = mem.load(&Node %n.1) : Node
+  %t3 = field.addr index=1 (Node %t2) : &opt[str]
+  %t4 = mem.load(&opt[str] %t3) : opt[str]
+  %t5 = ptr.cmp == (opt[str] %t4, None null) : bool
+  cbr(bool %t5) -> L6, L7
+L6:
+  ret(int 0)
+L7:
+  %t8 = field.addr index=1 (Other %a1) : &opt[str]
+  mem.store(&opt[str] %t8, opt[str] null)
+  %t9 = mem.load(&Node %n.1) : Node
+  %t10 = field.addr index=1 (Node %t9) : &opt[str]
+  %t11 = mem.load(&opt[str] %t10) : opt[str]
+  %t12 = rt entry=text.len (str %t11) : int
+  ret(int %t12)
+}
+
+function @a_field_read_after_the_local_names_another_object(n: Node, m: Node) -> int {
+  %n.1 = slot name=n : Node
+entry:
+  mem.store(&Node %n.1, Node %a0)
+  %t2 = mem.load(&Node %n.1) : Node
+  %t3 = field.addr index=1 (Node %t2) : &opt[str]
+  %t4 = mem.load(&opt[str] %t3) : opt[str]
+  %t5 = ptr.cmp == (opt[str] %t4, None null) : bool
+  cbr(bool %t5) -> L6, L7
+L6:
+  ret(int 0)
+L7:
+  mem.store(&Node %n.1, Node %a1)
+  %t8 = mem.load(&Node %n.1) : Node
+  %t9 = field.addr index=1 (Node %t8) : &opt[str]
+  %t10 = mem.load(&opt[str] %t9) : opt[str]
+  ; expected-error {{rt operand 0 reads %t10 as str without a proof that it is not None}}
+  %t11 = rt entry=text.len (str %t10) : int
+  ret(int %t11)
+}
