@@ -14,6 +14,7 @@
 #                                              at -O0 for one-shot calls (WASM_OPT overrides)
 #        wasm/build.sh tir FILE.py OUT.wasm    same, with LLVM fallback on an emitter refusal
 #                                              WASM_TIR_LOG records emitted or refused per file
+#        wasm/build.sh gc-mark-probe OUT.wasm  build the explicit-root wasm32 collector test
 # Environment: PYSTACHY, the compiler (default ./pystachy; "python3 pystachy.py" works too);
 # PYSTACHY_LLVM, LLVM's bin directory (clang, llvm-link, opt, and wasm-ld there or on PATH);
 # WASI_SYSROOT, a wasi-libc sysroot (default: Ubuntu's wasi-libc package, whose headers and
@@ -195,8 +196,14 @@ case ${1:-} in
   program) [ $# = 3 ] || { echo "usage: wasm/build.sh program FILE.py OUT.wasm" >&2; exit 2; }; program source "$2" "$3" ;;
   link) [ $# = 1 ] || { echo "usage: wasm/build.sh link < INPUT.ll > OUT.wasm" >&2; exit 2; }; OPT=${WASM_OPT:-0}; program ir - - ;;
   runtime-wasm) runtime_wasm ;;
+  gc-mark-probe)
+    [ $# = 2 ] || { echo "usage: wasm/build.sh gc-mark-probe OUT.wasm" >&2; exit 2; }
+    SYS=$(sysroot)
+    # shellcheck disable=SC2086 # EMUL and LIBS are compiler argument lists
+    "${LLVM}clang" --target=$TARGET --sysroot="$SYS" -isystem wasm/include -include pystachy_wasi.h $EMUL \
+      -O2 wasm/test_gc_mark.c wasm/wasi_stubs.c -Wl,--fatal-warnings $LIBS -o "$2" ;;
   emitter) emitter ;;
   direct) [ $# = 3 ] || { echo "usage: wasm/build.sh direct FILE.py OUT.wasm" >&2; exit 2; }; direct "$2" "$3" ;;
   tir) [ $# = 3 ] || { echo "usage: wasm/build.sh tir FILE.py OUT.wasm" >&2; exit 2; }; tir "$2" "$3" ;;
-  *) echo "usage: wasm/build.sh runtime | program FILE.py OUT.wasm | runtime-wasm | emitter | link | {direct|tir} FILE.py OUT.wasm" >&2; exit 2 ;;
+  *) echo "usage: wasm/build.sh runtime | program FILE.py OUT.wasm | runtime-wasm | emitter | link | {direct|tir} FILE.py OUT.wasm | gc-mark-probe OUT.wasm" >&2; exit 2 ;;
 esac
