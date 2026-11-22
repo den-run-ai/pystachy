@@ -95,17 +95,20 @@ remain in the parser's identity-tracking import closure.
 
 When `pathlib`'s comment was removed, each remaining comment was also removed alone and the
 programs that import its module were run (JIT). The first diagnostic names the contract the
-module still needs, which its row above describes.
+module still needs, which its row above describes. The `logging` and `threading` rows were
+measured again once subclasses of class templates were supported (#962), in JIT and AOT;
+`threading`'s programs are those that import it, `logging`, `subprocess` or
+`concurrent.futures`.
 
 | Module | Programs failing | First diagnostic |
 |---|---|---|
 | `tomllib._re` | 1 of 8 | `comparing closed union values requires narrowing`: a consumer tests `is` on the `int \| float` result, and only tracked identity answers that for two numbers |
 | `tomllib._types` | 7 of 8 | `make_safe_parse_float() returns both` `float` and its wrapper function |
 | `tomllib._parser` | 7 of 8 | `NestedDict`: `typing.Any is only supported in the parameter and return annotations` (its field holds any parsed value) |
-| `logging` | 5 of 5 | `inheritance with generic class templates`: `StrFormatStyle` and `Logger` inherit fields that the constructor's arguments type |
+| `logging` | 5 of 5 | `inheritance with generic class templates`: `StringTemplateStyle`, whose own `__init__` takes `Any`, and `Logger`, a class template whose base `Filterer` is not one, are outside the [template hierarchy subset](language/typing.md#subclasses-of-class-templates) (`StrFormatStyle` is in it) |
 | `_pystachy_percent` | 5 of 30 | `_Formatter`: `typing.Any is only supported in the parameter and return annotations` (its fields hold the argument pack) |
 | `inspect` | 12 of 12 | `cannot infer the type of '_VOID_PARAMETERS'`: a list of `Parameter` objects, whose default and annotation type the class |
-| `threading` | 2 of 16 | `inheritance with generic class templates`: `Semaphore` holds a `Condition`, whose lock types its field, and a program subclasses `Thread`, whose target and arguments type its fields |
+| `threading` | 7 of 26 | `Semaphore`: `cannot infer the type of field '_cond'`, a `Condition`, whose lock types its field, where the specialization that `BoundedSemaphore` derives from is made, before code is compiled |
 | `json_repair.py` | 15 of 18 | `repair_json() returns both` a `(value, log)` tuple and a value |
 | `json_parser.py` | 18 of 18 | `JSONParser`: `typing.Any is only supported in the parameter and return annotations` |
 
