@@ -849,6 +849,7 @@ def print_usage(err: bool) -> None:
     lines = [
         "usage: pystachy run FILE.py [ARGS...]   JIT-compile and run (LLVM ORC)",
         "       pystachy build FILE.py [-o EXE]  compile ahead of time to a native executable",
+        "                    [-O0|-O1|-O2] [-g] PYSTACHY_AOT_OPT, and PYSTACHY_DEBUG_LINES=1, for this build",
         "                    [--emit-ir RAW.ll] retain raw IR after a successful build",
         "       pystachy ext NAME.py [-o NAME.abi3.so]  compile to a CPython extension module (abi3, CPython 3.12+)",
         "                    [--abi abi3t]      for CPython 3.15+, GIL and free-threaded",
@@ -866,6 +867,30 @@ def print_usage(err: bool) -> None:
             print(line, file=sys.stderr)
         else:
             print(line)
+
+
+def build_options(argv: list[str]) -> list[str]:
+    # build's -O0, -O1 and -O2 (PYSTACHY_AOT_OPT) and -g (PYSTACHY_DEBUG_LINES=1), anywhere after the
+    # file but as the value of -o or --emit-ir: they set those settings for this build, over the
+    # environment's, before anything reads them, so the caches are keyed as the settings key them.
+    # Other -O spellings stay unused arguments (a warning), as before.
+    kept = argv[:3]
+    i = 3
+    while i < len(argv):
+        a = argv[i]
+        if (a == "-o" or a == "--emit-ir") and i + 1 < len(argv):
+            kept.append(a)
+            kept.append(argv[i + 1])
+            i += 2
+            continue
+        if a == "-O0" or a == "-O1" or a == "-O2":
+            os.environ["PYSTACHY_AOT_OPT"] = a[2:]
+        elif a == "-g":
+            os.environ["PYSTACHY_DEBUG_LINES"] = "1"
+        else:
+            kept.append(a)
+        i += 1
+    return kept
 
 
 def ignored_arguments(cmd: str, args: list[str]) -> None:
@@ -933,6 +958,8 @@ def main() -> None:
         print_usage(True)
         sys.exit(2)
     cmd = argv[1]
+    if cmd == "build":
+        argv = build_options(argv)
     diagnostics.SRC = argv[2]
     if not os.path.exists(diagnostics.SRC):
         fail("file not found", 0)
