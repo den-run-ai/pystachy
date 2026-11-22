@@ -3,8 +3,8 @@
 ; expected error verifies; tools/test_typed_ir_text.py removes their tests to see them fail.
 
 module version=1 {
-  class Node tagged fields=[" class":int name:opt[str]]
-  class Other tagged fields=[" class":int label:opt[str]]
+  class Node tag=1 fields=[" class":int name:opt[str]]
+  class Other tag=2 fields=[" class":int label:opt[str]]
 }
 
 function @a_read_without_a_test(s: opt[str]) -> int {

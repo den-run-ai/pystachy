@@ -52,10 +52,10 @@ LOCATED = (WRITTEN.replace("  %left.1 = slot name=left : int\n", "  %left.1 = sl
            .replace("  ret.none\n", "  ret.none loc(12)\n")
            .replace("-> L8, L5, L8\n", "-> L8, L5, L8 loc(9999999)\n"))
 MODULE = """module version=1 {
-  class Base tagged
+  class Base tag=1
   class Error base=Exception fields=[" cls":str " str":str " args":str]
-  class Node base=Base roles=[Reader] tagged fields=[" class":int value:int "a:b":"odd type" next:opt[Node]] flags=[value:4 "a:b":5] boxes=[value:6]
-  class Reader overlaps=[Base "odd name"] tagged
+  class Node base=Base roles=[Reader] tag=2 fields=[" class":int value:int "a:b":"odd type" next:opt[Node]] flags=[value:4 "a:b":5] boxes=[value:6]
+  class Reader overlaps=[Base "odd name"] tag=3
   class "odd name"
   dyntype @dt.Node kind=obj cls=1 flags=[role] base=@dt.Base role=@dt.Reader payload=Node
   dyntype @dtf.0 kind=func cls=-1 flags=[boxid] payload=fn[m:Node.f]
@@ -300,12 +300,12 @@ class ModuleTests(unittest.TestCase):
         self.assertEqual(module["dynamic_layouts"][0]["llvm"], ["i64", "{i64, ptr}", "ptr"])
         self.assertEqual(list(module["classes"]), ["Base", "Error", "Node", "Reader", "odd name"])
         self.assertEqual(module["classes"]["Node"], {
-            "base": "Base", "roles": ["Reader"], "overlaps": [], "tagged": True,
+            "base": "Base", "roles": ["Reader"], "overlaps": [], "tag": 2,
             "fields": [{"name": " class", "type": "int"}, {"name": "value", "type": "int"}, {"name": "a:b", "type": "odd type"},
                        {"name": "next", "type": "opt[Node]"}],
             "flags": {"value": 4, "a:b": 5}, "boxes": {"value": 6}, "template": False, "exception": "", "module": ""})
         self.assertEqual(module["classes"]["Reader"]["overlaps"], ["Base", "odd name"])
-        self.assertEqual(module["classes"]["odd name"], {"base": "", "roles": [], "overlaps": [], "tagged": False,
+        self.assertEqual(module["classes"]["odd name"], {"base": "", "roles": [], "overlaps": [], "tag": 0,
                                                          "fields": [], "flags": {}, "boxes": {}, "template": False,
                                                          "exception": "", "module": ""})
         self.assertEqual(module["dynamic_types"][1], {"symbol": "@dtf.0", "kind": 9, "cls": -1, "flags": 8, "base": "",
@@ -332,16 +332,17 @@ class ModuleTests(unittest.TestCase):
 
     def test_malformed_module_is_rejected_with_its_line(self):
         for old, new, expected in (
-                ("  class Base tagged\n", "  klass Base tagged\n", "line 2: expected a declaration: class, dyntype, layout, hole"),
-                ("  class Base tagged\n", "class Base tagged\n", "line 2: expected a declaration, indented by two spaces"),
-                ("  class Base tagged\n", "  class Base tagged=1\n", "line 2: class field tagged is a flag, written bare"),
-                ("  class Base tagged\n", "  class Base tagged base=X\n", "line 2: class field base must come before tagged"),
-                ("  class Base tagged\n", "  class Base tagged tagged\n", "line 2: class field tagged is repeated"),
-                ("  class Base tagged\n", "  class Base sort=X\n", "line 2: unknown class field 'sort'"),
-                ("  class Base tagged\n", '  class Base base="" tagged\n', "line 2: class field base is omitted where it holds its default"),
-                ("  class Base tagged\n", "  class Base roles=[] tagged\n", "line 2: class field roles is omitted where it holds its default"),
-                ("  class Base tagged\n", "  class Base roles=Reader\n", "line 2: expected '=['"),
-                ("  class Base tagged\n", '  class "Base" tagged\n', "line 2: atom 'Base' must be written bare"),
+                ("  class Base tag=1\n", "  klass Base tag=1\n", "line 2: expected a declaration: class, dyntype, layout, hole"),
+                ("  class Base tag=1\n", "class Base tag=1\n", "line 2: expected a declaration, indented by two spaces"),
+                ("  class Base tag=1\n", "  class Base tag\n", "line 2: tag= needs an integer"),
+                ("  class Base tag=1\n", "  class Base tag=0\n", "line 2: class field tag is omitted where it holds its default"),
+                ("  class Base tag=1\n", "  class Base tag=1 base=X\n", "line 2: class field base must come before tag"),
+                ("  class Base tag=1\n", "  class Base tag=1 tag=1\n", "line 2: class field tag is repeated"),
+                ("  class Base tag=1\n", "  class Base sort=X\n", "line 2: unknown class field 'sort'"),
+                ("  class Base tag=1\n", '  class Base base="" tag=1\n', "line 2: class field base is omitted where it holds its default"),
+                ("  class Base tag=1\n", "  class Base roles=[] tag=1\n", "line 2: class field roles is omitted where it holds its default"),
+                ("  class Base tag=1\n", "  class Base roles=Reader\n", "line 2: expected '=['"),
+                ("  class Base tag=1\n", '  class "Base" tag=1\n', "line 2: atom 'Base' must be written bare"),
                 # (a struct: NAME:TYPE fields, NAME:INT flags and boxes, a name quoted where it has
                 # a space or a colon)
                 ('fields=[" cls":str " str":str " args":str]', "fields=[]", "line 3: class field fields is omitted where it holds its default"),
@@ -351,13 +352,13 @@ class ModuleTests(unittest.TestCase):
                 ('fields=[" cls":str', 'fields=[" cls": str', "line 3: expected an atom at column 43"),
                 ('fields=[" cls":str', 'fields=[ cls:str', "line 3: expected an atom at column 36"),
                 ('fields=[" cls":str', 'fields=["cls":str', "line 3: atom 'cls' must be written bare"),
-                ('"a:b":"odd type"', 'a:b:"odd type"', "line 4: expected ' ' at column 79"),
+                ('"a:b":"odd type"', 'a:b:"odd type"', "line 4: expected ' ' at column 78"),
                 ("flags=[value:4", "flags=[value:04", "line 4: flags=[ needs an integer after value:"),
                 ("flags=[value:4", "flags=[value:x", "line 4: flags=[ needs an integer after value:"),
                 ('flags=[value:4 "a:b":5]', "flags=[value:4 value:5]", "line 4: class field flags names 'value' twice"),
                 (' flags=[value:4 "a:b":5] boxes=[value:6]', ' boxes=[value:6] flags=[value:4 "a:b":5]',
                  "line 4: class field flags must come before boxes"),
-                ('" args":str]\n', '" args":str] tagged\n', "line 3: class field tagged must come before fields"),
+                ('" args":str]\n', '" args":str] tag=4\n', "line 3: class field tag must come before fields"),
                 ("kind=obj cls=0\n", "kind=obj cls=0 flags=[]\n", "line 9: dyntype field flags is omitted where it holds its default"),
                 ("kind=obj cls=0\n", "kind=obj\n", "line 9: dyntype @dt.Base needs cls="),
                 ("kind=func", "kind=function", "line 8: kind= needs a DynType kind: none, bool, int"),
@@ -394,9 +395,9 @@ class ModuleTests(unittest.TestCase):
         module = text.parse_module(MODULE)
         for change, expected in ((lambda m: m.pop("dynamic_layouts"), "a module record holds attributes, classes, dynamic_types, dynamic_layouts, holes"),
                                  (lambda m: m.__setitem__("dynamic_types", {}), "a module's dynamic_types must be a list"),
-                                 (lambda m: m["classes"]["Base"].pop("tagged"),
-                                  "class Base: the record must hold base, roles, overlaps, tagged, fields, flags, boxes, template, exception, module"),
-                                 (lambda m: m["classes"]["Base"].__setitem__("tagged", 1), "class Base: tagged must be a flag"),
+                                 (lambda m: m["classes"]["Base"].pop("tag"),
+                                  "class Base: the record must hold base, roles, overlaps, tag, fields, flags, boxes, template, exception, module"),
+                                 (lambda m: m["classes"]["Base"].__setitem__("tag", True), "class Base: tag must be an int"),
                                  (lambda m: m["classes"]["Base"].__setitem__("fields", {}), "class Base: fields must be a list of names with types"),
                                  (lambda m: m["classes"]["Node"]["fields"].append({"name": "x"}),
                                   "class Node: each of its fields must hold a name and a type"),
@@ -495,11 +496,17 @@ class CompilerTests(unittest.TestCase):
             self.assertEqual(module, text.module_from_snapshot(snapshot))
             for table in ("dynamic_types", "dynamic_layouts") + text.LOWERING_TABLES:
                 self.assertEqual(module[table], snapshot[table] if table in snapshot else snapshot["lowering"][table])
-            # (a class's record is the snapshot's, and what lowering reads of it, in the compiler's order)
+            # (a class's record is the snapshot's, and what lowering reads of it, in the compiler's order;
+            # its tag the lowering record's number, where the snapshot says only whether it has one)
             lowering = snapshot["lowering"]
             self.assertEqual(list(module["classes"]), lowering["class_order"])
-            self.assertEqual(module["classes"], {name: dict(snapshot["classes"][name], **lowering["classes"][name])
+            self.assertEqual(module["classes"], {name: dict({k: v for k, v in snapshot["classes"][name].items() if k != "tagged"},
+                                                            **lowering["classes"][name])
                                                  for name in lowering["class_order"]})
+            tags = [c["tag"] for c in module["classes"].values() if c["tag"] != 0]
+            self.assertEqual(tags, list(range(1, len(tags) + 1)))
+            self.assertEqual(sorted(name for name, c in module["classes"].items() if c["tag"] != 0),
+                             sorted(name for name, c in snapshot["classes"].items() if c["tagged"]))
             self.assertTrue(module["attributes"]["complete"])
             self.assertEqual(text.refusals(module), [])
             # (secondary bases, overlaps, and the DynTypes and layouts of a dynamic program are among them)

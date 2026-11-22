@@ -183,7 +183,7 @@ class LoweringTextTests(unittest.TestCase):
     """The declarations and attributes that hold lowering's state print and read back."""
 
     MODULE = """module version=1 complete opts=[fieldtbaa tupleret] exceptions protocol dynamic promoting plain=[gen[int]] untracked=[m] objects=[Point:0 "odd name":1] compared=[Point] hashed=[Point] unequal=[Point] crossed=["odd name"] {
-  class Point tagged fields=[" class":int x:int] module=m
+  class Point tag=1 fields=[" class":int x:int] module=m
   class Box template exception=ValueError
   class "odd name"
   hole 1 type=dict[str,int]

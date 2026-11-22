@@ -1207,9 +1207,9 @@ below, are left out here):
 
 ```text
 module version=1 complete opts=[...] {
-  class Both base=Storage roles=[Reader] tagged fields=[" class":int value:int " Storage.0":bool " Storage.box.0":dyn] flags=[value:2] boxes=[value:3]
-  class Reader overlaps=[Storage] tagged fields=[" class":int]
-  class Storage overlaps=[Reader] tagged fields=[" class":int value:int] flags=[value:2] boxes=[value:3]
+  class Both base=Storage roles=[Reader] tag=1 fields=[" class":int value:int " Storage.0":bool " Storage.box.0":dyn] flags=[value:2] boxes=[value:3]
+  class Reader overlaps=[Storage] tag=2 fields=[" class":int]
+  class Storage overlaps=[Reader] tag=3 fields=[" class":int value:int] flags=[value:2] boxes=[value:3]
   dyntype @dt.Both kind=obj cls=1 flags=[role] base=@dt.Storage role=@dt.Reader payload=Both
   layout Both descriptor=@dt.Both base=@dt.Storage role=@dt.Reader number=1 members=[int int bool dyn]
 }
@@ -1219,7 +1219,8 @@ function @m.Storage.__init__.1(self: Both, value: int) -> None effects=wO {
 
 A class gives its single base, a class of the program or a builtin exception class; its
 fieldless secondary bases (`roles`); the unrelated classes it shares a subclass with
-(`overlaps`); whether its objects begin with a class tag; and its struct, as `field.addr`
+(`overlaps`); its `tag`, the number its objects' class word holds (0, omitted, where they
+have none); and its struct, as `field.addr`
 indexes it. `fields` lists its fields in order with their types, and `flags` and `boxes` give
 the index of a field's "is assigned" flag and identity box. A hidden field's name begins with
 a space, so it is quoted. A class's own flags take the indexes after its fields, and its own

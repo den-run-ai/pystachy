@@ -26,19 +26,20 @@ give their fields, the first its text's version (TEXT_VERSION), its declarations
 before its `}`, and then its functions:
 
     module version=1 complete opts=[fieldtbaa tupleret] exceptions {
-      class Both base=Storage roles=[Reader] tagged fields=[" class":int value:int " Storage.0":bool " Storage.box.0":dyn] flags=[value:2] boxes=[value:3]
-      class Reader overlaps=[Storage] tagged fields=[" class":int]
+      class Both base=Storage roles=[Reader] tag=1 fields=[" class":int value:int " Storage.0":bool " Storage.box.0":dyn] flags=[value:2] boxes=[value:3]
+      class Reader overlaps=[Storage] tag=2 fields=[" class":int]
       dyntype @dt.Both kind=obj cls=1 flags=[role] base=@dt.Storage role=@dt.Reader payload=Both
       layout Both descriptor=@dt.Both base=@dt.Storage role=@dt.Reader number=1 members=[int int bool dyn]
     }
 
-    class NAME [base=CLASS] [roles=[CLASS ...]] [overlaps=[CLASS ...]] [tagged] [fields=[FIELD:TYPE ...]] [flags=[FIELD:INT ...]] [boxes=[FIELD:INT ...]]
+    class NAME [base=CLASS] [roles=[CLASS ...]] [overlaps=[CLASS ...]] [tag=INT] [fields=[FIELD:TYPE ...]] [flags=[FIELD:INT ...]] [boxes=[FIELD:INT ...]]
     dyntype SYMBOL kind=KIND cls=INT [flags=[FLAG ...]] [base=SYMBOL] [role=SYMBOL] [payload=TYPE]
     layout NAME descriptor=SYMBOL [base=SYMBOL] [role=SYMBOL] number=INT [members=[TYPE ...]]
 
 A class gives its single base (a class or a builtin exception class), its fieldless secondary
-bases, the unrelated classes it shares a subclass with, whether its objects begin with a class
-tag, and its struct as field.addr indexes it: its fields in order with their types (a hidden
+bases, the unrelated classes it shares a subclass with, its tag (the number that its objects'
+class word holds, ClassInfo.tag; 0, omitted, where its objects have none), and its struct as
+field.addr indexes it: its fields in order with their types (a hidden
 field's name begins with a space, so it is quoted), and the index of each field's "is
 assigned" flag and identity box (ClassInfo.fflag and fbox). Its own flags take the indexes
 after its fields and its own boxes those after its flags; a base's are among its fields
@@ -156,7 +157,7 @@ LOOP_LISTS = ("tests", "indices")
 # lowering reads (gen_lower_module, gen_lower): lowering_state, docs/typed-ir.md#lowering-state.
 DECLARATIONS = {
     "class": ("classes", "", (("base", "atom", ""), ("roles", "list", []), ("overlaps", "list", []),
-                              ("tagged", "flag", False), ("fields", "typed", []), ("flags", "indexed", {}),
+                              ("tag", "int", 0), ("fields", "typed", []), ("flags", "indexed", {}),
                               ("boxes", "indexed", {}), ("template", "flag", False), ("exception", "atom", ""),
                               ("module", "atom", ""))),
     "dyntype": ("dynamic_types", "symbol", (("kind", "dynkind", None), ("cls", "int", None), ("flags", "dynflags", 0),
@@ -950,12 +951,25 @@ def module_from_snapshot(snapshot):
         require(sorted(lowering["class_order"]) == sorted(classes), "the lowering record orders other classes than the snapshot's")
         order = lowering["class_order"]
         extra = lowering["classes"]
+    # (a class's tag is the number its objects' class word holds, which the lowering record gives;
+    # a snapshot without one says only whether a class has a tag, and the compiler numbers those
+    # that do from 1 in its order, where it excluded none of them from a hierarchy: program.py)
+    numbered = {}
+    for name in order:
+        if classes[name]["tagged"]:
+            numbered[name] = len(numbered) + 1
+    records = {}
+    for name in order:
+        c = classes[name]
+        record = {key: c[key] for key in c if key != "tagged"}
+        record.update(roles=list(c["roles"]), overlaps=list(c["overlaps"]), fields=[dict(f) for f in c["fields"]],
+                      flags=dict(c["flags"]), boxes=dict(c["boxes"]))
+        record.update(extra.get(name, {"template": False, "exception": "", "module": "", "tag": numbered.get(name, 0)}))
+        require((record["tag"] != 0) == c["tagged"], f"class {name}: the lowering record's tag {record['tag']} and the snapshot disagree")
+        records[name] = record
     module = {
         "attributes": {key: type(default)(default) if isinstance(default, (list, dict)) else default for key, _, default in MODULE_ATTRIBUTES},
-        "classes": {name: dict(classes[name], roles=list(classes[name]["roles"]), overlaps=list(classes[name]["overlaps"]),
-                               fields=[dict(f) for f in classes[name]["fields"]], flags=dict(classes[name]["flags"]),
-                               boxes=dict(classes[name]["boxes"]), **extra.get(name, {"template": False, "exception": "", "module": ""}))
-                    for name in order},
+        "classes": records,
         "dynamic_types": [dict(t) for t in snapshot["dynamic_types"]],
         "dynamic_layouts": [dict(t, members=list(t["members"]), llvm=list(t["llvm"])) for t in snapshot["dynamic_layouts"]],
     }
@@ -1168,6 +1182,7 @@ def class_infos(module):
         info.base = c["base"]
         info.roles = list(c["roles"])
         info.overlaps = list(c["overlaps"])
+        info.tag = c["tag"]
         class_struct(name, c, info)
         infos[name] = info
     return infos
@@ -1226,7 +1241,7 @@ def lowering_state(gen):
     return {
         "attributes": attributes,
         "class_order": list(gen.classes),
-        "classes": {name: {"template": name in gen.tmpl, "exception": ci.exc, "module": ci.mod} for name, ci in gen.classes.items()},
+        "classes": {name: {"template": name in gen.tmpl, "exception": ci.exc, "module": ci.mod, "tag": ci.tag} for name, ci in gen.classes.items()},
         "holes": [{"number": str(k), "type": gen.holes[k]} for k in range(1, len(gen.holes))],
         "globals": [{"symbol": g.v, "type": g.t} for g in gen.globs],
         "roots": [{"value": r} for r in gen.gcroots],

@@ -6,13 +6,13 @@
 ;   python3 tools/typed_ir_text.py verify tools/fixtures/typed_ir/classes.tir
 
 module version=1 {
-  class Base tagged
-  class Both base=Storage roles=[Reader] tagged
-  class Derived base=Base tagged
+  class Base tag=1
+  class Both base=Storage roles=[Reader] tag=2
+  class Derived base=Base tag=3
   class Failure base=ValueError
   class Other
-  class Reader overlaps=[Storage] tagged
-  class Storage overlaps=[Reader] tagged
+  class Reader overlaps=[Storage] tag=4
+  class Storage overlaps=[Reader] tag=5
 }
 
 ; ---- readings the class view admits
