@@ -5501,16 +5501,38 @@ class Loader:
                 names.append(a.s)
                 flags[-1] = self.import_binds(m, a.s, infn)
             elif a.s == "*":
-                for x in self.public(src):
-                    mine = self.rebinds(m, src, x, x, infn)  # (a def or class statement of m binds x)
+                exported = self.public(src)
+                added: list[str] = []
+                changes = 0
+                if src.done and not infn and src.pdir == "" and src.kinds.get("__all__", "") == "v":
+                    changes = self.export_changes(src.body.kids, added, False)
+                # Conditional assignment can remove a public name. A conditional extension
+                # only adds names to the unconditional exports.
+                candidates = exported + [x for x in added if x not in exported] if changes > 0 else exported
+                for x in candidates:
+                    guarded = False
+                    if changes > 0 and (changes == 2 or x not in exported):
+                        guarded = src.kinds.get(x, "") == "v" and x in src.sure and m.kinds.get(x, "v") == "v"
+                        if x not in exported and (not guarded or not self.can_add_export(m, src, x)):
+                            # Introducing a second possible type for an existing destination
+                            # can reject code that uses its original type on the untaken path.
+                            continue
+                    mine = self.rebinds(m, src, x, x, infn)
                     k = src.kinds[x] if mine else self.take(m, src, x, x, infn, keep, inits, copies, line)
+                    if guarded:
+                        name = src.q + "__all__"
+                        member = mk("cmp", "in", line, [mk("str", x, line, []), mk("name", name, line, [])])
+                        if changes == 2:
+                            bound = mk("exportbound", name, line, [])
+                            member = mk("ifexp", "", line, [bound, member, mk("False" if x.startswith("_") else "True", "", line, [])])
+                        copies[-1] = mk("if", "", line, [member, mk("block", "", line, [copies[-1]]), mk("block", "", line, [])])
                     took.append(" " if mine else x if k != "v" else "")
                     # Aliases may acquire a flag only after late_aliases. Other imports check
                     # only existing source flags: from . import submodule must not check the
                     # destination flag that this same statement will create in its package.
                     key = f"{src.name}  {x}"
                     checks.append(f"?{src.name} {x}" if k.startswith("a:") else f"{self.fragile[key]} {x} I" if k != "v" and key in self.fragile else "")
-                    if not mine:
+                    if not mine and not guarded:
                         names.append(x)
                 if src.pdir != "" and not has_all(src.body.kids):
                     self.stars.append(mk("star", "", line, [mk("str", src.name, line, [])]))
@@ -5609,6 +5631,49 @@ class Loader:
         if base == "":
             fail("attempted relative import beyond top-level package", line)
         return base + "." + path if path != "" else base
+
+    def can_add_export(self, m: Mod, src: Mod, name: str) -> bool:
+        # A conditional addition can introduce a variable or recopy the same source
+        # variable. Neither case widens a binding already used at another type.
+        if name in PYBUILTINS:
+            return False
+        if name not in m.kinds:
+            return True
+        scope = "@" + m.name
+        if scope + " " + name not in self.vtook:
+            return False
+        for take in self.vtaken:
+            if take.s == name and take.kids[4].s == scope and (take.kids[0].s != src.name or take.kids[1].s != name):
+                return False
+        return True
+
+    def export_changes(self, body: list[Node], out: list[str], branch: bool) -> int:
+        # 2 if a branch may replace __all__, 1 if it only extends it, 0 if neither,
+        # -1 for bindings outside this model. Membership is tested in the live list.
+        changes = 0
+        for st in body:
+            if st.kind == "if" or st.kind == "try":
+                for child in st.kids:
+                    block = child.kids[1] if child.kind == "except" else child
+                    if block.kind == "block":
+                        nested = self.export_changes(block.kids, out, True)
+                        if nested < 0:
+                            return -1
+                        changes = max(changes, nested)
+            elif (st.kind == "assign" or (st.kind == "augassign" and st.s == "+")) and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[0].s == "__all__":
+                seq = st.kids[1]
+                if seq.kind != "list" or len(seq.kids) == 0:
+                    return -1
+                for item in seq.kids:
+                    if item.kind != "str":
+                        return -1
+                    if branch and item.s not in out:
+                        out.append(item.s)
+                if branch:
+                    changes = max(changes, 2 if st.kind == "assign" else 1)
+            elif names_name(st, "__all__"):
+                return -1
+        return changes
 
     def public(self, src: Mod) -> list[str]:
         # the names from src import * takes: those __all__ lists, else the names not starting with _

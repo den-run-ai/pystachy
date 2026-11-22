@@ -290,11 +290,13 @@ or generator/async initializers retain eager formatting
 - **Builtin names bound on a path that does not run**, such as `len = mylen` in an `except`
   clause or an untaken `if` branch at module level, raise `NameError` when read; CPython
   finds the builtin ([#1512](https://github.com/den-run-ai/pystachy/issues/1512)).
-- **Star imports** see `__all__` only as the module's top-level statements bind and extend it.
-  Where only an `if` branch, a `try` statement or a loop binds it, the import takes every public
-  name; where the top level binds it, a change in such a statement, as
-  `if flag: __all__ += ["b"]`, is not seen. CPython takes the `__all__` that the module's code
-  leaves ([#1513](https://github.com/den-run-ai/pystachy/issues/1513)).
+- **Star imports** check the live `__all__` for ordinary module variables named by
+  literal string lists assigned or extended with `+=` in `if` and `try` suites.
+  A name added to a top-level list this way can bind a new variable. An existing
+  destination keeps its binding when that list did not originally name it.
+  Packages, conditional function or class exports, and changes outside these literal
+  forms retain the top-level export rules
+  ([#1513](https://github.com/den-run-ai/pystachy/issues/1513)).
 - **`except E as name` at module level**, where an import bound `name`, leaves the module
   bound after a handler that ran; CPython unbinds `name`, so a later read raises `NameError`
   ([#1514](https://github.com/den-run-ai/pystachy/issues/1514)).

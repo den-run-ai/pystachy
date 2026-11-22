@@ -1182,6 +1182,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         candidates = [m for m in umembers(want) if is_dict(m)] if k == "dict" or k == "dictcomp" else [m for m in umembers(want) if is_list(m)]
         if len(candidates) == 1:
             want = candidates[0]
+    if k == "exportbound":
+        # A star import uses public names until the module binds __all__. Reuse the
+        # global definition flag that ordinary foreign reads check for this variable.
+        return self.mem_load(Val("@g." + n.s + ".def", "&bool")) if n.s in self.gflag else Val("true", "bool")
     if k == "name":
         if "?" not in want and same_kind(want, self.ltype.get(n.s, "")) and self.unfilled(n.s):
             self.refine(n.s, want)  # an empty container that nothing fills takes the type expected here
