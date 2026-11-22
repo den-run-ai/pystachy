@@ -206,8 +206,10 @@ covers a 2,000-container round trip and catching `RecursionError` on deeper inpu
 - **The collector is off.** The conservative stack scan cannot see WebAssembly locals, so
   `runtime.c` sets `PYSTACHY_GC=off` under WASI. The engine caps memory (4 GiB for wasm32).
 - **LLVM/WASI commands use WebAssembly exception handling.** The adapter lowers native
-  landing pads to Wasm catches for Pystachy's exception payload. Python handlers, cleanup
-  and uncaught reporting use the shared runtime. WASI errno numbers can differ from Linux,
+  landing pads to Wasm catches for Pystachy's exception payload. A catch unwinds to the
+  handler of the enclosing `try`, as clang's nested catches do: LLVM counts the handler's
+  code as part of its catch. Python handlers, cleanup and uncaught reporting use the shared
+  runtime. WASI errno numbers can differ from Linux,
   including which subclass a numeric `OSError` constructs. For example, both Wasm routes
   report missing files with WASI errno 44, while Linux reports errno 2.
 - **No processes, signals, users or dynamic loading.** `wasi_stubs.c` defines those calls to
