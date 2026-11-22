@@ -706,9 +706,6 @@ def main():
     for sym in c23:
         bad.append(f"the runtime calls {sym}, which glibc before 2.38 lacks: read numbers with runtime.c's decnum and hexnum, not strtol, atoi or sscanf")
     letters = {}  # runtime.py's function -> the effect letters derived (R A U I)
-    # (a function of runtime.py that an operation lowers to, such as pys_list_get, whose raises are
-    # all the subset's implicit checks: its R is its own, not that of runtime.py's code that indexes a list)
-    soft = {f for f in rpy_ops if all(x != "?" and (x.startswith(BUG_ONLY) or x.startswith("MemoryError")) for x in raises(lfns, lmsgs, f))}
     writes = {}
     used = state(ll)
     pure = set(PURE_C)
@@ -752,7 +749,11 @@ def main():
             for op, x, _ in ops:
                 g = pys.rtsym(x) if op == "rt" else x[1:] if op == "call" else ""
                 for h in via.get(g, set()) | {g}:
-                    got = letters[h] - ({"R"} if op == "rt" and h in soft else set()) if h in letters else set()
+                    # (an operation that lowers to a function of runtime.py, as x[i] to pys_list_get and
+                    # x / y to pys_fdiv: whether its check can fire where f makes it is what the linked
+                    # runtime shows, above, as for one that lowers to a function of runtime.c. opt folds
+                    # the division by a constant, and an index check's message is a bug's alone)
+                    got = letters[h] - ({"R"} if op == "rt" else set()) if h in letters else set()
                     if h in letters and h != f and (not got <= letters[f] or writes[h] and not writes[f]):
                         letters[f] |= got
                         writes[f] = writes[f] or writes[h]

@@ -1477,9 +1477,9 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     deco = short(deco)
     own = 0
     for x in d.kids[3:] if self.rtmode and cls == "" else []:
-        # runtime mode's own decorators. @_rt.unchecked: the function's + - * wrap, and its <<
-        # and >> shift by their count modulo 64, as runtime.c's arithmetic on addresses and sizes
-        # does. @_rt.cold: a slow path, which stays out of line
+        # runtime mode's own decorators. @_rt.unchecked: the function's + - * are unchecked, as
+        # runtime.c's signed arithmetic on sizes and indexes is (an overflow is undefined), and
+        # its << and >> shift by their count modulo 64. @_rt.cold: a slow path, which stays out of line
         if len(x.kids) == 0 and self.imported(x.s) == "_rt.unchecked":
             f.unchecked = True
             own += 1

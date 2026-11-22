@@ -70,7 +70,7 @@ class FnInfo:
         self.inst = False  # a template's function, compiled for one list of argument types
         self.cmprebind = ""  # native reference union for a comparison operand rebound across control flow
         self.cmpops = False  # isolated comparison helpers raise guaranteed builtin TypeErrors at runtime
-        self.unchecked = False  # runtime mode's @_rt.unchecked: + - * wrap and << >> take their count modulo 64, as C's
+        self.unchecked = False  # runtime mode's @_rt.unchecked: + - * are C's signed ones (no overflow check) and << >> take their count modulo 64
         self.cold = False  # runtime mode's @_rt.cold: a slow path, which LLVM keeps out of its callers (noinline cold)
         self.cmptypes: dict[str, str] = {}  # guarded comparison missing-read layouts, inherited by isolated helper specializations
         self.cmpfields = ""  # a structural comparison adapter's canonical field types; missing reads raise at their source position

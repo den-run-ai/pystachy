@@ -1668,26 +1668,9 @@ I pys_shl(I a, I b);
 I pys_shr(I a, I b);
 I pys_int_bit_length(I a);
 I pys_int_bit_count(I a);
-double pys_fdiv(double a, double b) { if (b == 0) pys_fail("ZeroDivisionError: float division by zero"); return a / b; }
+double pys_fdiv(double a, double b);            /* runtime.py's, as the conversions, rounding and comparison below */
 double pys_idiv(I a, I b);                    /* int / int, rounded once in runtime.py */
-static __attribute__((noinline, const)) I cmp_if_whole(I i, double d) {   /* pys_cmp_if past 2**53 */
-  if (isnan(d)) return 2;
-  if (d >= 9223372036854775808.0) return -1;
-  if (d < -9223372036854775808.0) return 1;
-  double t = trunc(d); I j = (I)t;
-  if (i != j) return i < j ? -1 : 1;
-  return d > t ? -1 : d < t ? 1 : 0;
-}
-I pys_cmp_if(I i, double d) {                  /* exact compare of an int with a float: -1, 0, 1, or 2 if unordered */
-  /* an int of at most 2**53 in magnitude converts exactly, so comparing floats decides (NaN: none
-     holds); the rest compare whole parts out of line (cmp_if_whole). Its trunc() is a libm call on
-     x86-64 before SSE4.1, which LLVM computed ahead of this test where it inlined the two together */
-  if ((uint64_t)i + (1ULL << 53) <= (1ULL << 54)) {
-    double x = (double)i;
-    return d > x ? -1 : d < x ? 1 : d == x ? 0 : 2;
-  }
-  return cmp_if_whole(i, d);
-}
+I pys_cmp_if(I i, double d);                    /* exact compare of an int with a float: -1, 0, 1, or 2 if unordered */
 /* ---------- promoting ints (# pystachy: python-int, docs/python-int.md) ----------
    An int of a module that opts in is two words, {lo, hi}: hi is NULL and lo the value where it
    fits in 64 bits; otherwise hi is the value's immutable Mpz, which never fits, and lo is 0.
@@ -2104,7 +2087,7 @@ double pys_m_hypot(double x, double y);
 double pys_m_hypot_list(List *p);
 double pys_m_dist(List *p, List *q);
 double pys_m_fma(double x, double y, double z);
-double pys_m_copysign(double x, double y) { return copysign(x, y); }
+double pys_m_copysign(double x, double y);
 /* complex numbers (lib/_pystachy_complex.py): CPython 3.13's Objects/complexobject.c, its division
    (_Py_c_quot), power (complex_pow) and absolute value (_Py_c_abs) with their errors, through libm
    and errno as there. Products and sums are not contracted into an fma: CPython's x86-64 build
@@ -2207,14 +2190,10 @@ double pys_m_logb(double x, double b) {   /* log(x) / log(b), and a base of 1 di
 }
 double pys_m_degrees(double x);
 double pys_m_radians(double x);
-I pys_m_isfinite(double x) { return isfinite(x); }
-I pys_m_isinf(double x) { return isinf(x); }
-I pys_m_isnan(double x) { return isnan(x); }
-static __attribute__((noinline)) I trunc_far(double x) { return pys_f2i(trunc(x)); }
-I pys_m_trunc(double x) {                    /* math.trunc(x): the conversion truncates wherever it is defined */
-  if (x >= -0x1p63 && x < 0x1p63) return (I)x;   /* (NaN fails both) */
-  return trunc_far(x);
-}
+I pys_m_isfinite(double x);
+I pys_m_isinf(double x);
+I pys_m_isnan(double x);
+I pys_m_trunc(double x);                       /* math.trunc(x) */
 /* Portions derived from CPython's Modules/mathmodule.c: Copyright (c) 2001-2024 Python Software
    Foundation; All Rights Reserved; used under the PSF License Agreement (see THIRD_PARTY_NOTICES). */
 I pys_m_isclose(double a, double b, double rel_tol, double abs_tol);
@@ -2584,20 +2563,7 @@ double pys_ffloordiv(double a, double b) {
   if (b == 0) pys_fail("ZeroDivisionError: float floor division by zero");
   return whole_divmod(a, b, &m, &q) ? q : pyquot_libm(a, b);
 }
-I pys_f2i(double d) {
-  if (isnan(d)) pys_fail("ValueError: cannot convert float NaN to integer");
-  if (isinf(d)) pys_fail("OverflowError: cannot convert float infinity to integer");
-  if (!(d >= -9223372036854775808.0 && d < 9223372036854775808.0)) pys_fail("OverflowError: float too large for a 64-bit int");
-  return (I)d;
-}
-static __attribute__((noinline)) I round_far(double d) { return pys_f2i(nearbyint(d)); }
-I pys_round(double d) {                      /* round(d): half to even, nearbyint()'s in the default rounding mode */
-  /* below 2**52 in magnitude, adding and then subtracting 2**52 with d's sign rounds d to a whole
-     float in that mode, exactly; from there d is whole. nearbyint() is a libm call on x86-64 before
-     SSE4.1 (round_far, out of line so that LLVM does not compute it ahead of this test) */
-  if (fabs(d) < 0x1p52) { double big = copysign(0x1p52, d), r = d + big; return (I)(r - big); }
-  return round_far(d);
-}
+I pys_round(double d);                         /* round(d), half to even: runtime.py's, with math.floor and math.ceil */
 I pys_round_int(I x, I n);                  /* round(x, n) of an int: runtime.py's */
 double pys_round_n(double x, I n) {           /* round(x, n): half-even on the exact decimal value */
   static char b[1500], o[1500];
@@ -2618,17 +2584,8 @@ double pys_round_n(double x, I n) {           /* round(x, n): half-even on the e
   if (isinf(r)) pys_fail("OverflowError: rounded value too large to represent");
   return copysign(r, x);
 }
-static __attribute__((noinline)) I floor_far(double d) { return pys_f2i(floor(d)); }
-static __attribute__((noinline)) I ceil_far(double d) { return pys_f2i(ceil(d)); }
-I pys_floor(double d) {                      /* math.floor(d): where the conversion is defined, it truncates toward 0,
-                                                and a negative d below its truncation is one less */
-  if (d >= -0x1p63 && d < 0x1p63) { I t = (I)d; return t - (d < (double)t); }   /* (NaN fails both) */
-  return floor_far(d);                       /* (floor() is a libm call on x86-64 before SSE4.1) */
-}
-I pys_ceil(double d) {                       /* math.ceil(d): as pys_floor, one more above the truncation */
-  if (d >= -0x1p63 && d < 0x1p63) { I t = (I)d; return t + (d > (double)t); }
-  return ceil_far(d);
-}
+I pys_floor(double d);
+I pys_ceil(double d);
 
 /* ---------- generic repr / equality / ordering driven by a type descriptor ----------
    i int, f float, b bool, s str, L<e> list, D<k><v> dict, T<n><e...> tuple, V<e> counted tuple, S<e> set, F<e>

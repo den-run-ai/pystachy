@@ -17,6 +17,7 @@ INT_TEXT = Path(__file__).with_name("int_text.py").resolve()
 REDUCTIONS = Path(__file__).with_name("reductions.py").resolve()
 NUMERIC = Path(__file__).with_name("numeric.py").resolve()
 INTEGERS = Path(__file__).with_name("integers.py").resolve()
+LISTS = Path(__file__).with_name("lists.py").resolve()
 # Keep the small arithmetic kernels long enough to measure without launch time.
 COUNTS = {"scalar": 120000000, "range": 60000000, "power": 60000000,
           "sum-float": 5000, "sum-int": 5000, "reduction": 5000, "ascii": 5000, "unicode": 5000,
@@ -27,16 +28,21 @@ COUNTS = {"scalar": 120000000, "range": 60000000, "power": 60000000,
           "hypot": 60000000, "hypot-3": 30000000, "dist-3": 40000000, "dist-64": 4000000, "fma": 150000000,
           "powmod": 3000000, "powmod-31": 3500000, "round-int": 70000000, "ints-sum": 900000,
           "floordiv": 50000000, "modulo": 50000000, "lshift": 50000000, "rshift": 50000000,
-          "bit-length": 50000000, "bit-count": 50000000, "idiv-small": 50000000, "idiv-wide": 20000000}
+          "bit-length": 50000000, "bit-count": 50000000, "idiv-small": 50000000, "idiv-wide": 20000000,
+          "list-append": 200000000, "list-append-str": 100000000, "list-short": 40000000, "list-stack": 150000000,
+          "list-pop-front": 100000000, "list-insert": 60000000, "list-slice": 30000000, "list-slice-step": 30000000,
+          "list-extend": 20000000, "list-reverse": 10000000, "list-index": 150000000}
 # The cases of a later migration have a source of their own, so that workload.py keeps the hash
 # that the first recorded report names.
 INT_TEXT_CASES = ("str-int", "str-int-short", "int-str", "int-str-short", "int-str-hex", "int-str-padded")
 REDUCTION_CASES = ("ints-any-all", "ints-any-all-short", "ints-sum-float", "join", "join-bytes", "join-slice", "path-join")
 NUMERIC_CASES = ("hypot", "hypot-3", "dist-3", "dist-64", "fma", "powmod", "powmod-31", "round-int", "ints-sum")
 INTEGER_CASES = ("floordiv", "modulo", "lshift", "rshift", "bit-length", "bit-count", "idiv-small", "idiv-wide")
+LIST_CASES = ("list-append", "list-append-str", "list-short", "list-stack", "list-pop-front", "list-insert", "list-slice",
+              "list-slice-step", "list-extend", "list-reverse", "list-index")
 SOURCES = dict.fromkeys(COUNTS, SOURCE)
 for source, workload_cases in ((INT_TEXT, INT_TEXT_CASES), (REDUCTIONS, REDUCTION_CASES),
-                               (NUMERIC, NUMERIC_CASES), (INTEGERS, INTEGER_CASES)):
+                               (NUMERIC, NUMERIC_CASES), (INTEGERS, INTEGER_CASES), (LISTS, LIST_CASES)):
     SOURCES.update(dict.fromkeys(workload_cases, source))
 
 

@@ -8,15 +8,15 @@ This guide covers the architecture, development workflow and private interface
 used by `runtime.py`. Ordinary programs cannot use that interface.
 
 - [Responsibilities](#responsibilities) and [writing runtime code](#writing-runtime-code).
-- [Runtime ABI](#runtime-mode-and-abi), [private primitives](#private-primitives) and [container storage](#list-and-dict-storage).
+- [Runtime ABI](#runtime-mode-and-abi), [private primitives](#private-primitives), [machine memory](#machine-memory) and [container storage](#list-and-dict-storage).
 - [Build and cache](#build-and-cache), then [verification](#verification).
 
 ## Responsibilities
 
 | Part | Responsibilities |
 |---|---|
-| `runtime.py` | String methods and ASCII escaping, `os.path`'s string functions, `str(int)` and `int(str, base)`, scalar and integer `math`, `math.hypot`/`dist`/`fma`, `any`/`all`, `sum`/`fsum`/`prod`, fixed-width integer division, remainder, shifts and bit counts, checked integer power and `pow(a, b, m)`, `round(int, n)`, range arithmetic, dict hashing and format-spec parsing. |
-| `runtime.c` | Collector, object and container memory layouts, I/O, signals, native library calls and float conversion. |
+| `runtime.py` | String methods and ASCII escaping, `os.path`'s string functions, `str(int)` and `int(str, base)`, scalar and integer `math`, `math.hypot`/`dist`/`fma`, `any`/`all`, `sum`/`fsum`/`prod`, fixed-width integer division, remainder, shifts and bit counts, checked integer power and `pow(a, b, m)`, `round(int, n)`, range arithmetic, dict hashing, format-spec parsing and the list header and item array. |
+| `runtime.c` | Collector, allocator, I/O, signals, exception unwinding, native library calls, float conversion and the container code not yet moved ([what remains](#what-remains-in-runtimec)). |
 | [The compiler](../src/README.md) | Runtime compilation, checked primitives, runtime signatures and linking. |
 
 Moving a function into the subset keeps its C symbol and signature. Programs
@@ -95,7 +95,10 @@ programs, with these additional rules:
   types and layouts, rather than merely their LLVM types.
 - Module scope permits functions, imports and docstrings. Module initialization,
   global variables, classes and computed parameter defaults are rejected. A
-  parameter's default value must be a literal.
+  parameter's default value must be a literal. The only decorators are
+  `@_rt.unchecked` and `@_rt.cold` ([machine memory](#machine-memory)).
+- A function that `RUNTIME` does not name takes and returns `int`, `float`, `str`,
+  `_rt.Ptr` or `None`.
 - A function cannot use an operation that lowers directly to itself. For example,
   `math.gcd()` inside `pys_m_gcd` would be recursive through lowering and is rejected.
   `tools/check_runtime.py` also checks cycles through `runtime.c`.
@@ -205,6 +208,11 @@ in the runtime table.
 | `float_bits(x)`, `bits_float(i)` | A float's IEEE 754 bits as an int, and the float of such bits. |
 | `fma(x, y, z)`, `sqrt(x)`, `fdiv(x, y)` | `x * y + z` rounded once, the square root and the quotient as IEEE 754 defines them: an inf or a NaN, never an error. |
 
+The float primitives `ftrunc`, `ffloor`, `fceil` and `frint` round to a whole float as
+libm's `trunc`, `floor`, `ceil` and `nearbyint` do, `copysign(x, y)` gives `x` the sign of
+`y`, and `f2i(x)` truncates a float to an int where the result fits: the caller tests
+that first. `ult(a, b)` and `ule(a, b)` compare two 64-bit patterns as unsigned ints.
+
 Two lifetime rules are manual:
 
 1. Only `str_put` and `copy` may modify a buffer made by `str_new`, and only before
@@ -217,7 +225,74 @@ lengths and optimize construction loops. Runtime-mode unit-step range increments
 use LLVM's signed no-overflow form; runtime authors must keep the loop valid for
 that assumption.
 
+## Machine memory
+
+The code that owns a layout reads and writes it directly, as `runtime.c` does. Runtime mode
+has a raw address type and unchecked accesses for that code. Nothing verifies an index, a
+field's record or a lifetime: the author keeps the invariants that C code keeps.
+
+`_rt.Ptr` annotates a raw address. A `pys_*` function takes one where its `RUNTIME` entry
+has a receiver, a list, a dict or another reference, and reads the layout it knows the
+value to have. An address is a native reference to the typed IR, so the collector's
+conservative scan sees it in a local as it sees a C pointer.
+
+| Primitive | Contract |
+|---|---|
+| `nil()`, `null(p)` | The null address, and the test for it. |
+| `ptr(i)`, `addr(p)` | An int as an address, and an address or any reference as an int. |
+| `ref(x)`, `as_str(p)` | Any reference as an `_rt.Ptr`, and an address as a `str`. No instruction. |
+| `word(p, i)`, `put(p, i, v)` | The 64-bit word `i` of an array at `p`: an item, a hash, a slot. |
+| `byte_at(p, i)`, `put_byte(p, i, v)` | Byte `i` at `p`, read unsigned. |
+| `i32_at(p, i)`, `put_i32(p, i, v)` | The 32-bit word `i` at `p`, read signed. |
+| `at(p, i)`, `offset(p, n)` | The address of word `i`, and the address `n` bytes on. |
+| `get(p, "R.f")`, `set(p, "R.f", v)` | The word field `f` of record `R` at `p`. |
+| `getp(p, "R.f")`, `setp(p, "R.f", q)` | The address field `f` of record `R` at `p`. |
+| `field(p, "R.f")`, `sizeof("R")` | A field's address, and a record's size in bytes. |
+| `cpy(d, s, n)`, `move(d, s, n)` | `memcpy` and `memmove` of `n` bytes. |
+| `fill(p, c, n)`, `cmp(p, q, n)` | `memset`, and `memcmp`'s sign as an int. |
+
+A record is one of `runtime.c`'s structs, listed with its fields in `RTRECORDS`
+(`specs.py`): `Str`, `List`, `VTuple`, `Dict` and `Set`. The compiler addresses a field
+through the record's LLVM type, so the target's layout places it; wasm32's four-byte
+pointers need no second spelling. `tools/check_runtime.py` compares each record with the
+struct that clang compiles. A field holds a word or an address, and reading one as the
+other is a compile-time error.
+
+Three rules keep LLVM's alias analysis sound. Loads and stores carry one of three tags: an
+array's word, a record's word field, and a record's address field. LLVM assumes that a
+store with one tag changes nothing read with another, which lets it keep a list's length
+and item pointer in registers while a loop stores items. So:
+
+1. Read and write a record's fields only with `get`, `set`, `getp` and `setp`, never as
+   words of the record.
+2. Read and write array words only with `word` and `put`. The inline items after a list's
+   header and a companion's kind word are array words.
+3. A `str`'s length has the tag of `len()`; its bytes are untagged through `byte_at`.
+
+`cpy`, `move`, `fill` and `cmp` carry no tag and may touch anything.
+
+Two decorators mark low-level functions. `@_rt.unchecked` makes `+`, `-` and `*` wrap and
+makes `<<` and `>>` shift by their count modulo 64, as C's arithmetic on sizes and
+addresses does. Without it those operators raise `OverflowError`, which a function whose
+entry has no `R` may not do. On CPython the decorator changes nothing, so code that relies
+on wrapping still says so with `wrap_add`. `@_rt.cold` keeps a slow path out of line.
+
+`runtime.c` keeps what only it can provide: `pys_alloc` and `pys_alloc_atomic`, the page
+map's answer to whether an array is scanned, the addresses of its static sentinels and the
+opt-in test. `runtime.py` declares each as an external function. The runtime's `-O2`
+inlines them, since both parts are one module by then.
+
+CPython cannot run this code: `tools/rt_cpython/_rt.py` defines the names and raises
+where a primitive would touch memory. The compiled tests cover it instead, with the
+collector's stress modes, the sanitizer builds and the list and dict probes.
+
 ## List and dict storage
+
+The list header and its item array are `runtime.py`'s: new lists, growth, `append`,
+indexed reads and writes, `pop`, `del`, `insert`, `extend`, slices, `copy`, `clear` and
+`reverse`. The rules below are what that code implements. The identity and promoting-int
+companions' own operations, searches, `+`, `*`, slice assignment and sorting remain in
+`runtime.c` and call it.
 
 List headers remain scanned so their backing arrays stay reachable. The backing of a
 `list[int]`, `list[float]` or `list[bool]` is pointer-free (allocated atomic, never scanned):

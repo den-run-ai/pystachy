@@ -868,8 +868,9 @@ def machine_primitive(self, name: str, vals: list[Val]) -> Val:
 def gen_iop(self, op: str, a: str, b: str) -> str:
     # checked 64-bit arithmetic (op: + - *): overflow raises OverflowError (CPython would grow the int)
     if self.rtmode and self.curfn.unchecked:
-        # (runtime mode's @_rt.unchecked: it wraps, as runtime.c's unsigned arithmetic does)
-        return self.scalar("add" if op == "+" else "sub" if op == "-" else "mul", [Val(a, "int"), Val(b, "int")])
+        # (runtime mode's @_rt.unchecked: as runtime.c's signed arithmetic on sizes and indexes,
+        # whose overflow is undefined, so that LLVM knows of a size what it knows there)
+        return self.scalar("add" if op == "+" else "sub" if op == "-" else "mul", [Val(a, "int"), Val(b, "int")], "nsw")
     r = self.checked(op, a, b)
     self.guard(r[1], "OverflowError: integer result does not fit in 64 bits")
     return r[0]

@@ -3643,7 +3643,9 @@ def decode_error(b: str, start: int, end: int, k: int, errors: str, why: str) ->
 # header through its fields (_rt.get, _rt.set) and the items as words (_rt.word, _rt.put), which
 # nothing checks: an index it passes is one it has tested. A list's identity or promoting-int
 # companion (ids) exists only in a program that opts in to one, which pys_rt_opt_in() tells, as
-# runtime.c's opt_in() does: a plain AOT program's build drops what follows that test.
+# runtime.c's opt_in() does: a plain AOT program's build drops what follows that test. The test
+# is written out where it is made (ids is not null, and the program opts in), as runtime.c
+# writes l->ids && opt_in(): LLVM then branches on it as it did there.
 
 
 def pys_alloc(n: int) -> _rt.Ptr: ...
@@ -3668,12 +3670,6 @@ def list_inline(l: _rt.Ptr) -> _rt.Ptr:
 
 
 @_rt.unchecked
-def has_ids(l: _rt.Ptr) -> bool:
-    # does l have a companion: only in a program that opts in (see above)
-    return not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0
-
-
-@_rt.unchecked
 def pys_list_empty(l: _rt.Ptr) -> None:
     # detach an empty list's historical storage without allocating: it keeps the kind of its
     # items in the sentinel it is left with (cap 0 during a sort: that marker stays)
@@ -3686,7 +3682,7 @@ def pys_list_empty(l: _rt.Ptr) -> None:
         else:
             _rt.setp(l, "List.a", pys_rt_empty_list())
         _rt.set(l, "List.cap", 0)
-        if has_ids(l):
+        if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
             _rt.setp(l, "List.ids", pys_rt_empty_identity(_rt.word(_rt.getp(l, "List.ids"), 0)))
 
 
@@ -3730,24 +3726,24 @@ def pys_list_from_const(values: _rt.Ptr, n: int) -> _rt.Ptr:
 
 @_rt.unchecked
 def pys_list_reserve(l: _rt.Ptr, n: int) -> None:
-    # room for n items: twice the capacity at least, in an array of the kind of the one it copies
-    cap = _rt.get(l, "List.cap")
-    if n <= cap:
+    # room for n items: twice the capacity at least, in an array of the kind of the one it copies.
+    # (Here and below a field is read again after a call, as runtime.c reads it: a value kept in
+    # a local across a call that is rarely made costs the common path a register to save)
+    if n <= _rt.get(l, "List.cap"):
         return
-    c = cap * 2 if cap * 2 > n else n
+    c = _rt.get(l, "List.cap") * 2 if _rt.get(l, "List.cap") * 2 > n else n
     if c < 4:
         c = 4
-    old = _rt.getp(l, "List.a")
-    a = old
-    if old is pys_rt_empty_inline() and c == 4:
+    a = _rt.nil()
+    if _rt.getp(l, "List.a") is pys_rt_empty_inline() and c == 4:
         a = list_inline(l)  # (emptied, and its items fit inline again)
     else:
-        a = pys_alloc_atomic(c * 8) if pys_rt_atomic_items(old) != 0 else pys_alloc(c * 8)
-        _rt.cpy(a, old, _rt.get(l, "List.len") * 8)
-        if old is list_inline(l):
-            _rt.fill(old, 0, 32)  # (moved: the header keeps none of them)
+        a = pys_alloc_atomic(c * 8) if pys_rt_atomic_items(_rt.getp(l, "List.a")) != 0 else pys_alloc(c * 8)
+        _rt.cpy(a, _rt.getp(l, "List.a"), _rt.get(l, "List.len") * 8)
+        if _rt.getp(l, "List.a") is list_inline(l):
+            _rt.fill(_rt.getp(l, "List.a"), 0, 32)  # (moved: the header keeps none of them)
     _rt.setp(l, "List.a", a)
-    if has_ids(l):
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
         if c > 1152921504606846974:
             pys_rt_oom()
         ids = pys_alloc((c + 1) * 8)
@@ -3761,9 +3757,9 @@ def pys_list_reserve(l: _rt.Ptr, n: int) -> None:
 def list_append_boxed(l: _rt.Ptr, v: int) -> None:
     # append to a list with a companion: the item's box first, as it may allocate
     box = pys_rt_list_box(v, _rt.word(_rt.getp(l, "List.ids"), 0))
+    if _rt.get(l, "List.len") == _rt.get(l, "List.cap"):
+        pys_list_reserve(l, _rt.get(l, "List.len") + 1)
     n = _rt.get(l, "List.len")
-    if n == _rt.get(l, "List.cap"):
-        pys_list_reserve(l, n + 1)
     _rt.put(_rt.getp(l, "List.ids"), n + 1, box)
     _rt.put(_rt.getp(l, "List.a"), n, v)
     _rt.set(l, "List.len", n + 1)
@@ -3772,14 +3768,14 @@ def list_append_boxed(l: _rt.Ptr, v: int) -> None:
 @_rt.unchecked
 def pys_list_append(l: _rt.Ptr, v: int) -> None:
     # (the ordinary append stays small enough for LLVM to inline, also in a program that opts in)
-    if has_ids(l):
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
         list_append_boxed(l, v)
         return
+    if _rt.get(l, "List.len") == _rt.get(l, "List.cap"):
+        pys_list_reserve(l, _rt.get(l, "List.len") + 1)
     n = _rt.get(l, "List.len")
-    if n == _rt.get(l, "List.cap"):
-        pys_list_reserve(l, n + 1)
-    _rt.put(_rt.getp(l, "List.a"), n, v)
     _rt.set(l, "List.len", n + 1)
+    _rt.put(_rt.getp(l, "List.a"), n, v)
 
 
 @_rt.unchecked
@@ -3787,7 +3783,7 @@ def pys_list_get(l: _rt.Ptr, i: int) -> int:
     n = _rt.get(l, "List.len")
     if i < 0:
         i += n
-    if _rt.ule(n, i):
+    if i < 0 or i >= n:
         raise IndexError("list index out of range")
     return _rt.word(_rt.getp(l, "List.a"), i)
 
@@ -3797,14 +3793,13 @@ def pys_list_set(l: _rt.Ptr, i: int, v: int) -> None:
     n = _rt.get(l, "List.len")
     if i < 0:
         i += n
-    if _rt.ule(n, i):
+    if i < 0 or i >= n:
         raise IndexError("list assignment index out of range")
-    if has_ids(l):
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
         # (a pending fresh identity, without an allocation; an int that fits has no entry)
-        ids = _rt.getp(l, "List.ids")
-        _rt.put(ids, i + 1, 0)
+        _rt.put(_rt.getp(l, "List.ids"), i + 1, 0)
         if pys_rt_big_list(l) == 0:
-            _rt.put(ids, 0, _rt.word(ids, 0) | 4)
+            _rt.put(_rt.getp(l, "List.ids"), 0, _rt.word(_rt.getp(l, "List.ids"), 0) | 4)
     _rt.put(_rt.getp(l, "List.a"), i, v)
 
 
@@ -3812,23 +3807,23 @@ def pys_list_set(l: _rt.Ptr, i: int, v: int) -> None:
 def pys_list_pop(l: _rt.Ptr, i: int) -> int:
     # (a slot a list no longer uses is zeroed: the collector scans the whole array, so a stale
     # pointer there would keep the removed item alive, and a removed file open)
-    n = _rt.get(l, "List.len")
-    if n == 0:
+    if _rt.get(l, "List.len") == 0:
         raise IndexError("pop from empty list")
+    n = _rt.get(l, "List.len")
     if i < 0:
         i += n
-    if _rt.ule(n, i):
+    if i < 0 or i >= n:
         raise IndexError("pop index out of range")
-    a = _rt.getp(l, "List.a")
-    v = _rt.word(a, i)
-    if has_ids(l):
+    v = _rt.word(_rt.getp(l, "List.a"), i)
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
         ids = _rt.getp(l, "List.ids")
-        _rt.move(_rt.at(ids, i + 1), _rt.at(ids, i + 2), (n - i - 1) * 8)
-        _rt.put(ids, n, 0)
-    _rt.move(_rt.at(a, i), _rt.at(a, i + 1), (n - i - 1) * 8)
-    _rt.put(a, n - 1, 0)
-    _rt.set(l, "List.len", n - 1)
-    if n == 1:
+        _rt.move(_rt.at(ids, i + 1), _rt.at(ids, i + 2), (_rt.get(l, "List.len") - i - 1) * 8)
+        _rt.put(_rt.getp(l, "List.ids"), _rt.get(l, "List.len"), 0)
+    _rt.move(_rt.at(_rt.getp(l, "List.a"), i), _rt.at(_rt.getp(l, "List.a"), i + 1), (_rt.get(l, "List.len") - i - 1) * 8)
+    n = _rt.get(l, "List.len") - 1
+    _rt.set(l, "List.len", n)
+    _rt.put(_rt.getp(l, "List.a"), n, 0)
+    if _rt.get(l, "List.len") == 0:
         pys_list_empty(l)
     return v
 
@@ -3838,46 +3833,43 @@ def pys_list_del(l: _rt.Ptr, i: int) -> None:
     n = _rt.get(l, "List.len")
     if i < 0:
         i += n
-    if _rt.ule(n, i):
+    if i < 0 or i >= n:
         raise IndexError("list assignment index out of range")
     pys_list_pop(l, i)
 
 
 @_rt.unchecked
 def pys_list_insert(l: _rt.Ptr, i: int, v: int) -> None:
-    n = _rt.get(l, "List.len")
     if i < 0:
-        i += n
+        i += _rt.get(l, "List.len")
         if i < 0:
             i = 0
-    if i > n:
-        i = n
-    box = pys_rt_list_box(v, _rt.word(_rt.getp(l, "List.ids"), 0)) if has_ids(l) else 0
-    pys_list_reserve(l, n + 1)
-    if has_ids(l):
+    if i > _rt.get(l, "List.len"):
+        i = _rt.get(l, "List.len")
+    box = pys_rt_list_box(v, _rt.word(_rt.getp(l, "List.ids"), 0)) if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0 else 0
+    pys_list_reserve(l, _rt.get(l, "List.len") + 1)
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
         ids = _rt.getp(l, "List.ids")
-        _rt.move(_rt.at(ids, i + 2), _rt.at(ids, i + 1), (n - i) * 8)
-        _rt.put(ids, i + 1, box)
-    a = _rt.getp(l, "List.a")
-    _rt.move(_rt.at(a, i + 1), _rt.at(a, i), (n - i) * 8)
-    _rt.put(a, i, v)
-    _rt.set(l, "List.len", n + 1)
+        _rt.move(_rt.at(ids, i + 2), _rt.at(ids, i + 1), (_rt.get(l, "List.len") - i) * 8)
+        _rt.put(_rt.getp(l, "List.ids"), i + 1, box)
+    _rt.move(_rt.at(_rt.getp(l, "List.a"), i + 1), _rt.at(_rt.getp(l, "List.a"), i), (_rt.get(l, "List.len") - i) * 8)
+    _rt.put(_rt.getp(l, "List.a"), i, v)
+    _rt.set(l, "List.len", _rt.get(l, "List.len") + 1)
 
 
 @_rt.unchecked
 def pys_list_extend(l: _rt.Ptr, m: _rt.Ptr) -> None:
     pys_rt_identity_pair(l, m)
     n = _rt.get(m, "List.len")
-    k = _rt.get(l, "List.len")
-    pys_list_reserve(l, k + n)
-    if has_ids(l):
-        ids = _rt.at(_rt.getp(l, "List.ids"), k + 1)
+    pys_list_reserve(l, _rt.get(l, "List.len") + n)
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
+        ids = _rt.at(_rt.getp(l, "List.ids"), _rt.get(l, "List.len") + 1)
         if _rt.null(_rt.getp(m, "List.ids")):
             _rt.fill(ids, 0, n * 8)  # (m's ints fit)
         else:
             _rt.cpy(ids, _rt.at(_rt.getp(m, "List.ids"), 1), n * 8)
-    _rt.cpy(_rt.at(_rt.getp(l, "List.a"), k), _rt.getp(m, "List.a"), n * 8)
-    _rt.set(l, "List.len", k + n)
+    _rt.cpy(_rt.at(_rt.getp(l, "List.a"), _rt.get(l, "List.len")), _rt.getp(m, "List.a"), n * 8)
+    _rt.set(l, "List.len", _rt.get(l, "List.len") + n)
 
 
 @_rt.unchecked
@@ -3908,10 +3900,10 @@ def pys_list_slice(l: _rt.Ptr, lo: int, hi: int) -> _rt.Ptr:
     hi = span_hi(hi, n)
     if hi < lo:
         hi = lo
-    if has_ids(l):
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
         pys_list_identity(l, _rt.word(_rt.getp(l, "List.ids"), 0))
     r = pys_list_make(hi - lo, pys_rt_atomic_items(_rt.getp(l, "List.a")))
-    if has_ids(l):
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
         ids = _rt.getp(l, "List.ids")
         pys_list_identity(r, _rt.word(ids, 0))
         _rt.cpy(_rt.at(_rt.getp(r, "List.ids"), 1), _rt.at(ids, lo + 1), (hi - lo) * 8)
@@ -3928,7 +3920,7 @@ def pys_list_copy(l: _rt.Ptr) -> _rt.Ptr:
 def pys_list_clear(l: _rt.Ptr) -> None:
     n = _rt.get(l, "List.len")
     _rt.fill(_rt.getp(l, "List.a"), 0, n * 8)
-    if has_ids(l):
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
         _rt.fill(_rt.at(_rt.getp(l, "List.ids"), 1), 0, n * 8)
     _rt.set(l, "List.len", 0)
     pys_list_empty(l)
@@ -3964,10 +3956,10 @@ def pys_list_slice_step(l: _rt.Ptr, lo: int, hi: int, st: int) -> _rt.Ptr:
             n = _rt.udiv(lo - hi - 1, -st) + 1
     elif lo < hi:
         n = _rt.udiv(hi - lo - 1, st) + 1
-    if has_ids(l):
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
         pys_list_identity(l, _rt.word(_rt.getp(l, "List.ids"), 0))
     r = pys_list_make(n, pys_rt_atomic_items(_rt.getp(l, "List.a")))
-    ids = has_ids(l)
+    ids = not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0
     if ids:
         pys_list_identity(r, _rt.word(_rt.getp(l, "List.ids"), 0))
     src = _rt.getp(l, "List.a")
@@ -3996,5 +3988,126 @@ def rev_words(a: _rt.Ptr, n: int) -> None:
 def pys_list_reverse(l: _rt.Ptr) -> None:
     n = _rt.get(l, "List.len")
     rev_words(_rt.getp(l, "List.a"), n)
-    if has_ids(l):
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
         rev_words(_rt.at(_rt.getp(l, "List.ids"), 1), n)
+
+
+# ---------- floats and ints: division, conversion, rounding, comparison ----------
+# What Python defines where C does not: a zero divisor, a NaN or an infinity that has no int,
+# and a float past 64 bits. The conversions themselves are one instruction where the float is
+# in range (_rt.f2i), and libm's rounding only beyond it, out of line: on x86-64 before SSE4.1
+# trunc(), floor(), ceil() and nearbyint() are calls, which LLVM would otherwise make ahead of
+# the test that almost always avoids them.
+
+
+def pys_fdiv(a: float, b: float) -> float:
+    if b == 0.0:
+        raise ZeroDivisionError("float division by zero")
+    return _rt.fdiv(a, b)
+
+
+def pys_f2i(d: float) -> int:
+    if d != d:
+        raise ValueError("cannot convert float NaN to integer")
+    if abs(d) == math.inf:
+        raise OverflowError("cannot convert float infinity to integer")
+    if not (d >= -9223372036854775808.0 and d < 9223372036854775808.0):
+        raise OverflowError("float too large for a 64-bit int")
+    return _rt.f2i(d)
+
+
+@_rt.cold
+def cmp_if_whole(i: int, d: float) -> int:
+    # pys_cmp_if past 2**53: the whole parts first, then what d has beyond its own
+    if d != d:
+        return 2
+    if d >= 9223372036854775808.0:
+        return -1
+    if d < -9223372036854775808.0:
+        return 1
+    t = _rt.ftrunc(d)
+    j = _rt.f2i(t)
+    if i != j:
+        return -1 if i < j else 1
+    return -1 if d > t else 1 if d < t else 0
+
+
+def pys_cmp_if(i: int, d: float) -> int:
+    # the exact order of an int and a float: -1, 0, 1, or 2 if unordered. An int of at most 2**53
+    # in magnitude converts exactly, so comparing floats decides (with a NaN, none holds)
+    if _rt.ule(_rt.wrap_add(i, 9007199254740992), 18014398509481984):
+        x = float(i)
+        return -1 if d > x else 1 if d < x else 0 if d == x else 2
+    return cmp_if_whole(i, d)
+
+
+@_rt.cold
+def round_far(d: float) -> int:
+    return pys_f2i(_rt.frint(d))
+
+
+def pys_round(d: float) -> int:
+    # round(d): half to even. Below 2**52 in magnitude, adding and then subtracting 2**52 with
+    # d's sign rounds d to a whole float in the default rounding mode, exactly; from there d is whole
+    if abs(d) < 4503599627370496.0:
+        big = _rt.copysign(4503599627370496.0, d)
+        r = d + big
+        return _rt.f2i(r - big)
+    return round_far(d)
+
+
+@_rt.cold
+def floor_far(d: float) -> int:
+    return pys_f2i(_rt.ffloor(d))
+
+
+@_rt.cold
+def ceil_far(d: float) -> int:
+    return pys_f2i(_rt.fceil(d))
+
+
+@_rt.cold
+def trunc_far(d: float) -> int:
+    return pys_f2i(_rt.ftrunc(d))
+
+
+@_rt.unchecked
+def pys_floor(d: float) -> int:
+    # math.floor(d): where the conversion is defined it truncates toward 0, and a negative d
+    # below its truncation is one less (a NaN fails both tests)
+    if d >= -9223372036854775808.0 and d < 9223372036854775808.0:
+        t = _rt.f2i(d)
+        return t - (1 if d < float(t) else 0)
+    return floor_far(d)
+
+
+@_rt.unchecked
+def pys_ceil(d: float) -> int:
+    # math.ceil(d): as pys_floor, one more above the truncation
+    if d >= -9223372036854775808.0 and d < 9223372036854775808.0:
+        t = _rt.f2i(d)
+        return t + (1 if d > float(t) else 0)
+    return ceil_far(d)
+
+
+def pys_m_trunc(x: float) -> int:
+    # math.trunc(x): the conversion truncates wherever it is defined
+    if x >= -9223372036854775808.0 and x < 9223372036854775808.0:
+        return _rt.f2i(x)
+    return trunc_far(x)
+
+
+def pys_m_isfinite(x: float) -> int:
+    return 1 if abs(x) < math.inf else 0
+
+
+def pys_m_isinf(x: float) -> int:
+    return 1 if abs(x) == math.inf else 0
+
+
+def pys_m_isnan(x: float) -> int:
+    return 1 if x != x else 0
+
+
+def pys_m_copysign(x: float, y: float) -> float:
+    return _rt.copysign(x, y)

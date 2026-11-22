@@ -111,6 +111,110 @@ class TypedMachineMemoryTests(unittest.TestCase):
             setattr(i, field, value)
             self.assert_bad(i)
 
+    def test_runtime_records_address_fields_through_the_target_layout(self):
+        # a field of one of runtime.c's records is a GEP through the record's LLVM type, so that
+        # the target's layout places it; the index past the last field is the record's size
+        for record, index, want in (("List", "0", "getelementptr inbounds {i64, i64, ptr, ptr}, ptr %a0, i32 0, i32 0"),
+                                    ("List", "3", "getelementptr inbounds {i64, i64, ptr, ptr}, ptr %a0, i32 0, i32 3"),
+                                    ("List", "4", "getelementptr inbounds {i64, i64, ptr, ptr}, ptr %a0, i64 1"),
+                                    ("Str", "2", "getelementptr inbounds {i64, i64, i64}, ptr %a0, i32 0, i32 2"),
+                                    ("Set", "7", "getelementptr inbounds {i64, i64, i64, i64, i64, ptr, ptr, ptr}, ptr %a0, i32 0, i32 7")):
+            i = address("rec." + record, 1)
+            i.a[1] = Val(index, "int")
+            g = Gen()
+            g.rtmode = True
+            g.verify(function(i), False)
+            self.assertEqual(g.opfx(i, {}), 0)
+            g.lower_ins(function(i), i)
+            self.assertEqual(g.out, ["  %t1 = " + want])
+        for record, index, rtmode in (("List", "5", True), ("List", "%a1", True), ("List", "-1", True), ("Nothing", "0", True), ("List", "0", False)):
+            i = address("rec." + record, 1)
+            i.a[1] = Val(index, "int")
+            errors = StringIO()
+            g = Gen()
+            g.rtmode = rtmode
+            with redirect_stderr(errors), self.assertRaises(SystemExit):
+                g.verify(function(i), False)
+            self.assertIn("mach.addr", errors.getvalue())
+        i = address("%i32")
+        g = Gen()
+        g.verify(function(i), False)
+        g.lower_ins(function(i), i)
+        self.assertEqual(g.out, ["  %t1 = getelementptr i32, ptr %a0, i64 2"])
+
+    def test_runtime_memory_tags_tell_items_words_and_addresses_apart(self):
+        for op, t, metadata, tag in (("mach.load", "int", "rt.word", 13), ("mach.store", "int", "rt.word", 13),
+                                     ("mach.load", "int", "rt.int", 14), ("mach.store", "int", "rt.int", 14),
+                                     ("mach.load", "%ptr", "rt.ptr", 15), ("mach.store", "%ptr", "rt.ptr", 15)):
+            i = memory(op, t, metadata)
+            g = Gen()
+            g.rtmode = True
+            g.verify(function(i), False)
+            g.lower_ins(function(i), i)
+            self.assertTrue(g.out[0].endswith(f", !tbaa !{tag}"), g.out)
+            self.assert_bad(i)  # (a program's module has no such tags)
+        for op, t, metadata in (("mach.load", "%ptr", "rt.word"), ("mach.store", "float", "rt.int"), ("mach.load", "int", "rt.ptr")):
+            i = memory(op, t, metadata)
+            errors = StringIO()
+            g = Gen()
+            g.rtmode = True
+            with redirect_stderr(errors), self.assertRaises(SystemExit):
+                g.verify(function(i), False)
+            self.assertIn(op, errors.getvalue())
+
+    def test_runtime_primitives_lower_to_unchecked_machine_memory(self):
+        # runtime.py's _rt.word, _rt.get, ...: each lowers to the loads, stores and addresses it
+        # names, with no check, and a cast (erased) types an address as an _rt.Ptr
+        p, q, n = Val("%a0", "rtptr"), Val("%a1", "rtptr"), Val("%a2", "int")
+        s = Val("%a0", "str")
+        for name, vals, result, lines in (
+                ("word", [p, n], "int", ["  %t1 = getelementptr i64, ptr %a0, i64 %a2", "  %t2 = load i64, ptr %t1, !tbaa !13"]),
+                ("put", [p, n, n], "None", ["  %t1 = getelementptr i64, ptr %a0, i64 %a2", "  store i64 %a2, ptr %t1, !tbaa !13"]),
+                ("byte_at", [s, n], "int", ["  %t1 = getelementptr i8, ptr %a0, i64 %a2", "  %t2 = load i8, ptr %t1", "  %t3 = zext i8 %t2 to i64"]),
+                ("put_byte", [p, n, n], "None", ["  %t1 = trunc i64 %a2 to i8", "  %t2 = getelementptr i8, ptr %a0, i64 %a2", "  store i8 %t1, ptr %t2"]),
+                ("i32_at", [p, n], "int", ["  %t1 = getelementptr i32, ptr %a0, i64 %a2", "  %t2 = load i32, ptr %t1", "  %t3 = sext i32 %t2 to i64"]),
+                ("put_i32", [p, n, n], "None", ["  %t1 = trunc i64 %a2 to i32", "  %t2 = getelementptr i32, ptr %a0, i64 %a2", "  store i32 %t1, ptr %t2"]),
+                ("at", [p, n], "rtptr", ["  %t1 = getelementptr i64, ptr %a0, i64 %a2"]),
+                ("offset", [p, n], "rtptr", ["  %t1 = getelementptr i8, ptr %a0, i64 %a2"]),
+                ("addr", [s], "int", ["  %t1 = ptrtoint ptr %a0 to i64"]),
+                ("ptr", [Val("%a0", "int")], "rtptr", ["  %t1 = inttoptr i64 %a0 to ptr"]),
+                ("get", [p, Val("@rec.List.cap", "str")], "int", ["  %t1 = getelementptr inbounds {i64, i64, ptr, ptr}, ptr %a0, i32 0, i32 1", "  %t2 = load i64, ptr %t1, !tbaa !14"]),
+                ("set", [p, Val("@rec.Dict.cut", "str"), n], "None", ["  %t1 = getelementptr inbounds {i64, i64, i64, i64, ptr, ptr, ptr, ptr, i64, i64, ptr, ptr}, ptr %a0, i32 0, i32 8", "  store i64 %a2, ptr %t1, !tbaa !14"]),
+                ("getp", [p, Val("@rec.List.a", "str")], "rtptr", ["  %t1 = getelementptr inbounds {i64, i64, ptr, ptr}, ptr %a0, i32 0, i32 2", "  %t2 = load ptr, ptr %t1, !tbaa !15"]),
+                ("setp", [p, Val("@rec.List.ids", "str"), q], "None", ["  %t1 = getelementptr inbounds {i64, i64, ptr, ptr}, ptr %a0, i32 0, i32 3", "  store ptr %a1, ptr %t1, !tbaa !15"]),
+                ("get", [s, Val("@rec.Str.len", "str")], "int", ["  %t1 = getelementptr inbounds {i64, i64, i64}, ptr %a0, i32 0, i32 0", "  %t2 = load i64, ptr %t1, !tbaa !3"]),
+                ("field", [p, Val("@rec.VTuple.ids", "str")], "rtptr", ["  %t1 = getelementptr inbounds {i64, ptr}, ptr %a0, i32 0, i32 1"]),
+                ("sizeof", [Val("@rec.List", "str")], "int", ["  %t1 = getelementptr {i64, i64, ptr, ptr}, ptr null, i64 1", "  %t2 = ptrtoint ptr %t1 to i64"]),
+                ("move", [p, q, n], "None", ["  call void @llvm.memmove.p0.p0.i64(ptr %a0, ptr %a1, i64 %a2, i1 false)"]),
+                ("cpy", [p, s, n], "None", ["  call void @llvm.memcpy.p0.p0.i64(ptr %a0, ptr %a0, i64 %a2, i1 false)"]),
+                ("fill", [p, n, n], "None", ["  %t1 = trunc i64 %a2 to i8", "  call void @llvm.memset.p0.i64(ptr %a0, i8 %t1, i64 %a2, i1 false)"]),
+                ("cmp", [p, q, n], "int", ["  %t1 = call i32 @memcmp(ptr %a0, ptr %a1, i64 %a2)", "  %t2 = sext i32 %t1 to i64"])):
+            with self.subTest(primitive=name, operands=[v.v for v in vals]):
+                g = Gen()
+                g.rtmode = True
+                value = g.primitive(name, vals)
+                self.assertEqual(value.t, result)
+                g.add(Ins("ret.none", "", ""))
+                g.number_casts()
+                g.fn.n = g.n
+                g.verify(g.fn, False)
+                g.erase_casts(g.fn)
+                for i in g.fn.blocks[0].code[:-1]:
+                    g.lower_ins(g.fn, i)
+                self.assertEqual(g.out, lines)
+        # a field is read as what it holds, and both a record and a field are literals of RTRECORDS
+        for name, vals in (("get", [p, Val("@rec.List.a", "str")]), ("setp", [p, Val("@rec.List.len", "str"), q]),
+                           ("get", [p, Val("@rec.List.size", "str")]), ("get", [p, Val("@rec.Tuple.len", "str")]),
+                           ("get", [p, Val("@s.0", "str")]), ("sizeof", [Val("@rec.Lists", "str")]),
+                           ("word", [n, n]), ("word", [p]), ("put", [p, n, p]), ("at", [Val("%a0", "%ptr"), n])):
+            with self.subTest(primitive=name, operands=[v.v for v in vals]):
+                g = Gen()
+                g.rtmode = True
+                errors = StringIO()
+                with redirect_stderr(errors), self.assertRaises(SystemExit):
+                    g.primitive(name, vals)
+                self.assertIn("_rt." + name, errors.getvalue())
+
     def test_indexed_addresses_interoperate_with_tuple_slots(self):
         g = Gen()
         i = Ins("tuple.store", "", "int")

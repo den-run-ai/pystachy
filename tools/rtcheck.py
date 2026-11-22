@@ -19,6 +19,7 @@ import os
 import posixpath
 import random
 import re
+import struct
 import sys
 import unicodedata
 
@@ -424,6 +425,49 @@ def mix(k):
     h = k & M64
     h = ((h ^ h >> 30) * 0xBF58476D1CE4E5B9) & M64
     return h ^ h >> 31
+
+
+def conv_float():
+    # a float for the conversions to an int: every bit pattern, halves, and the ends of the ranges
+    # where a float is whole (2**52, 2**53) and where an int has 64 bits (2**63)
+    k = R.randrange(7)
+    if k == 0:
+        return struct.unpack("<d", struct.pack("<Q", R.getrandbits(64)))[0]
+    if k == 1:
+        return R.choice([0.0, -0.0, 0.5, -0.5, 1.5, 2.5, -1.5, -2.5, 0.49999999999999994, -0.49999999999999994, math.inf, -math.inf, math.nan,
+                         2.0**52, 2.0**52 + 1, 2.0**53, -(2.0**53), 2.0**63, -(2.0**63), 2.0**63 - 1024, -(2.0**63) - 2048, 2.0**64, 5e-324])
+    if k == 2:
+        return (R.randrange(-(10**6), 10**6) + 0.5) * R.choice([1.0, 2.0 ** R.randrange(12)])
+    if k == 3:
+        return float(R.getrandbits(R.randrange(1, 66))) * R.choice([1, -1])
+    if k == 4:
+        return math.ldexp(R.random() + 0.5, R.randrange(48, 66)) * R.choice([1, -1])
+    if k == 5:
+        return float(R.randrange(-(1 << 54), 1 << 54)) + R.choice([0.0, 0.25, 0.5, 0.75])
+    return R.uniform(-1000.0, 1000.0)
+
+
+def fuzz_float_int():
+    # int(x), round(x), math.floor, math.ceil and math.trunc of a float, whose result past 64
+    # bits is OverflowError here; x / y; and the exact order of an int and a float
+    past = ("OverflowError", "float too large for a 64-bit int")
+    for _ in range(N):
+        x = conv_float()
+        for name, f, g in (("f2i", rt.pys_f2i, int), ("round", rt.pys_round, round), ("floor", rt.pys_floor, math.floor),
+                           ("ceil", rt.pys_ceil, math.ceil), ("trunc", rt.pys_m_trunc, math.trunc)):
+            want = outcome(g, x)
+            if not fits(want):
+                want = past
+            same(name, outcome(f, x), want, (x,))
+        y = conv_float()
+        same("fdiv", bits(outcome(rt.pys_fdiv, x, y)), bits(outcome(lambda: x / y)), (x, y))
+        i = wide() if R.randrange(3) else int(x) + R.randrange(-2, 3) if math.isfinite(x) and abs(x) < 2.0**63 else wide()
+        i = max(-MAXI - 1, min(MAXI, i))
+        same("cmp_if", rt.pys_cmp_if(i, x), 2 if x != x else -1 if i < x else 1 if i > x else 0, (i, x))
+        same("isfinite", rt.pys_m_isfinite(x), int(math.isfinite(x)), (x,))
+        same("isinf", rt.pys_m_isinf(x), int(math.isinf(x)), (x,))
+        same("isnan", rt.pys_m_isnan(x), int(math.isnan(x)), (x,))
+        same("copysign", rt.pys_m_copysign(x, y).hex(), math.copysign(x, y).hex(), (x, y))
 
 
 def check_shifts():
@@ -836,6 +880,7 @@ fuzz_math()
 fuzz_numeric()
 fuzz_hash()
 check_shifts()
+fuzz_float_int()
 fuzz_format()
 fuzz_malformed()
 fuzz_ascii()

@@ -456,6 +456,7 @@ one, whatever block defines it.
 | `object` | a %ptr as a closed union of classes: the object that a box of the union holds (Gen.cmp_object's phi), which only a ptr.cmp, a mach.load of its class word (an int or a %ptr) and member casts read |
 | `member` | an object cast's value as one of its union's classes or a class derived from one: Gen.cmp_alts makes one for each class it tells apart, beside the object cast, and only code that a test of the object's class leads to reads it |
 | `opaque` | a reference as a str, and back, in lib/_pystachy_copy.py, whose deep-copy memo keeps any reference as a str |
+| `raw` | a reference as runtime mode's raw address (an rtptr, runtime.py's _rt.Ptr), and back: the runtime reads its own layouts through it |
 
 <!-- typed-ir-ops: end -->
 
@@ -724,6 +725,7 @@ operators/conversions and extra metadata. These operations are pure; frontend gu
 retain responsibility for bounds, overflow and division checks. `select` also checks
 its boolean condition and matching result/value types.
 
+A `sext` cast widens a 32-bit word that `_rt.i32_at` loads.
 Runtime mode's wide primitives (`_rt.mul_hi`, `_rt.udiv_wide`, `_rt.urem_wide`) compute in `%i128`.
 `scalar.bin` and `scalar.cmp` accept that type, and `scalar.cast` only extends an `int`
 to it (`zext`) and truncates it back (`trunc`); no value of it is stored, selected or
@@ -751,7 +753,18 @@ types or one of the finite machine types (`%ptr`, `%byte`, `%i32`); addresses ca
 explicit operands and indices. For a DynType address the index selects the name, class id or
 flags field of the runtime record. A classrec index selects the reflection record flags.
 Lowering uses the target ABI to place those fields. String alias/range metadata and in-bounds addressing are finite
-choices checked before lowering. These operations preserve the existing effects,
+choices checked before lowering.
+
+Runtime mode adds the storage that `runtime.py` reads and writes itself
+([machine memory](runtime-in-subset.md#machine-memory)). A `rec.<Record>` element of
+`mach.addr` addresses a field of one of `runtime.c`'s records (`RTRECORDS`) by its index;
+the index after the last field gives the address past the record, and so its size.
+Lowering addresses the field through the record's LLVM type, so the target's layout places
+it. A `%i32` element indexes 32-bit words. The metadata `rt.word`, `rt.int` and `rt.ptr`
+tag a load or a store of an item array's word, a record's word and a record's address:
+three alias classes of runtime mode's module, which the verifier admits only there. A
+value that `runtime.py` keeps as a raw address has the native reference type `rtptr`
+(`_rt.Ptr`); the `raw` cast reads any reference as one and back. These operations preserve the existing effects,
 layout and guard order; they do not introduce unchecked Python operations.
 
 The generator operations mark an LLVM switched-resume coroutine's structure (see
