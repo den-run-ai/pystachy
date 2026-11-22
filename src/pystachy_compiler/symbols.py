@@ -74,6 +74,13 @@ class FnInfo:
         self.cmpfields = ""  # a structural comparison adapter's canonical field types; missing reads raise at their source position
         self.ikey = ""  # (an instance: its key in its template's insts, which joins' keys name it by: Gen.fnkey)
         self.lastikey = ""  # (a template: the key of the instance its last call compiled to)
+        # an instance of a template whose literal arguments choose its result (Gen.selectors): the
+        # literal argument of each selector its call gave one, which decides its tests of it
+        # (Gen.selector_const); the parameter of the calling instance its call passed for a
+        # selector instead (forwarding), and that caller's template's key (Gen.selector_args)
+        self.lits: dict[str, Node] = {}
+        self.selfwd: dict[str, str] = {}
+        self.selfrom = ""
         # a template that returns its own TypeVar (def accept(self, v: Visitor[T]) -> T): that
         # TypeVar, and the parameters whose annotation G[..., T, ...] names it (their indexes, G,
         # and T's position), which an argument of a class deriving from G[X, ...] binds (tv_bound)

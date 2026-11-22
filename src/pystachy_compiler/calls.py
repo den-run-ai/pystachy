@@ -1568,7 +1568,18 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         hpush(self.wake, self.lazyat[f.ll])
     self.called[f.ll] = True
     self.arity(f, len(pre), args)
-    if len(pre) == 0 and cache is None:
+    # (a template whose literal arguments choose its result: an instance for this call's, whose
+    # selectors given one hold only its type, see templates.py's selector_args and selector_type)
+    lits: dict[str, Node] | None = None
+    fwd: dict[str, str] | None = None
+    frm = ""
+    if len(self.selectors) > 0 and self.selector_key(f) in self.selectors:
+        given: dict[str, Node] = {}
+        passed: dict[str, str] = {}
+        frm = self.selector_args(f, len(pre), args, given, passed)
+        lits = given
+        fwd = passed
+    if len(pre) == 0 and cache is None and lits is None:
         scalar_types = self.scalar_call_types(f, args)
         if len(scalar_types) > 0:
             f = self.instance(f, scalar_types, [])
@@ -1629,6 +1640,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         # comprehension's variable or a local spelled so: globread)
         sent = f.params[j] in f.sentinels and e.kind == "name" and e.s not in self.compvars and ((e.s == f.sentinels[f.params[j]] and self.globread(e.s)) or (e.s in self.curfn.sentinels and self.curfn.sentinels[e.s] == f.sentinels[f.params[j]] and ((self.static_type(e) == OBJECTC and e.s not in self.nlw) or self.static_type(e) == "dyn")))
         pt = f.sentann[f.params[j]] if f.params[j] in f.sentinels and not sent else f.ptypes[j]
+        if lits is not None and f.params[j] in lits:
+            pt = self.selector_type(pt, lits[f.params[j]])
         try:
             arg = self.expr(e, pt if pt != "" or j >= len(hint) else self.generic_hint(e, hint[j]))
         finally:
@@ -1689,6 +1702,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
                 if self.fn_identity(df) and numeric_identity(t):
                     vals[j].idfrom = self.mload('dyn', df.dglob[j] + '.box')
             else:
+                if lits is not None and f.params[j] in lits:
+                    t = self.selector_type(t, lits[f.params[j]])
                 vals[j] = self.pcoerce(self.expr(f.defaults[j], t), t, f, j)
     for fl in self.dc_fields(self.classes[f.cls]) if len(facs) > 0 else []:
         # a dataclass field's default_factory, called for each object (see dc_factory), after
@@ -1754,7 +1769,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
                 nnp.append(f.params[j])
         # A direct return-call keeps the open-result marker for an empty callee,
         # while forwarding the caller's separate fresh-display context.
-        f = self.instance(f, [v.t for v in vals], nnp, self.curfn.rctx if want == "?" else want, self.curfn.rsoft if want == "?" else resultsoft, nullable_self=nullable_self)
+        f = self.instance(f, [v.t for v in vals], nnp, self.curfn.rctx if want == "?" else want, self.curfn.rsoft if want == "?" else resultsoft, nullable_self=nullable_self, lits=lits, fwd=fwd, frm=frm)
     if got is not None or self.curfn.ll.startswith("@o.x."):
         if got is not None:
             got.append(f)  # (and a class's helper for Any operands reads it too: xdecline)
