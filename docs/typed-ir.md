@@ -29,9 +29,10 @@ The separation is partial. `Gen` still resolves, types, folds and specializes co
 building IR. Every function instruction is a registered typed operation, including
 arithmetic, internal storage, closure pointers and runtime byte accesses. There is no
 `raw` instruction or instruction-text builder. Module declarations, constants and ABI
-wrappers are serialized by the LLVM backend. This completes instruction coverage for
-the current backend; WebAssembly remains future work, and dynamic `Any` values are a
-[prototype](dynamic-any.md) that a module opts in to.
+wrappers are serialized by the LLVM backend. This completes instruction coverage for the
+LLVM backend. An experimental [WebAssembly backend](../wasm/README.md) compiles a program from
+its finalized typed IR or its module [text](#text-form), refusing by name what it does not
+lower yet, and dynamic `Any` values are a [prototype](dynamic-any.md) that a module opts in to.
 
 <a id="4-passes"></a>
 <a id="41-the-pipeline"></a>
@@ -1421,8 +1422,8 @@ Typed instruction coverage is complete for the LLVM backend, and a module's [tex
 holds what lowering reads of a program: printed at the lowering boundary, it compiles to the
 compiler's LLVM. It does not hold yet an extension module's entry points (`Gen.funcs`,
 `gen_pyext`), runtime.py's module (`Gen.rtdefs`) or the inputs of LLVM line tables
-(`PYSTACHY_DEBUG_LINES=1`), which `compile` refuses; its tables follow `Gen`'s and are not
-versioned. Further backend neutrality needs shared compiler/runtime layout definitions and a
+(`PYSTACHY_DEBUG_LINES=1`), which `compile` refuses; its tables follow `Gen`'s, and its
+[version](#versions-and-grammar) changes with its form. Further backend neutrality needs shared compiler/runtime layout definitions and a
 clearer separation of frontend elaboration from machine contracts. Operands still read values
 through the views of
 `TYPE_VIEWS`: precise result types for empty containers and for runtime calls that return
