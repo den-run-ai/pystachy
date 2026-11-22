@@ -354,6 +354,11 @@ def gen_member_spec(self, p: str, m: str) -> str:
     # share as a template's do: default_home finds each one's class, the one whose body binds it)
     s.fdefault = t.fdefault
     s.fglob = t.fglob
+    for x in t.fdefault:
+        if m + "." + x in self.cvars:
+            # (a class variable, C.x = v, which cvar_stores found for m as for the classes it
+            # derives from: its objects read the class's value, as those of p do, specialize)
+            self.cvars[name + "." + x] = True
     for x in pc.fnone:
         s.fnone[x] = pc.fnone[x]
     for x in pc.fguess:

@@ -1321,8 +1321,12 @@ specializations still cannot share one location
 ([test](../../tests/programs/classes/template_subclass_two_specs.py)). `isinstance(x, C)`,
 where `C` is the template or a subclass without an `__init__`, holds for an object of any of
 its specializations or of a class that derives from one
-([test](../../tests/programs/classes/template_subclass_isinstance.py)). These classes are
-still not values: `issubclass()` and `type[C]` reject them.
+([test](../../tests/programs/classes/template_subclass_isinstance.py)). Their objects read
+a class variable of the template with its current value, as the template's objects do, until
+they assign it themselves or a subclass's body binds it again
+([test](../../tests/programs/classes/template_subclass_class_variable.py),
+[specializations that compiled code makes](../../tests/programs/classes/template_subclass_class_variable_late.py)).
+These classes are still not values: `issubclass()` and `type[C]` reject them.
 
 The compiler rejects, with a message that names the limit: a subclass with a secondary base or a
 decorator; an `__init__` that calls `super().__init__(...)` other than once at its top level, or

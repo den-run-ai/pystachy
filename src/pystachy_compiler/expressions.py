@@ -1805,9 +1805,17 @@ def gen_cvar_stores(self, ns: list[Node]) -> None:
                         h = self.default_home(self.classes[c], t.s)
                         for x in self.classes.values():
                             related = self.classes[c].tag > 0 and x.tag > 0 and (self.derives(c, x.name) or self.derives(x.name, c))
-                            if t.s in x.ftypes and (related or (t.s in x.fdefault and self.default_home(x, t.s) is h)):
+                            if t.s in x.ftypes and (related or (t.s in x.fdefault and self.cvar_home(x, t.s) is h)):
                                 self.cvars[x.name + "." + t.s] = True
         self.cvar_stores(n.kids)
+
+def gen_cvar_home(self, x: ClassInfo, a: str) -> ClassInfo:
+    # the class whose class body binds class attribute a of x (default_home), a class template
+    # for its specializations, which share its class variables (specialize)
+    h = self.default_home(x, a)
+    while h.origin in self.classes and a in self.classes[h.origin].fdefault and self.classes[h.origin].fdefault[a] is h.fdefault[a]:
+        h = self.default_home(self.classes[h.origin], a)
+    return h
 
 def gen_cvar(self, cn: Node, a: str) -> ClassInfo:
     # the class that C.a = ... assigns a class variable of (see cvar_stores), checked

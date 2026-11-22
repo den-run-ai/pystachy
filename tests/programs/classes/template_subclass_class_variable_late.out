@@ -1,0 +1,4 @@
+%a/Style/9 %b/Sub/9 !c/Loud/9 | %1.5/Style/9 %2.5/Sub/9 !3.5/Loud/9 | !1/Loud/9 %2/Sub/9 %3/Style/9
+@a/Style/9 @b/Sub/9 !c/Loud/9 | @1.5/Style/9 @2.5/Sub/9 !3.5/Loud/9 | !1/Loud/9 @2/Sub/9 @3/Style/9
+9 9 9 ! ! 9
+[exit 0]
