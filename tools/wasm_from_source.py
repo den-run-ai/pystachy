@@ -76,8 +76,8 @@ def wasm_module(gen: Gen) -> Module:
         raise Refused("module attribute dynamic")
     if diagnostics.int_program():
         raise Refused("module attribute promoting")
-    if gen.gproto or gen.ext != "" or gen.rtmode:
-        raise Refused("module requires generators, extension exports or runtime mode")
+    if gen.ext != "" or gen.rtmode:
+        raise Refused("module requires extension exports or runtime mode")
     if gen.one or gen.xobj:
         raise Refused("module requires dynamic object comparisons")
     if len(gen.rtdatas) != 0:
@@ -86,6 +86,8 @@ def wasm_module(gen: Gen) -> Module:
         raise Refused("module declaration extern")
     m = Module()
     m.attrs["complete"] = ""
+    if gen.gproto:
+        m.attrs["protocol"] = ""
     if gen.eh:
         m.attrs["exceptions"] = ""
     m.attrs["opts"] = "[" + " ".join(gen.opts) + "]"

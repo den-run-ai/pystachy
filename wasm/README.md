@@ -92,10 +92,12 @@ on normal return, on `sys.exit()` and while reporting an uncaught exception.
 
 Plain generators start on first resume. Each instance has its own heap frame, which
 keeps the next instruction, the producer's function-table index and its local slots.
-This allows different producers to share an `Iterator[T]` interface. Generators with
-cleanup at a yield, extended protocols or live temporary values that the emitter
-cannot preserve receive a named refusal. Explicit dynamic values also receive a
-named refusal. `wasm/build.sh tir` then builds the program through LLVM, and
+At each suspension it saves the typed temporary values needed on that edge. Resuming
+restores them before the successor block selects its phi inputs. This allows different
+producers to share an `Iterator[T]` interface. For programs using `send()` or `throw()`,
+the frame also has space for the sent value and thrown exception. A new generator
+rejects a non-None first send, as Python does. Yields requiring cleanup during close
+and programs using explicit dynamic values receive a named refusal. `wasm/build.sh tir` then builds the program through LLVM, and
 `WASM_TIR_LOG` records the route taken.
 
 The source compiler passes the finalized functions and declarations directly to the emitter.

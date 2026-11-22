@@ -17,8 +17,8 @@ backedge also have a dispatch loop: a backward branch sets the next block's inde
 continues the loop, whose br_table dispatches it. A phi's values are assigned on each edge, all read first.
 
 It lowers scalar code, runtime calls and exception handlers (wasm/README.md).
-Generators and dynamic dispatch remain unsupported (the
-runtime's collector is off). For an unsupported operation it exits with status 3 after one
+Generators can suspend in code that requires no cleanup at a yield.
+Dynamic dispatch still requires LLVM. For an unsupported operation it exits with status 3 after one
 line `tir_wasm: refused: WHAT` on stderr, and wasm/build.sh then compiles the program through
 LLVM. Run it as PYTHONPATH=. python3 wasm/tir_wasm.py, or compiled: PYSTACHY_PATH=. ./pystachy
 build wasm/tir_wasm.py, from the repository root (it reads the compiler's RUNTIME table).
@@ -28,14 +28,18 @@ import struct
 import sys
 
 from src.pystachy_compiler.machine_ir import WORD_READS
-from src.pystachy_compiler.specs import CONTAINER_HEADERS, GENDONE, GENNAME, GENRET, GENSLOTS, GENSTATE, GENVAL, RTSYM, RUNTIME
-from src.pystachy_compiler.utils import atomic_dict, atomic_list, is_tuple, lt, rtll, rtsig, rtsym, tslots
+from src.pystachy_compiler.specs import CONTAINER_HEADERS, GENDONE, GENNAME, GENNEW, GENRET, GENSTATE, GENVAL, OP_TEMPS, RTSYM, RUNTIME
+from src.pystachy_compiler.utils import atomic_dict, atomic_list, generator_slots, is_tuple, lt, rtll, rtsig, rtsym, tslots
 from wasm.wasi_abi import LIBC_WRAPPERS
 
 I32 = 0x7F
 I64 = 0x7E
 F64 = 0x7C
 VOID = 0x40
+
+# The reactor handles the other recursion operations. In particular, a failed
+# resume must finish the generator before raising on depth or stack exhaustion.
+INLINE_RECURSION = ("recursion.depth", "recursion.restore", "recursion.enter")
 
 
 # LLVM's ordered fcmp predicates and une, as WebAssembly's f64 comparisons
@@ -724,12 +728,10 @@ class Import:
         self.typ = typ
 
 
-# A generator handle starts with the five promise words used by the existing IR.
-# The next two words hold a resume label and its producer's function-table index.
-# Each addressable source slot then owns an eight-byte cell in this instance.
-GEN_PC = GENSLOTS
-GEN_TARGET = GENSLOTS + 1
-GEN_LOCALS = GENSLOTS + 2
+# The public promise starts at the handle. Its optional send and throw slots
+# precede the private resume label, function-table index, source slots and spills.
+def promise_words(m: Module) -> int:
+    return generator_slots("protocol" in m.attrs, False, False)
 
 
 def frame_inst(op: str, args: list[Operand], result: str = "", t: str = "") -> Inst:
@@ -751,17 +753,65 @@ def frame_store(block: Block, address: str, value: Operand) -> None:
     block.code.append(frame_inst("mach.store", [Operand("%ptr", address), value]))
 
 
-def frame_addresses(block: Block, fn: Func) -> None:
+def frame_addresses(block: Block, fn: Func, promise: int) -> None:
     for name, index in [("%wasm.value", GENVAL), ("%wasm.return", GENRET), ("%wasm.state", GENSTATE),
-                        ("%wasm.name", GENNAME), ("%wasm.pc", GEN_PC), ("%wasm.target", GEN_TARGET)]:
+                        ("%wasm.name", GENNAME), ("%wasm.pc", promise), ("%wasm.target", promise + 1)]:
         frame_address(block, name, index)
-    at = GEN_LOCALS
+    at = promise + 2
     for slot in fn.slots:
         frame_address(block, slot, at)
         at += 1
 
 
-def split_generator(fn: Func, resume: Func, target_slot: str) -> Func:
+def spill_type(i: Inst, index: int) -> str:
+    # Private LLVM intermediates have no guest value. A runtime bool result uses its
+    # declared i64 ABI, whereas the overflow flag and ordinary bool results use i32.
+    if index in OP_TEMPS.get(i.op, []) or not i.t:
+        raise Refused(f"generator suspension uses an untyped result of {i.op}")
+    ll = value_ll("bool" if i.op == "ovf" and index == 2 else i.t)
+    if i.op == "rt":
+        key = i.fields.get("entry", "")
+        if key in RUNTIME:
+            ll = rtll(rtsig(key)[0])
+    wt = wasm_type(ll)
+    return "int" if wt == I64 else "float" if wt == F64 else "%i32"
+
+
+def generator_spills(fn: Func, labels: dict[str, int]) -> dict[str, list[Operand]]:
+    values: dict[str, int] = {}
+    definitions: list[tuple[str, Inst, int]] = []
+    for block in fn.blocks:
+        for i in block.code:
+            for k in range(len(i.res)):
+                name = i.res[k]
+                values[name] = len(definitions)
+                definitions.append((name, i, k))
+    live = live_after_blocks(fn, labels, values)
+    spills: dict[str, list[Operand]] = {}
+    for b in range(len(fn.blocks)):
+        block = fn.blocks[b]
+        for i in block.code:
+            if i.op in ("gen.start", "gen.yield"):
+                if i is not block.code[-1] or len(i.targets) != 1 or (i.op == "gen.start" and b != 0):
+                    raise Refused(f"generator suspension edge in {fn.name}")
+                spills[block.label] = []
+                for index in sorted(live[b]):
+                    name, definition, k = definitions[index]
+                    spills[block.label].append(Operand(spill_type(definition, k), name))
+            if b and any(arg.v.startswith("%a") and arg.v[2:].isdigit() for arg in i.args):
+                raise Refused(f"generator argument live across suspension in {fn.name}")
+    return spills
+
+
+def save_generator_position(block: Block, saved: list[Operand], words: dict[str, int], position: int) -> None:
+    for value in saved:
+        address = "%wasm.spill." + value.v
+        frame_address(block, address, words[value.v])
+        frame_store(block, address, value)
+    frame_store(block, "%wasm.pc", Operand("int", str(position)))
+
+
+def split_generator(fn: Func, resume: Func, target_slot: str, m: Module) -> Func:
     labels = fn.block_indices()
     if not fn.blocks or not fn.blocks[0].code or fn.frame_bytes:
         raise Refused(f"generator frame or entry in {fn.name}")
@@ -769,21 +819,14 @@ def split_generator(fn: Func, resume: Func, target_slot: str) -> Func:
     start = entry.code[-1]
     if start.op != "gen.start" or len(start.args) != 1 or len(start.targets) != 1:
         raise Refused(f"generator initial suspension in {fn.name}")
-    values: dict[str, int] = {}
-    for block in fn.blocks:
-        for i in block.code:
-            for name in i.res:
-                values[name] = len(values)
-    live = live_after_blocks(fn, labels, values)
-    for b in range(len(fn.blocks)):
-        for i in fn.blocks[b].code:
-            if i.op in ("gen.start", "gen.yield"):
-                if i is not fn.blocks[b].code[-1] or len(i.targets) != 1 or (i.op == "gen.start" and b != 0):
-                    raise Refused(f"generator suspension edge in {fn.name}")
-                if live[b] or any(x.op == "phi" for x in fn.blocks[labels[i.targets[0]]].code):
-                    raise Refused(f"generator suspension with live temporaries in {fn.name}")
-            if b and any(arg.v.startswith("%a") and arg.v[2:].isdigit() for arg in i.args):
-                raise Refused(f"generator argument live across suspension in {fn.name}")
+    spills = generator_spills(fn, labels)
+    promise = promise_words(m)
+    first_spill = promise + 2 + len(fn.slots)
+    words: dict[str, int] = {}
+    for saved in spills.values():
+        for value in saved:
+            if value.v not in words:
+                words[value.v] = first_spill + len(words)
 
     constructor = Func(fn.name)
     constructor.ptypes = fn.ptypes
@@ -791,17 +834,15 @@ def split_generator(fn: Func, resume: Func, target_slot: str) -> Func:
     constructor.attrs = fn.attrs
     init = Block(entry.label)
     constructor.blocks = [init]
-    size = 8 * (GEN_LOCALS + len(fn.slots))
+    size = 8 * (first_spill + len(words))
     alloc = frame_inst("rt", [Operand("int", str(size))], "%wasm.frame", "%ptr")
     alloc.fields["entry"] = "alloc"
     init.code.append(alloc)
-    frame_addresses(init, fn)
+    frame_addresses(init, fn, promise)
     init.code.extend(entry.code[:-1])
     frame_store(init, "%wasm.name", start.args[0])
-    frame_store(init, "%wasm.pc", Operand("int", str(labels[start.targets[0]])))
-    init.code.append(frame_inst("mach.load", [Operand("%ptr", target_slot)], "%wasm.function", "%ptr"))
-    frame_store(init, "%wasm.target", Operand("%ptr", "%wasm.function"))
-    init.code.append(frame_inst("ret", [Operand(fn.ret, "%wasm.frame")]))
+    if "protocol" in m.attrs:
+        frame_store(init, "%wasm.state", Operand("int", str(GENNEW)))
 
     resume.ret = "None"
     resume.ptypes = ["%ptr"]
@@ -810,11 +851,45 @@ def split_generator(fn: Func, resume: Func, target_slot: str) -> Func:
     dispatch = Block(entry.label)
     resume.blocks.append(dispatch)
     dispatch.code.append(frame_inst("cast", [Operand("%ptr", "%a0")], "%wasm.frame", "%ptr"))
-    frame_addresses(dispatch, fn)
+    frame_addresses(dispatch, fn, promise)
     dispatch.code.append(frame_inst("mach.load", [Operand("%ptr", "%wasm.pc")], "%wasm.position", "int"))
     switch = frame_inst("switch", [Operand("int", "%wasm.position")])
     switch.targets = ["wasm.invalid.position"]
     dispatch.code.append(switch)
+    # Resume edges with phi inputs or saved registers need their own predecessor.
+    # A plain edge can still dispatch straight to its original successor.
+    edges: dict[str, str] = {}
+    positions: dict[str, int] = {}
+    for block in fn.blocks:
+        if block.label not in spills:
+            continue
+        target = block.code[-1].targets[0]
+        saved = spills[block.label]
+        position = labels[target]
+        if saved or any(i.op == "phi" for i in fn.blocks[position].code):
+            position = len(fn.blocks) + labels[block.label]
+            edge = Block(f"wasm.resume.edge.{position}")
+            edges[block.label] = edge.label
+            for value in saved:
+                address = "%wasm.spill." + value.v
+                frame_address(edge, address, words[value.v])
+                edge.code.append(frame_inst("mach.load", [Operand("%ptr", address)], value.v, value.t))
+                frame_store(edge, address, Operand("int", "0"))
+            jump = frame_inst("br", [])
+            jump.targets = [target]
+            edge.code.append(jump)
+            resume.blocks.append(edge)
+            target = edge.label
+        positions[block.label] = position
+        if target not in switch.targets:
+            switch.args.append(Operand("int", str(position)))
+            switch.targets.append(target)
+    # Save constructor temporaries before returning the handle for its first resume.
+    save_generator_position(init, spills[entry.label], words, positions[entry.label])
+    init.code.append(frame_inst("mach.load", [Operand("%ptr", target_slot)], "%wasm.function", "%ptr"))
+    frame_store(init, "%wasm.target", Operand("%ptr", "%wasm.function"))
+    init.code.append(frame_inst("ret", [Operand(fn.ret, "%wasm.frame")]))
+
     for block in fn.blocks[1:]:
         out = Block(block.label)
         resume.blocks.append(out)
@@ -823,7 +898,7 @@ def split_generator(fn: Func, resume: Func, target_slot: str) -> Func:
                 if i.fields.get("cleanup", "0") != "0" or len(i.args) != 1:
                     raise Refused(f"generator yield with cleanup or an extended promise in {fn.name}")
                 frame_store(out, "%wasm.value", i.args[0])
-                frame_store(out, "%wasm.pc", Operand("int", str(labels[i.targets[0]])))
+                save_generator_position(out, spills[block.label], words, positions[block.label])
                 frame_store(out, "%wasm.state", Operand("int", "0"))
                 out.code.append(frame_inst("ret", []))
             elif i.op == "gen.ret":
@@ -835,15 +910,12 @@ def split_generator(fn: Func, resume: Func, target_slot: str) -> Func:
                 out.code.append(frame_inst("ret", []))
             elif i.op == "gen.promise" and not i.args:
                 out.code.append(frame_inst("cast", [Operand("%ptr", "%wasm.frame")], i.res[0], "%ptr"))
+            elif i.op == "phi":
+                phi = frame_inst("phi", i.args, i.res[0], i.t)
+                phi.targets = [edges.get(pred, pred) for pred in i.targets]
+                out.code.append(phi)
             else:
                 out.code.append(i)
-    # Dispatch only to suspension successors, so unrelated phi predecessors keep
-    # their original edges. Re-entering a completed handle is guarded by the IR.
-    for block in fn.blocks:
-        for i in block.code:
-            if i.op in ("gen.start", "gen.yield") and i.targets[0] not in switch.targets:
-                switch.args.append(Operand("int", str(labels[i.targets[0]])))
-                switch.targets.append(i.targets[0])
     invalid = Block("wasm.invalid.position")
     invalid.code.append(frame_inst("unreachable", []))
     resume.blocks.append(invalid)
@@ -858,7 +930,7 @@ def generator_functions(m: Module, targets: dict[str, str], handles: set[str]) -
             slot = "@wasm.resume.address." + fn.name
             targets[slot] = resume.name
             handles.add(fn.ret)
-            functions.append(split_generator(fn, resume, slot))
+            functions.append(split_generator(fn, resume, slot, m))
             functions.append(resume)
         else:
             functions.append(fn)
@@ -1118,7 +1190,7 @@ class Emitter:
                 for i in b.code:
                     if i.is_invoke():
                         self.catches = True
-                    if i.op == "rt" and i.fields.get("entry", "").startswith("recursion."):
+                    if i.op == "rt" and i.fields.get("entry", "") in INLINE_RECURSION:
                         self.recursion = True
                         if i.fields["entry"] == "recursion.enter":
                             self.runtime("recursion.error")
@@ -1505,7 +1577,7 @@ class Emitter:
             return
         if op == "rt":
             key = i.fields.get("entry", "")
-            if key.startswith("recursion."):
+            if key in INLINE_RECURSION:
                 self.recursion_op(i, key)
                 return
             if key == "fabs":
@@ -1567,7 +1639,7 @@ class Emitter:
                 self.mem(0x37, 3, GENSTATE * 8)
             else:
                 self.push(i.args[0], "ptr")
-                self.mem(0x28, 2, GEN_TARGET * 8)
+                self.mem(0x28, 2, (promise_words(self.m) + 1) * 8)
                 self.op(0x11)  # call_indirect (frame) using this instance's producer
                 uleb(self.code, self.types.of([I32], []))
                 uleb(self.code, 0)
@@ -2166,7 +2238,7 @@ class Emitter:
         attrs = self.m.attrs
         if "complete" not in attrs:
             raise Refused("a module that does not declare lowering's state (complete)")
-        for flag in ("dynamic", "promoting", "protocol", "rtmode", "extension"):
+        for flag in ("dynamic", "promoting", "rtmode", "extension"):
             if flag in attrs:
                 raise Refused(f"module attribute {flag}")
         for table in ("unequal", "crossed", "unsupported"):
