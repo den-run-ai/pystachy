@@ -89,6 +89,16 @@ pass is discarded, not rolled back for reuse. Retries still create a fresh `Gen`
 inspection still uses fresh workers. Captured diagnostics belong to the observer and
 retain a copy of their context across internal retries.
 
+A template instance whose returns join to no type, where its tests read parameters that
+literals may give, ends the pass with `NeedSelectors` instead of that error. The driver's
+selector registry (`Gen.selectors`, by the template's module, line, class and name) then keys
+the template's instances by each call's literal arguments, and each instance decides its tests
+of them ([results chosen by literal arguments](language/typing.md#results-chosen-by-literal-arguments)).
+The registry grows only on a pass that would otherwise end with that error, and not while
+optional imports' handlers are on trial, so a program that compiles without it keeps its
+instances and IR. It survives the other retries but the one that starts over without those
+handlers.
+
 Ordinary single-inheritance hierarchies carry a class tag. Base-typed instance-method calls
 select a concrete implementation, then reuse method specialization for that receiver.
 Up to eight concrete classes (`DISPATCH_INLINE`), each call site tests the tag itself, and
