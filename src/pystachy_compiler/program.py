@@ -273,7 +273,10 @@ def gen_subclass_problem(self, st: Node) -> str:
             if why != "":
                 return why
         elif self.init_template(base_ci.node, True) or self.init_template(st.kids[0], True) or (st.s not in self.hierarchies and self.fixed_hierarchy(base_ci.name)):
-            return "inheritance with generic class templates is not supported: " + self.template_fix([base_ci.node, st.kids[0]])
+            if not self.template_under(st, base_ci.name):
+                return "inheritance with generic class templates is not supported: " + self.template_fix([base_ci.node, st.kids[0]])
+            # (a class template under an ordinary class: its specializations derive from it, tbases)
+            self.tbases[st.s] = base_ci.name
         if dc and not self.is_dc(base_ci.name):
             return "a @dataclass class whose base is not a dataclass is not supported"
         if len(st.kids[0].kids) > 1 and not dc:
@@ -1045,9 +1048,10 @@ def gen_hierarchy_chain(self, name: str, chain: list[str], seen: list[str]) -> b
         for c in named:
             if c != name and c in self.tmpl and not self.hierarchy_chain(c, chain, seen):
                 return False
-        if node.kind == "subclass" and len(node.kids) == 2 and node.kids[1].kind == "name" and node.kids[1].s in self.classes and self.template_root(node.kids[1].s) != "":
+        if node.kind == "subclass" and len(node.kids) == 2 and node.kids[1].kind == "name" and node.kids[1].s in self.classes and (self.template_root(node.kids[1].s) != "" or self.plain_chain(node.kids[1].s)):
             # (a subclass of a class template whose own __init__ is one, tmpl_sub: a template of
-            # the hierarchy whose classes derive as template_bases has them, as a member is)
+            # the hierarchy whose classes derive as template_bases has them, as a member is; or a
+            # class template under an ordinary class, template_under)
             chain.append(name)
             return True
         return False  # recheck after a fresh pass, with only verified dependencies retained
@@ -1329,6 +1333,52 @@ def gen_template_subclass(self, st: Node, base: str, root: str) -> str:
         return ""  # (class IntBox(Box[int]): that specialization)
     return self.super_init_problem(st.s, inits[0], base, root)
 
+def gen_plain_chain(self, name: str) -> bool:
+    # are class name and each class it derives from ordinary ones, which a class template may
+    # derive from (template_under): no exception, dataclass, NamedTuple or builtin type's subclass,
+    # no generic class, no secondary base, __slots__ or hook (__init_subclass__, __class_getitem__),
+    # and no __init__ that is a template's, or one whose layout its calls decide (init_generic)
+    c = name
+    while c in self.classes:
+        ci = self.classes[c]
+        if ci.exc != "" or ci.origin != "" or c in self.nts or c in self.cnts or c in self.bsubn or c in self.tparams or self.is_dc(c) or self.literal_class(c) or len(ci.roles) > 0:
+            return False
+        if self.hooks.get(c, "") != "" or "__slots__" in self.body_names(ci.node) or (self.declares(c, "__init__") and self.init_generic(ci.node, True)):
+            return False
+        c = ci.base
+    return True
+
+def gen_template_under(self, st: Node, base: str) -> bool:
+    # is class statement st, whose one base is ordinary class base (plain_chain), a class template
+    # under it (#962): an __init__ of its own that is a class template, whose fields its calls'
+    # arguments type (not fixed_layout, whose objects share one class), and no decorator. Each of
+    # its specializations derives from base (tbases), the template itself from no class, so that
+    # no code that asks which classes derive from base meets it. An imported module's is left out
+    # until the program uses it (hierarchy_chain), as an imported subclass of a template is
+    if len(st.kids) != 2 or len(st.kids[0].kids) > 1 or st.s in self.tparams or st.s in self.nts or st.s in self.cnts:
+        return False
+    if owner(st.s) != "" and st.s not in self.hierarchies:
+        return False
+    return self.init_generic(st.kids[0], True) and not self.fixed_layout(st.kids[0]) and self.plain_chain(base)
+
+def gen_under_base(self, t: ClassInfo, base: str) -> None:
+    # (specialize, for class template t under ordinary class base, tbases) the fields of base and
+    # of the classes it derives from, declared, and their methods, which t has too (a property's
+    # setter that t's __init__ assigns through, scan_fields): t derives from no class itself
+    chain: list[str] = []
+    c = base
+    while c in self.classes:
+        chain.insert(0, c)
+        c = self.classes[c].base
+    for c in chain:
+        self.inherit(self.classes[c])
+        self.declare_fields(self.classes[c])
+    t.base = base
+    try:
+        self.inherit(t)
+    finally:
+        t.base = ""
+
 def gen_tmpl_member(self, ci: ClassInfo) -> bool:
     # is class ci a member of a template hierarchy: no __init__ of its own, its base a class
     # template (a member too, or the hierarchy's root), and no specialization named as its base
@@ -1397,12 +1447,12 @@ def gen_template_bases(self) -> None:
             while len(self.making) > depth:
                 self.making.pop()
     for k in list(self.tlate):
-        # (the specializations of subclasses whose own __init__ is a template, tmpl_sub, that an
-        # earlier pass's code made, late_sub: made here in turn, with their bases, before any code
-        # is compiled; a class that this pass does not declare, an imported one that the program
-        # does not use yet, has none)
+        # (the specializations of subclasses whose own __init__ is a template, tmpl_sub, and of
+        # class templates under ordinary classes, tbases, that an earlier pass's code made,
+        # late_sub: made here in turn, with their bases, before any code is compiled; a class that
+        # this pass does not declare, an imported one that the program does not use yet, has none)
         c = self.tlate[k][0]
-        if c not in self.classes or not self.tmpl_sub(self.classes[c]):
+        if c not in self.classes or not (self.tmpl_sub(self.classes[c]) or c in self.tbases):
             continue
         ts = self.tlate[k][1:]
         self.line = self.classes[c].node.line
@@ -1446,7 +1496,7 @@ def gen_sub_base(self, t: ClassInfo, init: FnInfo, ts: list[str]) -> str:
     return self.specialize(t.base, pts, {}, False, {})
 
 def gen_late_sub(self, c: str, ts: list[str], doing: str) -> None:
-    # a specialization of class c (tmpl_sub) for arguments of types ts (doing: specialize's key of
+    # a specialization of class c (tmpl_sub, or tbases') for arguments of types ts (doing: specialize's key of
     # it), which compiled code makes: code that dispatches on a value of its base's type, or tests
     # its class, may have been compiled without it. It is kept in tlate, which the passes keep, as
     # hierarchies, and the pass ends (NeedHierarchy, once discovery has compiled the program, or at
@@ -1459,7 +1509,7 @@ def gen_late_sub(self, c: str, ts: list[str], doing: str) -> None:
         self.err(f"internal error: the specialization {short(c)}({', '.join([typestr(x) for x in ts])}) made where the classes are declared is made again by compiled code")
     for x in ts:
         if not late_type(x):
-            self.err(f"a subclass of a class template whose own __init__ is a class template, {short(c)}, is not supported for an argument of type {typestr(x)} (an object of a class template's specialization, a lambda, a nested function or a bound method): its specializations are made where the classes are declared, before code makes these")
+            self.err(f"{short(c)}, a class template that derives from another class, is not supported for an argument of type {typestr(x)} (an object of a class template's specialization, a lambda, a nested function or a bound method): its specializations are made where the classes are declared, before code makes these")
     self.tlate[doing] = [c] + ts
     self.newlate = True
 
@@ -2337,6 +2387,7 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
                 # a class of an imported module that Pystachy cannot compile: an error only
                 # where the program uses it
                 self.unsupported[st.s] = f"class {shown(st.s)} is not supported: {why}"
+                self.tbases.pop(st.s, "")
             elif st.kind == "subclass":
                 # an ordinary class or an exception class (subclass_problem)
                 if st.s in self.classes:
@@ -2355,6 +2406,8 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
                             ci.roles.append(b.s)
                 elif len(st.kids) == 3:
                     ci.excsecond = self.exc_base(st.kids[2])
+                if st.s in self.tbases:
+                    ci.base = ""  # (a class template under an ordinary class: its specializations derive from it)
                 self.classes[st.s] = ci
                 if self.is_dc(st.s):
                     # a dataclass deriving from another (subclass_problem): frozen as its base is
@@ -2418,6 +2471,12 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
                         if role not in self.classes[other].overlaps:
                             self.classes[other].overlaps.append(role)
                             self.classes[role].overlaps.append(other)
+    for t in self.tbases:
+        # (a class template under an ordinary class, which derives from no class itself: its
+        # specializations derive from that class and take tags of their own, templates.new_tag)
+        if t in self.classes:
+            self.classes[t].tag = 1
+            self.classes[self.tbases[t]].tag = 1
     tag = 0
     for ci in self.classes.values():
         if ci.tag != 0:

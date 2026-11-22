@@ -1,0 +1,5 @@
+a 3 hi 0 b 0 hi 0
+hi 0 False False
+hi 0 True False
+hi 0 True True
+[exit 0]

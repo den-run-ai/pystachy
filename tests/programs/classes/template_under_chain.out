@@ -1,0 +1,6 @@
+root root False False root
+mid root True False root
+leaf 1 mid root True True leaf
+leaf x mid root True True leaf
+leaf 2.5 mid set
+[exit 0]
