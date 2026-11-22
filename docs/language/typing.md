@@ -1018,14 +1018,32 @@ interfaces too: a `def __iter__(self) -> Iterator[int]` accepts lists, tuples, r
 dictionaries, sets, generators and objects with `__iter__` alike
 ([test](../../tests/programs/classes/protocol_iterable.py)).
 
-A protocol's value is its object. `is` and `is not` compare the objects; `str()`, `repr()`,
-printing and truth tests use the object's class. A value that is `None` stays `None`. Only the
-run time knows the object's class, so `==`, `!=`, ordering, `hash()`, dict keys and set
-elements, `type()`, `isinstance()` and other reflection of protocol values are compilation
-errors (#487): compare them with `is`. Converting one protocol's value to another protocol,
-and to or from a dynamic `Any` value, is not supported. A union's value converts once
-narrowed to one class; functions and `Callable` values are not implementations (annotate a
-callback with `Callable[[A], R]` rather than a protocol with `__call__`).
+A protocol's value is its object, whose class only the run time knows: these operations run
+as the object's class runs them, each by an entry of the object's table that compiles the
+operation for its implementation.
+
+- `is` and `is not` compare the objects;
+- `str()`, `repr()`, printing, f-strings, `format()` and truth tests use the object's
+  `__str__`, `__repr__`, `__format__` and `__bool__` (or `__len__`);
+- `==` and `!=` with a value of any type compare the object as CPython does: its class's
+  method, then the other operand's reflected one, then identity, where a class defines no
+  `__eq__` (a protocol's value on the other side is its object in turn);
+- `hash()` is the object's, also inside a tuple, with CPython's `TypeError` for an
+  unhashable class;
+- `isinstance(x, C)` with classes of the program (or a tuple of them) tests the object's class,
+  and narrows a local or parameter to `C` where it holds, as an `if` or an early `return`
+  narrows a union ([test](../../tests/programs/classes/protocol_isinstance.py)).
+
+A value that is `None` stays `None`, and each operation then is `None`'s. Since any two
+implementations may meet at run time, a comparison that Pystachy rejects between two of their
+classes (`cannot compare A == B`) is rejected where the program compares the protocol's values.
+Orderings, dict keys and set elements, searches and sorts of containers of protocol values
+(`in` a list, `count()`, `index()`, `sort()`, `min()`, `max()`), `id()`, `type()` and other
+reflection, `isinstance()` with a builtin type and class patterns are compilation errors.
+Converting one protocol's value to another protocol, and to or from a dynamic `Any` value, is
+not supported. A union's value converts once narrowed to one class; functions and `Callable`
+values are not implementations (annotate a callback with `Callable[[A], R]` rather than a
+protocol with `__call__`).
 
 Protocol-annotated parameters take protocol values: a call with a `Square` converts it. To
 specialize a function for each argument's class instead, leave the parameter unannotated or
@@ -1050,8 +1068,8 @@ other locations hold `Iterator[T]`
 A protocol value is a pointer to an immutable 16-byte box of a method table and the object,
 so a conversion allocates one box. The program has one constant table for each pair of
 implementation type and protocol; a call loads the table's entry and calls it indirectly with
-the object. Entries are compiled only for operations that the program calls
-([internals](../internals.md#interface-values)).
+the object. Entries are compiled only for operations that the program calls, the comparisons,
+hashes, formats and class tests above among them ([internals](../internals.md#interface-values)).
 
 ## Function and method templates
 

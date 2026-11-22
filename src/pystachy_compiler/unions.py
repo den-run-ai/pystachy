@@ -558,6 +558,8 @@ def gen_narrow_val(self, v: Val, nt: str) -> Val:
         return v
     if v.t == "dyn":
         return self.dyn_narrowed(v, nt)  # (a dynamic value's box, which a test proved holds an nt)
+    if self.is_iface(v.t) and nt in self.classes and not self.is_iface(nt):
+        return self.iface_narrowed(v, nt)  # (an interface's box, whose object a test proved an nt)
     if v.t in self.classes and nt in self.classes and (self.derives(nt, v.t) or nt in self.classes[v.t].overlaps):
         return Val(v.v, nt)
     if v.t in self.classes and is_union(nt) and len([m for m in umembers(nt) if m not in self.classes]) == 0:

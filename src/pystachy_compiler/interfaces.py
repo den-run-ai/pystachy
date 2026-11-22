@@ -15,7 +15,7 @@ from src.pystachy_compiler.names import short
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.specs import BIG, SPECSHOW
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.utils import clone, elem, gelem, is_callable, is_dict, is_gen, is_list, is_opt, is_union, lt, targs, typestr, unopt
+from src.pystachy_compiler.utils import clone, elem, gelem, is_callable, is_dict, is_gen, is_list, is_opt, is_tuple, is_union, lt, targs, typestr, unopt
 
 # the intrinsic that an interface method's body calls: its table entry (iface_call)
 IFACE_CALL = "__pystachy_iface__"
@@ -50,6 +50,16 @@ class Iface:
         self.implicit: dict[str, bool] = {}  # the IMPLICIT operations its body does not declare
         self.used: dict[int, bool] = {}  # the slots that compiled code calls through
         self.origin = ""  # an interface of type arguments: its template (iface_of)
+        # the operations that the program's code asks of a value's object whatever its class,
+        # which no method of the protocol declares (iface_op): format(), hash(), isinstance(),
+        # == and != with a value of another type. By the operation's key (which no method's
+        # name is): the types of its arguments after the object, its result's, the expression
+        # that each implementation's entry returns, of its object _o and arguments _a0, ..., and
+        # what errors name it by
+        self.dargs: dict[str, list[str]] = {}
+        self.dret: dict[str, str] = {}
+        self.dexpr: dict[str, Node] = {}
+        self.dshow: dict[str, str] = {}
 
 
 class ITab:
@@ -522,9 +532,10 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
     # (next(o), len(o), ...). Its result is converted to R, as a return statement converts it
     face = self.ifaces[tab.iface]
     op = face.ops[k]
-    m = self.classes[tab.iface].methods[op]
-    ps = m.ptypes[1:]
     line = tab.line
+    derived = op in face.dargs
+    m = self.classes[tab.iface].methods[op] if not derived else None
+    ps = face.dargs[op] if derived else m.ptypes[1:] if m is not None else []
     ll = f"@cv.{self.ncv}"
     self.ncv += 1
     f = FnInfo("<interface>", ll, mk("def", "<interface>", line, []), "")
@@ -534,15 +545,22 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
         f.defaults.append(mk("noann", "", line, []))
         f.dglob.append("")
         f.dtypes.append("")
-    f.ret = m.ret
+    f.ret = face.dret[op] if derived else m.ret if m is not None else "None"
     f.mod = tab.mod
     f.home = tab.home
     o = mk("name", "_o", line, [])
     a: list[Node] = []
     for j in range(len(ps)):
         x = mk("name", f"_a{j}", line, [])
-        a.append(x if m.npos < 0 or j + 1 < m.npos else mk("kw", m.params[j + 1], line, [x]))
-    if op in face.props:
+        a.append(x if m is None or m.npos < 0 or j + 1 < m.npos else mk("kw", m.params[j + 1], line, [x]))
+    parts = op.split("|", 2) if derived else []
+    if derived and (parts[0] == "==" or parts[0] == "!=") and self.unequal_types(parts[2], tab.impl):
+        # (a number or str and an object of a class that defines no __eq__ or __ne__: CPython
+        # compares them by identity, never the same, as unions' members are compared)
+        e = mk("False" if parts[0] == "==" else "True", "", line, [])
+    elif derived:
+        e = with_line(clone(face.dexpr[op]), line)  # (an operation the protocol does not declare: iface_op)
+    elif op in face.props:
         e = mk("attr", op, line, [o])
     elif op in BUILTIN_FORMS and len(ps) == 0 and (op in IMPLICIT or tab.impl not in self.classes or op == "__next__" or op == "__iter__"):
         e = mk("call", "", line, [mk("name", BUILTIN_FORMS[op], line, []), o])
@@ -553,14 +571,15 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
     body = [mk("return", "", line, [e])]
     if e.kind == "assign" or e.kind == "del":
         body = [e]  # (o[a0] = a1, del o[a0]: statements, whose operation returns None)
-    if op in face.implicit and (op == "__repr__" or op == "__str__") and (is_gen(tab.impl) or tab.impl == "file"):
+    if ((op in face.implicit and (op == "__repr__" or op == "__str__")) or op == "format()") and (is_gen(tab.impl) or tab.impl == "file"):
         # (Pystachy prints neither: a list of the interface's values has a repr that may never
-        # print one, which CPython prints by its address, <generator object f at 0x...>)
+        # print one, which CPython prints by its address, <generator object f at 0x...>; and
+        # format() of one is its str())
         what = "a generator" if is_gen(tab.impl) else "a file"
-        msg = mk("str", f"{op[2:-2]}() of {what} held by a value of {typestr(tab.iface)} is not supported", line, [])
+        msg = mk("str", f"{'format' if op == 'format()' else op[2:-2]}() of {what} held by a value of {typestr(tab.iface)} is not supported", line, [])
         body = [mk("raise", "", line, [mk("call", "", line, [mk("name", "NotImplementedError", line, []), msg])])]
     f.node.kids = [mk("params", "-1,-1", line, []), mk("noann", "", line, []), mk("block", "", line, body)]
-    self.making.append(f"making the table of {typestr(tab.impl)} as {typestr(tab.iface)} (for {op}), converted at {where(line)}")
+    self.making.append(f"making the table of {typestr(tab.impl)} as {typestr(tab.iface)} (for {face.dshow[op] if derived else op}), converted at {where(line)}")
     fr = self.save()
     self.modlevel = False
     self.lenient = False
@@ -609,17 +628,191 @@ def operator_expr(op: str, o: Node, a: list[Node], line: int) -> Node:
     return mk("call", "", line, [o] + a)
 
 
+def with_line(n: Node, line: int) -> Node:
+    # n (a copy of a node made where code asked for an interface's operation: iface_op), its
+    # nodes placed at line, where an implementation's table is made
+    n.line = line
+    for k in n.kids:
+        with_line(k, line)
+    return n
+
+
 def gen_iface_cmp(self, op: str, a: Val, b: Val) -> Val:
     # a comparison of which an operand is a value of an interface: is and is not compare the
-    # objects the boxes hold (None's null), as their identity is the objects'; the others call
-    # the objects' methods, which their classes alone know: not supported yet
+    # objects the boxes hold (None's null), as their identity is the objects'; == and != compare
+    # the objects as Python does (iface_eq); an ordering is not supported yet
     if op == "is" or op == "is not":
+        u = b.t if self.is_iface(a.t) else a.t
+        if is_union(unopt(u)):
+            # (a union's box is not its object, which only its member's tag tells)
+            self.err(f"comparing a value of {typestr(a.t if self.is_iface(a.t) else b.t)} with a value of {typestr(u)} by '{op}' is not supported: narrow the union to one class first")
         if not self.isref(a.t) or not self.isref(b.t):
             return Val("false" if op == "is" else "true", "bool")
         return self.ptr_cmp('==' if op == 'is' else '!=', self.iface_obj(a), self.iface_obj(b))
-    if (op == "==" or op == "!=") and (a.t == "None" or b.t == "None"):
-        # (None equals only None: an object's __eq__ with None is not called here)
-        self.err(f"comparing a value of {typestr(a.t if self.is_iface(a.t) else b.t)} with None by {op} calls its object's __eq__: compare with 'is None' or 'is not None'")
+    if op == "==" or op == "!=":
+        return self.iface_eq(op, a, b)
     t = a.t if self.is_iface(a.t) else b.t
-    self.err(f"comparing values of {typestr(t)} with {op} is not supported: their objects' classes are known only when the program runs (compare with 'is')")
+    self.err(f"comparing values of {typestr(t)} with {op} is not supported: their objects' classes are known only when the program runs (compare with ==, != or is)")
     return Val("false", "bool")
+
+
+def gen_iface_op(self, v: Val, key: str, args: list[str], ret: str, e: Node, show: str, vals: list[Val]) -> Val:
+    # the call of operation key of v's interface, which no method of the protocol declares (Iface's
+    # dargs), with v's object and vals: each implementation's entry returns expression e of its
+    # object (_o) and arguments (_a0, ...) of types args, as a value of type ret (iface_adapter;
+    # show names the operation in its errors). v is known not to be None. Code that dry() types is
+    # dropped, and asks for no operation
+    if self.drying > 0:
+        return Val("undef", ret)
+    face = self.ifaces[v.t]
+    if key not in face.dargs:
+        face.ops.append(key)
+        face.dargs[key] = args
+        face.dret[key] = ret
+        face.dexpr[key] = e
+        face.dshow[key] = show
+    k = face.ops.index(key)
+    face.used[k] = True
+    tab = self.mload('%ptr', v.v)
+    obj = self.mload('env', self.maddr('%ptr', v.v, '1', True))
+    code = self.mload('%ptr', self.maddr('%ptr', tab, str(k), True))
+    return self.icall(code, obj, vals, ret)
+
+
+def gen_iface_apply(self, v: Val, key: str, args: list[str], ret: str, e: Node, show: str, vals: list[Val], none: str, a: Val, b: Val) -> Val:
+    # operation key (iface_op) of interface value v's object where it is one, and the operation
+    # none on None itself where v is None, as CPython runs it there (iface_none), as a value of
+    # type ret
+    if v.v in self.nn:
+        return self.iface_op(v, key, args, ret, e, show, vals)
+    yes = self.label()
+    no = self.label()
+    end = self.label()
+    ph = Ins("phi", ret, "")
+    self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, no, yes)
+    self.place(no)
+    r = self.iface_none(none, a, b)
+    if not self.term:
+        self.incoming(ph, r.v, self.cur)
+        self.br(end)
+    self.place(yes)
+    r = self.iface_op(v, key, args, ret, e, show, vals)
+    if not self.term:
+        self.incoming(ph, r.v, self.cur)
+        self.br(end)
+    self.place(end)
+    if len(ph.a) == 0:
+        self.unreachable()
+        return Val("undef", ret)
+    return Val(self.phi(ph), ret)
+
+
+def gen_iface_none(self, none: str, a: Val, b: Val) -> Val:
+    # the value of operation none (iface_apply) where the interface value is None: a == b or
+    # a != b of None with the other operand ("==" or "!=", with a or b the null), hash(None),
+    # format(None, spec) of spec's value a ("format"), isinstance() of None and a class ("false")
+    if none == "==" or none == "!=":
+        return self.cmp2(none, a, b)
+    if none == "hash":
+        return self.hash_value(Val("null", "None"))
+    if none == "format":
+        self.guard(self.num_cmp('!=', Val(self.mload('int', a.v), "int"), Val('0', "int")).v, "TypeError: unsupported format string passed to NoneType.__format__")
+        return Val(self.sconst("None"), "str")
+    return Val("false", "bool")
+
+
+def gen_iface_eq(self, op: str, a: Val, b: Val) -> Val:
+    # a == b or a != b (op) where an operand is a value of an interface: its object compared with
+    # the other operand as Python compares them, by the entry of each implementation's table that
+    # compiles that comparison for the object's class (a value of an interface for the other
+    # operand is its object, compared by its own table's entry in turn: the innermost comparison
+    # is of two classes, with their __eq__ or __ne__, reflected methods and identity), and None's
+    # where the value is None
+    left = self.is_iface(a.t)
+    x = a if left else b
+    other = b if left else a
+    if "?" in other.t:
+        self.err(f"comparing a value of {typestr(x.t)} with a {typestr(other.t)} by {op} is not supported: annotate the empty container")
+    none = other.t == "None"
+    line = self.line
+    o = mk("name", "_o", line, [])
+    y = mk("None", "", line, []) if none else mk("name", "_a0", line, [])
+    e = mk("cmp", op, line, [o, y] if left else [y, o])
+    key = f"{op}|{'l' if left else 'r'}|{other.t}"
+    show = f"its object {op} {typestr(other.t)}" if left else f"{typestr(other.t)} {op} its object"
+    nul = Val("null", "None")
+    return self.iface_apply(x, key, [] if none else [other.t], "bool", e, show, [] if none else [other], op, nul if left else other, other if left else nul)
+
+
+def gen_iface_hash(self, v: Val) -> Val:
+    # hash(v) of a value of an interface: its object's, by its class's __hash__ (TypeError for an
+    # unhashable class, as CPython's) or identity; None's where it is None
+    e = mk("call", "", self.line, [mk("name", "hash", self.line, []), mk("name", "_o", self.line, [])])
+    return self.iface_apply(v, "hash()", [], "int", e, "hash()", [], "hash", v, v)
+
+
+def gen_iface_format(self, v: Val, sv: Val) -> Val:
+    # format(v, spec), spec's value sv, of a value of an interface: its object's, by its class's
+    # __format__, or str() where spec is empty; None's where it is None (an empty spec only)
+    line = self.line
+    e = mk("call", "", line, [mk("name", "format", line, []), mk("name", "_o", line, []), mk("name", "_a0", line, [])])
+    return self.iface_apply(v, "format()", ["str"], "str", e, "format()", [sv], "format", sv, sv)
+
+
+def gen_iface_held(self, t: str) -> bool:
+    # does tuple type t hold a value of an interface, also in a tuple it holds: its hash is then
+    # its items' hashes mixed item by item, which runtime.c's walks of a descriptor cannot compute
+    for x in targs(t):
+        if self.is_iface(unopt(x)) or (is_tuple(unopt(x)) and self.iface_held(unopt(x))):
+            return True
+    return False
+
+
+def gen_iface_classes(self, c: Node) -> list[str]:
+    # the classes that c, isinstance()'s second argument for a value of an interface, names: a
+    # class of the program (not a protocol), object, or a tuple or union of these; ["!"] for
+    # another type, which an implementation's entry might not see as the caller's code does
+    if c.kind == "tuple" or (c.kind == "binop" and c.s == "|"):
+        out: list[str] = []
+        for x in c.kids:
+            xs = self.iface_classes(x)
+            if "!" in xs:
+                return xs
+            out.extend([y for y in xs if y not in out])
+        return out
+    if c.kind == "name" and c.s in self.classes and not self.is_iface(c.s) and c.s not in self.ifgeneric:
+        return [c.s]
+    if c.kind == "name" and c.s == "object" and not self.bound("object"):
+        return ["object"]
+    return ["!"]
+
+
+def gen_iface_isinst(self, v: Val, c: Node) -> Val:
+    # isinstance(v, c) of a value of an interface: of its object, by the entry of each
+    # implementation's table that tests its class (a test of the class tag where it has
+    # subclasses); False for None, but isinstance(None, object)
+    cs = self.iface_classes(c)
+    if "!" in cs:
+        self.err(f"isinstance() of a value of {typestr(v.t)} is only supported with the program's classes as its second argument (or a tuple of them): the object's class is known only when the program runs")
+    if "object" in cs:
+        return Val("true", "bool")
+    line = self.line
+    e = mk("call", "", line, [mk("name", "isinstance", line, []), mk("name", "_o", line, []), clone(c)])
+    key = "isinstance()|" + ",".join(cs)
+    return self.iface_apply(v, key, [], "bool", e, "isinstance()", [], "isinstance", v, v)
+
+
+def gen_iface_narrow(self, c: Node) -> str:
+    # the class that a value of an interface holds where isinstance(x, c) is true, which its
+    # reads take (iface_narrowed): c's, where it names one class that has one layout (not a
+    # class template's, whose objects' types its specializations are); "" otherwise
+    cs = self.iface_classes(c)
+    if len(cs) != 1 or cs[0] == "!" or cs[0] == "object" or cs[0] in self.tmpl:
+        return ""
+    return cs[0]
+
+
+def gen_iface_narrowed(self, v: Val, nt: str) -> Val:
+    # v, a value of an interface that isinstance() proved holds an object of class nt (not None):
+    # that object, as a value of nt
+    return Val(self.mload(nt, self.maddr('%ptr', v.v, '1', True)), nt)

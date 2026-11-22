@@ -905,7 +905,7 @@ def gen_key_kind(self, kt: str, dictionary: bool = False, built: bool = False) -
 def gen_key_class(self, t: str) -> bool:
     # can objects of class t be dict keys and set elements: those of the program's classes, but
     # a NamedTuple's (a tuple's hash) and an exception class's
-    return t in self.classes and t not in self.nts and self.classes[t].exc == ""
+    return t in self.classes and t not in self.nts and self.classes[t].exc == "" and not self.is_iface(t)
 
 def gen_key_items(self, t: str) -> bool:
     # are the items of tuple t a key's: int, bool, str, objects (key_class), str or an object
@@ -1421,7 +1421,10 @@ def gen_hash_value(self, v: Val) -> Val:
     # tuple's of such items: runtime.c's hitem), a str's (and a bytes's) the dict's hash of it;
     # TypeError for an unhashable type, as CPython's
     t = v.t
-    self.iface_reflect(t, "hash()")
+    if self.is_iface(t):
+        return self.iface_hash(v)  # (its object's: interfaces.py)
+    if is_tuple(t) and self.iface_held(t):
+        return self.big_tuple_hash(v)  # (CPython's tuplehash of its items' hashes, an interface's object's among them)
     if t == "dyn":
         return self.dyn_hash(v)  # (by its box's type: dynamic.py)
     if t == BIG:

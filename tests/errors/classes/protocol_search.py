@@ -1,4 +1,4 @@
-# error: protocol_search.py:16: error: comparing values of Named (in a list, tuple, in, count, index, sort, min or max) is not supported: their objects' classes are known only when the program runs (compare with 'is')
+# error: protocol_search.py:16: error: comparing values of Named (in a list, tuple, in, count, index, sort, min or max) is not supported: the runtime's searches and sorts do not reach their objects' methods (compare them with == or 'is' in a loop)
 from typing import Protocol
 
 

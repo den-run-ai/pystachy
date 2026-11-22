@@ -200,9 +200,10 @@ applies. Bytes case methods remain ASCII-only.
 - **Reflection text:** runtime-name `getattr()` prints substitute addresses for
   method wrappers, builtin methods and static methods; there are no corresponding
   Python type/function objects. See [reflection](semantics.md#reflection).
-- **Protocol values of generators and files:** `repr()` or `str()` of a generator or file
-  held by a [protocol](typing.md#protocols-and-stored-interfaces) value raises
-  `NotImplementedError`; CPython prints its address. Pystachy prints neither type directly.
+- **Protocol values of generators and files:** `repr()`, `str()` or `format()` (also an
+  f-string) of a generator or file held by a [protocol](typing.md#protocols-and-stored-interfaces)
+  value raises `NotImplementedError`; CPython prints its address. Pystachy prints neither type
+  directly.
 
 ### Errors and control flow
 
@@ -705,10 +706,11 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
   string expressions in `type` statements fail even when unused.
 - **Protocols:** attribute members, `*args` or `**kwargs`, `__init__`, protocol
   inheritance, a protocol as a class's base, unannotated method parameters or results,
-  `TypeVarTuple` parameters; `==`, ordering, `hash()`, dict keys, set elements, `type()`,
-  `isinstance()` and reflection of protocol values; conversions between protocols and to or
-  from dynamic `Any`; a closed union's, function's or `Callable`'s value as an implementation.
-  See [stored interfaces](typing.md#protocols-and-stored-interfaces).
+  `TypeVarTuple` parameters; orderings, dict keys, set elements, list searches and sorts,
+  `id()`, `type()` and reflection of protocol values, `isinstance()` of one with a builtin type,
+  and `==` or `!=` where two implementations' classes do not compare; conversions between
+  protocols and to or from dynamic `Any`; a closed union's, function's or `Callable`'s value
+  as an implementation. See [stored interfaces](typing.md#protocols-and-stored-interfaces).
 - **Dynamic `Any`:** typed mutable containers other than the supported native `list[int]`
   boundary becoming `Any`, unimplemented prototype operations,
   runtime `**` expansion of native dictionaries with non-str keys, or None-first storage

@@ -449,7 +449,7 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         ms = self.classes[t].methods
         if self.is_iface(t) and use != "repr":
             # (a list's or tuple's search, comparison or sort of a protocol's values: interfaces.py)
-            self.err(f"comparing values of {typestr(t)} (in a list, tuple, in, count, index, sort, min or max) is not supported: their objects' classes are known only when the program runs (compare with 'is')")
+            self.err(f"comparing values of {typestr(t)} (in a list, tuple, in, count, index, sort, min or max) is not supported: the runtime's searches and sorts do not reach their objects' methods (compare them with == or 'is' in a loop)")
         for op in use.split():
             m = "__repr__" if op == "repr" else DUNDER[op]
             m = DUNDER[REFL[op]] if m not in ms and op in REFL else m

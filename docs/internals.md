@@ -199,7 +199,14 @@ body loads its entry and calls it with the object through the `icall` operation 
 as the implementation's type and runs the operation: a method call, a property read, or the
 builtin form (`next(o)`, `iter(o)`, `repr(o)`) for builtin implementations such as lists,
 generators and files. Every protocol also has `__repr__`, `__str__` and `__bool__` entries,
-which printing and truth tests use.
+which printing and truth tests use. Operations that the program asks of a value's object but
+the protocol does not declare add entries of their own, keyed by the operation and the other
+operand's type: `format()`, `hash()`, `isinstance()` with given classes, and `==` or `!=` with
+a value of that type on either side. Each implementation's adapter compiles the operation on
+its object (`o == a0`, `hash(o)`); one whose other operand is itself a protocol's value
+dispatches on that value's table in turn, so the innermost comparison is between two concrete
+classes, with their own methods, reflection and identity fallback. Every such entry checks
+`None` at the call site, where the operation is `None`'s.
 
 Conversions only name a table. After the program's code is compiled, the final discovery
 loop compiles the adapters of the entries that calls of protocol methods use; an entry no

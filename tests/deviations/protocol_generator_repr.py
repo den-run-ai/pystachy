@@ -1,4 +1,4 @@
-# Documented deviation: repr() and str() of a generator held by a Protocol value raise
+# Documented deviation: repr(), str() and format() of a generator held by a Protocol value raise
 # NotImplementedError (docs/language/compatibility.md#functions-and-object-identity). CPython
 # prints the generator's address, <generator object numbers at 0x...>, which Pystachy does not
 # print for any generator; the protocol's other operations work.
@@ -17,6 +17,10 @@ def numbers() -> Iterator[int]:
 source: Numbers = numbers()
 try:
     print(repr(source))
+except NotImplementedError as e:
+    print("NotImplementedError:", e)
+try:
+    print(f"{source}")
 except NotImplementedError as e:
     print("NotImplementedError:", e)
 print(list(source))

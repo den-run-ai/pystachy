@@ -284,6 +284,17 @@ from src.pystachy_compiler.interfaces import (
     gen_protocol_base as interfaces_protocol_base,
     gen_protocol_class as interfaces_protocol_class,
     gen_to_iface as interfaces_to_iface,
+    gen_iface_op as interfaces_iface_op,
+    gen_iface_apply as interfaces_iface_apply,
+    gen_iface_none as interfaces_iface_none,
+    gen_iface_eq as interfaces_iface_eq,
+    gen_iface_hash as interfaces_iface_hash,
+    gen_iface_format as interfaces_iface_format,
+    gen_iface_classes as interfaces_iface_classes,
+    gen_iface_held as interfaces_iface_held,
+    gen_iface_isinst as interfaces_iface_isinst,
+    gen_iface_narrow as interfaces_iface_narrow,
+    gen_iface_narrowed as interfaces_iface_narrowed,
 )
 from src.pystachy_compiler.unions import (
     gen_field_key as unions_field_key,
@@ -3747,6 +3758,39 @@ class Gen:
 
     def iface_cmp(self, op: str, a: Val, b: Val) -> Val:
         return interfaces_iface_cmp(self, op, a, b)
+
+    def iface_op(self, v: Val, key: str, args: list[str], ret: str, e: Node, show: str, vals: list[Val]) -> Val:
+        return interfaces_iface_op(self, v, key, args, ret, e, show, vals)
+
+    def iface_apply(self, v: Val, key: str, args: list[str], ret: str, e: Node, show: str, vals: list[Val], none: str, a: Val, b: Val) -> Val:
+        return interfaces_iface_apply(self, v, key, args, ret, e, show, vals, none, a, b)
+
+    def iface_none(self, none: str, a: Val, b: Val) -> Val:
+        return interfaces_iface_none(self, none, a, b)
+
+    def iface_eq(self, op: str, a: Val, b: Val) -> Val:
+        return interfaces_iface_eq(self, op, a, b)
+
+    def iface_hash(self, v: Val) -> Val:
+        return interfaces_iface_hash(self, v)
+
+    def iface_format(self, v: Val, sv: Val) -> Val:
+        return interfaces_iface_format(self, v, sv)
+
+    def iface_classes(self, c: Node) -> list[str]:
+        return interfaces_iface_classes(self, c)
+
+    def iface_held(self, t: str) -> bool:
+        return interfaces_iface_held(self, t)
+
+    def iface_isinst(self, v: Val, c: Node) -> Val:
+        return interfaces_iface_isinst(self, v, c)
+
+    def iface_narrow(self, c: Node) -> str:
+        return interfaces_iface_narrow(self, c)
+
+    def iface_narrowed(self, v: Val, nt: str) -> Val:
+        return interfaces_iface_narrowed(self, v, nt)
 
     def joinable(self, t: str) -> bool:
         return unions_joinable(self, t)

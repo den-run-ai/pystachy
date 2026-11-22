@@ -155,6 +155,10 @@ def gen_narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
             nt = self.dyn_narrow_type(n.kids[2], truth)  # (its box's payload, read as that type: dynamic.py)
             if nt != "":
                 out[nm] = nt
+        elif truth and self.is_iface(t):
+            nt = self.iface_narrow(n.kids[2])  # (its object, which the test proved of that class: interfaces.py)
+            if nt != "":
+                out[nm] = nt
         elif truth and t in self.classes and self.classes[t].tag > 0 and n.kids[2].kind == "name" and n.kids[2].s in self.classes and (self.derives(n.kids[2].s, t) or n.kids[2].s in self.classes[t].overlaps):
             # The runtime class check proved this pointer has the derived layout. Keep
             # the declared storage type, and refine only reads on this control-flow path.
@@ -230,7 +234,7 @@ def gen_narrowable(self, name: str) -> bool:
     # a local (or parameter) of an optional type, union, or ordinary class: a global or field
     # may change in a call, and so may a variable that a closure assigns (nonlocal)
     t = self.ltype.get(name, "")
-    return (is_opt(t) or is_union(t) or t == "dyn" or (t in self.classes and self.classes[t].tag > 0)) and not self.is_global(name) and name not in self.nlw
+    return (is_opt(t) or is_union(t) or t == "dyn" or (t in self.classes and self.classes[t].tag > 0) or self.is_iface(t)) and not self.is_global(name) and name not in self.nlw
 
 def gen_narrow_by(self, test: Node, truth: bool) -> dict[str, str]:
     # narrowed becomes a copy narrowed by test being truth; the state before is returned
@@ -523,9 +527,10 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return -1  # (its box's type decides: dynamic.py)
     if t == BIG:
         t = "int"  # (a promoting int is an int)
-    self.iface_reflect(unopt(t), "isinstance()")
     if c.kind == "name" and c.s in self.ifaces:
         self.err(f"isinstance() with Protocol {short(c.s)} is not supported (CPython checks a @runtime_checkable protocol's methods by name only when the program runs)")
+    if self.is_iface(unopt(t)):
+        return 1 if "object" in self.iface_classes(c) else -1  # (its object's class decides: iface_isinst)
     if c.kind == "binop" and c.s == "|":
         # (a union, where None is NoneType; None | None raises, and so does a tuple in it)
         if not self.puretype(c, False):
@@ -2554,6 +2559,10 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
         # and runtime.c's formatting of a number or a str for another (TypeError for other values)
         sv = Val(self.sconst(""), "str") if empty else self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
         return self.dyn_format(v, sv)
+    if self.is_iface(v.t):
+        # (its object's class's __format__, or str() for an empty spec: interfaces.py)
+        sv = Val(self.sconst(""), "str") if empty else self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
+        return self.iface_format(v, sv)
     if v.t in self.classes and self.classes[v.t].tag > 0:
         cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, v.t)]
         if any(["__format__" in c.methods for c in cs]):

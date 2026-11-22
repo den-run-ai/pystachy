@@ -1,4 +1,4 @@
-# error: protocol_isinstance.py:15: error: isinstance() of a value of Named is not supported: its object's class is known only when the program runs (#487)
+# error: protocol_isinstance.py:15: error: isinstance() of a value of Named is only supported with the program's classes as its second argument (or a tuple of them): the object's class is known only when the program runs
 from typing import Protocol
 
 
@@ -12,4 +12,4 @@ class A:
 
 
 x: Named = A()
-print(isinstance(x, A))
+print(isinstance(x, int))
