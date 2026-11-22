@@ -200,7 +200,8 @@ class RealTierBuilds(unittest.TestCase):
                 source.write_text(program)
                 oracle = subprocess.run([sys.executable, str(source)], env=env,
                                         capture_output=True, check=True, timeout=10)
-                raw = subprocess.run(compiler + ["ir", str(source)], cwd=ROOT, env=env,
+                # (a build gives the program's functions line tables, which ir gives where asked)
+                raw = subprocess.run(compiler + ["ir", str(source)], cwd=ROOT, env=env | {"PYSTACHY_DEBUG_LINES": "1"},
                                      capture_output=True, check=True, timeout=30).stdout
                 for tier in ("0", "1", "2"):
                     with self.subTest(program=index, tier=tier):
