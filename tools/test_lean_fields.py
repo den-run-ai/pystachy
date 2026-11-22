@@ -222,6 +222,37 @@ class FieldInitTests(unittest.TestCase):
                 results, _ = self.statuses(snapshot)
                 self.assertEqual(results[name]["status"], "rejected", results[name])
 
+    def test_subclass_header_writes_preserve_uninitialized_fields(self):
+        for base, words in (("list[str]", 4), ("dict[str, int]", 12)):
+            with self.subTest(base=base), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                source = root / "subclass.py"
+                source.write_text(f"class Box({base}):\n    def __init__(self, label: str) -> None:\n"
+                                  "        self.label = label\n\nprint(Box('ok').label)\n")
+                reference = inspect(source, root / "snapshot")
+                for mode in ("header", "field index", "address read", "escaped address", "missing init"):
+                    with self.subTest(mode=mode):
+                        snapshot = copy.deepcopy(reference)
+                        fn = self.function(snapshot, "@main.init")
+                        operations = fn["blocks"][0]["operations"]
+                        obj = next(f"%t{op['results'][0]}" for op in operations if op["op"] == "alloc.fixed")
+                        pos = next(i for i, op in enumerate(operations)
+                                   if op["op"] == "mach.addr" and op["operands"][0]["value"] == obj)
+                        addr, store = operations[pos:pos + 2]
+                        dest = store["operands"][0]["value"]
+                        if mode == "field index":
+                            addr["operands"][1]["value"] = str(words)
+                        elif mode == "address read":
+                            operations[pos + 1] = instruction("mach.load", "int", results=[1000],
+                                                               operands=[(dest, "%ptr")])
+                        elif mode == "escaped address":
+                            operations.insert(pos + 2, instruction("mach.store", operands=[
+                                ("@g.leaked", "%ptr"), (dest, "%ptr")]))
+                        elif mode == "missing init":
+                            self.remove(fn, lambda _, op: op["op"] == "call" and op["text"] == "@m.Box.__init__")
+                        result = self.statuses(snapshot)[0]["@main.init"]
+                        self.assertEqual(result["status"], "accepted" if mode == "header" else "rejected", result)
+
     def test_each_call_meets_its_contract(self):
         # (Python infers contracts; Lean checks every call against its callee's: a closure's
         # pre-condition that also demands width, which __init__ assigns after the call)
