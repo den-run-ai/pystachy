@@ -1034,9 +1034,16 @@ operation for its implementation.
   and narrows a local, a parameter or an attribute to `C` where it holds, as an `if` or an early
   `return` narrows a union ([test](../../tests/programs/classes/protocol_narrowing.py)).
 
-A value that is `None` stays `None`, and each operation then is `None`'s. Since any two
-implementations may meet at run time, a comparison that Pystachy rejects between two of their
-classes (`cannot compare A == B`) is rejected where the program compares the protocol's values.
+A value that is `None` stays `None`, and each operation then is `None`'s. Any two
+implementations may meet at run time, so `==` and `!=` are compiled for each pair of them, as
+[objects of two classes compare](semantics.md#object-protocols): plain classes, dataclasses,
+NamedTuples and builtin values need nothing
+([tests](../../tests/programs/classes/protocol_equality_pairs.py),
+[records](../../tests/programs/classes/protocol_equality_records.py)). An implementation whose
+`__eq__` is annotated to take only its own class (`other: "Money"`), which CPython would call
+with any object, rejects the comparison of the protocol's values: annotate `other: object` and
+test it with `isinstance()`. So does an implementation of a library class or an exception class
+that has no method for another implementation.
 Orderings, dict keys and set elements, searches and sorts of containers of protocol values
 (`in` a list, `count()`, `index()`, `sort()`, `min()`, `max()`), `id()`, `type()` and other
 reflection, `isinstance()` with a builtin type and class patterns are compilation errors.
