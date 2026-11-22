@@ -947,12 +947,13 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   definition order, and `len(C)`, `x in C` (a member, or a member's value), `C.__members__` (a
   read-only mapping, aliases included) and `repr(C)` are CPython's. Enum classes of other modules
   work where they are imported ([test](../tests/programs/library/lib_enum_import.py)), and so
-  do members in `Any` values ([test](../tests/programs/library/lib_enum_any.py)). A variable or
-  a field (`self.kind = Color`, whose class then specializes as a class template does) holds
-  the object, through which the class's members and other class attributes are read
-  (`self.kind.RED`) ([test](../tests/programs/library/lib_enum_class_fields.py)); a class
-  attribute that holds it ([error](../tests/errors/library/lib_enum_class_attr_value.py)) and
-  `type[Color]` as an annotation are not supported.
+  do members in `Any` values ([test](../tests/programs/library/lib_enum_any.py)). A variable, an instance
+  field (`self.kind = Color`), or a class attribute (`class Palette: kind = Color`) holds
+  that same enum class. Access through the instance or class supports member lookup,
+  iteration and class identity ([fields](../tests/programs/library/lib_enum_class_fields.py),
+  [class attributes](../tests/programs/library/lib_enum_class_attr_value.py)).
+  `type[Color]` annotations and joining different enum class objects in one return remain
+  unsupported.
 - An `IntEnum` member is no `int` here, nor a `StrEnum` member a `str`: each is an object of its
   class with `int`'s comparisons, arithmetic, `bool()` and `hash()`, or `str`'s comparisons,
   `+`, `in`, `len()` and `upper()`, `lower()`, `startswith()`, `endswith()` and `encode()`,
