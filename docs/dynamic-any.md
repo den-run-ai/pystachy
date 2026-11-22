@@ -54,7 +54,9 @@ its document values can still contain arbitrary supported `parse_float` results.
 
 Before adding or widening a boundary, record its consumer, required operations,
 rejected static alternatives and ownership/identity contract. `make check-fast`
-fails when a shipped `lib/` or `ports/` opt-in lacks an inventory row. Preserve
+fails when a shipped `lib/` or `ports/` opt-in lacks an inventory row, or the row does
+not say whether the opt-in is a contract, with a test in which a caller uses its `Any`
+values, or a debt, with the issue whose work removes it. Preserve
 mutable aliases, callback timing, laziness, exception order, numeric identity and
 the supported ABI. Do not copy containers or introduce earlier rejections to make a
 boundary appear static. JSON's recursive `JSONValue` is already a closed typed
