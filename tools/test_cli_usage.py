@@ -80,7 +80,8 @@ class CommandLine(unittest.TestCase):
         for args, first in (([], "usage: pystachy run FILE.py"),
                             (["frob", "g.py"], "pystachy: error: unknown command 'frob'"),
                             (["frob"], "pystachy: error: unknown command 'frob'"),
-                            (["build"], "pystachy build: error: missing the source file")):
+                            (["build"], "pystachy build: error: missing the source file"),
+                            (["check", "--semantic"], "pystachy check: error: missing the source file")):
             with self.subTest(args=args):
                 result = self.pystachy(*args)
                 self.assertEqual(result.returncode, 2)
@@ -92,6 +93,35 @@ class CommandLine(unittest.TestCase):
         result = self.pystachy("build", "missing.py")
         self.assertEqual(result.returncode, 1)
         self.assertEqual(result.stderr, "missing.py:0: error: file not found\n")
+
+    def test_semantic_check_compiles_without_llvm_and_plain_check_only_parses(self):
+        (self.root / "a.py").write_text("async def f() -> int:\n    return 1\n\n\nprint(f)\n")
+        plain = self.pystachy("check", "a.py", llvm=str(self.root / "no LLVM"))
+        self.assertEqual((plain.returncode, plain.stdout, plain.stderr), (0, "", ""))
+        for args in (["check", "a.py", "--semantic"], ["check", "--semantic", "a.py"]):
+            with self.subTest(args=args):
+                result = self.pystachy(*args, llvm=str(self.root / "no LLVM"))
+                self.assertEqual((result.returncode, result.stdout), (1, ""))
+                self.assertEqual(result.stderr, "a.py:1: error: async functions are not supported\n")
+        result = self.pystachy("check", "g.py", "--semantic", "-O3", llvm=str(self.root / "no LLVM"))
+        self.assertEqual((result.returncode, result.stdout), (0, ""))
+        self.assertEqual(result.stderr, "pystachy check: warning: ignoring argument '-O3'\n")
+        self.assertFalse((self.root / "cache").exists())
+        (self.root / "--semantic").write_text("print(1)\n")  # a file of that name is still the one checked
+        result = self.pystachy("check", "--semantic", "a.py")
+        self.assertEqual((result.returncode, result.stdout), (0, ""))
+        self.assertEqual(result.stderr, "pystachy check: warning: ignoring argument 'a.py'\n")
+
+    def test_semantic_check_reports_the_rejection_corpus_as_ir_does(self):
+        # A spread of tests/errors cases (not those that need an import path or compile as runtime.py)
+        cases = sorted(p for p in (ROOT / "tests/errors").glob("*/*.py")
+                       if not p.with_suffix(".path").exists() and not p.name.startswith("rtmode_"))
+        for case in cases[:: max(1, len(cases) // 8)]:
+            with self.subTest(case=case.name):
+                ir = self.pystachy("ir", str(case))
+                check = self.pystachy("check", str(case), "--semantic")
+                self.assertEqual(ir.returncode, 1, ir.stderr)
+                self.assertEqual((check.returncode, check.stdout, check.stderr), (1, "", ir.stderr))
 
     def test_ignored_arguments_warn_and_the_command_still_succeeds(self):
         result = self.pystachy("ir", "g.py", "-O3", "-o")
