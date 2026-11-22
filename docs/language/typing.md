@@ -1258,8 +1258,12 @@ these objects. Dataclass fields annotated `Any` still require a concrete type.
 
 Each specialization is a distinct static type. One variable or container cannot hold both
 `Box[int]` and `Box[str]`, although both satisfy `isinstance(value, Box)` and use the name
-`Box` in runtime messages. Class attributes are shared. Compiler errors show the differing
-field types.
+`Box` in runtime messages. Class attributes are shared: one assigned through the class
+(`Box.limit = 10`, `cls.limit += 1`) is read with its current value by the objects of every
+specialization that have not assigned it themselves
+([test](../../tests/programs/classes/template_class_variable.py),
+[specializations that annotations name](../../tests/programs/classes/template_class_variable_declared.py)).
+Compiler errors show the differing field types.
 
 A bare class-template annotation such as `-> Box` lets a function infer which specialization
 it uses. Inside the class's own fields and methods, `Box` or `Self` denotes the current
@@ -1318,8 +1322,12 @@ specializations still cannot share one location
 ([test](../../tests/programs/classes/template_subclass_two_specs.py)). `isinstance(x, C)`,
 where `C` is the template or a subclass without an `__init__`, holds for an object of any of
 its specializations or of a class that derives from one
-([test](../../tests/programs/classes/template_subclass_isinstance.py)). These classes are
-still not values: `issubclass()` and `type[C]` reject them.
+([test](../../tests/programs/classes/template_subclass_isinstance.py)). Their objects read
+a class variable of the template with its current value, as the template's objects do, until
+they assign it themselves or a subclass's body binds it again
+([test](../../tests/programs/classes/template_subclass_class_variable.py),
+[specializations that compiled code makes](../../tests/programs/classes/template_subclass_class_variable_late.py)).
+These classes are still not values: `issubclass()` and `type[C]` reject them.
 
 The compiler rejects, with a message that names the limit: a subclass with a secondary base or a
 decorator; an `__init__` that calls `super().__init__(...)` other than once at its top level, or
