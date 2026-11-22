@@ -6465,6 +6465,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         return self.optcmp(op, a, b) if is_opt(a.t) or is_opt(b.t) else self.ucmp(op, a, b)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and (self.isnum(unopt(a.t)) or unopt(a.t) == BIG) and (self.isnum(unopt(b.t)) or unopt(b.t) == BIG):
         return self.optcmp(op, a, b)  # (an int | None of a module that opts in: None, or its promoting int)
+    if (a.t == BIG or b.t == BIG) and (is_sopt(a.t) or is_sopt(b.t)) and (op in ORDOP or op == "==" or op == "!="):
+        # (a promoting int and a 64-bit int, float or bool | None: None, or its number compared
+        # with the promoting int as it is, which may not fit 64 bits)
+        return self.optcmp(op, a, b)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and a.t != "None" and b.t != "None":
         # (with another type, an int | None of a module that opts in compares as the 64-bit int | None
         # it holds: bigints.py)
