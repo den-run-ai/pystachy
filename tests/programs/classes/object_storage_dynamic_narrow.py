@@ -1,10 +1,35 @@
 # pystachy: dynamic-any
 # a value of object that holds an Any value, which a module that opts in to dynamic Any made of an
-# object of a class or a subclass's, a class object, a number, a str or a container: isinstance()
-# narrows it to what the Any value holds, read out of its box (the object, never the box itself),
-# and the narrowed value is used, its fields read and written and its methods dispatched by its
-# own class; stored as object directly, as a list[object]'s item, a field and a function's result
-from typing import Any
+# object of a class or a subclass's, a dataclass's, a NamedTuple's, an enum member, a class object,
+# a number, a str or a container: isinstance() narrows it to what the Any value holds, read out of
+# its box (the object, never the box itself), and the narrowed value is used, its fields read and
+# written and its methods dispatched by its own class; stored as object directly, as a
+# list[object]'s item, a field and a function's result
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, NamedTuple
+
+
+@dataclass
+class D:
+    a: int
+    b: str
+
+
+class N(NamedTuple):
+    x: int
+    y: str
+
+    def describe(self) -> str:
+        return "N" + str(self.x)
+
+
+class Color(Enum):
+    RED = 1
+    BLUE = 2
+
+    def describe(self) -> str:
+        return "Color" + str(self.value)
 
 
 class P:
@@ -41,6 +66,12 @@ def use(y: object) -> str:
         return f"Q {x.v} {x.describe()}"
     if isinstance(x, P):
         return f"P {x.v} {x.describe()} {x.v + 10}"
+    if isinstance(x, D):
+        return f"D {x.a + 1} {x.b} {x}"
+    if isinstance(x, N):
+        return f"N {x.x} {x.y} {x.describe()} {x}"
+    if isinstance(x, Color):
+        return f"Color {x.name} {x.value} {x.describe()}"
     if isinstance(x, bool):
         return f"bool {not x}"
     if isinstance(x, int):
@@ -76,7 +107,10 @@ def main() -> None:
     xs: Any = [7, "x"]
     d: Any = {"k": "v"}
     t: Any = (1, "two")
-    values: list[Any] = [p, q, r, n, b, f, s, c, xs, d, t, None]
+    dc: Any = D(4, "four")
+    nt: Any = N(5, "five")
+    en: Any = Color.BLUE
+    values: list[Any] = [p, q, r, dc, nt, en, n, b, f, s, c, xs, d, t, None]
     stored: list[object] = []
     for v in values:
         o: object = v
