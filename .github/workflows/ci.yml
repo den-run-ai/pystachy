@@ -177,7 +177,8 @@ jobs:
           WASM_TIR_LOG="$routes" tests/run.sh "$PYSTACHY" "wasm wasm-tir" "${direct_cases[@]}" \
             tests/programs/inference/dynany_bound_methods.py \
             tests/programs/inference/dynany_identity_promote_generic.py \
-            tests/programs/library/lib_argparse_python_int.py
+            tests/programs/library/lib_argparse_python_int.py \
+            tests/programs/numbers/float_span.py tests/programs/upstream/upstream_math_fma.py
           # A matching recording through LLVM fallback must not mask lost direct coverage.
           for source in "${direct_cases[@]}"; do
             grep -Fxq "$source emitted" "$routes" || { cat "$routes"; exit 1; }

@@ -220,6 +220,10 @@ covers a 2,000-container round trip and catching `RecursionError` on deeper inpu
   reflection read the name, class id and flags at their target-specific offsets in `DynType`
   and the flags in a class reflection record.
   A boxed class record pointer occupies an eight-byte payload slot on both targets.
+- **The math library is musl's.** Some results differ from glibc's in the last place: musl's
+  `cbrt(27)` is exactly 3.0. Two musl results would also be wrong for Python, so the runtime
+  corrects them: `float("-nan")` keeps its sign, and `math.fma` keeps the sign of a product
+  that rounds to zero when the addend is zero (`wasi_stubs.c`).
 
 ## Files
 

@@ -1654,6 +1654,8 @@ double pys_float_str(Str *s) {
      validated above; Str owns that terminator even for embedded/sliced text. */
   char *end; double v = fstrtod(parse, &end);
   if (end != limit) badlit("ValueError: could not convert string to float", -1, s);
+  if (special && *p == '-') v = copysign(v, -1.0);   /* (musl's strtod, WASI's C library, drops the sign of "-nan"
+                                                     that CPython and glibc keep) */
   return v;
 }
 
