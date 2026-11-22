@@ -215,6 +215,17 @@ scopelib.keep(outer())
         padding = bodies["@f._pystachy_percent$_pad_output"]
         self.assertLessEqual(len(BOXING.findall(padding)), 2)
 
+    def test_percent_holds_values_of_object(self):
+        # (_pystachy_percent opts in to dynamic Any no more: its arguments are values of object, which
+        # its functions read through their tables' entries, calling no Any value's runtime function)
+        source = 'from _pystachy_percent import percent_format\nprint(percent_format("%s|%5d|%x|%c", ("a", 7, 255, 65)))\n'
+        ir, _ = self.compile(source, helper=False)
+        bodies = functions(ir)
+        percent = [name for name in bodies if name.startswith("@f._pystachy_percent$") or name.startswith("@m._pystachy_percent$")]
+        self.assertGreater(len(percent), 5)
+        for name in percent:
+            self.assertNotIn("@pys_dyn_", bodies[name], name)
+
     def test_tomllib_flags_keep_typed_private_storage(self):
         source = 'import tomllib\nprint(tomllib.loads("a.b = 1\\na.c = 2\\n[x]\\ny = 3"))\n'
         ir, generations = self.compile(source, helper=False)
