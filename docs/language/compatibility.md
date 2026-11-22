@@ -205,8 +205,10 @@ applies. Bytes case methods remain ASCII-only.
 
 - **Earlier errors:** statically invalid operations (such as ordering dicts or a
   constant tuple index out of range) fail compilation, before any program output.
-- **Uncaught errors:** only the final traceback line is printed, without name
-  suggestions; stdout is flushed and exit status is 1. Compile-time
+- **Uncaught errors:** an executable (`build`, or `run` with the program cache)
+  prints CPython's traceback, without its `~^` markers, name suggestions or the
+  tracebacks of chained exceptions; JIT-run programs and `PYSTACHY_DEBUG_LINES=0`
+  print only its final line. stdout is flushed and exit status is 1. Compile-time
   `SyntaxWarning`s are omitted.
 - **Process failures:** out-of-memory, Ctrl-C and unguarded stack exhaustion end
   execution without `except`/`finally` cleanup. Explicitly raised `MemoryError`

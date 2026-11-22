@@ -621,15 +621,19 @@ def gen_checked(self, op: str, a: str, b: str) -> list[str]:
 
 def gen_guard(self, bad: str, msg: str) -> None:
     # if bad, jump to a block (one per function and message) that raises msg ("Kind: text"); in a
-    # try statement, one per function, message and landing block (whose key the check holds in x)
+    # try statement, one per function, message and landing block (whose key the check holds in x).
+    # With line tables, one per line too, after a newline in the key, so that a traceback shows the
+    # line that failed (Gen.function_body)
     key = msg if self.handler == "" else f"{self.handler} {msg}"
+    if self.source_lines.enabled:
+        key = f"{key}\n{self.line}"
     if key not in self.fn.cold:
         self.fn.cold[key] = self.label()
         if self.handler != "":
             self.fn.coldh[key] = self.handler
     l = self.label()
     i = Ins("check", "", msg)
-    if self.handler != "":
+    if key != msg:
         i.x = key
     i.a = [Val(bad, "bool")]
     i.b = [l]

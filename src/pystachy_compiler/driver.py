@@ -13,6 +13,7 @@ from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.lower_module import OBJHOOKS, OBJHOOKS_MAIN, address_runtime_ir, jit_alloc, unprofiled_generators
 from src.pystachy_compiler.names import RENAMED
 from src.pystachy_compiler.parser import Parser
+from src.pystachy_compiler.source_lines import PROGRAM, SourceLines, wanted
 from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
 from src.pystachy_compiler.syntax import LAMBDAS
 from src.pystachy_compiler.utils import optimizations, timing_end, timing_start
@@ -283,6 +284,7 @@ def runtime_ir(path: str, src: str, cache: bool) -> str:
     # llvm-link joins them to runtime.c's code (runtime.c keeps a prototype of each). It imports only
     # builtin modules, and nothing runs its module code, so it holds only functions.
     g = Gen()
+    g.source_lines = SourceLines(wanted(False))  # (PYSTACHY_DEBUG_LINES=1 alone gives runtime.py line tables)
     g.rtmode = True
     g.rtcache = cache  # (the driver's: then PYSTACHY_IRFX prints the program's summaries only)
     had_rt = "_rt" in MODULES
@@ -1022,6 +1024,9 @@ def main() -> None:
     ext = diagnostics.SRC[diagnostics.SRC.rfind("/") + 1 : -3] if cmd == "ext" and diagnostics.SRC.endswith(".py") else ""
     if pcroot != "":
         cached_run.trace("frontend")
+    # an executable, built or cached, has its program's line tables, which its tracebacks read
+    # (runtime.c); code that the JIT runs has them only where PYSTACHY_DEBUG_LINES=1 asks
+    PROGRAM[0] = cmd == "build" or pcroot != ""
     frontend = timing_start()
     ir = compile_program(diagnostics.SRC, f.read(), dirs, ext)
     timing_end("program.frontend", frontend)
@@ -1092,7 +1097,7 @@ def main() -> None:
     on = optimizations()
     off = [o for o in OPTS if o not in on]
     keyed = flags + ["-fexceptions"]
-    if os.getenv("PYSTACHY_DEBUG_LINES", "") == "1":
+    if wanted(False):
         keyed = keyed + ["PYSTACHY_DEBUG_LINES=1"]
     runtime_inputs = [program_cache.runtime_key()] if pcroot != "" else []
     if len(off) > 0:

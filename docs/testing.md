@@ -108,7 +108,9 @@ A traceback containing that message does not pass. Syntax cases also exercise th
 
 `tests/deviations/*.py` use hand-written expectations for the
 [documented differences](language/compatibility.md#deviations-from-cpython). They are kept apart
-from CPython-recorded outputs. The suite covers language behavior, compiler diagnostics,
+from CPython-recorded outputs. An executable's traceback, which names the checkout's files, is
+removed before the comparison, so an uncaught error's expectation is its last line. The suite
+covers language behavior, compiler diagnostics,
 library APIs, upstream-derived cases, files, exceptions and collector stress. Exact current
 counts come from the files and the verification report, rather than a fixed number in this guide.
 
