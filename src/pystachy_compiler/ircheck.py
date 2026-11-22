@@ -1,5 +1,6 @@
 """Ircheck component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.class_proof import ClassProof
 from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_lists, int_program
 from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, merged_blocks, operand_kind, slot_register, tmpname, value_definitions
@@ -517,6 +518,85 @@ def optional_reads(self, fn: IFn, types: dict[str, str], makers: dict[str, str])
     return found
 
 
+def class_reads(self, fn: IFn, types: dict[str, str]) -> dict[str, dict[str, bool]]:
+    # The values of fn that an operand reads at a class that their definition's class does not
+    # derive from (the class view that narrows, specs.TYPE_VIEWS: a derived class, or a class
+    # that may share an object with it), with the classes they are read at; and a member cast's
+    # value, which only code that a test of the object's class leads to reads (CAST_KINDS), at
+    # its class wherever it is read. ClassProof must show the object's class derived from each
+    members: dict[str, str] = {}
+    for b in fn.blocks:
+        for i in b.code:
+            if i.op == "cast" and i.s == "member" and len(i.r) == 1:
+                members[tmpname(i.r[0])] = i.t
+    found: dict[str, dict[str, bool]] = {}
+    for b in fn.blocks:
+        for i in b.code:
+            if i.op == "ptr.cmp":
+                continue  # (it compares identities, or tests for None, which no class changes)
+            for a in i.a:
+                d = types.get(a.v, "")
+                if a.v in members or (d != "" and d != a.t and narrows_class(self, d, a.t)):
+                    if a.v not in found:
+                        found[a.v] = {}
+                    found[a.v][members[a.v] if a.v in members else a.t] = True
+    return found
+
+
+def union_reads(self, fn: IFn, types: dict[str, str]) -> dict[str, dict[str, bool]]:
+    # The values of a closed union that an operand reads at a union without some member of
+    # theirs (the class view's "closed union read as one with a common member" that narrows),
+    # with the types they are read at: the union proof must show the box holds none of those
+    found: dict[str, dict[str, bool]] = {}
+    for b in fn.blocks:
+        for i in b.code:
+            for a in i.a:
+                d = types.get(a.v, "")
+                if d != "" and d != a.t and narrows_union(self, d, a.t):
+                    if a.v not in found:
+                        found[a.v] = {}
+                    found[a.v][a.t] = True
+    return found
+
+
+def narrows_union(self, d: str, u: str) -> bool:
+    # does a union u lack a member of union d: one that is neither among u's members nor a class
+    # derived from one of them
+    x = unopt(d)
+    y = unopt(u)
+    if not is_union(x) or not is_union(y):
+        return False
+    ys = umembers(y)
+    for m in umembers(x):
+        if m not in ys and not (m in self.classes and len([c for c in ys if c in self.classes and self.derives(m, c)]) > 0):
+            return True
+    return False
+
+
+def narrows_class(self, d: str, u: str) -> bool:
+    # does an operand of class u read a value of type d, an object (or None) of a class that the
+    # class view relates to u (related) but that need not derive from u. (The view rejects a
+    # reading of an unrelated class itself)
+    x = unopt(d)
+    y = unopt(u)
+    return x != y and y in self.classes and (x in self.classes or x == "object") and related(self, x, y) and not self.derives(x, y)
+
+
+def class_members(self, fn: IFn, types: dict[str, str], reads: dict[str, dict[str, bool]]) -> dict[str, list[str]]:
+    # for each class that fn's values, slots and class reads name, the classes that may have
+    # objects (not those bad_class excluded) and derive from it, sorted: ClassProof's domains
+    names: dict[str, bool] = {}
+    for t in list(types.values()) + [i.t for i in fn.slots] + [t for v in reads for t in reads[v]]:
+        c = unopt(t)
+        for m in (umembers(c) if is_union(c) else [c]):
+            if m in self.classes:
+                names[m] = True
+    out: dict[str, list[str]] = {}
+    for c in names:
+        out[c] = sorted([x for x in self.classes if not self.classes[x].excluded and self.classes[x].bad == "" and self.derives(x, c)])
+    return out
+
+
 def narrows_none(self, d: str, u: str, rt_result: bool, rt_operand: bool) -> bool:
     # does an operand of type u read a value of type d, an opt[U], at a type that holds no None
     # (U, or a type that a view reads U as), so that the read needs a proof that it is not None
@@ -946,10 +1026,11 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
     if not casts:
         value_definitions(fn, defined, makers)
     narrowed = optional_reads(self, fn, defined, makers)
+    ureads = union_reads(self, fn, defined)
     unions = union_proofs or (machine_tags and has_machine_union_tag(fn))
     if not unions and len(narrowed) > 0 and private_optional_reads(fn, narrowed, at, succ):
         narrowed.clear()
-    if len(narrowed) > 0 or (unions and not simple_union_proof(fn, self.utags, at, succ, union_types, self.classes)):
+    if len(narrowed) > 0 or len(ureads) > 0 or (unions and not simple_union_proof(fn, self.utags, at, succ, union_types, self.classes)):
         writes: dict[str, bool] = {}
         raises: dict[str, bool] = {}
         written: dict[str, int] = {}  # (the storage classes each call writes: its RAWW and wG bits)
@@ -972,10 +1053,16 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         for x in kin:
             for y in kin:
                 kin[x][y] = x == y or x not in self.classes or y not in self.classes or related(self, x, y)
-        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs, self.tconstdata, narrowed, written, kin, unions, self.classes)
+        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs, self.tconstdata, narrowed, written, kin, unions, self.classes, ureads)
         proof.run()
         for j in range(len(proof.bad)):
             self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])
+    reads = class_reads(self, fn, defined)
+    if len(reads) > 0:
+        cproof = ClassProof(fn, self.classes, class_members(self, fn, defined, reads), defined, reads)
+        cproof.run()
+        for j in range(len(cproof.bad)):
+            self.bad_ir(fn, fn.blocks[at[cproof.badblocks[j]]], cproof.bad[j])
     # (after the proofs above, whose findings name what a reading breaks more closely)
     value_types(self, fn, defined, makers)
 

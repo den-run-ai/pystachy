@@ -847,12 +847,14 @@ CAST_KINDS: dict[str, str] = {
 # (the definition's type D, the operand's U), each a reading of the same bits that no op of the IR
 # writes (ircheck.value_types). The IR check rejects any other difference. In MLIR a value has one
 # type, which its uses share, and an op converts it; these are the readings that no op makes
-# explicit yet (a cast op makes the others: CAST_KINDS). Those that narrow (bits, opt[U] as U, a
-# derived class, other union members) rely on what the frontend knows, such as a test before
-# them, which the check does not see. instance, alias, optional and class hold inside a type's
-# brackets as well (list[opt[str]] as list[str]). A value whose definition gives only a machine
-# type (%ptr, %slot), a runtime type variable or a placeholder is read at related types by every
-# operand that names a type of its own (an rt op's operands name their runtime signature's).
+# explicit yet (a cast op makes the others: CAST_KINDS). Of those that narrow, opt[U] as U
+# (ircheck.optional_reads), a class its value's need not derive from (class_reads, class_proof.py)
+# and a union without some of its value's members (union_reads) need a proof that a test before
+# them shows it; bits relies on the runtime's declared signatures. instance, alias, optional and
+# class hold inside a type's brackets as well (list[opt[str]] as list[str]). A value whose
+# definition gives only a machine type (%ptr, %slot), a runtime type variable or a placeholder is
+# read at related types by every operand that names a type of its own (an rt op's operands name
+# their runtime signature's).
 TYPE_VIEWS: dict[str, str] = {
     "machine": "U is D's machine type: %ptr for a reference, an address &T or None (null), %slot for a packed slot *T or an int, %addr for a slot's address",
     "bits": "D is %ptr, read as a reference or an address &T, or %slot, read as an int, a packed slot *T or an rt op's bool, where an rt op defines it (its RUNTIME result type) or an rt op's operand of a runtime type variable (*T, S) reads it; another op's word is read through a bits cast",

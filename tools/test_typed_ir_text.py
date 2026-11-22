@@ -667,14 +667,14 @@ L1:
                                     capture_output=True, text=True, check=False)
             self.assertEqual(result.returncode, 1)
             self.assertIn("@f: unexpected error in block entry", result.stderr)
-            for fixture in (self.INVALID, self.CLASSES, self.FIELDS, self.STRUCTURE):
+            for fixture in (self.INVALID, self.CLASSES, self.FIELDS, self.STRUCTURE, self.CLASS_READS):
                 result = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "verify", str(fixture)],
                                         capture_output=True, text=True, check=False)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("functions verify as expected", result.stdout)
 
     def test_annotated_fixtures_are_in_the_printed_form_but_for_their_comments(self):
-        for fixture in (self.INVALID, self.CLASSES, self.FIELDS, self.OPTIONAL, self.STRUCTURE):
+        for fixture in (self.INVALID, self.CLASSES, self.FIELDS, self.OPTIONAL, self.STRUCTURE, self.CLASS_READS):
             with self.subTest(fixture=fixture.name):
                 bare = "\n".join(line for line in fixture.read_text().split("\n") if not line.lstrip().startswith(";"))
                 bare = re.sub(r"\n{3,}", "\n\n", bare).lstrip("\n")
@@ -684,6 +684,57 @@ L1:
     FIELDS = FIXTURES / "fields.tir"
     OPTIONAL = FIXTURES / "optional.tir"
     STRUCTURE = FIXTURES / "structure.tir"
+    CLASS_READS = FIXTURES / "class_reads.tir"
+
+    def test_a_class_read_needs_a_test_of_the_objects_class_word(self):
+        source = self.CLASS_READS.read_text()
+        self.assertEqual(text.verify_errors(source), [])
+        expected = text.expectations(source)
+        records = text.parse_functions(source)
+        admitted = [r["symbol"] for r, e in zip(records, expected, strict=True) if not e]
+        self.assertEqual((len(admitted), len(expected) - len(admitted)), (8, 9))
+        for found in expected:
+            for e in found:
+                self.assertRegex(e["message"], r"^(field.addr|ret) operand 0 reads %\w+ as (\w+) without a proof that its class derives from \2$")
+        # (a test of a class word against itself, or a switch on a constant, tells the proof
+        # nothing: without their tests, the reads it admitted are errors, but for the one whose
+        # class word the function stores)
+        untested = re.sub(r"\((int|%ptr) (%t\d+), (int|%ptr) (\d+|@x\.\w+)\)", r"(\1 \2, \1 \2)", source)
+        untested = untested.replace("switch(int %t1,", "switch(int 7,")
+        self.assertNotIn("@x.F)", untested)
+        problems = [p for p in text.verify_errors(untested) if ": unexpected error" in p]
+        self.assertEqual(sorted(p.split(":")[0] for p in problems), sorted(a for a in admitted if a != "@the_class_word_a_constructor_stores"))
+        for problem in problems:
+            self.assertRegex(problem, r"reads %\w+ as \w+ without a proof that its class derives from \w+$")
+
+    def test_a_union_read_at_a_union_without_its_members_needs_a_test_of_its_tag(self):
+        def errors(source, utags):
+            fn = text.to_ifn(text.parse_function(source))
+            gen = text.gen_for(fn)
+            gen.utags = utags
+            reported = StringIO()
+            try:
+                with redirect_stderr(reported):
+                    gen.verify(fn, False)
+            except SystemExit:
+                return reported.getvalue()
+            return ""
+        tested = """function @narrow(x: union[float,int,str], y: union[int,str]) -> union[int,str] {
+entry:
+  %t1 = union.tag(union[float,int,str] %a0) : int
+  %t2 = num.cmp == (int %t1, int 2) : bool
+  cbr(bool %t2) -> L3, L4
+L3:
+  ret(union[int,str] %a1)
+L4:
+  ret(union[int,str] %a0)
+}
+"""
+        tags = {"int": 1, "float": 2, "str": 3}
+        self.assertEqual(errors(tested, tags), "")
+        # (a test of another member leaves the float in the box)
+        self.assertIn("block L4: ret operand 0 reads %a0 as union[int,str] without a proof that it holds no float",
+                      errors(tested.replace("int 2)", "int 1)"), tags))
 
     def test_control_flow_is_structured_and_loop_records_name_its_loops(self):
         from src.pystachy_compiler.structure import Structure
@@ -784,7 +835,7 @@ L1:
         problems = text.verify_errors(alone)
         self.assertEqual([p.split(":")[0] for p in problems], admitted)
         for problem in problems:
-            self.assertRegex(problem, r": unexpected error in block entry: ret operand 0 reads %a0 as \w+, but it is \w+$")
+            self.assertRegex(problem, r": unexpected error in block \w+: ret operand 0 reads %a0 as \w+, but it is \w+$")
 
     def test_a_modules_structs_are_the_ones_field_addr_indexes(self):
         source = self.FIELDS.read_text()
