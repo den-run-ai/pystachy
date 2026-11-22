@@ -17,7 +17,7 @@ from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, EMPTYFS, OBJECTC, SPECSHOW, is_excname
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.utils import clone, elem, gelem, is_callable, is_clsval, is_dict, is_fset, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_union, is_vtuple, lt, selem, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import clone, elem, gelem, identity_abi, is_callable, is_clsval, is_dict, is_fset, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_union, is_vtuple, lt, numeric_identity, selem, targs, tname, typestr, umembers, unopt
 
 # the intrinsic that an interface method's body calls: its table entry (iface_call)
 IFACE_CALL = "__pystachy_iface__"
@@ -1411,6 +1411,14 @@ def gen_compare_helper(self, key: str, src: str, args: list[Val], ret: str) -> V
     g = self.dispatchers[key]
     c = Ins("call", ret, g.ll)
     c.a = [v for v in args if v.t != "None"]  # (an argument that is None is not passed, as dispatch_call's)
+    if identity_abi(g):
+        # (in a program with dynamic values, a number's identity box after the arguments, as call
+        # passes them: none, as no comparison reads it, and the slot of the result's, unread)
+        c.a = c.a + [Val("null", "dyn") for v in c.a if numeric_identity(v.t)]
+        if numeric_identity(ret):
+            idresult = self.alloca("dyn", "")
+            self.mem_store(Val(idresult, "&dyn"), Val("null", "dyn"))
+            c.a.append(Val(idresult, "&dyn"))
     self.put(c, 1)
     return Val(tmpname(c.r[0]), ret)
 
