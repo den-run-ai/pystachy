@@ -747,7 +747,7 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
             body = [mk("return", "", line, [e])]
     elif derived and parts[0] == "is" and parts[1] != OBJECT:
         e = o
-        body = object_is_body(tab.impl, op[3:], line)  # (x is a number, object_is_num, or a reference: object_is_held)
+        body = object_is_body(tab.impl, op[3:], line, self.dyn_boxable(op[3:]) == "")  # (x is a number, object_is_num, or a reference: object_is_held)
     elif derived and (parts[0] == "==" or parts[0] == "!=") and (self.unequal_types(parts[2], tab.impl) or (tab.iface == OBJECT and never_equal(self, parts[2], tab.impl))):
         # (a number or str and an object of a class that defines no __eq__ or __ne__: CPython
         # compares them by identity, never the same, as unions' members are compared; and, held
@@ -1015,17 +1015,18 @@ def num_kind(t: str) -> str:
     return t if t == "float" or t == "bool" else ""
 
 
-def object_is_body(impl: str, h: str, line: int) -> list[Node]:
+def object_is_body(impl: str, h: str, line: int, boxable: bool) -> list[Node]:
     # the body of the entry of implementation impl for x is h, h a number of type h (object_is_num)
     # or an object of a reference type h that x does not hold as itself (object_is_held): an Any
-    # value is h where it holds it; a number of its kind is h where it equals it (a float by its
-    # bits: NaN is a NaN, 0.0 is not -0.0); any other value never
+    # value is h where it holds it, and never where no Any value can hold a value of type h (not
+    # boxable: a list or a dict of typed items, ...); a number of its kind is h where it equals it
+    # (a float by its bits: NaN is a NaN, 0.0 is not -0.0); any other value never
     held = unopt(impl) if is_sopt(impl) else impl
     no = mk("return", "", line, [mk("False", "", line, [])])
     o = mk("name", "_o", line, [])
     a = mk("name", "_a0", line, [])
     if impl == "dyn":
-        return [mk("return", "", line, [mk("cmp", "is", line, [o, a])])]  # (an Any value's identity: dynamic.py)
+        return [mk("return", "", line, [mk("cmp", "is", line, [o, a])])] if boxable else [no]  # (an Any value's identity: dynamic.py)
     if num_kind(held) == "" or num_kind(held) != num_kind(h):
         return [no]
     same = mk("cmp", "==", line, [o, a])
