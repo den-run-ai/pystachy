@@ -1559,7 +1559,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         self.err("importlib.import_module() is supported where a string constant names the module and the call binds one variable or stands alone (mod = import_module(\"a.b\")), outside a class body, through a name that only imports of importlib bind and one has bound before the call: a program's modules are compiled with it, so none is imported by a name it computes, and a module is no value")
     if identity_abi(f) and len(f.node.kids) == 3:
         self.numeric_proof(f, f.node.kids[2].kids)
-    if f.cls in self.classes and self.classes[f.cls].tag > 0 and f.deco == "" and len(pre) > 0:
+    if f.cls in self.classes and self.classes[f.cls].tag > 0 and f.deco == "" and len(pre) > 0 and not (pre[0].v == "" and f.cls in self.tmpl):
+        # (not a template hierarchy's class template's __init__ for the object it makes: below)
         if pre[0].t not in self.classes or not self.derives(pre[0].t, f.cls):
             self.err(f"{short(f.cls)}.{f.name}() needs an instance of {short(f.cls)}")
         if not direct:
@@ -1742,7 +1743,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             union_args = self.constructor_unions(f.cls, [v.t for v in vals[1:]])
             for j in range(len(union_args)):
                 vals[j + 1] = self.pcoerce(vals[j + 1], union_args[j], f, j + 1)
-        sc = self.specialize(f.cls, [v.t for v in vals[1:]], self.want_tvars(f.cls, context), False, self.literal_args(f, args) if self.literal_class(f.cls) else {})
+        # (of the class called, whose __init__ f is: a template hierarchy's member's is its base's)
+        sc = self.specialize(pre[0].t, [v.t for v in vals[1:]], self.want_tvars(f.cls, context), False, self.literal_args(f, args) if self.literal_class(f.cls) else {})
         vals[0] = self.new_obj(sc)
         pre[0] = vals[0]
         f = self.classes[sc].methods["__init__"]

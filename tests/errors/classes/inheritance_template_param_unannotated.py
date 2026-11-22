@@ -1,7 +1,8 @@
-# error: inheritance_template_param_unannotated.py:14: error: inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)
+# error: inheritance_template_param_unannotated.py:11: error: cannot infer the type of field 'recorded'; annotate it (self.recorded: T = ...)
 # (the class that the hierarchy's __init__ takes stores a class-template object into a field
 # that nothing annotates: only the object types it, so the class is a template, and so is the
-# hierarchy's)
+# hierarchy's, whose subclass without an __init__ of its own is supported (#962); the field's
+# type is not known where the object is made, as without the hierarchy)
 from collections import defaultdict
 
 

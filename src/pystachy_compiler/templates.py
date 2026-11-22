@@ -42,7 +42,122 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     # assigns are typed as for a class whose __init__ annotates its parameters with ts, and the
     # calls whose fields get the same types share one. A specialization is a class of its
     # own (c-1, c-2, ...): CPython's names for it are c's, messages about types show its
-    # fields' (Box[int]). It counts as a template specialization
+    # fields' (Box[int]). It counts as a template specialization. In a template hierarchy
+    # (program.py's template_bases) each specialization of its root is made with one of each
+    # member, whose objects begin as its own do (member_spec)
+    t = self.classes[c]
+    if self.tmpl_member(t):
+        return self.member_spec(self.specialize(t.base, ts, given, named, lits), c)
+    name = specialize_class(self, c, ts, given, named, lits)
+    if t.tag != 0 and name not in self.specing.values():
+        for m in [x.name for x in self.classes.values() if x.base == c and self.tmpl_member(x)]:
+            self.member_spec(name, m)
+    return name
+
+
+def gen_new_tag(self, s: ClassInfo) -> None:
+    # a class tag for specialization s of a template hierarchy (template_bases), made after the
+    # tags of the classes as declared: one no other class has had, and its name in the table of
+    # the names of tagged classes, where a missing field's error has made it already
+    self.ntag += 1
+    s.tag = self.ntag
+    for d in self.consts if self.fieldnames else []:
+        if d.kind == "fieldnames":
+            while len(d.refs) <= s.tag:
+                d.refs.append("null")
+            d.refs[s.tag] = self.sconst(short(s.name))
+
+
+def gen_member_spec(self, p: str, m: str) -> str:
+    # the specialization of class m, a member of a template hierarchy (tmpl_member: no __init__
+    # of its own), whose objects begin as those of p, a specialization of m's base, do, and
+    # which derives from p: made once, as p is (specialize), so that dispatch on a value of p's
+    # type knows it. Its fields are p's, then those m's body declares; its methods are m's
+    # own, then p's (inherit), among them the __init__ that makes its objects
+    key = m + "@" + p
+    if key in self.specdone:
+        return self.specdone[key]
+    if p in self.specing.values():
+        self.err(f"the __init__ of {shown(self.classes[p].origin)} makes an object of {shown(m)}, which derives from it without an __init__ of its own: not supported")
+    t = self.classes[m]
+    pc = self.classes[p]
+    self.inherit(t)
+    self.declare_fields(t)
+    t.nspec += 1
+    name = f"{m}-{t.nspec}"
+    s = ClassInfo(name, t.node)
+    s.mod = t.mod
+    s.origin = m
+    s.base = p
+    s.speckey = m + "(" + p + ")"
+    s.tvars = dict(pc.tvars)
+    s.fields_ready = True
+    s.slots = list(t.slots)
+    s.slotlimit = t.slotlimit
+    s.lits = pc.lits
+    s.fconst = pc.fconst
+    for x in pc.fields:
+        s.fpos[x] = len(s.fields)
+        s.fields.append(x)
+        s.ftypes[x] = pc.ftypes[x]
+    # (its class attributes are m's, those m's body binds again too, which its specializations
+    # share as a template's do: default_home finds each one's class, the one whose body binds it)
+    s.fdefault = t.fdefault
+    s.fglob = t.fglob
+    for x in pc.fnone:
+        s.fnone[x] = pc.fnone[x]
+    for x in pc.fguess:
+        s.fguess[x] = pc.fguess[x]
+    for x in pc.fann:
+        s.fann[x] = pc.fann[x]
+    b = self.classes[t.base]
+    for x in t.fields:
+        if x not in b.ftypes:
+            # (what m's body declares: a class attribute, or a field annotated there)
+            self.add_field(s, x, t.ftypes[x])
+            if x in t.fann:
+                s.fann[x] = t.fann[x]
+    if "__slots__" in t.ftypes:
+        s.ftypes["__slots__"] = t.ftypes["__slots__"]
+    self.classes[name] = s
+    self.specdone[key] = name
+    if self.template_instances >= TEMPLATE_INSTANCES:
+        self.err(f"compilation needs more than {TEMPLATE_INSTANCES} template specializations; annotate template parameters or reduce type combinations")
+    self.template_instances += 1
+    self.new_tag(s)
+    shown_p = SPECSHOW.get(p, short(p))
+    SPECSHOW[name] = short(m) + (shown_p[shown_p.find("[") :] if "[" in shown_p else shown_p[shown_p.find("(") :] if "(" in shown_p else "")
+    sel = self.selfcls
+    line = self.line
+    lib = self.lib
+    try:
+        self.selfcls = name
+        for d in t.node.kids[0].kids:
+            if d.kind == "def":
+                self.line = d.line
+                self.lib = s.mod != ""
+                g = self.declare_fn(d, name)
+                self.lib = False
+                g.mod = s.mod
+                s.methods[g.name] = g
+        self.inherit(s)
+        s.hook = t.hook
+        for f in s.methods.values():
+            self.check_special(f)
+        self.fl_fields(s)
+        if self.dyn_policy(s.node.line):
+            comparison_properties(s)
+    finally:
+        self.selfcls = sel
+        self.line = line
+        self.lib = lib
+    for x in [y.name for y in self.classes.values() if y.base == m and self.tmpl_member(y)]:
+        self.member_spec(name, x)
+    return name
+
+
+def specialize_class(self, c: str, ts: list[str], given: dict[str, str], named: bool, lits: dict[str, Node]) -> str:
+    # (specialize, of class template c itself)
     t = self.classes[c]
     init = t.methods["__init__"]
     # (an annotated parameter's argument has its type, as call_fn coerces it)
@@ -181,6 +296,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
             self.err(f"compilation needs more than {TEMPLATE_INSTANCES} template specializations; annotate template parameters or reduce type combinations")
         self.template_instances += 1
         t.specs[key] = name
+        if t.tag != 0:
+            self.new_tag(s)  # (a template hierarchy's: its methods dispatch on the class of self)
         shown_ts = [typestr(s.ftypes[x]) for x in s.fields if x not in t.ftypes and x not in s.fextra]
         if c in self.tparams:
             shown_ts = []  # (a generic class's: its type variables', C[int, str])
