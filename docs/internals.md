@@ -959,10 +959,10 @@ are required before promotion. `make verify` keeps the standard tier.
 | `PYSTACHY_LIBPYTHON` | The CPython 3.12+ shared library that a program importing `pyobj` [embeds](ffi.md#calling-cpython) |
 | `PYSTACHY_RUNTIME_C_CACHE=1` | Opt in to Linux default-flag C-runtime bitcode reuse across compiler producers; `0` (default) disables it |
 | `PYSTACHY_CFLAGS` | Extra clang flags for runtime compilation and AOT linking; part of the cache key |
-| `PYSTACHY_AOT_OPT=0\|1\|2` | Experimental ordinary `build` program optimization/codegen tier; `2` is the default. Runtime compilation, raw IR, JIT and extensions keep their existing tiers. Use `make BOOTSTRAP_AOT_OPT=1` for the temporary bootstrap stage only. |
+| `PYSTACHY_AOT_OPT=0\|1\|2` | Experimental ordinary `build` program optimization/codegen tier; `2` is the default. Runtime compilation, raw IR, JIT and extensions keep their existing tiers. `build -O0`, `-O1` or `-O2` sets it for one build, over the environment. Use `make BOOTSTRAP_AOT_OPT=1` for the temporary bootstrap stage only. |
 | `PYSTACHY_PROFILE_GENERATE=DIR` | Make `build` write an executable that records a raw profile in `DIR` each time it runs; see [profile-guided builds](#profile-guided-builds) |
 | `PYSTACHY_PROFILE_USE=FILE` | Make `build` optimize with the indexed profile `FILE`; not together with `PYSTACHY_PROFILE_GENERATE` |
-| `PYSTACHY_DEBUG_LINES=1` | Emit deterministic Python file, function and instruction line metadata in LLVM IR; AOT retains DWARF line tables. No local variable descriptions; part of the runtime and program cache keys. See [source attribution](../bench/source_attribution/README.md) for JIT and profiler limits. |
+| `PYSTACHY_DEBUG_LINES=1` | Emit deterministic Python file, function and instruction line metadata in LLVM IR; AOT retains DWARF line tables. No local variable descriptions; part of the runtime and program cache keys. `build -g` sets it for one build. See [source attribution](../bench/source_attribution/README.md) for JIT and profiler limits. |
 | `PYSTACHY_TIMING=1` | Print monotonic compiler [stage durations](#compiler-stage-timings) to stderr; nested totals overlap |
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |

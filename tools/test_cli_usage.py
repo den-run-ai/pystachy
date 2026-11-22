@@ -24,10 +24,11 @@ class CommandLine(unittest.TestCase):
         self.source = self.root / "g.py"
         self.source.write_text("import sys\nprint(sys.argv[1:])\n")
 
-    def pystachy(self, *args, llvm=None, path=None, cache=None):
+    def pystachy(self, *args, llvm=None, path=None, cache=None, extra=None):
         command = [COMPILER] if COMPILER else [sys.executable, "-B", str(ROOT / "pystachy.py")]
         env = {k: v for k, v in os.environ.items() if not k.startswith("PYSTACHY_")}
         env["PYSTACHY_CACHE"] = str(self.root / "cache") if cache is None else cache
+        env.update(extra or {})
         if path is not None:
             env["PATH"] = path
         if llvm is not None:
@@ -159,6 +160,39 @@ class CommandLine(unittest.TestCase):
         self.assertEqual(result.stderr, "pystachy check: warning: ignoring argument 'other.py'\n")
         result = self.pystachy("check", "g.py")
         self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""))
+
+    def test_build_options_are_read_before_the_settings_they_replace(self):
+        # Without LLVM the build fails later, but never on the environment's tier, and the options
+        # are not reported as unused.
+        result = self.pystachy("build", "g.py", "-O1", "-g", "-o", "exe", llvm=str(self.root / "no LLVM"),
+                               extra={"PYSTACHY_AOT_OPT": "9"})
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("PYSTACHY_AOT_OPT must be", result.stderr)
+        self.assertNotIn("warning", result.stderr)
+        result = self.pystachy("build", "g.py", "-o", "exe", llvm=str(self.root / "no LLVM"),
+                               extra={"PYSTACHY_AOT_OPT": "9"})
+        self.assertEqual(result.stderr, "g.py:0: error: PYSTACHY_AOT_OPT must be 0, 1 or 2\n")
+
+    @unittest.skipUnless(LLVM, "set PYSTACHY_TEST_LLVM to build programs")
+    def test_build_options_match_their_settings(self):
+        def build(output, *args, extra=None):
+            result = self.pystachy("build", "g.py", "-o", output, *args, llvm=LLVM, extra=extra)
+            self.assertEqual((result.returncode, result.stdout), (0, ""), result.stderr)
+            run = subprocess.run([str(self.root / output), "x"], capture_output=True, text=True, timeout=60)
+            self.assertEqual((run.returncode, run.stdout), (0, "['x']\n"))
+            return result.stderr, (self.root / output).read_bytes()
+
+        _, default = build("default")
+        self.assertEqual(build("o0", "-O0")[1], build("o0env", extra={"PYSTACHY_AOT_OPT": "0"})[1])
+        self.assertNotEqual(build("o0", "-O0")[1], default)
+        self.assertEqual(build("o1", "-O1", extra={"PYSTACHY_AOT_OPT": "0"})[1],
+                         build("o1env", extra={"PYSTACHY_AOT_OPT": "1"})[1])
+        self.assertIn(b".debug_line", build("lines", "-g")[1])
+        self.assertNotIn(b".debug_line", default)
+        warned, _ = build("o3", "-O3")
+        self.assertEqual(warned, "pystachy build: warning: ignoring argument '-O3'\n")
+        build("-g")  # -o's value, not the option
+        self.assertTrue((self.root / "-g").is_file())
 
     @unittest.skipUnless(LLVM, "set PYSTACHY_TEST_LLVM to run programs")
     def test_run_passes_every_later_argument_to_the_program(self):
