@@ -395,6 +395,29 @@ hashing and formatting. CPython integers do not overflow at 64 bits, so compiled
 differential tests cover overflow behavior; CPython also does not enforce subset
 typing.
 
+[Machine memory](#machine-memory) runs on CPython too, on a model of the heap
+(`tools/rt_cpython/rt_heap.py`): addresses are integers, an allocation is a block
+with the allocator's byte of slack, and the parts of `runtime.c` that the memory
+code calls have Python counterparts beside it. Nothing checks a compiled access;
+the model checks each one, and `tools/rtcheck.py` reports as a failure:
+
+| Fault | Compiled, it would |
+|---|---|
+| A read or write outside its block | Corrupt a neighbour or read its bytes. |
+| A read of bytes that nothing wrote | Read what `pys_rt_raw` left there. |
+| A typed read of a slot that another type last wrote | Let LLVM reorder the two: the [alias rules](#machine-memory). |
+| A sum, difference or product past 64 bits in an `@_rt.unchecked` function | Be undefined, as in C. |
+| An overlapping `_rt.cpy`, or a size below zero | Be undefined. |
+
+The list operations run against CPython's own `list`, one operation at a time:
+the result or the error, then the storage that `runtime.c` promises (capacity,
+the kind of the item array, zeroed slots past the length, the emptied list's
+sentinel). With an identity companion each item keeps the box that CPython's
+object identity says it has, and with a promoting-int companion its `Mpz`. The
+str operations are checked for their bytes, terminator and cached count. The
+model's own checks are tested by faults made on purpose, and by seeded bugs in
+the moved code, each of which a default run finds.
+
 ASan covers both runtime parts during cached JIT/AOT builds; UBSan covers C only.
 `tools/test_runtime_asan.py` verifies cached subset instrumentation and uses an
 externally allocated string with a deliberately false length to demonstrate an
@@ -438,10 +461,8 @@ container code move; the table gives the state and the order.
 | Promoting ints and `math` | 930 | Last: needs `mpz/` beside it. libm wrappers keep their LLVM-specific guards. |
 
 Each step adds the records it needs to `RTRECORDS` and removes the accessors that
-`runtime.c` then no longer has to export. Three things would make the remaining steps
+`runtime.c` then no longer has to export. Two things would make the remaining steps
 cheaper:
 
 - Named integer constants at module level in runtime mode, in place of repeated literals.
-- A heap model for `tools/rt_cpython/_rt.py`, so that `tools/rtcheck.py` can fuzz container
-  code against CPython's own lists and dicts.
 - Read access to the runtime's static data, which today goes through accessor functions.

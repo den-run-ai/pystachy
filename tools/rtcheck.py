@@ -11,7 +11,11 @@ Pystachy str is given as its bytes, one character per byte. 64-bit overflow is n
 The format functions get runtime.c's pys_fmt_float (float digits by snprintf, or by Ryu as repr's
 without a type or precision) from CPython's own float formatting, which it reproduces.
 
-usage: python3 tools/rtcheck.py [N] [SEED]   (N rounds of cases, default 5000)
+The memory code (lists and strs in runtime.c's layouts) runs on a model of the heap that
+checks each access, tools/rt_cpython/rt_heap.py, against CPython's own list and str.
+
+usage: python3 tools/rtcheck.py [N] [SEED] [--runtime FILE] [--only memory]
+(N rounds of cases, default 5000; FILE in place of runtime.py; the memory code's checks alone)
 """
 import itertools
 import math
@@ -25,7 +29,32 @@ import unicodedata
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path[:0] = [os.path.join(ROOT, "tools", "rt_cpython"), ROOT]
-import runtime as rt  # noqa: E402
+import _rt  # noqa: E402
+import rt_heap  # noqa: E402
+from src.pystachy_compiler.specs import RTRECORDS  # noqa: E402
+
+# runtime.py's machine memory runs on a model that checks each access (rt_heap.py), with what
+# it calls in runtime.c beside it; its @_rt.unchecked functions check their arithmetic
+ARGS = sys.argv[1:]
+RUNTIME = os.path.join(ROOT, "runtime.py")
+ONLY = ""
+for flag in ("--runtime", "--only"):
+    if flag in ARGS:
+        at = ARGS.index(flag)
+        if at + 1 == len(ARGS):
+            sys.exit(f"rtcheck: {flag} needs a value")
+        if flag == "--runtime":
+            RUNTIME = ARGS[at + 1]
+        else:
+            ONLY = ARGS[at + 1]
+        del ARGS[at : at + 2]
+if ONLY not in ("", "memory"):
+    sys.exit("rtcheck: --only takes memory")
+HEAP = rt_heap.Heap(RTRECORDS)
+_rt.use(rt_heap.primitives(HEAP))
+rt = rt_heap.load(RUNTIME)
+C = rt_heap.CSide(HEAP)
+C.install(rt)
 from unicode_classification_tables import case_flags, case_ignorable, case_map, check as check_unicode_table, flags as unicode_flags  # noqa: E402
 
 rt.pys_unicode_flags = unicode_flags
@@ -33,8 +62,8 @@ rt.pys_unicode_case_flags = case_flags
 rt.pys_unicode_case_map = case_map
 rt.pys_unicode_case_ignorable = case_ignorable
 
-N = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
-R = random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 1)
+N = int(ARGS[0]) if len(ARGS) > 0 else 5000
+R = random.Random(int(ARGS[1]) if len(ARGS) > 1 else 1)
 ASCII = "ab AB-+0\t\n\r\x0b\x0c\x1c\x1f_.,lL"
 WIDE = "aé€𝄞 "
 MAXI = (1 << 63) - 1
@@ -81,6 +110,325 @@ def same(name, got, want, args):
 
 def idx():
     return R.choice([0, 1, 2, -1, -3, 5, 40, -40, MAXI, -MAXI - 1])
+
+
+class Item:
+    """An item of the CPython list that a heap list is compared with: its word, and its identity
+    (the object's own), which a list with a companion must keep as CPython's list keeps it.
+    An int has no identity before a list with a companion holds it: what a list without one
+    gives to another are other items of the same values (fresh)."""
+    def __init__(self, value, big=0):
+        self.value = value
+        self.big = big  # (the address of its Mpz where the word is -2**63 for an int past 64 bits)
+
+
+def fresh(items):
+    return [Item(x.value, x.big) for x in items]
+
+
+class HeapList:
+    def __init__(self, ptr, ref, atomic):
+        self.ptr = ptr
+        self.ref = ref
+        self.atomic = atomic
+
+
+def list_fault(l, mode, boxes):
+    # "" if heap list l is CPython's l.ref and its storage is what runtime.c's List promises
+    a = HEAP.of(l.ptr)
+    n, cap, items, ids = C.w(a), C.w(a + 8), C.w(a + 16), C.w(a + 24)
+    if n != len(l.ref):
+        return f"len {n}, CPython's {len(l.ref)}"
+    if not n <= cap:
+        return f"len {n} past cap {cap}"
+    have = HEAP.words(items, n)
+    if have != [x.value for x in l.ref]:
+        return f"items {have}, CPython's {[x.value for x in l.ref]}"
+    if cap == 0:
+        if items not in ((C.empty_atomic,) if l.atomic else (C.empty_list, C.empty_inline)):
+            return "an emptied list's sentinel is not one of its kind"
+    elif items == a + 32:
+        if cap != 4 or l.atomic or HEAP.block_of(a).size != 65:
+            return "inline items in a list that has none"
+    else:
+        b = HEAP.block_of(items)
+        if b is None or b.base != items or b.size < cap * 8 + 1 or b.kind != ("atomic" if l.atomic else "scan"):
+            return f"the item array is not an array of {cap} {'atomic' if l.atomic else 'scanned'} items"
+    if cap and any(HEAP.words(items + 8 * n, cap - n)):
+        return "a slot past the length is not zero"  # (the collector scans the whole array)
+    if ids == 0:
+        return "a big item without a companion" if any(x.big for x in l.ref) else ""
+    if mode == "plain":
+        return "a companion in a program that does not opt in"
+    kind = C.w(ids)
+    if ids in C.empty_ids.values():
+        return "" if cap == 0 and ids == C.empty_identity(kind) else "a companion's sentinel that is not the list's"
+    b = HEAP.block_of(ids)
+    if b is None or b.base != ids or b.size < (cap + 1) * 8 + 1:
+        return f"the companion is not an array of {cap} + 1 words"
+    entries = HEAP.words(ids + 8, cap)
+    if any(entries[n:]):
+        return "a companion's entry past the length is not zero"
+    for i in range(n):
+        x = l.ref[i]
+        if kind & 3 == 3:
+            if entries[i] != x.big:
+                return f"item {i}'s Mpz is {entries[i]:#x}, not {x.big:#x}"
+        elif entries[i] != 0:
+            # an identity that was observed: the box is the item's, as the object is CPython's
+            if boxes.setdefault(entries[i], x) is not x:
+                return f"item {i} has the box of another item"
+            if getattr(x, "box", entries[i]) != entries[i]:
+                return f"item {i} lost its box"
+            x.box = entries[i]
+            want = ("big", x.big) if x.big else x.value
+            if C.boxes[entries[i]] != want:
+                return f"item {i}'s box holds {C.boxes[entries[i]]}, not {want}"
+        elif not kind & 4:
+            return f"item {i} has no box in a companion that marks none pending"
+    return ""
+
+
+def fuzz_lists():
+    # runtime.py's lists against CPython's, an operation at a time: the result or the error,
+    # then the list's storage. With a companion, each item's identity too
+    global fails, cases
+    none = -(1 << 63)
+    for mode, atomic in [("plain", False), ("plain", True), ("identity", True), ("big", True)]:
+        for _ in range(max(1, N // 25)):
+            HEAP.reset()
+            C.setup()
+            C.opt = int(mode != "plain")
+            boxes = {}
+            lists = []
+
+            def item():
+                return Item(R.choice([0, 0, 1, 2, 3, 7, -1, none, MAXI, R.randrange(-99, 99)]))
+
+            def new(ref):
+                n = R.choice([0, 0, 1, 4, 5, len(ref)])
+                l = HeapList(rt.pys_list_new_atomic(n) if atomic else rt.pys_list_new(n), [], atomic)
+                for x in ref:
+                    rt.pys_list_append(l.ptr, x.value)
+                    l.ref.append(x)
+                lists.append(l)
+                return l
+
+            def bound():
+                return R.choice([none, none, 0, 1, 2, 3, -1, -2, 5, 9, -9, MAXI, -MAXI])
+
+            def sl(lo, hi, st=None):
+                return slice(None if lo == none else lo, None if hi == none else hi, st)
+
+            for _ in range(3):
+                new([item() for _ in range(R.choice([0, 1, 3, 4, 5, 9]))])
+            for _ in range(60):
+                l = R.choice(lists)
+                m = R.choice(lists)
+                i = R.choice([0, 1, 2, -1, -2, 4, 5, 9, -9, MAXI, none, R.randrange(len(l.ref) + 1), R.randrange(len(l.ref) + 1)])
+                lo, hi = bound(), bound()
+                st = R.choice([1, 1, 1, 2, -1, -2, 3, 0, none, MAXI, -MAXI])
+                k = R.choice([-1, 0, 1, 2, 3, 5, MAXI])
+                x = item()
+                made = None
+                # do the items that this operation copies keep their identities? (a companion holds them)
+                kept = C.w(HEAP.of(l.ptr) + 24) != 0
+                both = kept or C.w(HEAP.of(m.ptr) + 24) != 0
+
+                def give(items, keep):
+                    return list(items) if keep else fresh(items)
+                # (with a companion, more of what makes one and of what leaves an entry pending)
+                op = R.choice(("append get set pop del insert extend slice copy clear slice_step set_slice del_slice add imul mul reverse "
+                               "reserve from_const" + (" observe observe observe plant plant plant set set" if mode != "plain" else "")).split())
+                if op == "append":
+                    got, want = outcome(rt.pys_list_append, l.ptr, x.value), outcome(l.ref.append, x)
+                elif op == "get":
+                    got, want = outcome(rt.pys_list_get, l.ptr, i), outcome(lambda: l.ref[i].value)
+                elif op == "set":
+                    def store():
+                        l.ref[i] = x
+                    got, want = outcome(rt.pys_list_set, l.ptr, i, x.value), outcome(store)
+                elif op == "pop":
+                    got, want = outcome(rt.pys_list_pop, l.ptr, i), outcome(lambda: l.ref.pop(i).value)
+                elif op == "del":
+                    def delete():
+                        del l.ref[i]
+                    got, want = outcome(rt.pys_list_del, l.ptr, i), outcome(delete)
+                elif op == "insert":
+                    got, want = outcome(rt.pys_list_insert, l.ptr, i, x.value), outcome(l.ref.insert, i, x)
+                elif op == "extend":
+                    got, want = outcome(rt.pys_list_extend, l.ptr, m.ptr), outcome(l.ref.extend, give(m.ref, both))
+                elif op in ("slice", "copy", "slice_step", "add", "mul"):
+                    if op == "slice":
+                        got, want = outcome(rt.pys_list_slice, l.ptr, lo, hi), outcome(lambda: give(l.ref[sl(lo, hi)], kept))
+                    elif op == "copy":
+                        got, want = outcome(rt.pys_list_copy, l.ptr), outcome(lambda: give(l.ref, kept))
+                    elif op == "slice_step":
+                        got, want = outcome(rt.pys_list_slice_step, l.ptr, lo, hi, st), outcome(lambda: give(l.ref[sl(lo, hi, st)], kept))
+                    elif op == "add":
+                        got, want = outcome(rt.pys_list_add, l.ptr, m.ptr), outcome(lambda: give(l.ref, both) + give(m.ref, both))
+                    else:
+                        got, want = outcome(rt.pys_list_mul, l.ptr, k), outcome(lambda: l.ref * k if kept or k > 9 or not l.ref else [y for _ in range(k) for y in fresh(l.ref)])
+                    if got[0] == "ok" and want[0] == "ok":
+                        made = HeapList(got[1], want[1], atomic)
+                        got = want = ("ok", None)
+                elif op == "clear":
+                    got, want = outcome(rt.pys_list_clear, l.ptr), outcome(l.ref.clear)
+                elif op == "set_slice":
+                    def assign():
+                        l.ref[sl(lo, hi, st)] = give(m.ref, both)
+                    got, want = outcome(rt.pys_list_set_slice, l.ptr, lo, hi, st, m.ptr), outcome(assign)
+                elif op == "del_slice":
+                    def remove():
+                        del l.ref[sl(lo, hi, st)]
+                    got, want = outcome(rt.pys_list_del_slice, l.ptr, lo, hi, st), outcome(remove)
+                elif op == "imul":
+                    def repeat():
+                        if kept or k <= 1 or k > 9:
+                            l.ref *= k
+                        else:
+                            l.ref.extend([y for _ in range(k - 1) for y in fresh(l.ref)])
+                    got, want = outcome(rt.pys_list_imul, l.ptr, k), outcome(repeat)
+                elif op == "reverse":
+                    got, want = outcome(rt.pys_list_reverse, l.ptr), outcome(l.ref.reverse)
+                elif op == "reserve":
+                    got, want = outcome(rt.pys_list_reserve, l.ptr, R.choice([0, 1, 4, 5, 9, 40])), ("ok", None)
+                elif op == "from_const":
+                    if not atomic:
+                        continue
+                    ref = [item() for _ in range(R.choice([0, 1, 5, 9]))]
+                    values = HEAP.static([x.value for x in ref], "const")
+                    made = HeapList(rt.pys_list_from_const(HEAP.P(values), len(ref)), ref, True)
+                    got = want = ("ok", None)
+                elif op == "observe":
+                    # compiled code asks for a list's identities before it reads one
+                    if mode != "identity":
+                        continue
+                    got, want = outcome(C.pys_list_identity, l.ptr, 1), ("ok", None)
+                else:
+                    # an int past 64 bits stored as runtime.c's pys_list_set_big does: the companion
+                    # of its kind, the Mpz's address there and -2**63 in the slot
+                    if mode != "big" or not l.ref:
+                        continue
+                    a = HEAP.of(l.ptr)
+                    j = R.randrange(len(l.ref))
+                    if C.w(a + 24) == 0:
+                        ids = HEAP.new((C.w(a + 8) + 1) * 8, "scan", "ids")
+                        C.put(ids, 3)
+                        C.put(a + 24, ids)
+                    l.ref[j] = Item(none, HEAP.new(16, "atomic", "mpz"))
+                    C.put(C.w(a + 24) + 8 * (j + 1), l.ref[j].big)
+                    C.put(C.w(a + 16) + 8 * j, none)
+                    got = want = ("ok", None)
+                if made is not None:
+                    lists.append(made)
+                if got == want:
+                    bad = next((f"{w.ref and ''}{e}" for w in lists for e in [list_fault(w, mode, boxes)] if e), "")
+                    got = ("ok", None) if not bad else ("storage", bad)
+                    want = ("ok", None)
+                same(f"list-{mode}-{op}", got, want, (len(l.ref), len(m.ref), i, lo, hi, st, k))
+                if got != want:
+                    break
+                if len(lists) > 6:
+                    del lists[R.randrange(len(lists))]
+
+
+def u8count(data):
+    # the code points of a str's bytes as runtime.c's u8char reads them: a sequence that chr()
+    # writes, else a byte
+    n = i = 0
+    while i < len(data):
+        c = data[i]
+        k = 1 if c > 0xF4 else 4 if c >= 0xF0 else 3 if c >= 0xE0 else 2 if c >= 0xC2 else 1
+        if k > 1 and k <= len(data) - i and all(x & 0xC0 == 0x80 for x in data[i + 1 : i + k]):
+            v = c & (0x7F >> k)
+            for x in data[i + 1 : i + k]:
+                v = v << 6 | (x & 0x3F)
+            if not (v < (0x80 if k == 2 else 0x800 if k == 3 else 0x10000) or v > 0x10FFFF):
+                i += k
+                n += 1
+                continue
+        i += 1
+        n += 1
+    return n
+
+
+def fuzz_str_memory():
+    # str + str, the joined parts of an f-string and str * n in the heap: the bytes, the NUL
+    # after them, the length, and a cached count of code points that is the str's or unset
+    pieces = [b"", b"a", b"ab", b"\xc3\xa9", b"\xe2\x82\xac", b"\xe2\x82", b"\xac", b"\x82\xac", b"\xf0\x9d\x84\x9e", b"\xff", b"x" * 40]
+
+    def heap_str():
+        data = b"".join(R.choice(pieces) for _ in range(R.randrange(4)))
+        return HEAP.as_str(HEAP.new_str(data, R.choice([0, u8count(data) + 1]))), data
+
+    def result(f, *a):
+        r = outcome(f, *a)
+        if r[0] != "ok":
+            return r
+        addr = HEAP.of(r[1])
+        n = C.w(addr)
+        data = HEAP.read(addr + 24, n + 1)
+        if data[n] != 0:
+            return ("storage", "no NUL after the bytes")
+        if C.w(addr + 8) != 0:
+            return ("storage", "a dict hash in a new str")
+        if C.w(addr + 16) not in (0, u8count(data[:n]) + 1):
+            return ("storage", f"cached count {C.w(addr + 16) - 1} of a str of {u8count(data[:n])} code points")
+        return ("ok", data[:n])
+
+    for _ in range(N):
+        HEAP.reset()
+        C.setup()
+        parts = [heap_str() for _ in range(8)]
+        a, b = parts[0], parts[1]
+        same("str-add", result(rt.pys_str_add, a[0], b[0]), ("ok", a[1] + b[1]), (a[1], b[1]))
+        n = R.randrange(9)
+        same("str-cat", result(rt.pys_str_cat, n, *[x[0] for x in parts]), ("ok", b"".join(x[1] for x in parts[:n])), (n, [x[1] for x in parts]))
+        k = R.choice([-1, 0, 1, 2, 3, 7, MAXI])
+        want = outcome(lambda: (a[1].decode("latin-1") * k).encode("latin-1"))
+        same("str-mul", result(rt.pys_str_mul, a[0], k), want, (a[1], k))
+
+
+def check_model():
+    # the model itself: each kind of fault that it exists to find is one it raises
+    h = rt_heap.Heap(RTRECORDS)
+    m = rt_heap.primitives(h)
+    c = rt_heap.CSide(h)
+    l = c.pys_alloc(31)
+    arr = c.pys_alloc_atomic(16)
+    raw = c.pys_rt_raw(8)
+    m["set"](l, "List.len", 2)
+    m["put"](arr, 0, 5)
+
+    def unchecked_sum():
+        return rt.span_lo(-MAXI, -MAXI)  # (-MAXI + -MAXI in an @_rt.unchecked function)
+
+    for name, f in [
+        ("a read past a block", lambda: m["word"](arr, 3)),
+        ("a write past a block", lambda: m["put"](arr, 3, 1)),
+        ("a read before a block", lambda: m["word"](arr, -1)),
+        ("a read of what nothing wrote", lambda: m["word"](raw, 0)),
+        ("a word read as a field", lambda: m["get"](arr, "List.len")),
+        ("a field read as a word", lambda: m["word"](l, 0)),
+        ("a word field read as an address", lambda: m["getp"](l, "List.len")),
+        ("overlapping copy", lambda: m["cpy"](m["offset"](arr, 4), arr, 8)),
+        ("a copy of a size below zero", lambda: m["cpy"](arr, l, -8)),
+        ("a store that does not fit", lambda: m["put"](arr, 0, 1 << 63)),
+        ("a write to a sentinel", lambda: m["put"](c.pys_rt_empty_list(), 0, 1)),
+        ("unchecked overflow", unchecked_sum),
+    ]:
+        same("model: " + name, outcome(f)[0], "Fault", ())
+    # and what is no fault: one past the end as an address, a copy of nothing anywhere, bytes
+    # read of a word, a word read after a block operation wrote it
+    for name, f in [
+        ("one past the end", lambda: m["at"](arr, 3)),
+        ("a copy of nothing", lambda: m["cpy"](m["nil"](), m["nil"](), 0)),
+        ("a byte of a word", lambda: m["byte_at"](arr, 0)),
+        ("a field after a fill", lambda: (m["fill"](l, 0, 32), m["word"](l, 0))),
+        ("the slack byte", lambda: m["byte_at"](arr, 16)),
+    ]:
+        same("model: " + name, outcome(f)[0], "ok", ())
 
 
 def fuzz_str():
@@ -868,6 +1216,12 @@ def fuzz_int_text():
         same("int-str", outcome(rt.pys_int_str, b(t), base), want(b(t), base), (t[:30], len(t), base))
 
 
+fuzz_lists()
+fuzz_str_memory()
+check_model()
+if ONLY == "memory":
+    print(f"{cases} cases, {fails} failed")
+    sys.exit(1 if fails else 0)
 fuzz_str()
 fuzz_path()
 fuzz_int_text()

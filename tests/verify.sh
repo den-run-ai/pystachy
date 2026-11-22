@@ -50,7 +50,8 @@
 #                  existing JSON repair process cases and agent loopback-HTTP checks also pass, and
 #                  the recorded JSON repair corpus replays natively, JIT and AOT
 #   rtcheck        tools/rtcheck.py: runtime.py, run by CPython, gives what CPython's str methods and
-#                  math functions give on random inputs
+#                  math functions give on random inputs; its lists and strs, on a model of the
+#                  heap that checks each access, are CPython's lists and strs
 #   re-fuzz        tools/re_fuzz.py: lib/re, run by CPython, compiles random patterns to the code and
 #                  errors CPython's re does and matches, splits and substitutes as it does, on CPython's
 #                  strs and on Pystachy's UTF-8 ones, and so do test_re's cases too big for gc-stress

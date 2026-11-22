@@ -9,16 +9,13 @@ import math
 import struct
 from fractions import Fraction
 
+from rt_heap import Fault, Ptr, nsw, shift  # noqa: F401  (a raw address; unchecked arithmetic, as load() rewrites it)
+
 M64 = (1 << 64) - 1
 
 
-class Ptr:
-    """A raw address (runtime.py's annotations name it). CPython runs none of the code that
-    reads or writes machine memory: the functions below that would raise here."""
-
-
 def unchecked(f):
-    # (CPython's ints do not wrap: a function that relies on wrapping says so with wrap_add)
+    # (CPython's ints do not wrap: rt_heap.load() makes a function's + - * << >> what they are compiled)
     return f
 
 
@@ -26,15 +23,24 @@ def cold(f):
     return f
 
 
+MACHINE = ("nil", "ptr", "addr", "ref", "as_str", "word", "put", "byte_at", "put_byte", "i32_at", "put_i32", "at",
+           "offset", "get", "set", "getp", "setp", "field", "sizeof", "move", "cpy", "fill", "cmp")
+
+
 def _machine(name):
     def primitive(*args):
-        raise NotImplementedError(f"_rt.{name}: runtime.py's machine memory runs only when compiled")
+        raise NotImplementedError(f"_rt.{name}: runtime.py's machine memory needs a heap here (rt_heap.py, as tools/rtcheck.py gives it)")
     return primitive
 
 
-for _name in ("nil", "ptr", "addr", "ref", "as_str", "word", "put", "byte_at", "put_byte", "i32_at", "put_i32", "at",
-              "offset", "get", "set", "getp", "setp", "field", "sizeof", "move", "cpy", "fill", "cmp"):
+for _name in MACHINE:
     globals()[_name] = _machine(_name)
+
+
+def use(table):
+    # machine memory from rt_heap.primitives(heap): tools/rtcheck.py runs the memory code on it
+    for name in MACHINE + ("null",):
+        globals()[name] = table[name]
 
 
 def i64(x):
