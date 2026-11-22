@@ -1,7 +1,6 @@
-# error: inheritance with generic class templates is not supported
 # a subclass of NullTranslations, here a translation to add as a fallback: __init__'s fp, a catalog
-# file, has no concrete type, so NullTranslations is a template class, which a class cannot derive
-# from (lib/compatibility.md#gettext)
+# file, has no concrete type, so NullTranslations is a class template, from which a class without
+# an __init__ of its own derives as from each specialization (#962)
 from gettext import NullTranslations
 
 

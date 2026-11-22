@@ -132,7 +132,7 @@ WRITERS = {
     # appends the same per-pass requirement as @extern; compile_program rewinds it.
     "specs.LINKDL": {"lower_module.gen_cextern", "builtins.gen_builtin", "driver.compile_program"},
     "specs.GLUE": {"loader.Loader.load"},
-    "specs.SPECSHOW": {"templates.gen_specialize"},
+    "specs.SPECSHOW": {"templates.gen_specialize", "templates.gen_member_spec"},
     "specs.MODULES": {"driver.runtime_ir", "driver.prefer_program_ffi"},
     "ir.TMPNAMES": {"ir.tmpname"},
     "ir.ONENUMS": {"ir.one_num"},

@@ -57,6 +57,8 @@ NOT_RESET = {
 # and the function it interrupts sees what it added. Only Gen.__init__ assigns them of the lists.
 # source_lines accumulates metadata across module lowering, outside AST/dry traversal.
 # pipeline belongs to the compilation attempt; nested functions never advance or restore it.
+# ntag is the greatest class tag: a template hierarchy's specialization that a nested compile or
+# dry() makes keeps its class, and so its tag, as classes does (templates.new_tag).
 # bsubn and bsub are each builtin subclass's base and its type (builtin_bases.py): a nested compile
 # or dry() that finds a bare base's type by a first fill leaves it for the function it interrupts,
 # which needs it; the next pass starts from the hint that the find leaves in newhints.
@@ -65,7 +67,7 @@ PROGRAM = """
     consts fieldnames bconsts tconsts tconstdata lconsts strs bstrs strvals vnodes cmexit rtfns opfxs out source_lines fns fll callsites summaries xcls xvals
     xmods xsigs xctors xtypes exctree eh ntboxes nttests opts reds lazy lazyat wake called gflag ocls ocmp hcls one
     xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx xwant newwant ncand retseen
-    template_instances template_retained retainers unsupported hierarchies deferred_hierarchies cnodes hooks chooks flagged unraised
+    template_instances template_retained retainers unsupported hierarchies deferred_hierarchies ntag cnodes hooks chooks flagged unraised
     noneglobals intglobals rangeused objectused abcsets declflag complexused intat strglobals globanns strtuples abstracts abcmeta
     constflags late ext libdir prefix moddirs csyms csymline cdirect extvars rtmode rtdefs
     rtcache externs deps comp flowctx closures clokeys adapters adrets ncv dispatchers cacheforms decorated

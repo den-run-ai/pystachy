@@ -265,7 +265,14 @@ def gen_subclass_problem(self, st: Node) -> str:
             return "inheritance from a NamedTuple is not supported"
         if self.is_dc(base_ci.name) and not dc:
             return "inheritance from a dataclass is only supported by a @dataclass class"
-        if self.init_template(base_ci.node, True) or self.init_template(st.kids[0], True) or (st.s not in self.hierarchies and self.fixed_hierarchy(base_ci.name)):
+        root = self.template_root(base_ci.name)
+        if root != "":
+            # (a class template, or a class that derives from one without an __init__ of its own:
+            # template_bases)
+            why = self.template_subclass(st, base_ci.name, root)
+            if why != "":
+                return why
+        elif self.init_template(base_ci.node, True) or self.init_template(st.kids[0], True) or (st.s not in self.hierarchies and self.fixed_hierarchy(base_ci.name)):
             return "inheritance with generic class templates is not supported: " + self.template_fix([base_ci.node, st.kids[0]])
         if dc and not self.is_dc(base_ci.name):
             return "a @dataclass class whose base is not a dataclass is not supported"
@@ -304,7 +311,11 @@ def gen_generic_subclass(self, st: Node) -> str:
             continue
         g = b.kids[0].s
         if self.init_template(self.classes[g].node):
-            return f"a subclass of {shown(g)}[...] is not supported: the __init__ of {shown(g)} binds its type variables, as its calls' arguments do"
+            # (class IntBox(Box[int]): its objects begin as those of the specialization Box[int]
+            # names, which template_bases makes its base; only as its one base, of types)
+            xs = b.kids[1].kids if b.kids[1].kind == "tuple" else [b.kids[1]]
+            if len(st.kids) != 2 or len(own) > 0 or self.typevar_in(xs, []) != "":
+                return f"a subclass of {shown(g)}[...] is not supported: the __init__ of {shown(g)} binds its type variables, as its calls' arguments do (a subclass of one specialization, class C({short(g)}[X]) of types X, is)"
         if "__class_getitem__" in self.body_names(self.classes[g].node):
             # (as generic_ann: g[T] calls it, which may run code or name another class; also
             # where the arguments are the class's own type variables, passed on)
@@ -817,6 +828,16 @@ def gen_derives(self, c: str, base: str) -> bool:
         c = info.base
     return c in EXCBASES and exc_derives(c, base)
 
+def gen_tmpl_derives(self, c: str, base: str) -> bool:
+    # is class c, of the program, of class template base: a specialization of it, or derived from
+    # one, as a template hierarchy's classes are (template_bases); isinstance(x, base) of an object
+    # of c (derives, which names specializations, not their template)
+    while c in self.classes:
+        if c == base or self.classes[c].origin == base:
+            return True
+        c = self.classes[c].base
+    return False
+
 def gen_init_generic(self, st: Node, hier: bool = False) -> bool:
     # is class statement st a class template: no decorator (a dataclass's fields are annotated)
     # and an __init__ of its own with a parameter but self that has no annotation, mentions Any,
@@ -954,8 +975,8 @@ def gen_fixed_hierarchy(self, name: str) -> bool:
     # formerly excluded descendants' admission. Other ordinary hierarchies stay unchanged.
     while name in self.classes:
         ci = self.classes[name]
-        if name in self.hierarchies and self.init_generic(ci.node):
-            return True
+        if name in self.hierarchies and self.init_generic(ci.node) and self.template_root(name) != name:
+            return True  # (not a template hierarchy's root, whose classes derive as template_bases has them)
         name = ci.base
     return False
 
@@ -981,8 +1002,16 @@ def gen_hierarchy_chain(self, name: str, chain: list[str], seen: list[str]) -> b
         return False
     if node.kind == "subclass":
         for base in node.kids[1:]:
-            if base.kind != "name" or not self.hierarchy_chain(base.s, chain, seen):
+            if base.kind != "name":
                 return False
+            before = len(chain)
+            if not self.hierarchy_chain(base.s, chain, seen):
+                # (a class template that stays one, the root of a template hierarchy whose
+                # classes derive from its specializations, template_bases: kept with them where
+                # it needs no dependency of its own)
+                if len(chain) != before or base.s not in self.classes or self.template_root(base.s) != base.s or self.template_hierarchy(self.classes[base.s]) != "":
+                    return False
+                chain.append(base.s)
     if self.init_generic(st, True) and not self.fixed_layout(st):
         # Imported descendants may be deferred before acquiring a tag. Discover
         # dependencies only when this layout needs their annotations to become nominal.
@@ -1190,6 +1219,198 @@ def gen_template_fix(self, cs: list[Node]) -> str:
                 if reads_builtin(d.kids[2], "iter", False, {}) or len([p for p in d.kids[0].kids if p.kind == "param" and self.iter_item(p.kids[0]) is not None]) > 0:
                     return "an __init__ that calls iter() or takes an Iterator[T] or Iterable[T] makes one (an iterator's type is its class)"
     return "annotate __init__ parameters with concrete types (not Any or object)"
+
+# ---- template hierarchies (#962). A class template R (no base of its own) may have subclasses.
+# One without an __init__ of its own is a template too, a member of R's (tmpl_member): each
+# specialization of R, R-k, is made with one of each member, whose objects begin as R-k's do and
+# whose base R-k is (templates.member_spec), so that a value of R-k's type dispatches over all
+# the classes whose objects it may be. Any other subclass has an __init__ of its own that is no
+# template, and derives from one specialization of R (or of a member), made where the classes
+# are declared, before any code is compiled (template_bases): the one its class statement names
+# (class IntBox(Box[int])), or the one its super().__init__(...) makes, which the types of its
+# arguments, as guess infers them there, decide. Each specialization is thus a hierarchy's class.
+
+def gen_template_root(self, name: str) -> str:
+    # the class template whose __init__ the objects of class name run, name or a class it derives
+    # from without an __init__ of its own between them: one that stays a template in a hierarchy,
+    # where request_hierarchy cannot admit it with a fixed layout (fixed_layout: that path is
+    # tried first, as before); else ""
+    c = name
+    while c in self.classes:
+        if self.declares(c, "__init__"):
+            node = self.classes[c].node
+            return c if self.init_generic(node, True) and not self.fixed_layout(node) else ""
+        c = self.classes[c].base
+    return ""
+
+def super_inits(n: Node, out: list[Node]) -> None:
+    # the calls super().__init__(...) in code n, also nested (out)
+    if n.kind == "call" and n.kids[0].kind == "attr" and n.kids[0].s == "__init__" and n.kids[0].kids[0].kind == "call" and n.kids[0].kids[0].kids[0].kind == "name" and n.kids[0].kids[0].kids[0].s == "super":
+        out.append(n)
+    for k in n.kids:
+        super_inits(k, out)
+
+def gen_super_init_problem(self, name: str, init: Node, root: str) -> str:
+    # why __init__ init of class name, which derives from class template root's specialization,
+    # does not tell which one: it must call super().__init__(...) once, with no arguments to
+    # super(), in a statement of its own in its body; else ""
+    calls: list[Node] = []
+    super_inits(init.kids[2], calls)
+    top = [st for st in init.kids[2].kids if st.kind == "expr" and len(calls) == 1 and st.kids[0] is calls[0]]
+    if len(calls) != 1 or len(top) != 1 or len(calls[0].kids[0].kids[0].kids) != 1:
+        return f"the __init__ of {short(name)}, a subclass of class template {shown(root)}, must call super().__init__(...) once, in a statement of its own: the types of its arguments decide which specialization of {short(root)} its objects begin as"
+    return ""
+
+def gen_template_subclass(self, st: Node, base: str, root: str) -> str:
+    # why class statement st, whose base base is class template root or derives from it without
+    # an __init__ of its own, cannot be compiled, or "": its class is a member of root's or
+    # derives from one specialization (see template_bases)
+    old = "inheritance with generic class templates is not supported: " + self.template_fix([self.classes[base].node, st.kids[0]])
+    if owner(st.s) != "" and st.s not in self.hierarchies:
+        # (an imported module's class: left out until the program uses it, which requests its
+        # hierarchy, hierarchy_chain, as an imported subclass of a fixed layout's is)
+        return old
+    rc = self.classes[root]
+    if rc.base != "" or len(rc.roles) > 0 or root in self.nts or root in self.cnts or root in self.bsubn or self.is_dc(root) or self.literal_class(root):
+        return old
+    if len(st.kids) != 2:
+        return f"a subclass of class template {shown(root)} with a secondary base is not supported"
+    if len(st.kids[0].kids) > 1:
+        return f"a subclass of class template {shown(root)} with a decorator is not supported"
+    inits = [d for d in st.kids[0].kids[0].kids if d.kind == "def" and d.s == "__init__"]
+    if len(inits) == 0:
+        return ""
+    if self.init_generic(st.kids[0], True):
+        # (also one whose own fields keep one layout, fixed_layout: its calls' arguments may still
+        # make super().__init__(...)'s, and so its base, differ)
+        return f"a subclass of class template {shown(root)} whose own __init__ is a class template is not supported: annotate the parameters of {short(st.s)}.__init__ with concrete types (not Any or object)"
+    if st.s in self.genargs and base in self.genargs[st.s]:
+        return ""  # (class IntBox(Box[int]): that specialization)
+    return self.super_init_problem(st.s, inits[0], root)
+
+def gen_tmpl_member(self, ci: ClassInfo) -> bool:
+    # is class ci a member of a template hierarchy: no __init__ of its own, its base a class
+    # template (a member too, or the hierarchy's root), and no specialization named as its base
+    return ci.base in self.tmpl and ci.origin == "" and not self.declares(ci.name, "__init__") and not (ci.name in self.genargs and ci.base in self.genargs[ci.name])
+
+def gen_template_hierarchy(self, ci: ClassInfo) -> str:
+    # why class template ci, in a hierarchy, cannot be compiled, or "": a member of a template
+    # hierarchy, or its root, a class template with an __init__ of its own and no base
+    if self.tmpl_member(ci):
+        return ""
+    if ci.base != "" or len(ci.roles) > 0 or not self.declares(ci.name, "__init__") or ci.name in self.nts or ci.name in self.cnts or ci.name in self.bsubn or self.is_dc(ci.name) or self.literal_class(ci.name):
+        return "inheritance with generic class templates is not supported: " + self.template_fix([ci.node])
+    return ""
+
+def gen_template_bases(self) -> None:
+    # each class whose base is a class template and which is no template itself (template_root):
+    # its base becomes the specialization its objects begin as, made now, before any code is
+    # compiled (as its class tag is assigned), so that dispatch on that specialization's values
+    # knows it. Its base's methods and fields are then inherited from that specialization
+    for ci in list(self.classes.values()):
+        if ci.base not in self.tmpl or ci.name in self.tmpl or ci.origin != "":
+            continue
+        self.line = ci.node.line
+        b = ci.base
+        root = b
+        while not self.declares(root, "__init__"):
+            root = self.classes[root].base
+        given: dict[str, str] = {}
+        ts: list[str] = []
+        named = ci.name in self.genargs and b in self.genargs[ci.name] and b in self.tparams
+        if named:
+            tvs = self.tparams[b]
+            for i in range(len(tvs)):
+                given[tvs[i]] = self.genargs[ci.name][b][i]
+        else:
+            if "__init__" not in ci.methods or ci.methods["__init__"].cls != ci.name:
+                self.err(f"class {short(ci.name)} derives from class template {shown(root)} without an __init__ of its own and without being a template: not supported")
+            init = ci.methods["__init__"]
+            why = self.super_init_problem(ci.name, init.node, root)
+            if why != "":
+                self.err(why)
+            calls: list[Node] = []
+            super_inits(init.node.kids[2], calls)
+            ts = self.super_arg_types(self.classes[root].methods["__init__"], calls[0].kids[1:], init)
+            if "!" in ts:
+                self.line = calls[0].line
+                self.err(f"the types of the arguments of super().__init__(...) in {short(ci.name)}.__init__ must be known where class {short(ci.name)} is declared (literals, its parameters' annotations, functions, the defaults of {short(root)}.__init__): they decide which specialization of class template {short(root)} its objects begin as")
+        # (its fields are typed there too, as guess types them before code is compiled: one that
+        # holds an object of a class template, which only compiled code makes, is not; an error in
+        # it says so, after the specialization's own note)
+        depth = len(self.making)
+        self.making.append(f"making the specialization of class template {shown(root)} that {short(ci.name)} derives from, where it is declared, before any code is compiled")
+        try:
+            ci.base = self.specialize(b, ts, given, named, {})
+        finally:
+            while len(self.making) > depth:
+                self.making.pop()
+    for s in list(self.classes.values()):
+        # (the members' specializations of those made before every class statement was declared,
+        # as an annotation makes Box[int] before a subclass's: specialize leaves them for now)
+        if s.origin in self.tmpl and s.tag != 0:
+            for m in [x.name for x in self.classes.values() if x.base == s.origin and self.tmpl_member(x)]:
+                self.member_spec(s.name, m)
+
+def super_arg_type(self, e: Node, f: FnInfo) -> str:
+    # (super_arg_types) the type of argument e of a call in function f, as guess infers it; None's
+    # and an empty tuple's too, which call_fn passes as such
+    if e.kind == "None":
+        return "None"
+    if e.kind == "tuple" and len(e.kids) == 0:
+        return self.ctype("tuple", [])
+    return self.guess(e, f)
+
+def gen_super_arg_types(self, init: FnInfo, args: list[Node], f: FnInfo) -> list[str]:
+    # the types of the arguments that super().__init__(args), in __init__ f of a subclass of a
+    # class template, passes to the template's __init__ init (after self), as call_fn binds them:
+    # by position and by name, a default where none is given, *args as a tuple and **kwargs as a
+    # record (guess_varargs); each as guess infers it, None and () too. ["!"] where one cannot be
+    np = len(init.params)
+    ts = [""] * (np - 1)
+    extra: list[str] = []
+    names: list[str] = []
+    types: list[str] = []
+    pos = 1
+    if init.vartup != "":
+        return ["!"]
+    for a in args:
+        if a.kind == "starred" or a.kind == "dstar":
+            return ["!"]
+        t = super_arg_type(self, a.kids[0] if a.kind == "kw" else a, f)
+        if t == "" or t.startswith("!"):
+            return ["!"]
+        if a.kind == "kw":
+            j = init.params.index(a.s) if a.s in init.params else -1
+            if init.kwarg >= 0 and (j < 0 or j < init.posonly or j == init.kwarg or j == init.vararg):
+                if a.s in names:
+                    return ["!"]
+                names.append(a.s)
+                types.append(init.kwelem if init.kwelem != "" else t)
+            elif j < 1 or j < init.posonly or j == init.vararg or ts[j - 1] != "":
+                return ["!"]
+            else:
+                ts[j - 1] = t
+        elif init.vararg >= 0 and pos >= init.vararg:
+            extra.append(init.varelem if init.varelem != "" else t)
+        elif pos >= np or pos == init.kwarg or (init.npos >= 0 and pos >= init.npos):
+            return ["!"]
+        else:
+            ts[pos - 1] = t
+            pos += 1
+    for i in range(1, np):
+        if i == init.vararg:
+            ts[i - 1] = self.ctype("tuple", extra)
+        elif i == init.kwarg:
+            ts[i - 1] = "kw[" + ",".join([names[j] + ":" + types[j] for j in range(len(names))]) + "]"
+        elif ts[i - 1] == "" and init.defaults[i].kind == "noann":
+            return ["!"]
+        elif ts[i - 1] == "":
+            t = super_arg_type(self, init.defaults[i], FnInfo("", "", init.node, ""))
+            if t == "" or t.startswith("!"):
+                return ["!"]
+            ts[i - 1] = t
+    return ts
 
 def gen_makes_tmpl(self, n: Node) -> bool:
     # does n call a class template, making an object of one of its specializations? iter(x)
@@ -2078,6 +2299,7 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
         if ci.tag != 0:
             tag += 1
             ci.tag = tag
+    self.ntag = tag  # (a template hierarchy's specializations take the next ones: templates.new_tag)
     self.cm_exits()  # (decided while the class templates are classes too: see cm_exits)
     # The classes for which a template is an error, as init_template's hier takes them: those of
     # a hierarchy, and the classes that the __init__ of one of these takes as a parameter
@@ -2107,15 +2329,17 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
         # names a class template (Holder(b: Box)), which then types nothing either
         grow = False
         for ci in self.classes.values():
-            if ci.name not in self.tmpl and ci.exc == "" and self.init_template(ci.node, ci.name in fixedcls):
+            if ci.name not in self.tmpl and ci.exc == "" and (self.init_template(ci.node, ci.name in fixedcls) or self.tmpl_member(ci)):
                 self.tmpl[ci.name] = True
                 grow = True
     for ci in self.classes.values():
         ci.init_only = ci.exc == "" and ci.name not in self.tmpl and self.init_generic(ci.node)
         if ci.tag != 0 and ci.name in self.tmpl:
             self.request_fixed_params(ci.name)
-            self.line = ci.node.line
-            self.err("inheritance with generic class templates is not supported: " + self.template_fix([ci.node]))
+            why = self.template_hierarchy(ci)  # (a template hierarchy's root or member: template_bases)
+            if why != "":
+                self.line = ci.node.line
+                self.err(why)
     for m in mods:
         # (made now: a specialization that a declaration's annotation names may compile a
         # method whose call needs a default's type, which its module's frame gives, see modtype)
@@ -2175,6 +2399,7 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
             else:
                 top.append(st)
         tops.append(top)
+    self.template_bases()  # (the specializations that a template hierarchy's classes derive from)
     for ci in self.classes.values():
         self.inherit(ci)
     for m in mods:

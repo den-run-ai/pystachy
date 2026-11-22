@@ -1268,6 +1268,14 @@ from src.pystachy_compiler.program import (
     gen_request_hierarchy as program_request_hierarchy,
     gen_retry_hierarchy as program_retry_hierarchy,
     gen_template_fix as program_template_fix,
+    gen_template_root as program_template_root,
+    gen_tmpl_derives as program_tmpl_derives,
+    gen_super_init_problem as program_super_init_problem,
+    gen_template_subclass as program_template_subclass,
+    gen_tmpl_member as program_tmpl_member,
+    gen_template_hierarchy as program_template_hierarchy,
+    gen_template_bases as program_template_bases,
+    gen_super_arg_types as program_super_arg_types,
     gen_left_out as program_left_out,
     gen_makes_tmpl as program_makes_tmpl,
     gen_ann_classes as program_ann_classes,
@@ -1415,6 +1423,8 @@ from src.pystachy_compiler.templates import (
     gen_match_key as templates_match_key,
     gen_names_tv as templates_names_tv,
     gen_specialize as templates_specialize,
+    gen_new_tag as templates_new_tag,
+    gen_member_spec as templates_member_spec,
     gen_literal_class as templates_literal_class,
     gen_literal_args as templates_literal_args,
     gen_lit_context as templates_lit_context,
@@ -1741,6 +1751,9 @@ class Gen:
         # Program-wide names only: retained by fresh-Gen retries, never speculative layouts.
         self.hierarchies: dict[str, bool] = {}
         self.deferred_hierarchies: dict[str, bool] = {}
+        # the greatest class tag: those assigned as classes are declared, then those of a template
+        # hierarchy's specializations, made later (templates.new_tag); never reused
+        self.ntag = 0
         self.cnodes: dict[int, Node] = {}  # every module-level class or subclass statement, by line
         self.hooks: dict[str, str] = {}  # see hook()
         self.chooks: dict[int, str] = {}
@@ -4287,6 +4300,30 @@ class Gen:
     def template_fix(self, cs: list[Node]) -> str:
         return program_template_fix(self, cs)
 
+    def template_root(self, name: str) -> str:
+        return program_template_root(self, name)
+
+    def tmpl_derives(self, c: str, base: str) -> bool:
+        return program_tmpl_derives(self, c, base)
+
+    def super_init_problem(self, name: str, init: Node, root: str) -> str:
+        return program_super_init_problem(self, name, init, root)
+
+    def template_subclass(self, st: Node, base: str, root: str) -> str:
+        return program_template_subclass(self, st, base, root)
+
+    def tmpl_member(self, ci: ClassInfo) -> bool:
+        return program_tmpl_member(self, ci)
+
+    def template_hierarchy(self, ci: ClassInfo) -> str:
+        return program_template_hierarchy(self, ci)
+
+    def template_bases(self) -> None:
+        program_template_bases(self)
+
+    def super_arg_types(self, init: FnInfo, args: list[Node], f: FnInfo) -> list[str]:
+        return program_super_arg_types(self, init, args, f)
+
     def makes_tmpl(self, n: Node) -> bool:
         return program_makes_tmpl(self, n)
 
@@ -5662,6 +5699,12 @@ class Gen:
 
     def specialize(self, c: str, ts: list[str], given: dict[str, str], named: bool, lits: dict[str, Node]) -> str:
         return templates_specialize(self, c, ts, given, named, lits)
+
+    def new_tag(self, s: ClassInfo) -> None:
+        templates_new_tag(self, s)
+
+    def member_spec(self, p: str, m: str) -> str:
+        return templates_member_spec(self, p, m)
 
     def getattr_name(self, n: Node) -> str:
         return calls_getattr_name(self, n)

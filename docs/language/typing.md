@@ -1294,15 +1294,14 @@ An imported subclass becomes available when compiled code needs it, including cl
 tests and annotations of a called helper. Its activation recompiles earlier dispatch sites
 with the complete set of used classes. Unused imported siblings and their overrides stay
 excluded; merely declaring them does not make a working base-class call compile their
-bodies. An initializer whose field types depend on its arguments still cannot take part
-in inheritance. Explicit `Base.__init__(self, ...)` delegation remains excluded from the
-fixed-layout proof because it passes the receiver to another callable.
+bodies. An initializer whose field types depend on its arguments takes part in inheritance
+only as a class template's, below. Explicit `Base.__init__(self, ...)` delegation remains
+excluded from the fixed-layout proof because it passes the receiver to another callable.
 
 If `Box.__init__(self, value: Any) -> None` assigns `self.value = value`, it behaves like
 the unannotated constructor: `Box(1).value` is an `int`, and `Box("s").value` is a `str`.
 Existing field types cannot change later. `Any` does not provide a shared boxed layout for
-these objects. Inheritance with class templates remains unsupported; use concrete constructor
-annotations there. Dataclass fields annotated `Any` still require a concrete type.
+these objects. Dataclass fields annotated `Any` still require a concrete type.
 
 Each specialization is a distinct static type. One variable or container cannot hold both
 `Box[int]` and `Box[str]`, although both satisfy `isinstance(value, Box)` and use the name
@@ -1316,6 +1315,53 @@ When a class stores functions, an explicit `Callable` annotation lets different 
 with the same signature share a specialization. This also works for
 `Callable[[A, B], Result]` where `Result` is a class template: the actual returned specialization
 determines the callable's result type.
+
+### Subclasses of class templates
+
+A class may derive from a class template that has no base of its own
+([#962](https://github.com/den-run-ai/pystachy/issues/962)). Each specialization of the
+template is a class of its own and the root of a hierarchy of its own:
+
+- A subclass without an `__init__` of its own runs the template's and is a class template
+  too. Each specialization of the template is made together with one specialization of each
+  such subclass, for the same argument types, which derives from it: `StrStyle("x")` makes an
+  object of the class that derives from the class of `Style("x")`
+  ([test](../../tests/programs/classes/template_subclass_inherit.py)).
+- A subclass with an `__init__` of its own derives from one specialization: the one its
+  `super().__init__(...)` makes. Its parameters need concrete annotations, and its `__init__`
+  calls `super().__init__(...)` once, in a statement of its own, with arguments whose types are
+  known where the class is declared: literals, `None` and `()`, its parameters' annotations,
+  functions and the template's defaults
+  ([test](../../tests/programs/classes/template_subclass_super.py)).
+- `class IntBox(Box[int])` derives from the specialization that `Box[int]` names, for a generic
+  class whose `__init__` binds its type variables
+  ([test](../../tests/programs/classes/template_subclass_generic.py)).
+
+A subclass's specializations are made with the template's, and the specialization that a
+subclass with an `__init__` derives from is made where the classes are declared, before any
+code is compiled; its fields are typed there, so one that holds an object of another class
+template, which only compiled code makes, is an error
+([error test](../../tests/errors/classes/template_subclass_declared_field.py)).
+A variable, field or list typed by a specialization therefore holds objects
+of every class that derives from it, and a call through it selects the object's override, also
+inside the template's methods
+([test](../../tests/programs/classes/template_subclass_override.py)). Objects of two
+specializations still cannot share one location
+([test](../../tests/programs/classes/template_subclass_two_specs.py)). `isinstance(x, C)`,
+where `C` is the template or a subclass without an `__init__`, holds for an object of any of
+its specializations or of a class that derives from one
+([test](../../tests/programs/classes/template_subclass_isinstance.py)). These classes are
+still not values: `issubclass()` and `type[C]` reject them.
+
+The compiler rejects, with a message that names the limit: a subclass whose own `__init__` is
+a class template; a subclass with a secondary base or a decorator; an `__init__` that calls
+`super().__init__(...)` other than once at its top level, or with arguments whose types only
+compiled code tells; a template with a base of its own; a template whose `__init__` makes an
+object of its subclass without an `__init__`; and `class C(Box[T])`, which passes a type
+variable on. An imported module's subclass of a class template is compiled where the program
+uses it, as an imported subclass of a fixed-layout class is, and left out otherwise
+([test](../../tests/programs/classes/template_subclass_imported.py),
+[error test](../../tests/errors/classes/template_subclass_imported_bad.py)).
 
 ### Explicit generic classes
 
@@ -1447,8 +1493,10 @@ compiles, so a visitor's methods may call `accept()` again, and a field stored f
 ([test](../../tests/programs/classes/generic_visitor_postponed.py)). A variable annotated with
 the base holds any visitor, whose methods then dispatch to every visitor class and need one
 return type ([error test](../../tests/errors/classes/generic_visitor_base_variable.py)). A class
-cannot yet derive from a generic class whose `__init__` binds its type variables
-(`class IntBox(Box[int])`).
+derives from one specialization of a generic class whose `__init__` binds its type variables,
+`class IntBox(Box[int])`, as a [subclass of a class template](#subclasses-of-class-templates)
+does, not from `Box[T]`
+([error test](../../tests/errors/classes/template_subclass_typevar.py)).
 
 A generic class may pass its own type variables on to generic bases, as mypy's visitors do:
 `class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T])` derives from
@@ -1689,10 +1737,12 @@ that names functions or attributes at run time (`getattr()`, `globals()`) keeps 
 
 An ordinary class may derive from one previously declared ordinary class, including an
 imported class. Annotate its `__init__` parameters. Constructor arguments may be generic
-when all fields retain one fixed concrete layout; layout-specialized class templates cannot
-participate in a hierarchy. A generic base without its own `__init__` supports the
-[visitor subset](#explicit-generic-classes); bases whose constructor binds type variables and
-subclasses passing through their own type variables remain unsupported. Fields retain their
+when all fields retain one fixed concrete layout; a layout-specialized class template takes
+part in a hierarchy as the [root of its specializations' hierarchies](#subclasses-of-class-templates).
+A generic base without its own `__init__` supports the
+[visitor subset](#explicit-generic-classes); a base whose constructor binds type variables
+supports one specialization as a base (`class IntBox(Box[int])`), and subclasses passing
+through their own type variables remain unsupported. Fields retain their
 declared or inferred types, and the existing field-inference rules still apply.
 
 Subclasses inherit fields, class attributes, methods and `__init__` when they do not define

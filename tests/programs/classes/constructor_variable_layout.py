@@ -1,4 +1,5 @@
-# error: inheritance with generic class templates is not supported
+# A field annotated Iterable[int] holds the value it is given, list or other: the class is a
+# template, from which a class without an __init__ of its own derives (#962)
 from typing import Iterable
 
 

@@ -574,6 +574,12 @@ def gen_isinst(self, t: str, c: Node) -> int:
         if t in self.classes and self.classes[t].tag > 0:
             if self.derives(t, c.s):
                 return -2
+            if c.s in self.tmpl:
+                # (a class template's: an object of a template hierarchy's class, template_bases, is
+                # one where its chain holds a specialization of it)
+                if self.tmpl_derives(t, c.s):
+                    return -2
+                return -1 if len([x for x in self.classes.values() if x.tag > 0 and self.tmpl_derives(x.name, c.s) and self.derives(x.name, t)]) > 0 else 0
             return -1 if self.derives(c.s, t) or c.s in self.classes[t].overlaps else 0
         # (an exception of class t, or of a builtin one, may be an object of a class deriving from t)
         xc = self.classes[c.s].exc != "" and (t == "exc" or (t in self.classes and (self.derives(t, c.s) or self.derives(c.s, t) or self.exc_overlap(t, c.s))))
@@ -792,7 +798,7 @@ def gen_class_matches(self, c: str, t: Node) -> bool:
     if self.cabc_ref(t) != "":
         return self.cabc_exact(c, self.cabc_ref(t)) == 1  # (an object of exactly c: not its subclasses')
     if t.kind == "name" and t.s in self.classes:
-        return self.derives(c, t.s)
+        return self.derives(c, t.s) or (t.s in self.tmpl and self.tmpl_derives(c, t.s))
     return self.isinst(c, t) in [1, -2]
 
 def gen_obj_isinst(self, v: Val, t: Node) -> Val:
