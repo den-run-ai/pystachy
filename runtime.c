@@ -6891,11 +6891,17 @@ static int osflush(File *f, int keep) {   /* stdio writes what it holds: 0, or t
   if (keep && !f->kept) f->kept = e;
   return e;
 }
+static void fput(File *f, const char *s, I n) {   /* stdio's write of n bytes, and none of no bytes: musl's fwrite
+                                                     (WASI's C library) of none still turns a stream that reads
+                                                     to writing, which drops its read-ahead where the descriptor
+                                                     stays past it, and fails a read-only one (wasm/README.md) */
+  if (n) fwrite(s, 1, n, f->f);
+}
 static int bput(File *f, const char *a, I na, const char *b, I nb) {   /* BufferedWriter.write() of a then b */
   I p = na + nb; int e;
-  if (p <= f->bs - f->bn && p < f->bs) { fwrite(a, 1, na, f->f); fwrite(b, 1, nb, f->f); f->bn += p; return 0; }
+  if (p <= f->bs - f->bn && p < f->bs) { fput(f, a, na); fput(f, b, nb); f->bn += p; return 0; }
   if (f->bn && (e = osflush(f, 1))) return e;   /* what it holds is written first (and kept if that fails), */
-  fwrite(a, 1, na, f->f); fwrite(b, 1, nb, f->f);
+  fput(f, a, na); fput(f, b, nb);
   f->bn = p < f->bs ? p : 0;                   /* then a piece below its size is kept, a bigger one written */
   return f->bn ? 0 : osflush(f, 0);
 }

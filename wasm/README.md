@@ -218,6 +218,9 @@ covers a 2,000-container round trip and catching `RecursionError` on deeper inpu
   fail with `ENOSYS`, so the runtime raises the matching `OSError`.
 - **Filesystem access depends on the runner.** The CLI preopens `/` and passes Node's working
   directory as `PWD`. The embedded code mode host supplies no directory mounts.
+- **The C library's stdio is musl's.** Its `fwrite` of zero bytes still switches a stream that
+  was reading to writing. That drops the read-ahead without moving the descriptor back, and
+  marks a read-only stream failed. The runtime skips such writes, which glibc ignores.
 - **Pointers are 4 bytes.** Compiled code addresses the runtime's structs through their LLVM
   types, which follow the target's layout. Constants that hold an address in a 64-bit slot are
   rewritten as the address and a zero word (`wasm32_ir.py`). Dynamic class dispatch and
