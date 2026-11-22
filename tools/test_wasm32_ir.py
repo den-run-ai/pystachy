@@ -36,6 +36,8 @@ class Wasm32Ir(unittest.TestCase):
     def test_main_and_sized_calls(self):
         self.assertEqual(W.line_of("define i32 @main(i32 %argc, ptr %argv) {"), "define i32 @__main_argc_argv(i32 %argc, ptr %argv) {")
         self.assertEqual(W.line_of("declare i32 @memcmp(ptr, ptr, i64)"), "declare i32 @pys_wasi_memcmp(ptr, ptr, i64)")
+        self.assertEqual(W.line_of("  %r = call double @llvm.fma.f64(double %a, double %b, double 0.0)"),
+                         "  %r = call double @pys_wasi_fma(double %a, double %b, double 0.0)")
 
     def test_retarget_only_exception_instructions(self):
         literal = '@s = private constant [49 x i8] c"  invoke void @f() to label %ok unwind label %pad"'

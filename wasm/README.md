@@ -231,6 +231,10 @@ covers a 2,000-container round trip and catching `RecursionError` on deeper inpu
   ints and floats. A frame keeps its locals above its frame address on wasm32, `@main`'s too,
   so the runtime finds a `*args` tuple that a caller made anywhere on the linear-memory stack
   above the callee and copies it before the callee keeps it.
+- **The math library is musl's.** Some results differ from glibc's in the last place: musl's
+  `cbrt(27)` is exactly 3.0. Two musl results would also be wrong for Python, so the runtime
+  corrects them: `float("-nan")` keeps its sign, and `math.fma` keeps the sign of a product
+  that rounds to zero when the addend is zero (`wasi_stubs.c`).
 
 ## Checking the whole corpus
 
