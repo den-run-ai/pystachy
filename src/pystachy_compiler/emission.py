@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.bigints import narrows
-from src.pystachy_compiler.diagnostics import ClassBoxes, Rejoin, fail, int_lists
+from src.pystachy_compiler.diagnostics import ClassBoxes, NeedHierarchy, Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.frames import Frame
 from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, tmpname, one_num, value_definitions
@@ -47,6 +47,10 @@ def gen_err(self, msg: str) -> None:
         raise Rejoin()
     if len(self.newhints) > 0 and not self.final:
         raise Rejoin()  # (an error after a join may come of the narrower type it widens: see Rejoin)
+    if self.newlate:
+        # (or of a hierarchy that code made a specialization of a class in, late_sub: the next pass
+        # makes it before code is compiled, and reports the error if it stays)
+        raise NeedHierarchy()
     if len(self.clsused) > 0:
         # (it may come of a class read as a typed class object where a module that opts in to
         # dynamic Any, and names no type[C], made a class box of it before: compiled again so,

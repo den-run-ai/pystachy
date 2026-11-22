@@ -156,6 +156,8 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
     # and leave x an Any value (Gen.ntboxes)
     ntboxes = False
     hierarchies: dict[str, bool] = {}
+    # (the specializations of subclasses whose own __init__ is a template that code made: Gen.tlate)
+    tlate: dict[str, list[str]] = {}
     # The files of modules that opt in to dynamic Any whose classes are read as class boxes, not
     # as typed class objects (Gen.class_value_static): each one whose typed reads a pass did not
     # compile with (ClassBoxes), after which the program is compiled from the start, as if those
@@ -174,6 +176,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
         g.xnot = xnot
         g.xwant = xwant
         g.hierarchies = hierarchies
+        g.tlate = tlate
         g.final = passes >= JOINS
         g.idfull = idfull
         g.idtry = idtry
@@ -264,6 +267,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
             slice_eh = False
             ntboxes = False
             hierarchies = {}
+            tlate = {}
             clsany = {}
         finally:
             timing_end("program.attempt", attempt)

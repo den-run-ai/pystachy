@@ -583,8 +583,9 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
 
 - **Inheritance:** multiple bases outside the [method-only secondary bases](typing.md#method-only-secondary-bases) subset; hierarchies involving layout-specialized templates
   outside the [template hierarchy subset](typing.md#subclasses-of-class-templates) (a subclass
-  whose own `__init__` is a template, or whose `super().__init__(...)` arguments' types are not
-  known where it is declared; a template with a base of its own),
+  whose `super().__init__(...)` arguments' types its declaration does not tell; one whose own
+  `__init__` is a template, given an object of a template's specialization, a lambda, a nested
+  function or a bound method; a template with a base of its own),
   NamedTuple or builtins; a `collections.abc` base beside other bases or a keyword, naming a type
   variable (`Sequence[T]`), or rebound by its module, and the [mixin forms](../../lib/compatibility.md#collectionsabc)
   that differ (`reversed()` of a `Mapping`, `pop(k, default=d)`, a class-method `_from_iterable`); generic inheritance outside the [visitor subset](typing.md#explicit-generic-classes)
