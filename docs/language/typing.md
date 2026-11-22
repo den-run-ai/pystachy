@@ -1098,9 +1098,9 @@ values: list[object] = [1, 2.5, True, "s", b"b", [1], Point(0, 0), int, None]
 It is the stored interface that every type implements, with no method of its own: a value of
 `object` holds the value it was given, not a copy, so a list stored as `object` and changed
 through its typed name shows the change. Numbers, strs, bytes, containers, objects of the
-program's classes, class objects, `None` and `Any` values can be values of `object`, both ways;
-functions and `Callable` values, exceptions and their classes, and values of a protocol (convert
-the object itself) cannot. Its operations are those of a protocol's value above, each by its
+program's classes, class objects, `None` and `Any` values can be values of `object`; functions
+and `Callable` values, exceptions and their classes, and values of a protocol (convert the object
+itself) cannot. Its operations are those of a protocol's value above, each by its
 value's type ([tests](../../tests/programs/classes/object_storage_values.py)):
 
 - `str()`, `repr()`, printing, f-strings, `format()`, `%s`, `%r` and `%a`, and truth tests;
