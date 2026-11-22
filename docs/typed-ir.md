@@ -1392,11 +1392,12 @@ This is bounded compiled support, without runtime compilation or unrestricted Py
 
 Mixed scalar/list/dict unions permit finite, explicitly written nesting. The
 [recursive value-alias prototype](language/typing.md#recursive-value-aliases-prototype)
-also supports nongeneric module-level PEP 695 closed recursive unions such as
+also supports module-level PEP 695 closed recursive unions such as
 `type Tree = int | list[Tree]` and the native JSON codec's recursive value type.
 Named edges retain a finite type graph rather than repeatedly expanding canonical strings.
-Recursive aliases are nominal, and existing mutable list/dict storage remains invariant.
-Mutual recursion, generic recursive aliases and recursive shapes outside that documented
+Aliases with the same members name one graph, a generic alias one per type arguments, and
+existing mutable list/dict storage remains invariant.
+Mutual recursion and recursive shapes outside that documented
 form remain unsupported. Runtime traversals have recursion guards; the
 [JSON codec's depth and integer limits](json.md) are separate from the type graph.
 

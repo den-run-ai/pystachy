@@ -281,25 +281,41 @@ before twice).
 
 ### Recursive value aliases (prototype)
 
-A nongeneric module-level PEP 695 alias may define a closed recursive union:
+A module-level PEP 695 alias may define a closed recursive union:
 
 ```python
 type Value = None | bool | int | float | str | list[Value] | dict[str, Value]
+type Leafed[F] = int | str | F | list[Leafed[F]] | dict[str, Leafed[F]]
+type Spans = int | tuple[int, int] | list[Spans]
 ```
 
-Members may be `None`, `bool`, `int`, `float`, `str`, `list[Self]` and
-`dict[str, Self]`, with at least two distinct non-`None` alternatives and one
-recursive container member. `type Tree = int | list[Tree]` is also supported.
-Bare `list[Self]`, `None | list[Self]`, mutual recursion, generic recursive aliases
-and other recursive shapes remain unsupported. Qualified imports and ordinary
-aliases of an accepted alias retain the same named graph.
+Members may be `None`, `bool`, `int`, `float`, `str`, one tuple type that does not name
+the alias, `list[Self]` and `dict[str, Self]`, with at least two distinct non-`None`
+alternatives and one recursive container member. `type Tree = int | list[Tree]` is also
+supported. A tuple leaf follows the rules of a
+[union's tuple member](#operations-on-closed-unions): `isinstance(v, tuple)` narrows to it,
+and an index or a loop over the whole value needs narrowing first.
+
+A generic alias names itself with its own parameters in their order (`Leafed[F]`), and a
+parameter may be a member. Each use with type arguments names one graph: `Leafed[float]` and
+`Leafed[bool]` are two types, and `Leafed[T]` in a generic class or function is the graph of
+what `T` is bound to ([cases](../../tests/programs/inference/recursive_alias_generic.py)).
+A type argument is a scalar, `None`, a union of them or a tuple; a class is rejected. In a
+generic function, a local variable's annotation cannot name the TypeVar, and the result
+type is inferred from the returns, as for other function templates.
+
+Bare `list[Self]`, `None | list[Self]`, mutual recursion, a tuple that holds the alias
+(`tuple[Self, Self]`), class members and other recursive shapes remain unsupported.
+Qualified imports and ordinary aliases of an accepted alias retain the same named graph.
 
 Recursive container slots hold existing tagged union boxes. `isinstance()` narrows
 locals and parameters to the original list/dict pointer, preserving shared mutation;
 existing mutable containers remain invariant. The type graph is finite and does
 not prescribe a fixed data depth. Runtime traversal has recursion guards, and the
-native JSON codec has its own depth/int64 limits. Unlike other aliases, a recursive
-alias is nominal: another alias with the same members is a different type. See the
+native JSON codec has its own depth/int64 limits. Two recursive aliases with the same
+members are one type, as other aliases are: a decoded `json.JSONValue` is a value of a
+program's own alias that lists its members
+([cases](../../tests/programs/inference/recursive_alias_same_shape.py)). See the
 [JSON prototype](../json.md) for representation, operations and API scope.
 `Any` remains inference-only here (but in a module that opts in to
 [dynamic `Any`](../dynamic-any.md)); this adds no runtime compilation.

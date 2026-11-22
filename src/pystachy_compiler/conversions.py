@@ -514,7 +514,7 @@ def gen_rec_desc_body(self, t: str, use: str, active: dict[str, int], offset: in
         if use != "repr" and use != "==":
             self.err("recursive value ordering requires narrowing with isinstance() first")
         # (as gen_desc's unions: the runtime compares and prints only these members by descriptor)
-        if not ((use == "repr" and self.value_union(t)) or (use == "==" and self.ueq_type(t))):
+        if not ((use == "repr" and (self.value_union(t) or self.tuple_union(t))) or (use == "==" and self.ueq_type(t))):
             self.err("closed union operations require narrowing with isinstance() first")
         ms = umembers(t)
         out = "U" + str(len(ms)) + ":"
