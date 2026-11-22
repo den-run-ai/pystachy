@@ -222,7 +222,11 @@ covers a 2,000-container round trip and catching `RecursionError` on deeper inpu
 
 - **The collector is off.** The conservative stack scan cannot see WebAssembly locals, so
   `runtime.c` disables collection under WASI. The direct reactor registers the program’s global pointer slots before execution.
-  Mid-run collection still needs roots for live guest and runtime locals.
+  For collector testing, compile a direct program with `WASM_GUEST_ROOTS=1`. The emitter
+  mirrors its named i32 and i64 locals, including packed references, on the runtime's linear
+  stack. Its conservative scan can retain dead temporaries until their activation returns
+  or unwinds. The setting increases stack usage and code size. Automatic collection stays
+  disabled because active runtime C and compiled runtime.py locals can still hide references.
   The shared heap tracer scans complete four-byte pointer words on wasm32.
   The engine caps memory (4 GiB for wasm32).
 - **LLVM/WASI commands use WebAssembly exception handling.** The adapter lowers native

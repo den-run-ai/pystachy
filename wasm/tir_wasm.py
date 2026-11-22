@@ -940,12 +940,15 @@ def generator_functions(m: Module, targets: dict[str, str], handles: set[str]) -
 # ---------- emission ----------
 
 class Emitter:
-    def __init__(self, m: Module, standard_exceptions: bool = False):
+    def __init__(self, m: Module, standard_exceptions: bool = False, guest_roots: bool = False):
         self.m = m
         self.funcs: list[Func] = []
         self.generator_targets: dict[str, str] = {}
         self.generator_handles: set[str] = set()
         self.standard_exceptions = standard_exceptions
+        self.guest_roots = guest_roots
+        self.root_offsets: dict[int, int] = {}
+        self.parent_stack = -1
         self.types = Types()
         self.imports: dict[str, Import] = {}
         self.import_order: list[str] = []
@@ -1183,7 +1186,7 @@ class Emitter:
         if self.m.roots:
             self.import_table_setter("pys_wasi_set_global_roots")
         for fn in self.funcs:
-            if fn.frame_bytes:
+            if fn.frame_bytes or self.guest_roots:
                 self.stack_frames = True
                 self.runtime("recursion.stack")
             for b in fn.blocks:
@@ -1224,6 +1227,8 @@ class Emitter:
         if name not in self.locals:
             self.locals[name] = len(self.ltypes)
             self.ltypes.append(wt)
+            if self.guest_roots and wt != F64:
+                self.root_offsets[self.locals[name]] = self.fn.frame_bytes + 8 * len(self.root_offsets)
         return self.locals[name]
 
     def scratch(self, wt: int) -> int:
@@ -1248,6 +1253,18 @@ class Emitter:
 
     def set(self, k: int) -> None:
         self.local_op(0x21, k)
+        if k in self.root_offsets:
+            self.spill_root(k)
+
+    def spill_root(self, k: int) -> None:
+        # i64 locals can hold packed references. The conservative wasm32 scan
+        # finds their low word as well as pointers held directly in i32 locals.
+        self.get(self.frame_local)
+        self.get(k)
+        if self.ltypes[k] == I32:
+            self.mem(0x36, 2, self.root_offsets[k])
+        else:
+            self.mem(0x37, 3, self.root_offsets[k])
 
     def i32c(self, v: int) -> None:
         self.code.append(0x41)
@@ -1344,6 +1361,7 @@ class Emitter:
 
     def function(self, fn: Func) -> bytearray:
         self.fn = fn
+        self.root_offsets = {}
         self.locals = {}
         self.remap = []
         self.local_sites = []
@@ -1361,7 +1379,8 @@ class Emitter:
                 self.local(f"%a{j}", I32)
         for s in fn.slots:
             self.local(s, wasm_type(value_ll(fn.slots[s])))
-        self.frame_local = self.scratch(I32) if fn.frame_bytes else -1
+        self.frame_local = self.scratch(I32) if fn.frame_bytes or self.guest_roots else -1
+        self.parent_stack = self.scratch(I32) if self.guest_roots else -1
         self.exception_local = -1
         self.handler_stack = -1
         self.bindex = fn.block_indices()
@@ -1411,7 +1430,7 @@ class Emitter:
         self.code = bytearray()
         if fn.name == "@main.init" and "@g.atexit$_hook" in self.m.globals:
             self.call_import(self.runtime("exit_hook"), [Operand("%ptr", "@g.atexit$_hook")])
-        if fn.frame_bytes:
+        if self.frame_local >= 0:
             self.enter_frame()
         if self.handler_stack >= 0 and self.frame_local < 0:
             self.op(0x23)  # global.get rt.__stack_pointer at function entry
@@ -1465,7 +1484,7 @@ class Emitter:
     def enter_frame(self) -> None:
         # Reserve an ABI-aligned frame on the reactor's linear-memory stack. Its
         # pys_on_stack check must recognize *args tuples before a callee keeps them.
-        size = (self.fn.frame_bytes + 15) // 16 * 16
+        size = (self.fn.frame_bytes + 8 * len(self.root_offsets) + 15) // 16 * 16
         self.op(0x23)  # global.get rt.__stack_pointer (global 2)
         uleb(self.code, 2)
         self.op(0xAD)  # i64.extend_i32_u, so subtracting a large frame cannot wrap
@@ -1482,11 +1501,21 @@ class Emitter:
         self.op(0x0B)
         self.op(0x23)
         uleb(self.code, 2)
+        if self.guest_roots:
+            self.local_op(0x22, self.parent_stack)
         self.i32c(size)
         self.op(0x6B)  # i32.sub
         self.local_op(0x22, self.frame_local)  # local.tee frame
         self.op(0x24)  # global.set rt.__stack_pointer
         uleb(self.code, 2)
+        if self.root_offsets:
+            self.get(self.frame_local)
+            self.i32c(0)
+            self.i32c(size)
+            self.code.extend(b"\xfc\x0b\x00")  # memory.fill: clear reused stack slots
+            for k in range(self.nparams):
+                if k in self.root_offsets:
+                    self.spill_root(k)
 
     def goto(self, label: str, extra_depth: int) -> None:
         # from block self.cur, to label: its phis' values (all read, then all set), then a br
@@ -1941,9 +1970,12 @@ class Emitter:
 
     def restore_frame(self) -> None:
         if self.frame_local >= 0:
-            self.get(self.frame_local)
-            self.i32c((self.fn.frame_bytes + 15) // 16 * 16)
-            self.op(0x6A)
+            if self.guest_roots:
+                self.get(self.parent_stack)
+            else:
+                self.get(self.frame_local)
+                self.i32c((self.fn.frame_bytes + 15) // 16 * 16)
+                self.op(0x6A)
             self.op(0x24)
             uleb(self.code, 2)
         if self.depth_local >= 0:
@@ -2188,7 +2220,7 @@ class Emitter:
         self.code.extend(b"\xd0\x70")  # ref.null func
         self.i32c(len(self.callbacks))
         self.code.extend(b"\xfc\x0f\x00")  # table.grow 0
-        self.set(0)
+        self.local_op(0x21, 0)
         self.get(0)
         self.i32c(-1)
         self.op(0x46)  # i32.eq
@@ -2446,7 +2478,7 @@ def main() -> None:
     text = f.read()
     f.close()
     try:
-        out = Emitter(parse(text), standard_eh()).module()
+        out = Emitter(parse(text), standard_eh(), os.getenv("WASM_GUEST_ROOTS") == "1").module()
     except Refused as e:
         sys.stderr.write(f"tir_wasm: refused: {e.what}\n")
         sys.exit(3)
