@@ -928,6 +928,102 @@
       "diagnostic": "tests/programs/inference/union_value_operators.py:19: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got int",
       "reason": "Arithmetic on a closed value union joins a promoting int result with its float result in a closed union; only scalar int-or-None promotion is supported.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/object_storage_alias.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/object_storage_alias.py:65: error: unsupported operand type(s) for +=: 'int' and 'object' (narrow a value of object with isinstance() to float, bool, str, bytes, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)",
+      "reason": "isinstance(x, int) narrows a value of object to nothing in a module that opts in to promoting ints: a bool passes the test, which a promoting int cannot hold, so the narrowed value's int operations are rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/object_storage_alias.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/object_storage_alias.py:65: error: unsupported operand type(s) for +=: 'int' and 'object' (narrow a value of object with isinstance() to float, bool, str, bytes, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)",
+      "reason": "isinstance(x, int) narrows a value of object to nothing in a module that opts in to promoting ints: a bool passes the test, which a promoting int cannot hold, so the narrowed value's int operations are rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/object_storage_from_dynamic.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/object_storage_from_dynamic.py:23: error: unsupported operand type(s) for *: 'object' and 'int' (narrow a value of object with isinstance() to float, bool, str, bytes, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)",
+      "reason": "isinstance(x, int) narrows a value of object to nothing in a module that opts in to promoting ints: a bool passes the test, which a promoting int cannot hold, so the narrowed value's int operations are rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/object_storage_from_dynamic.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/object_storage_from_dynamic.py:23: error: unsupported operand type(s) for *: 'object' and 'int' (narrow a value of object with isinstance() to float, bool, str, bytes, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)",
+      "reason": "isinstance(x, int) narrows a value of object to nothing in a module that opts in to promoting ints: a bool passes the test, which a promoting int cannot hold, so the narrowed value's int operations are rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/object_storage_narrow.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/object_storage_narrow.py:58: error: unsupported operand type(s) for +: 'object' and 'int' (narrow a value of object with isinstance() to float, bool, str, bytes, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)",
+      "reason": "isinstance(x, int) narrows a value of object to nothing in a module that opts in to promoting ints: a bool passes the test, which a promoting int cannot hold, so the narrowed value's int operations are rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/object_storage_narrow.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/object_storage_narrow.py:58: error: unsupported operand type(s) for +: 'object' and 'int' (narrow a value of object with isinstance() to float, bool, str, bytes, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)",
+      "reason": "isinstance(x, int) narrows a value of object to nothing in a module that opts in to promoting ints: a bool passes the test, which a promoting int cannot hold, so the narrowed value's int operations are rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/object_storage_to_dynamic.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/object_storage_to_dynamic.py:25: error: unsupported operand type(s) for +: 'object' and 'int' (narrow a value of object with isinstance() to float, bool, str, bytes, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)",
+      "reason": "isinstance(x, int) narrows a value of object to nothing in a module that opts in to promoting ints: a bool passes the test, which a promoting int cannot hold, so the narrowed value's int operations are rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/object_storage_to_dynamic.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/object_storage_to_dynamic.py:25: error: unsupported operand type(s) for +: 'object' and 'int' (narrow a value of object with isinstance() to float, bool, str, bytes, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)",
+      "reason": "isinstance(x, int) narrows a value of object to nothing in a module that opts in to promoting ints: a bool passes the test, which a promoting int cannot hold, so the narrowed value's int operations are rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/object_storage_update.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/object_storage_update.py:18: error: unsupported operand type(s) for +=: 'object' and 'int' (narrow a value of object with isinstance() to float, bool, str, bytes, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)",
+      "reason": "isinstance(x, int) narrows a value of object to nothing in a module that opts in to promoting ints: a bool passes the test, which a promoting int cannot hold, so the narrowed value's int operations are rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/object_storage_update.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/object_storage_update.py:18: error: unsupported operand type(s) for +=: 'object' and 'int' (narrow a value of object with isinstance() to float, bool, str, bytes, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)",
+      "reason": "isinstance(x, int) narrows a value of object to nothing in a module that opts in to promoting ints: a bool passes the test, which a promoting int cannot hold, so the narrowed value's int operations are rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/object_storage_int.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/object_storage_int.py:8: error: expected int, got object (narrow a value of object with isinstance() to float, bool, str, bytes, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise) (compiling use(object) for the call at tests/programs/classes/object_storage_int.py:17, where x may be None: only a new object or self is known not to be None, which decides isinstance(), hasattr() and 'is None' at compile time)",
+      "reason": "isinstance(x, int) narrows a value of object to nothing in a module that opts in to promoting ints: a bool passes the test, which a promoting int cannot hold, so the narrowed value's int operations are rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/object_storage_int.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/classes/object_storage_int.py:8: error: expected int, got object (narrow a value of object with isinstance() to float, bool, str, bytes, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise) (compiling use(object) for the call at tests/programs/classes/object_storage_int.py:17, where x may be None: only a new object or self is known not to be None, which decides isinstance(), hasattr() and 'is None' at compile time)",
+      "reason": "isinstance(x, int) narrows a value of object to nothing in a module that opts in to promoting ints: a bool passes the test, which a promoting int cannot hold, so the narrowed value's int operations are rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     }
   ]
 }
