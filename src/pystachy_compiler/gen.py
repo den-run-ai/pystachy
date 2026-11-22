@@ -1269,6 +1269,8 @@ from src.pystachy_compiler.program import (
     gen_plain_chain as program_plain_chain,
     gen_template_under as program_template_under,
     gen_under_base as program_under_base,
+    gen_under_tbase as program_under_tbase,
+    gen_tmpl_hint as program_tmpl_hint,
     gen_sub_base as program_sub_base,
     gen_late_sub as program_late_sub,
     gen_template_hierarchy as program_template_hierarchy,
@@ -4318,6 +4320,12 @@ class Gen:
 
     def under_base(self, t: ClassInfo, base: str) -> None:
         program_under_base(self, t, base)
+
+    def under_tbase(self, c: str) -> str:
+        return program_under_tbase(self, c)
+
+    def tmpl_hint(self, t: str, name: str) -> str:
+        return program_tmpl_hint(self, t, name)
 
     def sub_base(self, t: ClassInfo, init: FnInfo, ts: list[str]) -> str:
         return program_sub_base(self, t, init, ts)

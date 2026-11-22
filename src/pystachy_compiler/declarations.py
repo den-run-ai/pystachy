@@ -1918,18 +1918,21 @@ def gen_declare_fields(self, ci: ClassInfo) -> None:
 
 
 def gen_class_fields(self, ci: ClassInfo) -> None:
+    # (a class template under an ordinary class derives from no class, program.py's template_under:
+    # its fields, class attributes too, begin as its base's do, as its specializations' do)
+    cbase = ci.base if ci.base != "" else self.tbases.get(ci.name, "")
     noann = mk("noann", "", ci.node.line, [])
     last = ""
-    if ci.base in self.classes and self.classes[ci.base].excluded:
-        why = self.classes[ci.base].bad
-        self.bad_class(ci, f"its base {shown(ci.base)} is not supported: {why[why.find(': ') + 2 :]}")
+    if cbase in self.classes and self.classes[cbase].excluded:
+        why = self.classes[cbase].bad
+        self.bad_class(ci, f"its base {shown(cbase)} is not supported: {why[why.find(': ') + 2 :]}")
     # Slot names constrain layout; the declaration remains a class attribute. A
     # subclass without its own __slots__, or with an unslotted base, has a dict.
-    if ci.base in self.classes:
-        ci.slots = list(self.classes[ci.base].slots)
-        if "__slots__" in self.classes[ci.base].fdefault:
-            ci.ftypes["__slots__"] = self.classes[ci.base].ftypes["__slots__"]
-            ci.fdefault["__slots__"] = self.classes[ci.base].fdefault["__slots__"]
+    if cbase in self.classes:
+        ci.slots = list(self.classes[cbase].slots)
+        if "__slots__" in self.classes[cbase].fdefault:
+            ci.ftypes["__slots__"] = self.classes[cbase].ftypes["__slots__"]
+            ci.fdefault["__slots__"] = self.classes[cbase].fdefault["__slots__"]
     slots_declared = False
     for st in ci.node.kids[0].kids:
         if st.kind not in ["assign", "annassign"] or st.kids[0].kind != "name" or st.kids[0].s != "__slots__":
@@ -1952,9 +1955,9 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
                 why = "__slots__ needs literal attribute names"
             elif n.s in ["__dict__", "__weakref__"] or (n.s.startswith("__") and not n.s.endswith("__")):
                 why = f"__slots__ entry '{n.s}' is not supported"
-            elif ci.base in self.classes and n.s in self.classes[ci.base].methods:
+            elif cbase in self.classes and n.s in self.classes[cbase].methods:
                 why = f"slot '{n.s}' shadows an inherited method or property: not supported"
-            elif ci.base in self.classes and n.s in self.classes[ci.base].fdefault:
+            elif cbase in self.classes and n.s in self.classes[cbase].fdefault:
                 why = f"slot '{n.s}' shadows an inherited class variable: not supported"
             else:
                 ci.slots.append(n.s)
@@ -1977,7 +1980,7 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
         if st.kind == "assign":
             st.kind = "annassign"
             st.kids = [st.kids[0], noann, slot_node]
-        ci.slotlimit = ci.exc == "" and (ci.base not in self.classes or self.classes[ci.base].slotlimit)
+        ci.slotlimit = ci.exc == "" and (cbase not in self.classes or self.classes[cbase].slotlimit)
         # A slot's descriptor cannot coexist with a class variable or method of
         # that name. Reject shadowing inherited descriptors too.
         for d in ci.node.kids[0].kids:
@@ -1992,9 +1995,9 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
         # classes all declare __slots__ = () does not: slotted_trait)
         self.line = ci.node.line
         self.bad_class(ci, "__slots__ in a hierarchy with a secondary base is not supported")
-    if ci.base in self.classes:
+    if cbase in self.classes:
         # an exception class's objects begin with its base's fields (and their flags, see fl_fields)
-        b = self.classes[ci.base]
+        b = self.classes[cbase]
         for x in b.fields:
             self.add_field(ci, x, b.ftypes[x])
             if x in b.fdefault:
@@ -2063,16 +2066,16 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
             o = ci.fopts[st.kids[0].s]
             if "kw_only" not in o and "pos" not in o and kwmode:
                 o["kw_only"] = True
-        if dc and st.kind == "annassign" and st.kids[0].kind == "name" and ci.base in self.classes and st.kids[0].s in self.classes[ci.base].ftypes:
+        if dc and st.kind == "annassign" and st.kids[0].kind == "name" and cbase in self.classes and st.kids[0].s in self.classes[cbase].ftypes:
             # (a base dataclass's field declared again, with or without a default)
-            if field_ann(self, ci, st.kids[0].s, st.kids[1]) != self.classes[ci.base].ftypes[st.kids[0].s]:
-                self.bad_class(ci, f"field '{st.kids[0].s}' of '{short(ci.base)}' declared again in '{short(ci.name)}' with another type (not supported)")
+            if field_ann(self, ci, st.kids[0].s, st.kids[1]) != self.classes[cbase].ftypes[st.kids[0].s]:
+                self.bad_class(ci, f"field '{st.kids[0].s}' of '{short(cbase)}' declared again in '{short(ci.name)}' with another type (not supported)")
                 continue
-        elif st.kind == "annassign" and st.kids[0].kind == "name" and ci.base in self.classes and st.kids[0].s in self.classes[ci.base].ftypes:
+        elif st.kind == "annassign" and st.kids[0].kind == "name" and cbase in self.classes and st.kids[0].s in self.classes[cbase].ftypes:
             # (a class attribute of the base bound again, with the same type: as x = v is)
-            b = self.classes[ci.base]
+            b = self.classes[cbase]
             if len(st.kids) < 3 or st.kids[0].s not in b.fdefault or field_ann(self, ci, st.kids[0].s, st.kids[1]) != b.ftypes[st.kids[0].s]:
-                self.err(f"field '{st.kids[0].s}' of '{short(ci.base)}' declared again in '{short(ci.name)}' (not supported" + (", but for a class attribute of the same type" if st.kids[0].s in b.fdefault else "") + ")")
+                self.err(f"field '{st.kids[0].s}' of '{short(cbase)}' declared again in '{short(ci.name)}' (not supported" + (", but for a class attribute of the same type" if st.kids[0].s in b.fdefault else "") + ")")
         if st.kind == "annassign" and st.kids[0].kind == "name" and ci.mod != "" and self.ann_problem(st.kids[1], False) != "":
             # an imported module's class: an error only where the program uses it
             ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {self.ann_problem(st.kids[1], False)}"
@@ -2102,7 +2105,7 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
                     self.err(why)
                 ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
             t = self.guess(st.kids[1], FnInfo("", "", ci.node, ""))
-            bt = self.classes[ci.base].ftypes.get(st.kids[0].s, "") if ci.base in self.classes else ""
+            bt = self.classes[cbase].ftypes.get(st.kids[0].s, "") if cbase in self.classes else ""
             if t != "" and bt != "" and (self.widens(t, bt) or self.boxes(t, bt) or (t == "int" and bt == BIG)):
                 t = bt  # (a class attribute of the base bound again, with a value of its type)
             if t == "" and ci.mod == "" and st.kids[1].kind == "name" and st.kids[1].s in self.classes and self.classes[st.kids[1].s].node.line in ENUMCLASSES:
@@ -2122,14 +2125,14 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
         elif st.kind != "def" and st.kind != "pass" and not (st.kind == "expr" and (st.kids[0].kind == "str" or st.kids[0].kind == "ellipsis")):
             what = "an assignment to anything but one name (x = v)" if st.kind == "assign" else "an expression statement" if st.kind == "expr" else f"a{'n' if st.kind[0] in 'aeiou' else ''} {st.kind} statement"
             self.err(f"a class body may only contain fields, methods, a docstring, pass and ..., not {what}")
-    inherited = self.classes[ci.base].roles if ci.base in self.classes else []
+    inherited = self.classes[cbase].roles if cbase in self.classes else []
     for r in ci.roles:
         # the attributes its own secondary bases declare by annotation (role_attrs): its fields,
         # as its class body's are, which a value of the base's type reads by the object's class
         # (role_field). One that the class or its primary chain declares keeps that declaration,
         # which must be of the same type
         role = self.classes[r]
-        if r in inherited or (role.base != "" and len(self.role_chain(ci.base, r)) == 0):
+        if r in inherited or (role.base != "" and len(self.role_chain(cbase, r)) == 0):
             continue  # (a trait's fields are those of the primary chain's class it derives from)
         self.declare_fields(role)
         if not role.fields_ready and any(d.kind == "annassign" and len(d.kids) == 2 for d in role.node.kids[0].kids):
@@ -2153,10 +2156,10 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
             elif last != "":
                 self.line = flines[fl] if fl in flines else ci.node.line
                 self.err(f"non-default argument '{fl}' follows default argument '{last}'")
-    if dc and ci.base in self.classes:
+    if dc and cbase in self.classes:
         # the methods @dataclass wrote for the base, after inherit() copied its others, but the
         # __init__ it writes for this class
-        b = self.classes[ci.base]
+        b = self.classes[cbase]
         if "no-init" not in ci.dcopts and "__init__" in ci.methods and ci.methods["__init__"].cls != ci.name:
             del ci.methods["__init__"]
         for m in b.methods:
@@ -2182,17 +2185,17 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
             self.line = ci.node.line if owner != ci.name else ci.methods[m].node.line if m in ci.methods else ci.fdefault[m].line
             self.err(why)
         ci.hook = ci.hook if ci.hook != "" else f"class {shown(ci.name)} is not supported: {why}"
-    b = self.classes[ci.base] if ci.base in self.classes else ClassInfo("", ci.node)
+    b = self.classes[cbase] if cbase in self.classes else ClassInfo("", ci.node)
     if "__init_subclass__" in b.methods or "__init_subclass__" in b.fdefault:
         # a base's (a def or a class attribute), which CPython calls when the class statement runs
         # (in an imported module, as the module is imported, whether or not the program uses the class)
         self.line = ci.node.line
         owner = short(b.methods["__init_subclass__"].cls if "__init_subclass__" in b.methods else self.default_home(b, "__init_subclass__").name)
         self.err(f"a base that defines __init_subclass__ is not supported (CPython calls {owner}.__init_subclass__() when it creates class {short(ci.name)})")
-    if "__init__" not in ci.methods and ci.base in self.classes and "__init__" in self.classes[ci.base].methods and not (dc and "no-init" not in ci.dcopts):
+    if "__init__" not in ci.methods and cbase in self.classes and "__init__" in self.classes[cbase].methods and not (dc and "no-init" not in ci.dcopts):
         # A base with no explicit initializer acquired its empty one while its fields were
         # declared, after inherit() copied its other methods.
-        ci.methods["__init__"] = self.classes[ci.base].methods["__init__"]
+        ci.methods["__init__"] = self.classes[cbase].methods["__init__"]
     if "__init__" in ci.methods or ci.exc != "":
         # (an exception class without __init__ of its own takes its base's, or none)
         if "__init__" in ci.methods and ci.methods["__init__"].cls == ci.name and ci.name not in self.tmpl:
@@ -3544,7 +3547,7 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
             self.err(f"'{short(o.t)}' object has no attribute '{name}' (of an exception object, only the fields of its class are supported; str(e) and repr(e) are)")
         if o.t in self.nts and name == "__doc__":
             self.err(f"reading the __doc__ of NamedTuple {short(o.t)} is not supported (Pystachy keeps no docstrings of classes)")
-        self.err(f"'{shown(o.t)}' object has no attribute '{name}'" + self.nested_hint(o.t, name))
+        self.err(f"'{shown(o.t)}' object has no attribute '{name}'" + self.nested_hint(o.t, name) + self.tmpl_hint(o.t, name))
     extra = " and no __dict__ for setting new attributes" if store else ""
     if self.rolex != o.v and self.role_field(o.t, name):
         # (the object may be a combining class's, whose layout holds the attribute elsewhere:

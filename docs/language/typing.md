@@ -1339,11 +1339,25 @@ unannotated parameters does under a `Base` with an annotated one (#962). Each sp
 selects its override, and a variable, field, parameter or list typed `Base` holds objects of
 `Base` and of every specialization of every template under it
 ([test](../../tests/programs/classes/template_under_base.py)), also where `Base` derives from
-another class ([test](../../tests/programs/classes/template_under_chain.py)). `isinstance(x, T)`
-holds for an object of any specialization of `T` or of a class that derives from one, and
-`isinstance(x, Base)` for all of them; an annotation that names `T` types nothing, as for any
-class template, and `Base` types a location that holds them all. `T`'s own subclasses are those of
-a class template above ([test](../../tests/programs/classes/template_fixed_base.py)). The
+another class ([test](../../tests/programs/classes/template_under_chain.py)). Its objects read
+the class attributes of `Base` and of the classes it derives from, with their current values,
+where `T`, a member or a subclass does not bind them again, as an ordinary subclass's objects do
+([test](../../tests/programs/classes/template_under_class_attrs.py),
+[test](../../tests/programs/classes/template_under_siblings.py),
+[test](../../tests/programs/classes/template_under_nested_attrs.py)), and so does `T.attr`
+([test](../../tests/programs/classes/template_under_class_attr.py)); assigning one through `T` is
+an error, as through an ordinary subclass
+([error test](../../tests/errors/classes/template_under_class_store.py)). `type(self)` of such
+an object is `T`, a class template, which is no value
+([error test](../../tests/errors/classes/template_under_type_attr.py)). `isinstance(x, T)`
+holds for an object of any specialization of `T` or of a class that derives from one, also those
+that code makes after the test is compiled, and `isinstance(x, Base)` for all of them
+([test](../../tests/programs/classes/template_under_isinstance.py)); it narrows `x` to no one
+type, so a method or field of `T`'s own is read through a value of `Base` only where `Base` has
+it ([error test](../../tests/errors/classes/template_under_narrow.py)). An annotation that names
+`T` types nothing, as for any class template, and `Base` types a location that holds them all.
+`T`'s own subclasses are those of a class template above
+([test](../../tests/programs/classes/template_fixed_base.py)). The
 specializations are made before any code is compiled: one that code makes first is made in turn,
 and the program is compiled again, so its arguments may not be objects of a class template's
 specialization, lambdas, nested functions or bound methods
@@ -1358,10 +1372,7 @@ builtin type's subclass or a generic class, and with no `__slots__`
 ([error test](../../tests/errors/classes/template_under_slots.py)), secondary base,
 `__init_subclass__`, `__class_getitem__` or `__init__` whose parameters make it a template; the
 template has one base and no decorator. A template whose own fields all have annotations keeps
-one class ([fixed-layout constructors](#class-templates-and-generic-classes)). The template
-itself derives from no class, only its specializations do: a class attribute that only the base
-binds is read through an object or the base, not through the template's name
-([error test](../../tests/errors/classes/template_under_class_attr.py)).
+one class ([fixed-layout constructors](#class-templates-and-generic-classes)).
 
 ### Explicit generic classes
 

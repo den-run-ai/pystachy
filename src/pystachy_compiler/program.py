@@ -460,9 +460,10 @@ def gen_inherit(self, ci: ClassInfo) -> None:
     # module's: cls_bound rejects its calls).
     # Ordinary instance methods specialize for the receiver and dispatch on its class.
     # Exception methods retain their existing restricted override rules.
-    if ci.base not in self.classes:
+    base = ci.base if ci.base != "" else self.tbases.get(ci.name, "")  # (a template under an ordinary class: its base's, template_under)
+    if base not in self.classes:
         return
-    b = self.classes[ci.base]
+    b = self.classes[base]
     for m in b.methods:
         f = b.methods[m]
         if f.acc != "" and m not in ci.methods and f.node.s in ci.methods and ci.methods[f.node.s].cls == ci.name:
@@ -1362,22 +1363,39 @@ def gen_template_under(self, st: Node, base: str) -> bool:
     return self.init_generic(st.kids[0], True) and not self.fixed_layout(st.kids[0]) and self.plain_chain(base)
 
 def gen_under_base(self, t: ClassInfo, base: str) -> None:
-    # (specialize, for class template t under ordinary class base, tbases) the fields of base and
-    # of the classes it derives from, declared, and their methods, which t has too (a property's
-    # setter that t's __init__ assigns through, scan_fields): t derives from no class itself
-    chain: list[str] = []
-    c = base
-    while c in self.classes:
-        chain.insert(0, c)
+    # (specialize, for class template t under ordinary class base, tbases) the methods and fields of
+    # base, of the classes it derives from and of the others declared before it, in order, as the
+    # declarations give them later (inherit, declare_fields), where template_bases makes t's
+    # specialization before that: a class attribute of base may read another class's (Color.BLUE).
+    # Not those whose base template_bases has yet to make, a class template's specialization. Then
+    # t's own methods, base's too (a property's setter that t's __init__ assigns through, scan_fields)
+    for ci in list(self.classes.values()):
+        if not (ci.base in self.tmpl and ci.name not in self.tmpl and ci.origin == ""):
+            self.inherit(ci)
+            self.declare_fields(ci)
+        if ci.name == base:
+            break
+    self.inherit(t)
+
+def gen_under_tbase(self, c: str) -> str:
+    # the ordinary class that the specializations of class template c derive from (template_under):
+    # c's own, or that of the template c derives from as a member or a subclass; else ""
+    while c in self.classes and c in self.tmpl:
+        if c in self.tbases:
+            return self.tbases[c]
         c = self.classes[c].base
-    for c in chain:
-        self.inherit(self.classes[c])
-        self.declare_fields(self.classes[c])
-    t.base = base
-    try:
-        self.inherit(t)
-    finally:
-        t.base = ""
+    return ""
+
+def gen_tmpl_hint(self, t: str, name: str) -> str:
+    # (an error that an object of class t has no method or attribute name) where a class template
+    # under an ordinary class that t is or derives from defines it (under_tbase): why isinstance()
+    # did not make the value the template's, and what to do; else ""
+    for x in [c for c in self.classes.values() if c.name in self.tmpl and c.origin == ""]:
+        ub = self.under_tbase(x.name)
+        own = (name in x.methods and x.methods[name].cls == x.name) or len([c for c in self.classes.values() if c.origin == x.name and name in c.ftypes]) > 0
+        if ub != "" and self.derives(ub, t) and own and name not in self.classes[ub].ftypes and name not in self.classes[ub].methods:
+            return f" (it is {short(x.name)}'s, a class template: isinstance(x, {short(x.name)}) tests every specialization of {short(x.name)} but cannot narrow a {short(t)} to one type; define {name} on {short(t)}, or annotate the parameters of {short(x.name)}.__init__ so that {short(x.name)} is one class)"
+    return ""
 
 def gen_tmpl_member(self, ci: ClassInfo) -> bool:
     # is class ci a member of a template hierarchy: no __init__ of its own, its base a class

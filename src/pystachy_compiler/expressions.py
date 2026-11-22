@@ -579,6 +579,11 @@ def gen_isinst(self, t: str, c: Node) -> int:
                 # one where its chain holds a specialization of it)
                 if self.tmpl_derives(t, c.s):
                     return -2
+                if self.under_tbase(c.s) != "" and self.derives(self.under_tbase(c.s), t):
+                    # (a template under an ordinary class that derives from t: each of its
+                    # specializations does, which code may make after this test is compiled, and
+                    # the next pass makes before it, program.py's late_sub; the value keeps t)
+                    return -1
                 return -1 if len([x for x in self.classes.values() if x.tag > 0 and self.tmpl_derives(x.name, c.s) and self.derives(x.name, t)]) > 0 else 0
             return -1 if self.derives(c.s, t) or c.s in self.classes[t].overlaps else 0
         # (an exception of class t, or of a builtin one, may be an object of a class deriving from t)
