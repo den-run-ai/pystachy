@@ -206,9 +206,12 @@ scopelib.keep(outer())
         source = 'from _pystachy_percent import percent_format\nprint(percent_format("%+08d", 7))\n'
         ir, _ = self.compile(source, helper=False)
         bodies = functions(ir)
-        output = bodies["@f._pystachy_percent$_output"]
+        # (_output takes the formatter, a class template of its arguments' value of object: its
+        # one specialization's)
+        output = [bodies[name] for name in bodies if name.startswith("@f._pystachy_percent$_output")]
+        self.assertEqual(len(output), 1)
         # The settings can still acquire companions as they enter the typed helper.
-        self.assertLessEqual(len(BOXING.findall(output)), 3)
+        self.assertLessEqual(len(BOXING.findall(output[0])), 3)
         padding = bodies["@f._pystachy_percent$_pad_output"]
         self.assertLessEqual(len(BOXING.findall(padding)), 2)
 

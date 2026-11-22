@@ -27,7 +27,6 @@ state are listed separately. No new restriction on existing callers is implied.
 | `tomllib._re` | `match_to_number()` returns either an integer or the supplied callback's object. A single callback may itself return different supported types. | Regex/date helpers already have concrete annotations. Specializing a known callback to `int \| T` still needs accepted-program and numeric-identity parity; closed-union inference alone does not establish it. Moving the callback function leaves transitive identity tracking in place. |
 | `tomllib._types` | `ParseFloat = Callable[[str], Any]` defines the current dynamic callback result contract. | `Key` and `Pos` are concrete. Removing this pragma changes the alias's meaning in its consumers; an alternative generic alias requires their coordinated migration. |
 | `logging` | Stored messages, arguments, extra/default values, filters and replacement records expose open payloads and callbacks. Runtime formatting invokes their supported conversion methods. | Formatting mechanics and normalized record fields should stay concrete. Level inputs have a known normal set, but invalid values must keep their existing validation timing. The historical `Filterer.filter` comment predates closed unions; its false-or-record result deserves a separate checked migration. |
-| `_pystachy_percent` | Logging and argparse runtime formats select values from heterogeneous argument packs or mappings, invoking their conversions and preserving error order. | Scanner offsets, flags, widths, precision and output strings are concrete. Once argument conversion has finished, padding receives only the conversion settings and strings. A runtime-sized open argument pack is distinct from a statically specialized tuple. |
 | `_pystachy_json_any` | Dynamic `json.dumps` supports open objects through `default`, tuple inputs and mutable heterogeneous graphs; dynamic `loads` returns containers callers may mutate through `Any`. | The scanner already uses typed `json._Parser` and the checked `identity-inert` hint. Closed consumers can use `JSONValue`. Preserve wide integer behavior separately from this storage choice. |
 | `inspect` | mypyc's `get_text_signature()` (`mypyc/ir/func_ir.py`, mypy 2.4.1) gives `Parameter` a default of whatever type a compiled function declares; a parameter's default and annotation and a signature's return annotation are open payloads that `str()`, `==` and `hash()` format, compare and hash at runtime and that callers read back by identity (`default is Parameter.empty`). A class template would make `Parameter` one type per default type, which a `list[Parameter]` and a `Signature` cannot mix, and a closed union cannot hold the marker object beside scalars or admit tuples and objects. | Names, kinds, the parameters' mapping, validation and formatting are concrete. A kind is an `IntEnum` member, which cannot become an `Any` value, so `replace()` constructs by class name instead of `type(self)`. The opt-in puts `enum`, `keyword` and `types` in the tracked import closure, and a non-opt-in caller that makes a `Parameter` restarts compilation with full identity tracking; `re` is kept out of the closure, at the cost of an ASCII-only name test until `str.isidentifier()` is supported. |
 | `threading` | Thread/Timer retain arbitrary supported targets, argument packs and keyword packs; Condition retains a supplied lock implementing its supported protocol. | Thread's nongeneric base requirement is compiler debt. Names after conversion, counters, waiters and normalized lock state can be concrete. Preserve existing constructor errors; this inventory adds no thread execution support. |
@@ -103,7 +102,6 @@ module still needs, which its row above describes.
 | `tomllib._types` | 7 of 8 | `make_safe_parse_float() returns both` `float` and its wrapper function |
 | `tomllib._parser` | 7 of 8 | `NestedDict`: `typing.Any is only supported in the parameter and return annotations` (its field holds any parsed value) |
 | `logging` | 5 of 5 | `inheritance with generic class templates`: `StrFormatStyle` and `Logger` inherit fields that the constructor's arguments type |
-| `_pystachy_percent` | 5 of 30 | `_Formatter`: `typing.Any is only supported in the parameter and return annotations` (its fields hold the argument pack) |
 | `inspect` | 12 of 12 | `cannot infer the type of '_VOID_PARAMETERS'`: a list of `Parameter` objects, whose default and annotation type the class |
 | `threading` | 2 of 16 | `inheritance with generic class templates`: `Semaphore` holds a `Condition`, whose lock types its field, and a program subclasses `Thread`, whose target and arguments type its fields |
 | `json_repair.py` | 15 of 18 | `repair_json() returns both` a `(value, log)` tuple and a value |
@@ -119,10 +117,12 @@ compiling, which keeps the opt-in. A caller operates on a default as an `Any` va
 `q.default + 1` does (`lib_inspect_any.py`), which a value of `object` takes only once
 `isinstance()` narrows it; a module-level read is not narrowed (`lib_inspect_defaults.py`); and
 `object` parameters make `Parameter` a class template, which `lib_inspect_subclass.py` cannot
-subclass. `_pystachy_percent` so annotated stops at `mapping[key]`: a test of a container type
-narrows a value of `object` to nothing that can be indexed or measured, and it and `logging` would
-also need numeric conversions (`%d`, `%f`) of such values, functions as values of `object` (a
-logger's filters) and subclasses of class templates.
+subclass. `_pystachy_percent` no longer opts in: its arguments are values of `object`, a tuple
+or dict among them read through the [view](language/typing.md#object) a container test narrows
+it to, and its numbers converted by `int()`, `float()`, `str()` and `format()` of what each holds,
+a number past 64 bits included; every program that reaches it prints what it printed (JIT and
+AOT). `logging` would also need functions as values of `object` (a logger's filters) and
+subclasses of class templates.
 
 ## Evidence required for a migration
 
