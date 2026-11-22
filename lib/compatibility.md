@@ -188,10 +188,11 @@ Not supported, as compile-time errors:
   which `lib/operator.py` does not apply to an `int`, and for a count of another type find the
   frame to warn from with `sys._getframe()`, which is not supported.
 - `GNUTranslations` of a catalog with a plural form, which calls `c2py()`: it needs `exec()`.
-- A subclass of `NullTranslations`, such as a translation class to add as a fallback.
-  `__init__`'s `fp`, a catalog file, has no concrete type here, so `NullTranslations` is a
-  template class, which a class cannot derive from. `add_fallback()` takes another
-  `NullTranslations`, which answers as the identity.
+- A subclass of `NullTranslations` with an `__init__` of its own whose `super().__init__(...)`
+  arguments' types are not known where it is declared. `__init__`'s `fp`, a catalog file, has
+  no concrete type here, so `NullTranslations` is a class template; a subclass without an
+  `__init__` of its own, such as a translation class to add as a fallback, derives from each
+  of its specializations ([subclasses of class templates](../docs/language/typing.md#subclasses-of-class-templates)).
 
 ### `pprint`
 
