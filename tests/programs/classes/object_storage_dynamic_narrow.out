@@ -1,6 +1,9 @@
 P 1 P1 11
 Q 2 Q2
 R 3 Q3
+D 5 four D(a=4, b='four')
+N 5 five N5 N(x=5, y='five')
+Color BLUE 2 Color2
 int 42 82
 bool False
 float 1.25
@@ -13,6 +16,9 @@ other None
 item P 1 P1 11 as P 1 P1
 item Q 2 Q2 as P 2 Q2
 item R 3 Q3 as P 3 Q3
+item D 5 four D(a=4, b='four') not P
+item N 5 five N5 N(x=5, y='five') not P
+item Color BLUE 2 Color2 not P
 item int 42 82 not P
 item bool False not P
 item float 1.25 not P
@@ -28,6 +34,12 @@ result Q 2 Q2 as P 2 Q2
 field Q 2 Q2
 result R 3 Q3 as P 3 Q3
 field R 3 Q3
+result D 5 four D(a=4, b='four') not P
+field D 5 four D(a=4, b='four')
+result N 5 five N5 N(x=5, y='five') not P
+field N 5 five N5 N(x=5, y='five')
+result Color BLUE 2 Color2 not P
+field Color BLUE 2 Color2
 result int 42 82 not P
 field int 42 82
 result bool False not P
