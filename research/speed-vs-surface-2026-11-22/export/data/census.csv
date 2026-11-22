@@ -1,0 +1,53 @@
+benchmark,ported,compiles_unmodified_at_head,first_compiled,head_first_error
+2to3,False,False,,unsupported module attribute sys.executable
+argparse,False,False,,unsupported type annotation
+async_generators,False,False,,async functions are not supported
+async_tree,False,False,,module 'asyncio' is not supported: it is not a builtin module
+asyncio_tcp,False,False,,module 'asyncio' is not supported: it is not a builtin module
+barnes_hut,True,False,,cannot infer the type of field 'particles'; annotate it (self.particles: T = ...)
+base64,False,False,,'int' has no method 'to_bytes'
+bpe_tokeniser,True,False,,cannot infer the type of field '_decoder'; annotate it (self._decoder: T = ...)
+chaos,True,False,,cannot infer the type of class attribute '__rmul__'; annotate it (__rmul__: T = ...)
+comprehensions,True,False,,"cannot infer the type of 'widgets', an empty list so far: annotate it (widgets: list[T] = [])"
+concurrent_imap,False,False,,module 'multiprocessing' is not supported: it is not a builtin module
+coroutines,False,False,,async functions are not supported
+crypto_pyaes,False,False,,module 'pyaes' is not supported: it is not a builtin module
+decimal_factorial,False,False,,cannot infer what factorial() returns: it calls itself before a return statement does; annotate its return type
+decimal_pi,False,False,,"expected int, got Decimal"
+deepcopy,False,False,,unsupported type annotation
+deltablue,False,False,,inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)
+fannkuch,True,True,2026-10-16T18:56:15Z,
+float,True,False,,cannot infer the type of field 'x'; annotate it (self.x: T = ...)
+gc_collect,False,True,2026-11-18T18:50:43Z,
+gc_traversal,False,False,,"cannot infer the type of 'current_list', an empty list so far: annotate it (current_list: list[T] = [])"
+generators,True,True,2026-10-16T18:56:15Z,
+go,True,False,,cannot infer the type of field 'pos_child'; annotate it (self.pos_child: T = ...)
+hexiom,True,False,,cannot infer the type of field 'nodes_by_id'; annotate it (self.nodes_by_id: T = ...)
+json_dumps,True,False,,"cannot infer the type of an empty dict; add a type annotation (d: dict[K, V] = {}, or -> dict[K, V] on a function returning the dict)"
+json_loads,True,False,,"expected int, got str (this dict display's values have no one type: annotate the display with a union of their types where one holds th"
+logging,True,False,,"expected <function bench_silent>, got <function bench_simple_output> (each function is a type of its own: a variable, a list's items or a "
+mdp,False,False,,module 'fractions' is not supported: it is not a builtin module
+meteor_contest,True,False,,"expected int, got float"
+nbody,True,True,2026-10-16T18:56:15Z,
+nqueens,True,True,2026-10-16T18:56:15Z,
+pathlib,False,False,,'pathlib.PosixPath' object has no method 'stat'
+pickle,False,False,,module 'pickle' is not supported: it is not a builtin module
+pidigits,True,False,,"map() is supported as the argument of list(), tuple() (with scalar or optional scalar items), bytes(), sorted(), sum(), min(), max(), any"
+pprint,False,True,2026-11-18T18:50:43Z,
+pyflate,False,False,,inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)
+python_startup,False,False,,unsupported module attribute sys.executable
+raytrace,True,False,,module 'array' is not supported: it is not a builtin module
+regex_compile,False,False,,"cannot infer the type of 'regexes', which capture_compile() reads, where it is defined: annotate it (regexes: T = ...)"
+regex_dna,True,False,,"expected str, got bytes"
+regex_effbot,True,False,,type <function bench_regex_effbot> has no attribute 'data'
+regex_v8,True,True,2026-10-13T06:45:33Z,
+richards,True,False,,inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)
+richards_super,True,False,,inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)
+scimark,True,False,,module 'array' is not supported: it is not a builtin module
+spectral_norm,True,True,2026-10-20T11:11:26Z,
+sqlite_synth,False,False,,module 'sqlite3' is not supported: it is not a builtin module
+telco,False,False,,"expected BinaryIO, got BytesIO"
+tomli_loads,False,False,,module 'tomli' is not supported: it is not a builtin module
+typing_runtime_protocols,False,False,,unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class
+unpack_sequence,True,True,2026-10-16T18:56:15Z,
+xml_etree,False,False,,module 'xml' is not supported: it is not a builtin module

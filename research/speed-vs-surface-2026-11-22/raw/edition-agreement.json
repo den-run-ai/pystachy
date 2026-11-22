@@ -1,0 +1,15 @@
+{
+ "commits": 48,
+ "core_index": {
+  "n": 41,
+  "max_abs": 0.0869,
+  "median_abs": 0.0601,
+  "mean": -0.0585
+ },
+ "micro_index": {
+  "n": 48,
+  "max_abs": 0.0803,
+  "median_abs": 0.0212,
+  "mean": -0.0153
+ }
+}

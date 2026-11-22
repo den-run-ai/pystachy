@@ -1,0 +1,114 @@
+{
+ "what": "Inference attempts and frontend time when each commit's compiler compiles its own source (pystachy ir pystachy.py), idle machine, 22 November 2026",
+ "attempts_per_release": {
+  "1117-1034_3cf23d20": 1,
+  "1117-2325_e2b97bb4": 2,
+  "1118-1050_8259611e": 2,
+  "1118-2319_d35417c9": 2,
+  "1119-1826_299d12ad": 2,
+  "1119-2044_817c9cd9": 2,
+  "1119-2352_37512410": 2,
+  "1120-1407_41dffd36": 2,
+  "1121-1151_4998521d": 3
+ },
+ "native_frontend_series_s": {
+  "1117-1034_3cf23d20": [
+   6.17,
+   5.03
+  ],
+  "1117-2325_e2b97bb4": [
+   11.12,
+   10.67
+  ],
+  "1118-1050_8259611e": [
+   10.61,
+   10.42
+  ],
+  "1118-2319_d35417c9": [
+   8.3,
+   10.82
+  ],
+  "1119-1826_299d12ad": [
+   9.67,
+   11.94
+  ],
+  "1119-2044_817c9cd9": [
+   9.41,
+   11.44
+  ],
+  "1119-2352_37512410": [
+   9.81,
+   9.71
+  ],
+  "1120-1407_41dffd36": [
+   11.14,
+   11.55
+  ],
+  "1121-1151_4998521d": [
+   13.55,
+   15.67
+  ]
+ },
+ "crossover_native_frontend_s": {
+  "1117-1034_3cf23d20 on 1117-1034_3cf23d20": [
+   6.58,
+   5.85,
+   5.12
+  ],
+  "1121-1151_4998521d on 1121-1151_4998521d": [
+   16.22,
+   15.94,
+   16.2
+  ],
+  "1121-1151_4998521d on 1117-1034_3cf23d20": [
+   8.47,
+   6.76,
+   6.17
+  ],
+  "1117-1034_3cf23d20 on 1121-1151_4998521d": [
+   13.04,
+   12.52,
+   12.92
+  ]
+ },
+ "retry_triggers_at_4998521d": [
+  {
+   "function": "driver.compile_program",
+   "variable": "k",
+   "join": "int | str",
+   "trigger": "error 'expected int, got str' storing a dict key after the join (emission.gen_err)",
+   "introduced_by": "e65f8066 Type class objects in dynamic-Any modules too (v0.6.0-alpha.2)"
+  },
+  {
+   "function": "ircheck.gen_verify",
+   "variable": "x, y",
+   "join": "int | str",
+   "trigger": "error 'expected str, got int' at kin[x][y] after the join",
+   "introduced_by": "6c75205e Prove typed IR reads of optional values not None (#1637, v0.7.0-alpha.2)"
+  },
+  {
+   "function": "driver.main",
+   "variable": "known",
+   "join": "bool | str",
+   "trigger": "join found during discovery (program.gen_discover_program)",
+   "introduced_by": "ce9bfa5c Print help on --help and warn about ignored arguments (#1646, v0.7.0-alpha.2)"
+  }
+ ],
+ "renamed_source_at_4998521d": {
+  "attempts": 1,
+  "native_frontend_s": [
+   6.4,
+   7.0,
+   6.7
+  ],
+  "hosted_frontend_s": 39.7,
+  "original_native_frontend_s": [
+   13.55,
+   15.67,
+   16.22
+  ],
+  "original_hosted_frontend_s": 82.78,
+  "note": "scratch copy only: the three variables renamed (cname; ka, kb; cmd_known); nothing in the repository changed"
+ },
+ "probe": "scripts/rejoin_sites.py logs where each Rejoin is raised when CPython runs the compiler on its own source"
+}

@@ -1,0 +1,247 @@
+{
+ "old": "/tmp/claude-0/-home-user-pystachy/878ad953-6ea7-597d-82db-1ba899e22ec2/scratchpad/results/methods-1117-1034_3cf23d20.json",
+ "new": "/tmp/claude-0/-home-user-pystachy/878ad953-6ea7-597d-82db-1ba899e22ec2/scratchpad/results/methods-1121-1151_4998521d.json",
+ "pass_old": 638,
+ "pass_new": 683,
+ "gained": 45,
+ "gained_language": 25,
+ "lost": 0,
+ "gained_by_file": [
+  [
+   "Lib/test/test_dict.py",
+   8
+  ],
+  [
+   "Lib/test/test_enum.py",
+   7
+  ],
+  [
+   "Lib/test/test_copy.py",
+   5
+  ],
+  [
+   "Lib/test/test_functools.py",
+   4
+  ],
+  [
+   "Lib/test/test_tuple.py",
+   3
+  ],
+  [
+   "Lib/test/test_bool.py",
+   2
+  ],
+  [
+   "Lib/test/test_patma.py",
+   2
+  ],
+  [
+   "Lib/test/test_raise.py",
+   2
+  ],
+  [
+   "Lib/test/test_with.py",
+   2
+  ],
+  [
+   "Lib/test/test_dataclasses/__init__.py",
+   2
+  ],
+  [
+   "Lib/test/test_bytes.py",
+   1
+  ],
+  [
+   "Lib/test/test_format.py",
+   1
+  ],
+  [
+   "Lib/test/test_list.py",
+   1
+  ],
+  [
+   "Lib/test/test_named_expressions.py",
+   1
+  ],
+  [
+   "Lib/test/test_set.py",
+   1
+  ],
+  [
+   "Lib/test/test_string.py",
+   1
+  ],
+  [
+   "Lib/test/test_type_params.py",
+   1
+  ],
+  [
+   "Lib/test/test_weakref.py",
+   1
+  ]
+ ],
+ "gained_by_old_blocker": [
+  [
+   "compile: local classes (class inside a function)",
+   21
+  ],
+  [
+   "library: gc module (collect, is_tracked, thresholds)",
+   12
+  ],
+  [
+   "unassigned (library)",
+   8
+  ],
+  [
+   "unassigned (typing)",
+   2
+  ],
+  [
+   "library: enum.member / enum.verify / STRICT",
+   1
+  ],
+  [
+   "differs",
+   1
+  ]
+ ],
+ "gained_old_first_errors": [
+  [
+   "error: a class inside a function is not supported",
+   21
+  ],
+  [
+   "error: module 'gc' is not supported: it is not a builtin module",
+   12
+  ],
+  [
+   "error: module 'enum' has no attribute '_is_dunder'",
+   2
+  ],
+  [
+   "error: module 'enum' has no attribute '_is_private'",
+   2
+  ],
+  [
+   "error: module 'enum' has no attribute '_is_sunder'",
+   2
+  ],
+  [
+   "error: expected <built-in function bool>, got <built-in function complex> (each function is a type of its own:",
+   1
+  ],
+  [
+   "error: unsupported call bytearray()",
+   1
+  ],
+  [
+   "error: unsupported call bytearray(bytes)",
+   1
+  ],
+  [
+   "error: cannot import name 'member' from 'enum'",
+   1
+  ],
+  [
+   "error: set elements must be int or str, objects, or tuples of int, bool, str, str | None and objects, not froz",
+   1
+  ]
+ ],
+ "lost_detail": [],
+ "transitions": [
+  [
+   "rejected",
+   "pass",
+   44
+  ],
+  [
+   "rejected",
+   "differs",
+   2
+  ],
+  [
+   "differs",
+   "pass",
+   1
+  ]
+ ],
+ "rejected_new_by_need": [
+  [
+   "library: other missing modules (configparser, decimal, _pyio, locale, ...)",
+   1044
+  ],
+  [
+   "compile: field / class-attribute types not inferred",
+   928
+  ],
+  [
+   "unassigned (other)",
+   696
+  ],
+  [
+   "unassigned (typing)",
+   458
+  ],
+  [
+   "unassigned (library)",
+   378
+  ],
+  [
+   "compile: builtin base classes (set/frozenset/bytes...)",
+   262
+  ],
+  [
+   "compile: local classes (class inside a function)",
+   247
+  ],
+  [
+   "reflect: pickle / copyreg / marshal",
+   188
+  ],
+  [
+   "compile: empty containers not inferred",
+   168
+  ],
+  [
+   "compile: inheritance from generic class templates",
+   163
+  ],
+  [
+   "reflect: modules or classes as values",
+   121
+  ],
+  [
+   "reflect: eval / exec / compile, ast, dis",
+   101
+  ],
+  [
+   "unassigned (dynamic)",
+   98
+  ],
+  [
+   "unassigned (syntax)",
+   74
+  ],
+  [
+   "compile: class-body statements (nested class, augassign...)",
+   73
+  ],
+  [
+   "compile: match patterns (mapping, starred, class, non-tuple subjects, complex)",
+   57
+  ],
+  [
+   "reflect: exception attributes (__context__, __traceback__, args)",
+   51
+  ],
+  [
+   "reflect: str.format of a computed format string",
+   49
+  ],
+  [
+   "compile: multiple inheritance",
+   40
+  ]
+ ]
+}

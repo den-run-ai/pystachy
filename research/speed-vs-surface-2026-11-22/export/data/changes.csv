@@ -1,0 +1,10 @@
+rank,benchmark,from_date,to_date,before_ms,after_ms,time_ratio,change,evidence
+1,micro_words,2026-10-17,2026-10-18,61.4,79.6,1.295,"Slower: Unicode code-point strings, stage 1 (#667)",bisected to a355c83f
+2,regex_dna,2026-10-18,2026-10-19,1628.5,206.1,0.127,"Faster: lib/re matcher work (#676, #680, #682, #683, #685)",32 merges; not bisected
+3,regex_effbot,2026-10-18,2026-10-19,1127.8,170.9,0.151,Faster: same lib/re work,same interval
+4,regex_v8,2026-10-18,2026-10-19,1149.4,258.6,0.225,Faster: same lib/re work,same interval
+5,scimark,2026-10-18,2026-10-19,22.4,9.9,0.44,Faster: likely field TBAA (#724) or tuple returns by value (#727),same interval
+6,barnes_hut,2026-10-18,2026-10-19,26.8,13.7,0.513,Faster: likely the same two changes,same interval
+7,float,2026-11-11,2026-11-11,37.7,51.9,1.376,Slower: listguard bounds-check hoisting with Lean checks (#1268),bisected to b40ee875
+8,float,2026-11-12,2026-11-12,48.9,37.8,0.774,Faster: listguard keeps sole calls inlinable in loop copies (#1336),"#1389, v0.4.0-rc.1; closes #1300"
+9,chaos,2026-11-18,2026-11-18,28.5,26.6,0.933,Faster: small ints compared with floats without trunc() (#1437) and other float fast paths,#1548; confirmed by 15 runs

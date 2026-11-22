@@ -1,0 +1,101 @@
+[
+{
+"rank": 1,
+"benchmark": "micro_words",
+"from_date": "2026-10-17",
+"to_date": "2026-10-18",
+"before_ms": 61.4,
+"after_ms": 79.6,
+"time_ratio": 1.295,
+"change": "Slower: Unicode code-point strings, stage 1 (#667)",
+"evidence": "bisected to a355c83f"
+},
+{
+"rank": 2,
+"benchmark": "regex_dna",
+"from_date": "2026-10-18",
+"to_date": "2026-10-19",
+"before_ms": 1628.5,
+"after_ms": 206.1,
+"time_ratio": 0.127,
+"change": "Faster: lib/re matcher work (#676, #680, #682, #683, #685)",
+"evidence": "32 merges; not bisected"
+},
+{
+"rank": 3,
+"benchmark": "regex_effbot",
+"from_date": "2026-10-18",
+"to_date": "2026-10-19",
+"before_ms": 1127.8,
+"after_ms": 170.9,
+"time_ratio": 0.151,
+"change": "Faster: same lib/re work",
+"evidence": "same interval"
+},
+{
+"rank": 4,
+"benchmark": "regex_v8",
+"from_date": "2026-10-18",
+"to_date": "2026-10-19",
+"before_ms": 1149.4,
+"after_ms": 258.6,
+"time_ratio": 0.225,
+"change": "Faster: same lib/re work",
+"evidence": "same interval"
+},
+{
+"rank": 5,
+"benchmark": "scimark",
+"from_date": "2026-10-18",
+"to_date": "2026-10-19",
+"before_ms": 22.4,
+"after_ms": 9.9,
+"time_ratio": 0.44,
+"change": "Faster: likely field TBAA (#724) or tuple returns by value (#727)",
+"evidence": "same interval"
+},
+{
+"rank": 6,
+"benchmark": "barnes_hut",
+"from_date": "2026-10-18",
+"to_date": "2026-10-19",
+"before_ms": 26.8,
+"after_ms": 13.7,
+"time_ratio": 0.513,
+"change": "Faster: likely the same two changes",
+"evidence": "same interval"
+},
+{
+"rank": 7,
+"benchmark": "float",
+"from_date": "2026-11-11",
+"to_date": "2026-11-11",
+"before_ms": 37.7,
+"after_ms": 51.9,
+"time_ratio": 1.376,
+"change": "Slower: listguard bounds-check hoisting with Lean checks (#1268)",
+"evidence": "bisected to b40ee875"
+},
+{
+"rank": 8,
+"benchmark": "float",
+"from_date": "2026-11-12",
+"to_date": "2026-11-12",
+"before_ms": 48.9,
+"after_ms": 37.8,
+"time_ratio": 0.774,
+"change": "Faster: listguard keeps sole calls inlinable in loop copies (#1336)",
+"evidence": "#1389, v0.4.0-rc.1; closes #1300"
+},
+{
+"rank": 9,
+"benchmark": "chaos",
+"from_date": "2026-11-18",
+"to_date": "2026-11-18",
+"before_ms": 28.5,
+"after_ms": 26.6,
+"time_ratio": 0.933,
+"change": "Faster: small ints compared with floats without trunc() (#1437) and other float fast paths",
+"evidence": "#1548; confirmed by 15 runs"
+}
+]

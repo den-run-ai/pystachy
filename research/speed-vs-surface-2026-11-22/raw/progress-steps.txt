@@ -1,0 +1,105 @@
+== 1111-1943_8434a911 -> 1112-0850_0b13a212
+pass 492 -> 492: gained 0 (0 language), lost 0
+gained by file: []
+gained by old blocker: []
+old first errors: []
+== 1112-0850_0b13a212 -> 1112-1351_30822255
+pass 492 -> 492: gained 0 (0 language), lost 0
+gained by file: []
+gained by old blocker: []
+old first errors: []
+== 1112-1351_30822255 -> 1112-2100_bf699eb5
+pass 492 -> 492: gained 0 (0 language), lost 0
+gained by file: []
+gained by old blocker: []
+old first errors: []
+== 1112-2100_bf699eb5 -> 1113-1037_5f81cc25
+pass 492 -> 492: gained 0 (0 language), lost 0
+gained by file: []
+gained by old blocker: []
+old first errors: []
+== 1113-1037_5f81cc25 -> 1114-0748_a73c56c9
+pass 492 -> 494: gained 2 (0 language), lost 0
+gained by file: [('Lib/test/test_csv.py', 2)]
+gained by old blocker: [('unassigned (other)', 2)]
+old first errors: [('error: DictWriter.writerow() is a method of its objects: calling it through the class is not supported; call i', 2)]
+== 1114-0748_a73c56c9 -> 1114-1000_80490143
+pass 494 -> 494: gained 0 (0 language), lost 0
+gained by file: []
+gained by old blocker: []
+old first errors: []
+== 1114-1000_80490143 -> 1115-1159_49a149ad
+pass 494 -> 500: gained 6 (6 language), lost 0
+gained by file: [('Lib/test/test_unary.py', 2), ('Lib/test/test_bool.py', 1), ('Lib/test/test_format.py', 1), ('Lib/test/test_patma.py', 1), ('Lib/test/test_set.py', 1)]
+gained by old blocker: [('unassigned (syntax)', 4), ('unassigned (library)', 1), ('unassigned (typing)', 1)]
+old first errors: [('error: complex numbers are not supported', 4), ('error: unsupported call complex(bool)', 1), ('error: set elements must be int or str, objects, or tuples of int, bool, str, str | None and objects, not None', 1)]
+== 1115-1159_49a149ad -> 1115-1340_3da553ee
+pass 500 -> 500: gained 0 (0 language), lost 0
+gained by file: []
+gained by old blocker: []
+old first errors: []
+== 1115-1340_3da553ee -> 1116-0627_9f147230
+pass 500 -> 500: gained 0 (0 language), lost 0
+gained by file: []
+gained by old blocker: []
+old first errors: []
+== 1116-0627_9f147230 -> 1116-2008_9cb9cc72
+pass 500 -> 500: gained 0 (0 language), lost 0
+gained by file: []
+gained by old blocker: []
+old first errors: []
+== 1116-2008_9cb9cc72 -> 1116-2350_d58034c1
+pass 500 -> 500: gained 0 (0 language), lost 0
+gained by file: []
+gained by old blocker: []
+old first errors: []
+== 1116-2350_d58034c1 -> 1117-0158_71e14a88
+pass 500 -> 500: gained 0 (0 language), lost 0
+gained by file: []
+gained by old blocker: []
+old first errors: []
+== 1117-0158_71e14a88 -> 1117-1034_3cf23d20
+pass 500 -> 638: gained 138 (138 language), lost 0
+gained by file: [('Lib/test/test_set.py', 100), ('Lib/test/test_patma.py', 38)]
+gained by old blocker: [('compile: field / class-attribute types not inferred', 100), ('compile: match patterns (mapping, starred, class, non-tuple subjects, complex)', 38)]
+old first errors: [("error: cannot infer the type of field 'set'; annotate it (self.set: T = ...)", 97), ('error: starred sequence patterns are not supported; use a fixed tuple pattern', 31), ('error: sequence patterns require a fixed tuple subject, got list[int]', 5), ("error: cannot infer the type of field 'a'; annotate it (self.a: T = ...)", 3), ('error: sequence patterns require a fixed tuple subject, got set[int]', 1), ('error: sequence patterns require a fixed tuple subject, got dict[int,bool]', 1)]
+== 1117-1034_3cf23d20 -> 1117-2325_e2b97bb4
+pass 638 -> 642: gained 4 (3 language), lost 0
+gained by file: [('Lib/test/test_bool.py', 1), ('Lib/test/test_format.py', 1), ('Lib/test/test_random.py', 1), ('Lib/test/test_set.py', 1)]
+gained by old blocker: [('unassigned (typing)', 3), ('differs', 1)]
+old first errors: [('error: expected <built-in function bool>, got <built-in function complex> (each function is a type of its own:', 1), ('error: integer literal does not fit in 64 bits', 1), ('error: set elements must be int or str, objects, or tuples of int, bool, str, str | None and objects, not froz', 1)]
+== 1117-2325_e2b97bb4 -> 1118-1050_8259611e
+pass 642 -> 655: gained 14 (12 language), lost 1
+gained by file: [('Lib/test/test_dict.py', 8), ('Lib/test/test_tuple.py', 3), ('Lib/test/test_bytes.py', 1), ('Lib/test/test_copy.py', 1), ('Lib/test/test_weakref.py', 1)]
+gained by old blocker: [('library: gc module (collect, is_tracked, thresholds)', 12), ('unassigned (library)', 2)]
+old first errors: [("error: module 'gc' is not supported: it is not a builtin module", 12), ('error: unsupported call bytearray()', 1), ('error: unsupported call bytearray(bytes)', 1)]
+== 1118-1050_8259611e -> 1118-2319_d35417c9
+pass 655 -> 655: gained 0 (0 language), lost 0
+gained by file: []
+gained by old blocker: []
+old first errors: []
+== 1118-2319_d35417c9 -> 1119-1826_299d12ad
+pass 655 -> 655: gained 0 (0 language), lost 0
+gained by file: []
+gained by old blocker: []
+old first errors: []
+== 1119-1826_299d12ad -> 1119-2044_817c9cd9
+pass 655 -> 655: gained 0 (0 language), lost 0
+gained by file: []
+gained by old blocker: []
+old first errors: []
+== 1119-2044_817c9cd9 -> 1119-2352_37512410
+pass 655 -> 656: gained 1 (0 language), lost 0
+gained by file: [('Lib/test/test_random.py', 1)]
+gained by old blocker: [('unassigned (typing)', 1)]
+old first errors: [('error: integer literal does not fit in 64 bits', 1)]
+== 1119-2352_37512410 -> 1120-1407_41dffd36
+pass 656 -> 684: gained 28 (10 language), lost 0
+gained by file: [('Lib/test/test_enum.py', 7), ('Lib/test/test_copy.py', 4), ('Lib/test/test_functools.py', 4), ('Lib/test/test_patma.py', 2), ('Lib/test/test_raise.py', 2), ('Lib/test/test_with.py', 2), ('Lib/test/test_dataclasses/__init__.py', 2), ('Lib/test/test_bool.py', 1), ('Lib/test/test_list.py', 1), ('Lib/test/test_named_expressions.py', 1), ('Lib/test/test_string.py', 1), ('Lib/test/test_type_params.py', 1)]
+gained by old blocker: [('compile: local classes (class inside a function)', 21), ('unassigned (library)', 6), ('library: enum.member / enum.verify / STRICT', 1)]
+old first errors: [('error: a class inside a function is not supported', 21), ("error: module 'enum' has no attribute '_is_dunder'", 2), ("error: module 'enum' has no attribute '_is_private'", 2), ("error: module 'enum' has no attribute '_is_sunder'", 2), ("error: cannot import name 'member' from 'enum'", 1)]
+== 1120-1407_41dffd36 -> 1121-1151_4998521d
+pass 684 -> 683: gained 0 (0 language), lost 1
+gained by file: []
+gained by old blocker: []
+old first errors: []

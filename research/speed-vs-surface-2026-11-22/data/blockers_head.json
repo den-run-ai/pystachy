@@ -1,0 +1,92 @@
+[
+{
+"rank": 1,
+"message": "cannot infer the type of class attribute 'values'; annotate it (values: T = ...)",
+"category": "typing",
+"methods": 513
+},
+{
+"rank": 2,
+"message": "module 'configparser' is not supported: it is not a builtin module",
+"category": "library",
+"methods": 288
+},
+{
+"rank": 3,
+"message": "unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class",
+"category": "dynamic",
+"methods": 262
+},
+{
+"rank": 4,
+"message": "module 'fractions' is not supported: it is not a builtin module",
+"category": "library",
+"methods": 217
+},
+{
+"rank": 5,
+"message": "module 'pickle' is not supported: it is not a builtin module",
+"category": "dynamic",
+"methods": 179
+},
+{
+"rank": 6,
+"message": "inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)",
+"category": "dynamic",
+"methods": 155
+},
+{
+"rank": 7,
+"message": "module '_pyio' is not supported: it is not a builtin module",
+"category": "library",
+"methods": 134
+},
+{
+"rank": 8,
+"message": "module 'locale' is not supported: it is not a builtin module",
+"category": "library",
+"methods": 127
+},
+{
+"rank": 9,
+"message": "secondary base methods may not use super() or read or write the instance",
+"category": "dynamic",
+"methods": 99
+},
+{
+"rank": 10,
+"message": "cannot import name 'TemporaryFile' from 'tempfile'",
+"category": "library",
+"methods": 87
+},
+{
+"rank": 11,
+"message": "module 'array' is not supported: it is not a builtin module",
+"category": "library",
+"methods": 83
+},
+{
+"rank": 12,
+"message": "Enum() with members is supported as NAME = Enum('NAME', ...) at the top of a module, of literals: this one makes an enum class as the code r",
+"category": "dynamic",
+"methods": 77
+},
+{
+"rank": 13,
+"message": "cannot infer the type of field 's'; annotate it (self.s: T = ...)",
+"category": "typing",
+"methods": 77
+},
+{
+"rank": 14,
+"message": "class BuiltinTest.C_get_vars is not supported after a call in the decorators, bases or body of class BuiltinTest: Pystachy makes a nested cl",
+"category": "dynamic",
+"methods": 72
+},
+{
+"rank": 15,
+"message": "module 'queue' is not supported: it is not a builtin module",
+"category": "library",
+"methods": 72
+}
+]
