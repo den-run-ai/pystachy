@@ -177,8 +177,9 @@ status = runner.run(program, tools={"issues": lambda project: "closed\nopen\nope
 ```
 
 Reuse the runner and compiled program across calls. Each call creates a fresh store with
-its own tool grants, empty stdin, arguments (including argv[0]) and environment (empty by
-default). Both interfaces inherit stdout and stderr and grant no directory mounts. The
+its own tool grants, arguments (including argv[0]) and environment (empty by default).
+The CLI inherits stdin. Embedded runs start with empty stdin unless the caller passes
+`inherit_stdin=True`. Both interfaces inherit stdout and stderr and grant no directory mounts. The
 Python API also accepts `stdout` and `stderr` file paths, truncating each file on each run.
 `run` returns the unsigned 32-bit WASI exit status. The CLI exposes its low eight bits. Wasmtime traps and host callback errors propagate to
 the Python caller. The CLI prints a trap diagnostic and exits with status 134. Calls to

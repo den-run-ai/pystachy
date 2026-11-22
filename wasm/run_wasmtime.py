@@ -165,7 +165,7 @@ class Runner:
     def run(self, program: Program, *, tools: Mapping[str, Callable[[str], str]] | None = None,
             args: Sequence[str] = ("program",), env: Mapping[str, str] | None = None,
             fuel: int = (1 << 64) - 1, memory_limit: int | None = None,
-            stdout: Path | None = None, stderr: Path | None = None) -> int:
+            stdout: Path | None = None, stderr: Path | None = None, inherit_stdin: bool = False) -> int:
         if not 0 <= fuel < 1 << 64:
             raise ValueError("fuel must fit an unsigned 64-bit integer")
         if memory_limit is not None and not 0 <= memory_limit < 1 << 63:
@@ -177,6 +177,8 @@ class Runner:
             wasi = wt.WasiConfig()
             wasi.argv = list(args)
             wasi.env = (env or {}).items()
+            if inherit_stdin:
+                wasi.inherit_stdin()
             if stdout is None:
                 wasi.inherit_stdout()
             else:
@@ -278,7 +280,8 @@ def main() -> int:
     options = parser.parse_args()
     runner = Runner(options.runtime)
     try:
-        status = runner.run(runner.compile(options.program.read_bytes()), args=[str(options.program), *options.args])
+        status = runner.run(runner.compile(options.program.read_bytes()),
+                            args=[str(options.program), *options.args], inherit_stdin=True)
         return status & 255
     except wt.Trap as exc:
         print(f"wasm trap: {exc}", file=sys.stderr)
