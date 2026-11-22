@@ -230,23 +230,29 @@ class FieldInitTests(unittest.TestCase):
                 source.write_text(f"class Box({base}):\n    def __init__(self, label: str) -> None:\n"
                                   "        self.label = label\n\nprint(Box('ok').label)\n")
                 reference = inspect(source, root / "snapshot")
-                for mode in ("header", "field index", "address read", "escaped address", "missing init"):
+                # The header words are the subclass's hidden typed fields (" list.0", ...), which
+                # main.init copies from a fresh list or dict by field.addr and mem.store (#1675).
+                for mode in ("header", "label read", "escaped address", "missing init"):
                     with self.subTest(mode=mode):
                         snapshot = copy.deepcopy(reference)
                         fn = self.function(snapshot, "@main.init")
                         operations = fn["blocks"][0]["operations"]
                         obj = next(f"%t{op['results'][0]}" for op in operations if op["op"] == "alloc.fixed")
                         pos = next(i for i, op in enumerate(operations)
-                                   if op["op"] == "mach.addr" and op["operands"][0]["value"] == obj)
-                        addr, store = operations[pos:pos + 2]
-                        dest = store["operands"][0]["value"]
-                        if mode == "field index":
-                            addr["operands"][1]["value"] = str(words)
-                        elif mode == "address read":
-                            operations[pos + 1] = instruction("mach.load", "int", results=[1000],
-                                                               operands=[(dest, "%ptr")])
+                                   if op["op"] == "field.addr" and op["operands"][0]["value"] == obj)
+                        dest = f"%t{operations[pos]['results'][0]}"
+                        store = next(i for i in range(pos + 1, len(operations))
+                                     if operations[i]["op"] == "mem.store"
+                                     and operations[i]["operands"][0]["value"] == dest)
+                        if mode == "label read":  # the header writes leave label unset until __init__
+                            call = next(i for i, op in enumerate(operations)
+                                        if op["op"] == "call" and op["text"] == "@m.Box.__init__")
+                            label = instruction("field.addr", "&str", results=[1000], operands=[(obj, "Box")])
+                            label["immediate"] = words
+                            operations[call:call] = [label, instruction("mem.load", "str", results=[1001],
+                                                                        operands=[("%t1000", "&str")])]
                         elif mode == "escaped address":
-                            operations.insert(pos + 2, instruction("mach.store", operands=[
+                            operations.insert(store + 1, instruction("mach.store", operands=[
                                 ("@g.leaked", "%ptr"), (dest, "%ptr")]))
                         elif mode == "missing init":
                             self.remove(fn, lambda _, op: op["op"] == "call" and op["text"] == "@m.Box.__init__")
