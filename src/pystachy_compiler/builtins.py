@@ -331,6 +331,15 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.num_cmp('!=', Val(r, "int"), Val('0', "int")) if name.endswith("enter") else Val("null", "None")
     if name.startswith("__pys_dict_") or name.startswith("__pys_set_"):
         return self.walk(name, args)
+    if name == "__pys_exc_obj" and self.curfn.name == "<interface>" and len(args) == 1 and self.curfn.ret in self.classes:
+        # (an entry of object's table: the object of a class of the program that a caught exception
+        # raises, which isinstance() proved it holds, as an except clause binds it: interfaces.py)
+        e = self.expr(args[0], "exc")
+        return Val(self.rt("pys_exc_obj", "ptr", [f"ptr {e.v}"], t=self.curfn.ret), self.curfn.ret)
+    if name == "__pys_exc_user" and self.curfn.name == "<interface>" and len(args) == 1:
+        # (and the exception that such an object raises, as a builtin exception class's test
+        # narrows it to BaseException: interfaces.py)
+        return self.exc_of(self.expr(args[0], ""))
     if name.startswith("__pys_text_"):
         # The builtin string iterator keeps a byte cursor, just like for_seq. These are
         # internal primitives, so ordinary code cannot confuse byte and character offsets.

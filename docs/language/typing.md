@@ -1105,10 +1105,15 @@ values: list[object] = [1, 2.5, True, "s", b"b", [1], Point(0, 0), int, None]
 It is the stored interface that every type implements, with no method of its own: a value of
 `object` holds the value it was given, not a copy, so a list stored as `object` and changed
 through its typed name shows the change. Numbers, strs, bytes, containers, objects of the
-program's classes, class objects, `None` and `Any` values can be values of `object`; functions
-and `Callable` values, exceptions and their classes, and values of a protocol (convert the object
-itself) cannot. Its operations are those of a protocol's value above, each by its
-value's type ([tests](../../tests/programs/classes/object_storage_values.py)):
+program's classes, class objects, exceptions, `None` and `Any` values can be values of `object`;
+functions and `Callable` values, exception classes, and values of a protocol (convert the object
+itself) cannot. A list, dict or set display stored as `object` that is empty, or whose items no
+one type or union holds, holds values of `object` (a dict's keys are strs where it has none)
+([test](../../tests/programs/classes/object_displays.py)). An exception narrows with a builtin
+exception class to `BaseException`, or with one of the program's to its object, and can then be
+raised ([test](../../tests/programs/classes/object_exceptions.py)). Its operations are those of
+a protocol's value above, each by its value's type
+([tests](../../tests/programs/classes/object_storage_values.py)):
 
 - `str()`, `repr()`, printing, f-strings, `format()`, `%s`, `%r` and `%a`, and truth tests;
 - `==` and `!=` with a value of any type: numbers by their values (`1 == 1.0`, `True == 1`),

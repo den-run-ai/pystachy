@@ -1563,6 +1563,11 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if given and soft:
             for v in items:
                 et = self.wider(et, v.t) or et
+        if not given and self.is_object(want) and not self.dyn_policy(n.line) and (et == "" or et == "None" or (jt == "-" and union_hint(self, [v.t for v in items]) == "")):
+            # (a display stored as object, empty or of items that no one type or union holds: a list
+            # of values of object, which no other name changes, read through its view: interfaces.py)
+            et = self.object_iface()
+            given = True
         if et == "" or et == "None":
             self.err(f"cannot infer the type of {'an empty list' if len(items) == 0 else 'a list of None'}; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)")
         for v in items if not is_list(want) and et in self.classes else items[:0]:
@@ -1666,6 +1671,11 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 vh = self.list_hint_type(vh, b.t) if vh != "" else ""
             if vh != "":
                 kv[1] = vh  # (values of mixed scalar types: of their union, as if annotated)
+        if not given and self.is_object(want) and not self.dyn_policy(n.line) and (len(ks) == 0 or kv[1] == "" or (jt == "-" and union_hint(self, [b.t for b in vs]) == "")):
+            # (a display stored as object, empty or of values that no one type or union holds: a
+            # dict of values of object, read through its view, and of str keys where it has none)
+            kv = [kv[0] if kv[0] != "" else "str", self.object_iface()]
+            given = True
         if not kgiven and is_tuple(kj):
             kv[0] = self.none_items(kj)
         if self.dyn_policy(n.line) and ((not given and jt == "-" and not self.dyn_callables([b.t for b in vs])) or (not kgiven and kj == "-")):
@@ -2047,6 +2057,17 @@ def gen_percent_opt(self, fmt: str, v: Val) -> Val:
         self.unreachable()
         return Val(self.sconst(""), "str")
     return Val(self.phi(ph), "str")
+
+def union_hint(self, ts: list[str]) -> str:
+    # the union of display items' types ts that list_hint_type makes of mixed scalar types, as
+    # a list or dict display takes it, or "" where none holds them (or there are none)
+    if len(ts) == 0:
+        return ""
+    hint = ts[0]
+    for t in ts[1:]:
+        hint = self.list_hint_type(hint, t) if hint != "" else ""
+    return hint
+
 
 def gen_percent_object(self, fmt: str, v: Val) -> Val:
     # "format" % x, x a value of object (or a view), as CPython takes x when it runs: the items of

@@ -1,0 +1,19 @@
+exception ValueError bad ValueError('bad') bad True True
+app 7 code 7 AppError('code 7') code 7 True False
+key KeyError('k') KeyError('k') 'k' True False
+other 3 3 3 True False
+exception OSError os OSError('os') os True False
+caught bad True
+caught app 7
+exception RuntimeError boom True False
+object of type 'ValueError' has no len()
+%d format: a real number is required, not ValueError
+object of type 'AppError' has no len()
+%d format: a real number is required, not AppError
+object of type 'KeyError' has no len()
+%d format: a real number is required, not KeyError
+object of type 'int' has no len()
+3
+object of type 'OSError' has no len()
+%d format: a real number is required, not OSError
+[exit 0]

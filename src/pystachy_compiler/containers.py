@@ -603,6 +603,8 @@ def gen_set_new(self, name: str, args: list[Node], want: str, resultsoft: bool =
             # AbstractSet[T] of any T where one is expected (coerce); its table is an int's,
             # whose lookups hash any slot
             return Val(self.rt("pys_set_new", "ptr", ["i64 0"]), EMPTYFS)
+        if w == "" and self.is_object(want):
+            w = self.ctype(name, ["str"])  # (stored as object, which no other name changes: empty for good, of any element type)
         if w == "":
             self.err(f"cannot infer the type of an empty {name}; add a type annotation ({'s: set[T] = set()' if not fz else 'f: frozenset[T] = frozenset()'})")
         return Val(self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(w))}"], t=self.ctype("set", [selem(w)])), w)

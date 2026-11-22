@@ -15,7 +15,7 @@ from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.names import MAPVIEW, OBJECT, SEQVIEW, SETVIEW, VIEWSHOW, short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
-from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, EMPTYFS, OBJECTC, SPECSHOW
+from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, EMPTYFS, OBJECTC, SPECSHOW, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import clone, elem, gelem, is_callable, is_clsval, is_dict, is_fset, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_union, is_vtuple, lt, selem, targs, tname, typestr, umembers, unopt
 
@@ -517,8 +517,8 @@ def gen_object_impl(self, t: str) -> str:
         return ""  # (a builtin class named, as its class object: to_object)
     if t.startswith("fn[") or is_callable(u):
         return f"a function or Callable value as a value of object is not supported yet: call it, or store a {typestr(t)} where one is expected"
-    if t == "exc" or t == "exctype" or u == "exc" or u == "exctype" or (u in self.classes and self.classes[u].exc != ""):
-        return "an exception (or its class) as a value of object is not supported yet"
+    if t == "exctype" or u == "exctype":
+        return "an exception class as a value of object is not supported yet (an exception object is)"
     if self.is_view(u):
         return ""  # (a view of a value of object's container: that value, view_slot)
     if self.is_iface(u):
@@ -772,6 +772,11 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
             bad = f"narrowing a value of {typestr(tab.iface)} to {typestr(self.union_type(['int', 'bool']))} by isinstance() is not supported where it may hold a promoting int (a module that opts in to promoting ints stored one), which {typestr(self.union_type(['int', 'bool']))} holds only within 64 bits"
         ok = held == nt or held == "dyn" or (is_union(nt) and held in umembers(nt)) or (nt == "type[object]" and held.startswith("type["))
         ok = ok or (held in self.classes and nt in self.classes and not self.is_iface(nt) and self.derives(held, nt))
+        # (an exception object of a class of the program as the exception that raises it, as a
+        # builtin exception class's test narrows it, BaseException; a caught exception, of type
+        # BaseException, as the object of a class of the program that the test proved it raises)
+        wrap = nt == "exc" and held in self.classes and self.classes[held].exc != ""
+        unwrap = held == "exc" and nt in self.classes and self.classes[nt].exc != ""
         unreached = mk("raise", "", line, [mk("call", "", line, [mk("name", "SystemError", line, []), mk("str", f"a value of {typestr(tab.iface)} narrowed by isinstance() to {typestr(nt)} holds a {typestr(held)}", line, [])])])
         body = [unreached]
         e = mk("name", "_o", line, [])
@@ -780,6 +785,8 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
             body = [mk("if", "", line, [test, mk("block", "", line, [clone(unreached)]), mk("block", "", line, [])]), mk("return", "", line, [e])]
         elif ok:
             body = [mk("return", "", line, [e])]
+        elif wrap or unwrap:
+            body = [mk("return", "", line, [mk("call", "", line, [mk("name", "__pys_exc_user" if wrap else "__pys_exc_obj", line, []), clone(e)])])]
     elif derived and parts[0] == "is" and parts[1] != OBJECT:
         e = o
         body = object_is_body(tab.impl, parts[1], line)  # (x is a number: object_is_num)
@@ -1009,6 +1016,8 @@ def eq_kind(self, t: str) -> str:
     u = unopt(t)
     if u == "int" or u == "float" or u == "bool" or u == BIG or u == COMPLEXC:
         return "num"
+    if u in self.classes and self.classes[u].exc != "" and "__eq__" not in self.classes[u].methods and "__ne__" not in self.classes[u].methods:
+        return "uexc"  # (an exception object of a class of the program that defines no __eq__: equal only to itself)
     if u in self.classes or self.is_iface(u):
         return ""
     if u == "str" or u == "bytes" or u == "None":
@@ -1019,6 +1028,8 @@ def eq_kind(self, t: str) -> str:
         return "tuple"
     if is_set(u) or u == EMPTYFS:
         return "set"
+    if u == "exc":
+        return "exc"  # (an exception, equal only to itself: no builtin exception class defines __eq__)
     return "type" if is_clsval(u) or u == "exctype" else ""
 
 
@@ -1201,6 +1212,15 @@ def gen_object_convert(self, v: Val, kind: str) -> Val:
 NONEARG_OBJECT = {"int": "int() argument must be a string, a bytes-like object or a real number, not 'NoneType'", "float": "float() argument must be a string or a real number, not 'NoneType'"}
 
 
+def type_text(held: str, before: str, name: str, after: str) -> str:
+    # a message that names a value's type between before and after, as Python source: the name of
+    # type held where its values have one, an exception's own class's (type(_o).__name__ of
+    # BaseException, which any builtin exception class's object is) where they do not
+    if held == "exc":
+        return repr(before) + " + type(_o).__name__ + " + repr(after)
+    return repr(before + name + after)
+
+
 def conversion_source(self, kind: str, impl: str) -> str:
     # the body of the entry of implementation impl of object for conversion kind (object_convert),
     # as Python source: the conversion of a value of impl's type, as CPython's (bytes by its ASCII
@@ -1217,7 +1237,7 @@ def conversion_source(self, kind: str, impl: str) -> str:
             return "    return 0\n"
         if held == "str" or held == "bytes" or held == "dyn" or is_list(held) or is_dict(held) or is_set(held) or is_tuple(held) or is_vtuple(held) or "__len__" in methods or held in self.nts or self.bkind(held) != "":
             return "    return len(_o)\n"
-        return f"    raise TypeError(\"object of type '{name}' has no len()\")\n"
+        return f"    raise TypeError({type_text(held, "object of type '", name, "' has no len()")})\n"
     if kind == "int" or kind == "float":
         if real or held == "str" or held == "dyn" or "__index__" in methods or ("__int__" in methods if kind == "int" else "__float__" in methods):
             return pre + f"    return {kind}(_o)\n"
@@ -1225,7 +1245,7 @@ def conversion_source(self, kind: str, impl: str) -> str:
         if held == "bytes":
             bad = f"        raise ValueError('{what}' + repr(_o))\n"
             return "    try:\n        _s = _o.decode('ascii')\n    except UnicodeDecodeError:\n" + bad + f"    try:\n        return {kind}(_s)\n    except ValueError:\n" + bad
-        return f"    raise TypeError(\"{NONEARG_OBJECT[kind].replace('NoneType', name)}\")\n"
+        return f"    raise TypeError({type_text(held, NONEARG_OBJECT[kind][:-9], name, NONEARG_OBJECT[kind][-1:])})\n"
     if c in "diu":
         if real:
             return pre + "    return int(_o)\n"  # (a float truncated, as int() does)
@@ -1233,7 +1253,7 @@ def conversion_source(self, kind: str, impl: str) -> str:
             return f"    return _o.{'__int__' if '__int__' in methods else '__index__'}()\n"
         if held == "dyn":
             return f"    if isinstance(_o, (int, float)):\n        return int(_o)\n    raise TypeError('%{c} format: a real number is required, not ' + type(_o).__name__)\n"
-        return f"    raise TypeError('%{c} format: a real number is required, not {name}')\n"
+        return f"    raise TypeError({type_text(held, f'%{c} format: a real number is required, not ', name, '')})\n"
     if c in "xXo":
         if real and held != "float":
             return pre + "    return int(_o)\n"
@@ -1241,7 +1261,7 @@ def conversion_source(self, kind: str, impl: str) -> str:
             return "    return _o.__index__()\n"
         if held == "dyn":
             return f"    if isinstance(_o, int):\n        return int(_o)\n    raise TypeError('%{c} format: an integer is required, not ' + type(_o).__name__)\n"
-        return f"    raise TypeError('%{c} format: an integer is required, not {name}')\n"
+        return f"    raise TypeError({type_text(held, f'%{c} format: an integer is required, not ', name, '')})\n"
     if c == "c":
         if (real and held != "float") or held == "str" or "__index__" in methods:
             return pre + "    return '%c' % _o\n"
@@ -1254,7 +1274,7 @@ def conversion_source(self, kind: str, impl: str) -> str:
         return "    return _o.__float__()\n" if "__float__" in methods else "    return float(_o.__index__())\n"
     if held == "dyn":
         return "    if isinstance(_o, (int, float)):\n        return float(_o)\n    raise TypeError('must be real number, not ' + type(_o).__name__)\n"
-    return f"    raise TypeError('must be real number, not {name}')\n"
+    return f"    raise TypeError({type_text(held, 'must be real number, not ', name, '')})\n"
 
 
 def gen_holds_iface(self, t: str) -> bool:
@@ -1393,7 +1413,7 @@ def gen_iface_classes(self, c: Node) -> list[str]:
         return [c.s]
     if c.kind == "name" and c.s == "object" and not self.bound("object"):
         return ["object"]
-    if c.kind == "name" and c.s in BUILTIN_TESTS and not self.bound(c.s):
+    if c.kind == "name" and (c.s in BUILTIN_TESTS or is_excname(c.s)) and not self.bound(c.s):
         return [c.s]
     return ["!"]
 
@@ -1438,6 +1458,8 @@ def gen_iface_narrow(self, c: Node, t: str) -> str:
         return "" if self.int_policy(self.line) else self.union_type(["int", "bool"])
     if k == "bool" or k == "float" or k == "str" or k == "bytes":
         return k
+    if is_excname(k):
+        return "exc"  # (an exception object of that builtin class, or of a class deriving from it)
     return "type[object]" if k == "type" else ""
 
 

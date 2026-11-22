@@ -216,6 +216,10 @@ applies. Bytes case methods remain ASCII-only.
   by comparing them one by one: a key of a class whose `__hash__` disagrees with its `__eq__` can
   be found where CPython's hash table misses it. Its `keys()`, `values()` and `items()` are new
   lists, as a dict's are.
+- **Exceptions stored as `object`:** an exception object of a class of the program, and the
+  `BaseException` that an `except` clause of a builtin exception class binds when it is raised,
+  are two values here: a value of `object` that holds the one is neither `is` nor `==` one that
+  holds the other, where CPython has one object.
 - **`%` formatting of a value of `object`:** a format that names keys (`%(name)s`) reads a dict,
   a list or bytes that the value holds as CPython does, but raises `TypeError: format requires a
   mapping` for an object of a class with `__getitem__`, which CPython also reads as a mapping.
