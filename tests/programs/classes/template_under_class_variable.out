@@ -1,0 +1,13 @@
+3 3 y3 3 1 1 y1 1 ['y3', 'y1', 'y3']
+3 3 y3 3 7 7 y7 7 ['y3', 'y7', 'y3']
+2 2 2 1
+2 2 2 7 7
+3 3 3
+3 3 3 7 7
+base/DT|base1|1.5 base/DT|base1|s base/DU|base3|2 base/DMid base1
+new/DT|new7|1.5 new/DT|new7|s new/DU|new3|2 new/DMid new7
+['new/DT', 'new/DT', 'new/DU', 'new/DMid']
+BLUE 1.5 None | BLUE 1.5 None | BLUE 2.5 None
+RED 0.5 L | RED 0.5 L | RED 2.5 L
+RED 0.5 L | RED 9.0 None | RED 2.5 L True True
+[exit 0]

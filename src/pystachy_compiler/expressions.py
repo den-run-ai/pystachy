@@ -1812,6 +1812,13 @@ def gen_cvar_stores(self, ns: list[Node]) -> None:
                             related = self.classes[c].tag > 0 and x.tag > 0 and (self.derives(c, x.name) or self.derives(x.name, c))
                             if t.s in x.ftypes and (related or (t.s in x.fdefault and self.cvar_home(x, t.s) is h)):
                                 self.cvars[x.name + "." + t.s] = True
+                                if t.s in x.fdefault:
+                                    # (and of the class whose class statement makes the global that x's
+                                    # objects read: a class template under c, or a class that derives
+                                    # from one, that binds the attribute again. It derives from no class
+                                    # itself, template_under, so it is not related, but its
+                                    # specializations are)
+                                    self.cvars[self.cvar_home(x, t.s).name + "." + t.s] = True
         self.cvar_stores(n.kids)
 
 def gen_cvar_home(self, x: ClassInfo, a: str) -> ClassInfo:

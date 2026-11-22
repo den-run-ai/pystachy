@@ -1355,7 +1355,12 @@ where `T`, a member or a subclass does not bind them again, as an ordinary subcl
 [test](../../tests/programs/classes/template_under_nested_attrs.py)), and so does `T.attr`
 ([test](../../tests/programs/classes/template_under_class_attr.py)); assigning one through `T` is
 an error, as through an ordinary subclass
-([error test](../../tests/errors/classes/template_under_class_store.py)). `type(self)` of such
+([error test](../../tests/errors/classes/template_under_class_store.py)). Where `T`, a member or
+a subclass does bind one again, its objects read their own class's value, also after the
+program assigns the base's (`Base.y = 7`)
+([test](../../tests/programs/classes/template_under_class_variable.py),
+[with stores through the subclasses](../../tests/programs/classes/template_under_class_variable_stores.py)).
+`type(self)` of such
 an object is `T`, a class template, which is no value
 ([error test](../../tests/errors/classes/template_under_type_attr.py)). `isinstance(x, T)`
 holds for an object of any specialization of `T` or of a class that derives from one, also those
