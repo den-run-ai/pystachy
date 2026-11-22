@@ -1155,10 +1155,14 @@ the arguments and a dict the mapping, as CPython takes them when it runs
 type depends on what is held needs `isinstance()` first (or an `Any` value): arithmetic,
 attributes and methods, calls, indexing, iteration, orderings, the other builtins, `type(x)` as a
 value and `id()` are compilation errors that say so
-([error tests](../../tests/errors/classes/object_storage_arith.py)). Values of `object` are not
-dict keys or set elements, and the runtime's searches and sorts of their lists and tuples (`in`,
-`count()`, `index()`, `sort()`, `min()`, `max()`) and comparisons of such containers are
-compilation errors.
+([error tests](../../tests/errors/classes/object_storage_arith.py)).
+
+Lists, tuples and dicts of values of `object` (also nested in other containers) compare as
+CPython's do, item by item, each pair by identity, then `==` of what it holds: `==` and `!=`
+with containers of any item types, `in`, `index()` and `count()`, and a dataclass's `==` of
+such a field ([test](../../tests/programs/classes/object_containers_eq.py)). Each pair of
+container types compiles one function that does so. Values of `object` are not dict keys or set
+elements, and sorts, `min()` and `max()` of them are compilation errors.
 
 A promoting int of a module that opts in to [promoting ints](../python-int.md) is held as it is
 ([test](../../tests/programs/numbers/python_int_object_storage.py)). There, `isinstance(x, int)`

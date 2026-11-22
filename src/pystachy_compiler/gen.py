@@ -300,6 +300,10 @@ from src.pystachy_compiler.interfaces import (
     gen_is_view as interfaces_is_view,
     gen_view_join as interfaces_view_join,
     gen_object_convert as interfaces_object_convert,
+    gen_holds_iface as interfaces_holds_iface,
+    gen_container_eq as interfaces_container_eq,
+    gen_container_find as interfaces_container_find,
+    gen_compare_helper as interfaces_compare_helper,
     gen_object_impl as interfaces_object_impl,
     gen_to_object as interfaces_to_object,
     gen_union_object as interfaces_union_object,
@@ -3828,6 +3832,18 @@ class Gen:
 
     def object_convert(self, v: Val, kind: str) -> Val:
         return interfaces_object_convert(self, v, kind)
+
+    def holds_iface(self, t: str) -> bool:
+        return interfaces_holds_iface(self, t)
+
+    def container_eq(self, op: str, a: Val, b: Val) -> Val:
+        return interfaces_container_eq(self, op, a, b)
+
+    def container_find(self, what: str, x: Val, xs: Val) -> Val:
+        return interfaces_container_find(self, what, x, xs)
+
+    def compare_helper(self, key: str, src: str, args: list[Val], ret: str) -> Val:
+        return interfaces_compare_helper(self, key, src, args, ret)
 
     def object_impl(self, t: str) -> str:
         return interfaces_object_impl(self, t)

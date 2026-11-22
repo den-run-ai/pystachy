@@ -10,7 +10,7 @@ calls through the interface use (iface_finish): an implementation needs only wha
 """
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import where
-from src.pystachy_compiler.ir import Data, Ins, Val
+from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.names import MAPVIEW, OBJECT, SEQVIEW, SETVIEW, VIEWSHOW, short
 from src.pystachy_compiler.parser import Parser
@@ -1255,6 +1255,116 @@ def conversion_source(self, kind: str, impl: str) -> str:
     if held == "dyn":
         return "    if isinstance(_o, (int, float)):\n        return float(_o)\n    raise TypeError('must be real number, not ' + type(_o).__name__)\n"
     return f"    raise TypeError('must be real number, not {name}')\n"
+
+
+def gen_holds_iface(self, t: str) -> bool:
+    # does a value of type t hold a value of an interface (object, a view, a protocol's) in its
+    # items, at any depth, or is it one: the runtime's comparisons and searches, which read the
+    # items by their descriptors, cannot compare it (container_eq, container_find)
+    u = unopt(t)
+    if self.is_iface(u):
+        return True
+    if is_list(u) or is_vtuple(u) or is_tuple(u) or is_dict(u):
+        return len([x for x in targs(u) if self.holds_iface(x)]) > 0
+    return False
+
+
+def same_test(self, x: str, y: str, a: str, b: str) -> str:
+    # CPython's test that items a and b, of types x and y, are the same, which a comparison or a
+    # search of containers makes of each pair: a is b or a == b, the identity test where Pystachy
+    # tells it (values of an interface, references), else a == b (numbers by their values, as
+    # typed containers compare them: compatibility.md's NaN)
+    if self.is_iface(unopt(x)) or self.is_iface(unopt(y)) or (self.isref(x) and self.isref(y)):
+        return f"{a} is {b} or {a} == {b}"
+    return f"{a} == {b}"
+
+
+def container_kind(t: str) -> str:
+    # what container_eq compares a value of type t as: "list", "tuple" (fixed or runtime-length),
+    # "dict", or ""
+    return "list" if is_list(t) else "tuple" if is_tuple(t) or is_vtuple(t) else "dict" if is_dict(t) else ""
+
+
+def gen_container_eq(self, op: str, a: Val, b: Val) -> Val:
+    # a == b (op "==", or "!=" its negation) of two containers, one of which holds values of an
+    # interface (holds_iface), which the runtime's comparisons cannot reach: a function compiled
+    # for the pair of types, which compares them as CPython's list, tuple and dict do, each pair of
+    # items by identity, then equality (same_test), which calls the items' own entries; containers
+    # of two kinds, or tuples of two lengths, are unequal. Val("", "") where it does not compare
+    # them (dicts of two key types), which the caller compiles as it did
+    ka = container_kind(a.t)
+    kb = container_kind(b.t)
+    if ka == "" or kb == "" or (ka == "dict" and kb == "dict" and targs(a.t)[0] != targs(b.t)[0]):
+        return Val("", "")
+    if ka != kb or (is_tuple(a.t) and is_tuple(b.t) and len(targs(a.t)) != len(targs(b.t))):
+        return Val("false" if op == "==" else "true", "bool")
+    r = self.compare_helper("==|" + a.t + "|" + b.t, container_eq_source(self, a.t, b.t), [a, b], "bool")
+    return r if op == "==" else Val(self.scalar('xor', [r, Val('true', 'bool')]), "bool")
+
+
+def container_eq_source(self, x: str, y: str) -> str:
+    # the body of the function of container_eq for types x and y (its arguments _a and _b), as
+    # Python source: the lengths, then the items in order (a dict's values by key), as CPython's
+    # rich comparisons of lists, tuples and dicts go, reading the lengths again at each step
+    if is_tuple(x) or is_tuple(y):
+        n = len(targs(x if is_tuple(x) else y))
+        out = "" if is_tuple(x) and is_tuple(y) else f"    if len({'_b' if is_tuple(x) else '_a'}) != {n}:\n        return False\n"
+        for j in range(n):
+            tx = targs(x)[j] if is_tuple(x) else targs(x)[0]
+            ty = targs(y)[j] if is_tuple(y) else targs(y)[0]
+            out += f"    if not ({same_test(self, tx, ty, f'_a[{j}]', f'_b[{j}]')}):\n        return False\n"
+        return out + "    return True\n"
+    if is_dict(x):
+        same = same_test(self, targs(x)[1], targs(y)[1], "_x", "_y")
+        return "    if len(_a) != len(_b):\n        return False\n    for _k in _a:\n        if _k not in _b:\n            return False\n        _x = _a[_k]\n        _y = _b[_k]\n" + f"        if not ({same}):\n            return False\n    return True\n"
+    same = same_test(self, targs(x)[0], targs(y)[0], "_x", "_y")
+    return "    if len(_a) != len(_b):\n        return False\n    _i = 0\n    while _i < len(_a) and _i < len(_b):\n        _x = _a[_i]\n        _y = _b[_i]\n" + f"        if not ({same}):\n            return False\n        _i += 1\n    return len(_a) == len(_b)\n"
+
+
+def gen_container_find(self, what: str, x: Val, xs: Val) -> Val:
+    # the index of the first item of xs (a list or a runtime-length tuple) that is x or equal to
+    # it, -1 for none (what "find"), or how many there are ("count"), where either holds values
+    # of an interface (holds_iface): a function compiled for their types, as CPython's in,
+    # index() and count() search, each item compared with x as item == x (same_test)
+    same = same_test(self, targs(xs.t)[0], x.t, "_y", "_a")
+    if what == "find":
+        src = "    _i = 0\n    while _i < len(_b):\n        _y = _b[_i]\n" + f"        if {same}:\n            return _i\n        _i += 1\n    return -1\n"
+    else:
+        src = "    _n = 0\n    _i = 0\n    while _i < len(_b):\n        _y = _b[_i]\n" + f"        if {same}:\n            _n += 1\n        _i += 1\n    return _n\n"
+    return self.compare_helper(f"{what}|{x.t}|{xs.t}", src, [x, xs], "int")
+
+
+def gen_compare_helper(self, key: str, src: str, args: list[Val], ret: str) -> Val:
+    # the call of the function of body src (Python source of its arguments _a and _b, of the
+    # types of args) that container_eq or container_find asks for by key, compiled once for the
+    # program as a virtual call's dispatcher is (Gen.dispatchers, which holds it by key)
+    key = "compare:" + key
+    if key not in self.dispatchers:
+        line = self.line
+        g = FnInfo("<compare>", f"@ce.{len(self.dispatchers)}", mk("def", "<compare>", line, []), "")
+        g.params = ["_a", "_b"]
+        g.ptypes = [v.t for v in args]
+        for _ in g.params:
+            g.defaults.append(mk("noann", "", line, []))
+            g.dglob.append("")
+            g.dtypes.append("")
+        g.ret = ret
+        g.mod = self.curfn.mod
+        g.home = self.fn_home(self.curfn)
+        body = [with_line(s, line) for s in Parser(Lexer("def _compare():\n" + src, 1).file()).module().kids[0].kids[2].kids]
+        g.node.kids = [mk("params", "-1,-1", line, []), mk("noann", "", line, []), mk("block", "", line, body)]
+        self.dispatchers[key] = g
+        fr = self.save()
+        self.modlevel = False
+        self.lenient = False
+        self.function(g, body)
+        self.restore(fr)
+        self.line = line
+    g = self.dispatchers[key]
+    c = Ins("call", ret, g.ll)
+    c.a = [v for v in args if v.t != "None"]  # (an argument that is None is not passed, as dispatch_call's)
+    self.put(c, 1)
+    return Val(tmpname(c.r[0]), ret)
 
 
 def gen_iface_held(self, t: str) -> bool:

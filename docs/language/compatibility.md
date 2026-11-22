@@ -208,7 +208,9 @@ applies. Bytes case methods remain ASCII-only.
   holds a number and another number compares their types and values (a float's bits), as PyPy
   does. CPython agrees for a number stored from another value, small ints, bools and a module's
   equal constants; equal numbers it computes apart are two objects there
-  ([deviation](../../tests/deviations/object_number_identity.py)).
+  ([deviation](../../tests/deviations/object_number_identity.py)). A search or comparison of
+  containers of values of `object` tests each pair so first, as CPython tests identity: a list
+  that holds a NaN equals another that holds a NaN of the same bits.
 - **Views of containers stored as `object`:** a [view's](typing.md#object) look-up finds a
   dict's key, or a set's element, equal to the one looked for after hashing it as CPython does,
   by comparing them one by one: a key of a class whose `__hash__` disagrees with its `__eq__` can
