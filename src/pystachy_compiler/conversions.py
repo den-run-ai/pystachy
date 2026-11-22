@@ -357,7 +357,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         kind = self.bkind(unopt(v.t))
         hint = f": an object of a class that derives from {kind} is not stored or passed as a {kind} yet, where it would lose its class (declare {short(unopt(v.t))} there, leave a parameter unannotated, or copy the items with {kind}(...))"
     if self.is_object(v.t):
-        hint = " (narrow a value of object with isinstance() first, as `if isinstance(x, int):` narrows x to an int)"
+        # (where ints promote, isinstance(x, int) narrows nothing: object_note says so)
+        hint = self.object_note([v.t]) if self.int_policy(self.line) else " (narrow a value of object with isinstance() first, as `if isinstance(x, int):` narrows x to an int)"
     self.err(f"expected {typestr(t)}, got {typestr(v.t)}{hint}")
     return v
 
