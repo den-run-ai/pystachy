@@ -16,6 +16,7 @@ import unittest
 
 import merge_verification as merge
 from test_verify_case_weights import reference_shards
+from verify_doubles import STAGE, copy_scripts
 
 ROOT = Path(__file__).resolve().parent.parent
 TIMEOUT = shutil.which("timeout")
@@ -80,8 +81,7 @@ class GCVerificationTests(unittest.TestCase):
         for name in ("tests", "tests/programs", "tests/programs/x", "tests/deviations", "tests/errors",
                      "tests/errors/x", "src", "lib", "ryu", "mpz", "bin", "tools"):
             (self.root / name).mkdir()
-        for name in ("tests/verify.sh", "tests/corpus.sh", "tools/irsame.sh", "tools/self_compile_once.sh"):
-            shutil.copy(ROOT / name, self.root / name)
+        copy_scripts(self.root)
         for name in ("pystachy.py", "runtime.py", "runtime.c", "tests/programs/x/example.py",
                      "tests/programs/x/syntax_example.py", "tests/deviations/example.py", *FILLERS):
             (self.root / name).write_text("# fixture\n")
@@ -99,8 +99,7 @@ class GCVerificationTests(unittest.TestCase):
 import signal
 if os.environ.get("VERIFY_MOCK_MODE") == "timeout-kill" and os.environ.get("PYSTACHY_GC_STRESS") == "7000":
     signal.signal(signal.SIGTERM, signal.SIG_IGN)   # before the other imports: TERM must find it ignored
-from pathlib import Path
-import shutil
+''' + STAGE + '''from pathlib import Path
 import sys
 import time
 args = sys.argv[1:]
@@ -141,27 +140,20 @@ if args[0] in ("ir", "rt", "check") and (args[1].startswith("tests/") or (args[0
     sys.exit(3 if differs and mode == "gc-status-differs" else 0)
 if args[0] == "pystachy.py":
     args = args[1:]
-output = Path(args[args.index("-o") + 1])
-if args[0] == "build":
-    shutil.copy(__file__, output)
-    output.chmod(0o755)
-else:
-    if args[0] == "ir" and os.environ.get("PYSTACHY_TIMING") == "1":
-        print("pystachy-timing\\tprogram.attempt\\t0.5", file=sys.stderr)
-    text = "fixed point\\n"
-    if stress:
-        assert stress == "7000", stress
-        assert os.environ["PYSTACHY_GC"] == "stats"
-        Path("gc-child.pid").write_text(str(os.getpid()))
-        if mode in ("timeout", "timeout-kill", "signal"):
-            time.sleep(30)
-        if mode == "failure":
-            print("mock compiler failed", file=sys.stderr)
-            sys.exit(7)
-        if mode == "mismatch":
-            text = "wrong IR\\n"
-        print("gc statistics", file=sys.stderr)
-    output.write_text(text)
+text = "fixed point\\n"
+if args[0] != "build" and stress:
+    assert stress == "7000", stress
+    assert os.environ["PYSTACHY_GC"] == "stats"
+    Path("gc-child.pid").write_text(str(os.getpid()))
+    if mode in ("timeout", "timeout-kill", "signal"):
+        time.sleep(30)
+    if mode == "failure":
+        print("mock compiler failed", file=sys.stderr)
+        sys.exit(7)
+    if mode == "mismatch":
+        text = "wrong IR\\n"
+    print("gc statistics", file=sys.stderr)
+stage(args, text=text)
 ''')
         compiler.chmod(0o755)
         suite = self.root / "tests/run.sh"

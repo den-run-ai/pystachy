@@ -9,13 +9,14 @@ import contextlib
 import json
 import os
 from pathlib import Path
-import shutil
 import signal
 import subprocess
 import sys
 import tempfile
 import time
 import unittest
+
+from verify_doubles import STAGE, copy_scripts
 
 ROOT =Path(__file__).resolve().parent.parent
 # in each phase, each lane's first step waits for the others' (a barrier): run one after another,
@@ -84,17 +85,15 @@ class ContractLaneTests(unittest.TestCase):
         for name in ("tests", "tests/programs", "tests/programs/x", "tests/errors", "tests/errors/x",
                      "tests/ffi", "tools", "src", "lib", "ryu", "mpz", "bin"):
             (self.root / name).mkdir()
-        for name in ("tests/verify.sh", "tests/corpus.sh", "tools/self_compile_once.sh"):
-            shutil.copy(ROOT / name, self.root / name)
+        copy_scripts(self.root)
         for name in ("pystachy.py", "runtime.py", "runtime.c", "tests/programs/x/example.py"):
             (self.root / name).write_text("# fixture\n")
         (self.root / "tests/errors/x/example.py").write_text("# error: mock rejection\n")
         header = f"import json\nBARRIERS = {BARRIERS!r}\nBESIDE_LIMITS = {BESIDE_LIMITS!r}\n"
         tool = header + TOOL
         compiler = self.root / "bin/compiler"
-        compiler.write_text(f"#!{sys.executable}\n" + '''import os
+        compiler.write_text(f"#!{sys.executable}\n" + STAGE + '''import os
 from pathlib import Path
-import shutil
 import sys
 args = sys.argv[1:]
 if args in (["-"], ["--version"]):
@@ -109,14 +108,7 @@ if args[0] == "pystachy.py":
     args = args[1:]
 if args[0] == "run":
     sys.exit(0)
-output = Path(args[args.index("-o") + 1])
-if args[0] == "build":
-    shutil.copy(__file__, output)
-    output.chmod(0o755)
-else:
-    if args[0] == "ir" and os.environ.get("PYSTACHY_TIMING") == "1":
-        print("pystachy-timing\\tprogram.attempt\\t0.5", file=sys.stderr)
-    output.write_text("fixed point\\n")
+stage(args)
 ''')
         (self.root / "bin/tool.py").write_text(tool)
         for script, name in (("tools/check_ir.sh", "check_ir"), ("tests/ffi/run.sh", "ffi")):

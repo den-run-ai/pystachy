@@ -1043,6 +1043,13 @@ coverage runs for documentation PRs, main and manual runs. The coordinator prese
 normal SIGINT handling, cancels every process group and reaps the suite processes
 before returning from SIGINT or SIGTERM cancellation.
 
+The verification-harness tests run the real `tests/verify.sh` and Makefile bootstrap with
+compiler doubles. The doubles take their bootstrap stage (`build`, the fixed points' `ir`
+and `rt`, and stage 3's one inference attempt) and the scripts the bootstrap runs from
+`tools/verify_doubles.py`; `tools/test_verify_doubles.py` checks both against
+`tools/self_compile_once.sh`, `tests/verify.sh` and the Makefile. A change to the
+bootstrap's interface is then made in that module, not in each double.
+
 Generated-user and generated-runtime ASan controls run in the existing x86-64
 `safety-1` worker on code PRs and `gc-jit-0` on main pushes and manual runs, using
 LLVM 18 and its compiler-rt runtime. All four tests in `tools/test_runtime_asan.py` run there;

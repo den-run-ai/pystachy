@@ -11,6 +11,7 @@ import unittest
 
 import merge_verification
 from test_verify_case_weights import reference_shards
+from verify_doubles import SCRIPTS, STAGE, copy_scripts
 
 ROOT = Path(__file__).resolve().parent.parent
 CASES = ["tests/programs/x/example.py", "tests/programs/x/syntax_example.py", "tests/deviations/example.py",
@@ -66,9 +67,7 @@ class ShardVerificationTests(unittest.TestCase):
         for name in ("tests", "tests/programs", "tests/programs/x", "tests/deviations", "tests/errors",
                      "tests/errors/x", "src", "lib", "ryu", "mpz", "bin", "tools"):
             (self.root / name).mkdir()
-        for name in ("tests/verify.sh", "tests/corpus.sh", "tools/irsame.sh", "tools/ci_sample.py",
-                     "tools/self_compile_once.sh"):
-            shutil.copy(ROOT / name, self.root / name)
+        copy_scripts(self.root, (*SCRIPTS, "tools/ci_sample.py"))
         for name in ("pystachy.py", "runtime.py", "runtime.c", "tests/programs/x/example.py",
                      "tests/programs/x/syntax_example.py", "tests/deviations/example.py"):
             (self.root / name).write_text("# fixture\n")
@@ -77,9 +76,8 @@ class ShardVerificationTests(unittest.TestCase):
             "".join(f"{weight} {case}\n" for case, weight in WEIGHTS.items()) + "default rejection 10\n")
         (self.root / "tests/errors/x/syntax_example.py").write_text("# error: syntax_example.py: mock syntax\n")
         compiler = self.root / "bin/compiler"
-        compiler.write_text(f"#!{sys.executable}\n" + '''import os
+        compiler.write_text(f"#!{sys.executable}\n" + STAGE + '''import os
 from pathlib import Path
-import shutil
 import sys
 args = sys.argv[1:]
 if args and args[0] == "tools/ci_sample.py":
@@ -119,22 +117,16 @@ if args[0] in ("ir", "rt", "check") and args[1].startswith("tests/"):  # (a case
     sys.exit(0)
 if args[0] == "pystachy.py":
     args = args[1:]
-output = Path(args[args.index("-o") + 1])
+# (stage 3's attempts: tools/self_compile_once.sh requires one)
+restarts = Path("mock-mode").exists() and Path("mock-mode").read_text() == "restarts"
+stage(args, attempts=3 if restarts else 1)
 if args[0] == "build":
-    shutil.copy(__file__, output)
-    output.chmod(0o755)
     if os.environ.get("PYSTACHY_HOME"):  # (a rebuild writes the runtime to its home's cache)
         cache = Path(os.environ["PYSTACHY_HOME"]) / "build"
         cache.mkdir(exist_ok=True)
         sanitized = "-fsanitize=undefined" in os.environ.get("PYSTACHY_CFLAGS", "")
         mark = "__ubsan_handle" if sanitized and os.environ.get("VERIFY_MOCK_MODE") != "plain-runtime" else ""
         (cache / "runtime-mock.bc").write_text(f"bitcode {mark}\\n")
-else:
-    if args[0] == "ir" and os.environ.get("PYSTACHY_TIMING") == "1":
-        # (stage 3's attempts: tools/self_compile_once.sh requires one)
-        attempts = 3 if Path("mock-mode").read_text() == "restarts" else 1
-        print("pystachy-timing\\tprogram.attempt\\t0.5\\n" * attempts, end="", file=sys.stderr)
-    output.write_text("fixed point\\n")
 ''')
         compiler.chmod(0o755)
         for tool in LLVM_TOOLS:
