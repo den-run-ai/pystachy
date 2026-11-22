@@ -1,6 +1,8 @@
 # Bootstrap: CPython runs pystachy.py on itself (stage 1); that native compiler rebuilds
-# itself (stage 2) and must reproduce its own LLVM IR byte for byte (fixed point). Stage 3
-# must infer the compiler's types in one attempt (tools/self_compile_once.sh).
+# itself (stage 2) and must reproduce its own LLVM IR byte for byte (fixed point). build gives a
+# program line tables unless PYSTACHY_DEBUG_LINES=0, and ir only where PYSTACHY_DEBUG_LINES=1: stage 3
+# asks for them as the builds have them, and must infer the compiler's types in one attempt
+# (tools/self_compile_once.sh).
 PY ?= $(shell command -v python3.13 || command -v python3)
 export PYSTACHY_LLVM ?= $(shell $(PY) -c 'import pystachy; print(pystachy.llvm_dir())')
 COMPILER_SOURCES := pystachy.py lib/_pystachy_cache.py $(wildcard src/*.py src/pystachy_compiler/*.py)
@@ -11,7 +13,7 @@ pystachy: $(COMPILER_SOURCES) runtime.c runtime.py $(wildcard ryu/*.c ryu/*.h mp
 	mkdir -p build
 	PYSTACHY_AOT_OPT="$(BOOTSTRAP_AOT_OPT)" $(PY) pystachy.py build pystachy.py -o build/pystachy1 --emit-ir build/stage1.ll
 	PYSTACHY_AOT_OPT=2 build/pystachy1 build pystachy.py -o build/pystachy2 --emit-ir build/stage2.ll
-	tools/self_compile_once.sh build/pystachy2 build/stage3.ll
+	PYSTACHY_DEBUG_LINES=$${PYSTACHY_DEBUG_LINES:-1} tools/self_compile_once.sh build/pystachy2 build/stage3.ll
 	cmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll
 	@echo "fixed point: stage1 == stage2 == stage3 ($$(wc -l < build/stage1.ll) lines of IR)"
 	$(PY) pystachy.py rt runtime.py -o build/rt1.ll
