@@ -3016,7 +3016,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     dropped = mc is not None and mc is self.stmtexpr and len(args) == 1 and len(mc.kids) == 2 and args[0] is mc.kids[1]
     if is_set(o.t):
         return self.smethod(o, m, args)
-    if (is_list(o.t) or is_vtuple(o.t)) and (m == "index" or m == "count") and len(args) == 1 and args[0].kind != "kw" and args[0].kind != "starred" and (self.holds_iface(o.t) or (args[0].kind == "name" and self.whole == 0 and self.holds_iface(self.static_type(args[0])))):
+    if (is_list(o.t) or is_vtuple(o.t)) and (m == "index" or m == "count") and len(args) == 1 and args[0].kind != "kw" and args[0].kind != "starred" and (self.holds_object(o.t) or (args[0].kind == "name" and self.whole == 0 and self.holds_object(self.static_type(args[0])))):
         # (a search of values of an interface, or for one, a variable's: item is x or item == x,
         # as CPython's, in a function compiled for their types, interfaces.py)
         needle = self.expr(args[0], "")

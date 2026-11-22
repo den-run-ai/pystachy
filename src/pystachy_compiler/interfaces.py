@@ -1277,15 +1277,16 @@ def conversion_source(self, kind: str, impl: str) -> str:
     return f"    raise TypeError({type_text(held, 'must be real number, not ', name, '')})\n"
 
 
-def gen_holds_iface(self, t: str) -> bool:
-    # does a value of type t hold a value of an interface (object, a view, a protocol's) in its
-    # items, at any depth, or is it one: the runtime's comparisons and searches, which read the
-    # items by their descriptors, cannot compare it (container_eq, container_find)
+def gen_holds_object(self, t: str) -> bool:
+    # does a value of type t hold a value of object (or a view of one's container) in its items,
+    # at any depth, or is it one: the runtime's comparisons and searches, which read the items by
+    # their descriptors, cannot compare it (container_eq, container_find). (A protocol's values
+    # in a container keep their compilation error: tests/errors/classes/protocol_search.py)
     u = unopt(t)
-    if self.is_iface(u):
+    if self.is_object(u) or self.is_view(u):
         return True
     if is_list(u) or is_vtuple(u) or is_tuple(u) or is_dict(u):
-        return len([x for x in targs(u) if self.holds_iface(x)]) > 0
+        return len([x for x in targs(u) if self.holds_object(x)]) > 0
     return False
 
 
@@ -1306,8 +1307,8 @@ def container_kind(t: str) -> str:
 
 
 def gen_container_eq(self, op: str, a: Val, b: Val) -> Val:
-    # a == b (op "==", or "!=" its negation) of two containers, one of which holds values of an
-    # interface (holds_iface), which the runtime's comparisons cannot reach: a function compiled
+    # a == b (op "==", or "!=" its negation) of two containers, one of which holds values of
+    # object (holds_object), which the runtime's comparisons cannot reach: a function compiled
     # for the pair of types, which compares them as CPython's list, tuple and dict do, each pair of
     # items by identity, then equality (same_test), which calls the items' own entries; containers
     # of two kinds, or tuples of two lengths, are unequal. Val("", "") where it does not compare
@@ -1344,7 +1345,7 @@ def container_eq_source(self, x: str, y: str) -> str:
 def gen_container_find(self, what: str, x: Val, xs: Val) -> Val:
     # the index of the first item of xs (a list or a runtime-length tuple) that is x or equal to
     # it, -1 for none (what "find"), or how many there are ("count"), where either holds values
-    # of an interface (holds_iface): a function compiled for their types, as CPython's in,
+    # of object (holds_object): a function compiled for their types, as CPython's in,
     # index() and count() search, each item compared with x as item == x (same_test)
     same = same_test(self, targs(xs.t)[0], x.t, "_y", "_a")
     if what == "find":

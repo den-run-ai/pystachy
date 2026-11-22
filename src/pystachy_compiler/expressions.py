@@ -6181,9 +6181,8 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, 
     # where it is, and on in a new block where it is not; False if no branch can reach hit.
     # lenient (a member of a union of classes, titem_union): objects compare as inherit_cmp's
     # lenient comparison compares them, which no method that cannot take the other makes an error
-    if self.is_iface(unopt(item.t)) or self.is_iface(unopt(a.t)):
-        # (a value of an interface, as object's: the same object, then ==, by its table's entries,
-        # interfaces.py)
+    if self.is_object(unopt(item.t)) or self.is_object(unopt(a.t)) or self.is_view(unopt(item.t)) or self.is_view(unopt(a.t)):
+        # (a value of object: the same object, then ==, by its table's entries, interfaces.py)
         for op in ["is", "=="]:
             c = self.cmp2(op, item, a)
             nx = self.label()
@@ -6481,11 +6480,11 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             return dc
     if (self.is_iface(a.t) or self.is_iface(b.t)) and op != "in" and op != "not in":
         return self.iface_cmp(op, a, b)  # (a value of an interface: its object's identity, interfaces.py)
-    if (op == "==" or op == "!=") and not is_opt(a.t) and not is_opt(b.t) and (self.holds_iface(a.t) or self.holds_iface(b.t)):
+    if (op == "==" or op == "!=") and not is_opt(a.t) and not is_opt(b.t) and (self.holds_object(a.t) or self.holds_object(b.t)):
         ce = self.container_eq(op, a, b)  # (containers of values of an interface, item by item: interfaces.py)
         if ce.t != "":
             return ce
-    if (op == "in" or op == "not in") and (is_list(b.t) or is_vtuple(b.t)) and not is_opt(a.t) and (self.holds_iface(a.t) or self.holds_iface(b.t)):
+    if (op == "in" or op == "not in") and (is_list(b.t) or is_vtuple(b.t)) and not is_opt(a.t) and (self.holds_object(a.t) or self.holds_object(b.t)):
         found = self.container_find("find", a, b)  # (item is x or item == x, as CPython searches: interfaces.py)
         return self.num_cmp(">=" if op == "in" else "<", found, Val("0", "int"))
     if op in ["==", "!=", "<", "<=", ">", ">="] and (self.object_union(a.t) or self.object_union(b.t)):
@@ -7020,9 +7019,11 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         # (an object of a class of the program and another such object or a value of a builtin
         # type, which no rule above compares: as an object of a class with subclasses is compared)
         return self.inherit_cmp(op, a, b)
-    if eq and not is_opt(a.t) and not is_opt(b.t) and is_list(a.t) and is_list(b.t):
-        # (lists whose items no one descriptor compares, of two classes: item by item, as
-        # containers of values of object are, interfaces.py)
+    if eq and not is_opt(a.t) and not is_opt(b.t) and is_list(a.t) and is_list(b.t) and any(elem(t) in self.classes for t in [a.t, b.t]) and all(elem(t) not in self.nts and elem(t) != "dyn" and not is_union(unopt(elem(t))) and not elem(t).startswith("rec[") and not self.is_iface(elem(t)) for t in [a.t, b.t]):
+        # (lists of objects of a class of the program and of another type, which no one descriptor
+        # compares, as values of object hold them: item by item, as containers of values of object
+        # are, interfaces.py; the objects of a NamedTuple, which compare as tuples, Any values and
+        # unions keep the error below)
         ce = self.container_eq(op, a, b)
         if ce.t != "":
             return ce
