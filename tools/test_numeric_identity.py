@@ -33,7 +33,7 @@ class NumericIdentityTests(unittest.TestCase):
         functions = [function for function in generators[-1].fns
                      if function.f.node.s == "target"]
         self.assertEqual(len(functions), 1)
-        return functions[0].numeric_only
+        return functions[0].build.numeric_only
 
     def test_closed_numeric_functions(self):
         programs = [
@@ -202,7 +202,7 @@ class NumericCallIdentityTests(unittest.TestCase):
         ]:
             with self.subTest(body=body):
                 fn, _ = self.signature(body)
-                self.assertTrue(fn.numeric_only)
+                self.assertTrue(fn.build.numeric_only)
                 self.assertEqual(set(fn.f.idnames), names)
 
     def test_fresh_arithmetic_keeps_argument_boxing_elided(self):
@@ -235,7 +235,7 @@ class NumericCallIdentityTests(unittest.TestCase):
 
     def test_numeric_annotation_argument_proof_is_separate(self):
         fn, ir = self.signature("value: int | float = 0\nfor i in range(x):\n    value += i\nreturn value", "int | float")
-        self.assertFalse(fn.numeric_only)
+        self.assertFalse(fn.build.numeric_only)
         self.assertTrue(fn.f.scalar_args)
         self.assertNotIn("x", fn.f.idnames)
         self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
@@ -419,7 +419,7 @@ class ScalarGlobalIdentityTests(unittest.TestCase):
 
         def read(generator, value, slot):
             if generator.curfn.node.s == "target" and slot.startswith("@") and not generator.drying:
-                reads[id(generator)].append(generator.fn.scalar_reads)
+                reads[id(generator)].append(generator.fn.build.scalar_reads)
             return original_read(generator, value, slot)
 
         source = ("# pystachy: dynamic-any\nfrom typing import Any\nG = 1000\nF = 1.5\nH = 0\n" +
@@ -428,7 +428,7 @@ class ScalarGlobalIdentityTests(unittest.TestCase):
                   "\n".join("    " + line for line in body.splitlines()) + "\n")
         with patch.object(driver, "Gen", make_generator), patch.object(Gen, "dyn_id_read", read):
             driver.compile_program("scalar_identity_probe.py", source, [str(ROOT / "lib")], "")
-        self.assertTrue(all(not fn.scalar_reads for fn in generators[-1].fns))
+        self.assertTrue(all(not fn.build.scalar_reads for fn in generators[-1].fns))
         result = reads[id(generators[-1])]
         self.assertTrue(result, "the target must actually read a numeric global")
         return result
@@ -483,7 +483,7 @@ class ScalarGlobalIdentityTests(unittest.TestCase):
                 held = []
 
                 def fail_once(generator, *args, held=held, failure=failure, **kwargs):
-                    if generator.curfn.node.s == "target" and generator.fn.scalar_reads and not held:
+                    if generator.curfn.node.s == "target" and generator.fn.build.scalar_reads and not held:
                         held.append(generator.fn)
                         raise failure()
                     return original(generator, *args, **kwargs)
@@ -496,7 +496,7 @@ class ScalarGlobalIdentityTests(unittest.TestCase):
                         else:
                             self.reads(body)
                     self.assertEqual(len(held), 1)
-                    self.assertFalse(held[0].scalar_reads)
+                    self.assertFalse(held[0].build.scalar_reads)
                     # A later hosted compilation still requires a bare global's snapshot.
                     self.assertEqual(self.reads("return G"), [False])
 
@@ -565,7 +565,7 @@ class ScalarListIdentityTests(unittest.TestCase):
         for expression in ["xs[i] + 1", "xs[i] < 2"]:
             held = []
             def fail(generator, *args, held=held):
-                if generator.curfn.node.s == "target" and generator.fn.scalar_reads:
+                if generator.curfn.node.s == "target" and generator.fn.build.scalar_reads:
                     held.append(generator.fn)
                     raise RuntimeError("probe")
                 return original(generator, *args)
@@ -573,7 +573,7 @@ class ScalarListIdentityTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     self.target_ir("return " + expression)
             self.assertEqual(len(held), 1)
-            self.assertFalse(held[0].scalar_reads)
+            self.assertFalse(held[0].build.scalar_reads)
             self.assertIn("@pys_list_get_identity", self.target_ir("return xs[i]"))
 
 

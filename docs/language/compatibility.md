@@ -10,6 +10,7 @@ This is a guide to known limits, not a guarantee that every other Python program
 | Supported language rules | [Types](typing.md), [execution](semantics.md), [modules](modules.md) |
 | Module-specific APIs and gaps | [Library compatibility](../../lib/compatibility.md) |
 | Experimental opt-ins | [Dynamic `Any`](../dynamic-any.md), [promoting ints](../python-int.md) |
+| WebAssembly exception handling and host limits | [Experimental Wasm backend](../../wasm/README.md#what-differs-from-a-native-build) |
 | How compatibility is checked | [Testing](../testing.md) |
 
 ## Deviations from CPython
@@ -134,6 +135,15 @@ applies. Bytes case methods remain ASCII-only.
   `key=`, so size changes are not detected. `intersection()` and
   `intersection_update()` consume a generator expression before testing its items;
   CPython interleaves generation and testing.
+- **A closed union's dict keeps its key type.** An item assigned through a
+  [closed union](typing.md#operations-on-closed-unions) at an index of another type than
+  the selected dict's keys raises `TypeError`; CPython adds the key
+  ([deviation](../../tests/deviations/union_store_key.py)).
+- **A closed union's str is no run-time format.** `value % number`, where a
+  [closed union](typing.md#operations-on-closed-unions)'s value is a str that holds a
+  conversion (`"%d items"`), raises `TypeError`; CPython formats with it
+  ([deviation](../../tests/deviations/union_percent_format.py)). A number there takes the
+  remainder, and a str without a conversion raises CPython's own `TypeError`.
 - **Hash callbacks can repeat.** `dict.fromkeys(set_of_objects)` recomputes user
   hashes; CPython reuses the set's hashes. `cache()`/`lru_cache()` may hash an
   argument more than once per call; CPython does so once.
@@ -501,7 +511,8 @@ Other rejections:
 - **Type joins:** incompatible storage/return types, a joined union used where it is not
   accepted, or `None` joined with an unfilled empty container. Recursive calls must follow
   the returns establishing the complete return type, including optionality.
-  See [inferred unions](typing.md#inferred-unions).
+  See [inferred unions](typing.md#inferred-unions) and, for an `int` given where `float` is
+  annotated, [`int` values in `float` locations](typing.md#int-values-in-float-locations).
 - **`None` specialization:** unsupported operations such as `p.upper()` or `p[0]`, even
   inside runtime branches or catching handlers; incompatible rebinding across runtime
   branches, loops or a `for` target. `len`, `int`, `float` and `ord` raise at runtime.
@@ -556,8 +567,10 @@ See [object protocols](semantics.md#object-protocols) and
   keyword calls, wrong arity or incompatible return types through `Callable`; printing
   functions, including inside containers; comparing containers of functions.
 - **Closures:** capturing possibly unassigned or later-unbound enclosing variables, or
-  comprehension variables; a decorated nested function capturing its own name; nested
-  classes. An undecorated nested function may reference itself.
+  comprehension variables; a decorated nested function capturing its own name; classes
+  defined in functions but those directly in one that runs at most once, whose methods read
+  none of its names ([classes inside functions](typing.md#classes-inside-functions)). An
+  undecorated nested function may reference itself.
 
 ### Classes, dataclasses and NamedTuples
 
@@ -565,7 +578,9 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
 [single inheritance](typing.md#single-inheritance).
 
 - **Inheritance:** multiple bases outside the [method-only secondary bases](typing.md#method-only-secondary-bases) subset; ordinary hierarchies involving layout-specialized templates,
-  NamedTuple or builtins; generic inheritance outside the [visitor subset](typing.md#explicit-generic-classes)
+  NamedTuple or builtins; a `collections.abc` base beside other bases or a keyword, naming a type
+  variable (`Sequence[T]`), or rebound by its module, and the [mixin forms](../../lib/compatibility.md#collectionsabc)
+  that differ (`reversed()` of a `Mapping`, `pop(k, default=d)`, a class-method `_from_iterable`); generic inheritance outside the [visitor subset](typing.md#explicit-generic-classes)
   (bases whose constructor binds type variables, or a type variable inside a base's type
   argument: `Visitor[list[T]]`); mixed dataclass/ordinary hierarchies; decorated subclasses except
   dataclass-from-dataclass and [identity decorators](typing.md#single-inheritance); changing method kind; incompatible virtual call signatures or
@@ -574,6 +589,23 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   of its subclasses ([#1602](https://github.com/den-run-ai/pystachy/issues/1602)). Independent
   classes and ordinary hierarchies with fixed concrete fields may specialize constructor
   arguments without specializing their layouts ([class templates](typing.md#class-templates-and-generic-classes)).
+- **Nested classes:** those of an enum class's body, of a generic class of PEP 695 or of a class
+  in an `if` or `try` statement; one after a call in the outer class's decorators, bases or
+  earlier body, or whose decorators or bases read a name that body binds before it; a decorator
+  in that body that reads a nested class; reading a nested enum class, or a class nested in a
+  dataclass or `NamedTuple`, through an object or `getattr()`
+  ([nested classes](typing.md#nested-classes)).
+- **Builtin bases:** a base other than `list`, `list[T]`, `dict` or `dict[K, V]` (`set`,
+  `str`, `int`, `tuple`, ...); for a [list or dict
+  subclass](typing.md#subclasses-of-list-and-dict), storing or passing its object where a
+  `list[T]`, a `dict[K, V]` or a dynamic `Any` value is expected, `copy.copy()` and
+  `copy.deepcopy()` of it, a class deriving from it, multiple inheritance or a decorator with
+  it, a `TypeVar` item type, `__new__`, special methods other than `__init__`, `__getitem__`,
+  `__setitem__`, `__delitem__`, `__contains__`, `__len__`, `__repr__` and `__str__` through
+  `super()`, a slice of an object whose class defines `__getitem__`, `C.fromkeys()`, `match`
+  sequence patterns, a key that `__missing__` would see converted (a `bool` among `int` keys),
+  and a bare base whose objects receive no item, or items of different types (name the types
+  in the base).
 - **Inherited members:** assigning inherited class attributes through subclasses without their
   own defaults; changing field types; derived-only fields without supported narrowing;
   inherited `cls`-using classmethods through base-typed objects, across modules or with
@@ -584,8 +616,11 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   property/setter/deleter, abstractmethod, contextmanager, functools.cached_property,
   functools.total_ordering, dataclass and overload. Defining or inheriting `__new__` (but in an
   [enum class](../../lib/compatibility.md#enum), in the form CPython's documentation gives),
-  `__getattr__`, `__getattribute__`, `__setattr__` or `__delattr__`, or a base defining
-  `__init_subclass__`, is rejected.
+  `__getattribute__`, `__setattr__` or `__delattr__`, or a base defining
+  `__init_subclass__`, is rejected. `__getattr__` is called for the attributes a class does
+  not define ([attribute fallback](semantics.md#attribute-fallback)); it is rejected in an
+  exception class, a `NamedTuple`, an enum, a generic class, a class template and a class
+  with a secondary base, as a class attribute, and with parameters other than `(self, name)`.
 - **Properties and attributes:** getter decorators, duplicate/misnamed setters or deleters,
   `property()` calls, assigning `super().x`, deleting nonproperty attributes; unannotated
   dataclass/NamedTuple class attributes, writes to them through their classes or to other class
@@ -782,6 +817,12 @@ See [reflection rules](semantics.md#reflection).
   additions through setters, outside `__init__` or in `__post_init__`, or later assignment to a potentially
   uninitialized nonlast field; class attributes also assigned through objects.
 - **Targets:** `getattr`, `setattr`, `hasattr` and `dir` on exceptions; `dir` on files/functions.
+- **`__getattr__`:** a read of a field that an object may lack (an `__init__` that may leave
+  it unassigned, also a derived one that does not call its base's) where the method's return
+  type is not the field's; where only a derived class defines the method, a base-typed read
+  of a property, or of a field that an object of that class may lack; an object of such a
+  class as a dynamic `Any` value, in a class pattern or copied with `copy`; a module's
+  `__getattr__` is never called ([attribute fallback](semantics.md#attribute-fallback)).
 - **Expansion:** constant-name loops defining functions/lambdas/classes, reassigning the loop
   variable or expanding the body over 256 times; `dataclasses.replace` with runtime dict keys.
 

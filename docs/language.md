@@ -40,7 +40,7 @@ their own contracts; [interoperability](ffi.md) covers C, embedded CPython and e
 | [Static typing](language/typing.md) | 🟢 Native<br>🟡 Unions | Inferred locals, returns and per-call specializations; closed unions; `T \| None` narrowing; `Callable`; generic functions and classes, including PEP 695; type aliases | General object unions | Mutable containers are invariant; empty containers need a type; recursive value aliases are a prototype |
 | [`Any` values](dynamic-any.md) | 🟢 Native<br>🧪 Dynamic | `Any` annotations specialize to concrete types; with `# pystachy: dynamic-any`, runtime-typed values with lazy iteration, comparisons and numeric protocols | Runtime-typed values in modules that do not opt in | Unsupported cross-type comparison bodies raise `TypeError`; some typed boundaries lose numeric identity |
 | [Functions](language/typing.md#functions-callables-and-closures) | 🟢 Native | Every parameter kind and default; lambdas, closures and `nonlocal`; function decorators; `*args` and `**kwargs` per call shape; `Callable` values and bound methods | — | `f(*xs)` of a list and run-time `**` expansion; `Callable[..., R]`; keyword calls through a `Callable` |
-| [Classes](language/typing.md#single-inheritance) | 🟢 Native<br>🟡 Hierarchies | Fields, methods, properties, static and class methods, operator methods, dataclasses, `NamedTuple`, single inheritance with overrides and `super()`, method-only secondary bases and traits, classes as values (`type[C]`), two plain builtin exception bases, `__slots__`, `abc` | General multiple inheritance; subclasses of builtin types; general metaclasses and class decorators; `__getattr__`-style hooks | Reflected arithmetic only with an `int`, `float` or `bool` on the left; `NotImplemented` only from comparison methods |
+| [Classes](language/typing.md#single-inheritance) | 🟢 Native<br>🟡 Hierarchies | Fields, methods, properties, static and class methods, operator methods, dataclasses, `NamedTuple`, single inheritance with overrides and `super()`, method-only secondary bases and traits, classes as values (`type[C]`), two plain builtin exception bases, [`list` and `dict` as a base](language/typing.md#subclasses-of-list-and-dict), `__slots__`, `abc`, `__getattr__` for [attributes a class does not define](language/semantics.md#attribute-fallback) | General multiple inheritance; subclasses of builtin types other than `list` and `dict`; general metaclasses and class decorators; `__getattribute__`, `__setattr__` and `__delattr__` hooks | Reflected arithmetic only with an `int`, `float` or `bool` on the left; `NotImplemented` only from comparison methods |
 | [Reflection](language/semantics.md#reflection) | 🟡 Bounded | `getattr`, `setattr`, `hasattr`, `vars`, `dir` and `type(x).__name__` on classes the compiler knows | `eval`, `exec`; values of attributes named at run time | A run-time name works where only its text or a test is needed |
 | [Statements](language/semantics.md#statements) | 🟡 Bounded | Assignment and unpacking, `:=`, `if`, loops with `else`, `with`, `assert`, `del`, `global`, `nonlocal`; [bounded `match`](language/semantics.md#structural-patterns) | Mapping patterns and class patterns beyond dataclass fields; `async` and `await` | Deleting a global from a function |
 | [Generators and iterators](language/semantics.md#generators) | 🟢 Direct<br>🟡 Suspended | `yield`, `yield from`, `send()`, `throw()` and `close()`; generator expressions; iterator classes; lazy `itertools` | — | A dropped suspended generator is never closed; some consumers materialize their input |
@@ -95,12 +95,12 @@ Measure compilation and execution separately
 | Containers | `list[T]`, `dict[K, V]`, `set[T]`, `frozenset[T]`, fixed-shape `tuple[A, B]`, runtime-length `tuple[T, ...]` |
 | Objects | User classes, dataclasses and class-style `NamedTuple` |
 | Closed scalar unions | `int \| float \| bool \| str`, optionally including `None` |
-| Mixed container unions | Scalar members plus explicit `list[T]` / `dict[K, V]` members, with narrowing |
+| Mixed container unions | Scalar members plus explicit `list[T]` / `dict[K, V]` members; loops, indexes, methods and operators [select the member](language/typing.md#operations-on-closed-unions), and `isinstance()` narrows |
 | Native reference unions | Up to four non-overlapping class/file types, such as `TextIO \| StringIO`, and scalar members beside them, such as `int \| Decimal` |
 | Optional values | `T \| None`, `Optional[T]`, `Union[T, None]` |
 | Functions | Typed `Callable[[A, B], R]`, functions, lambdas, closures and bound methods |
 | Generics | Function templates and `Generic` or PEP 695 (`class Box[T]`) classes with inferred or explicit type arguments; module-level type aliases |
-| Recursive values (prototype) | `type JSONValue = None \| bool \| int \| float \| str \| list[JSONValue] \| dict[str, JSONValue]` and smaller closed recursive unions, narrowed with `isinstance()`; see [recursive value aliases](language/typing.md#recursive-value-aliases-prototype) |
+| Recursive values (prototype) | `type JSONValue = None \| bool \| int \| float \| str \| list[JSONValue] \| dict[str, JSONValue]` and smaller closed recursive unions, used as they are or narrowed with `isinstance()`; see [recursive value aliases](language/typing.md#recursive-value-aliases-prototype) |
 
 - **Integers** are checked 64-bit values; `x & y` keeps the low 64 bits of the arithmetic it
   masks ([numbers](language/compatibility.md#numbers)). A module that opts in to
@@ -214,13 +214,21 @@ Classes support fields, methods, class attributes, `@property` with `@x.setter` 
   annotated parameters, and class templates, NamedTuples, builtin types and mixed
   dataclass/ordinary hierarchies cannot take part
   ([single inheritance](language/typing.md#single-inheritance)).
+- **`list` and `dict` as a base:** `class C(list)`, `class C(list[T])`, `class D(dict)` and
+  `class D(dict[K, V])` make objects that are lists or dicts to every operation the class does
+  not define, compiled as the builtin's own operations, with the class's methods, attributes,
+  `__slots__` and a dict's `__missing__` ([subclasses of list and
+  dict](language/typing.md#subclasses-of-list-and-dict)).
 - **Generic classes** declare `Generic[...]` or PEP 695 type parameters (`class Box[T]`) and
   have no other base. Exception classes have their own [inheritance rules](#exceptions).
 - **Reflection** (`getattr`, `setattr`, `hasattr`, `vars`, `dir`, `type(x).__name__`) works on
   objects whose classes the compiler knows; an attribute name computed at run time is
   supported where only its text or a test is needed ([reflection](language/semantics.md#reflection)).
 
-Multiple inheritance, subclasses of builtin types, dynamic attribute hooks, general
+A class's `__getattr__` is called for the attributes its objects lack
+([attribute fallback](language/semantics.md#attribute-fallback)). Multiple inheritance,
+subclasses of builtin types other than `list` and `dict`, the other attribute hooks
+(`__getattribute__`, `__setattr__`, `__delattr__`, a module's `__getattr__`), general
 metaclasses and general class or method decorators remain outside the supported subset.
 See [object protocols](language/semantics.md#object-protocols) and the
 [class restrictions](language/compatibility.md#classes-dataclasses-and-namedtuples).
@@ -336,9 +344,9 @@ separately in [FFI](ffi.md).
 A program that needs an unsupported feature gets a compile-time error. Supported templates
 can avoid compiling unused branches that contain one. The main gaps:
 
-- **Object model:** multiple inheritance beyond [method-only secondary bases](language/typing.md#method-only-secondary-bases), subclasses of builtin types, general metaclasses and
-  class decorators, dynamic attribute hooks, and attribute values looked up by names only the
-  run time knows (their text and `hasattr()` are supported).
+- **Object model:** multiple inheritance beyond [method-only secondary bases](language/typing.md#method-only-secondary-bases), subclasses of builtin types other than `list` and `dict`, general metaclasses and
+  class decorators, attribute hooks other than a class's `__getattr__`, and attribute values
+  looked up by names only the run time knows (their text and `hasattr()` are supported).
 - **Values:** `memoryview`, slice objects and
   general object unions; arbitrary-precision ints and dynamic `Any` values outside their opt-in
   prototypes ([promoting ints](python-int.md), [dynamic `Any`](dynamic-any.md)).

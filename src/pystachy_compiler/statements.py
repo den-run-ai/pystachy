@@ -1,12 +1,13 @@
 """Statements component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.utils import identity_abi, identity_default, is_union
+from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BREV, BSTORE
+from src.pystachy_compiler.utils import identity_abi, identity_default, is_union, umembers
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.frames import Exit, IterArg, SeqStart, StopCatch
 from src.pystachy_compiler.ir import Blk, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
-from src.pystachy_compiler.names import ENUMCLASSES, owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, LOCALWHY, local_class, owner, short
 from src.pystachy_compiler.specs import (
     STR_HEADER_SIZE,
     ABCS,
@@ -36,6 +37,7 @@ from src.pystachy_compiler.specs import (
 )
 from src.pystachy_compiler.patterns import unsupported_match, unsupported_reason
 from src.pystachy_compiler.syntax import Node, mk, names_in, starred_target
+from src.pystachy_compiler.unions import ANNTYPES, ann_returns, ann_site, ann_takes
 from src.pystachy_compiler.utils import (
     is_clsval,
     bool_for_int,
@@ -342,6 +344,17 @@ def gen_default_problem(self, e: Node, t: str) -> str:
         if r != "":
             return r
     return ""
+
+def nested_bound(self, c: str) -> None:
+    # class c's statement has run: the classes its body nests (C.N, Loader's nested_classes),
+    # which CPython binds as its attributes, are bound now for the reads of them written C.N
+    # (Node.outer), whose flags their own statements, which run before c's, leave unset
+    if "." in c[c.rfind("$") + 1 :] or local_class(c):
+        return
+    for x in self.gflag:
+        if x.startswith(c + ".") and x in self.classes:
+            self.mstore('bool', 'true', f'@g.{x}.def')
+
 
 def gen_hoist_class(self, ci: ClassInfo) -> None:
     # class-body defaults are evaluated once, when the class statement runs, in body order,
@@ -650,7 +663,7 @@ def gen_with_cm(self, m: Val, it: Node, body: list[Node]) -> None:
     self.exits = self.exits[:n0]
 
 def gen_stmt(self, n: Node) -> None:
-    if len(self.fn.lazyobj) > 0 or len(self.fn.movebit) > 0:
+    if len(self.fn.build.lazyobj) > 0 or len(self.fn.build.movebit) > 0:
         self.id_stmt(n)  # (lazy field locals and moves: dynamic.py)
     else:
         self.stmt_main(n)
@@ -676,6 +689,10 @@ def gen_stmt_main(self, n: Node) -> None:
         elif n.kids[0].kind != "str" and n.kids[0].kind != "ellipsis":
             self.stmtexpr = n.kids[0]  # (whose value is dropped: g.close() as a statement)
             self.expr(n.kids[0], "")  # (a string or ... alone does nothing)
+            if self.blk.dead and len(self.blk.code) == 0:
+                # (it raised, and nothing used its value: the statement ends as the raise does,
+                # so code after it is code after a raise, Blk.dead)
+                self.unreachable()
     elif k == "gendrop":
         self.gen_drop(self.expr(n.kids[0], ""))  # (a generator a loop owns: owned_loop)
     elif k == "dynbody":
@@ -693,7 +710,7 @@ def gen_stmt_main(self, n: Node) -> None:
                 self.declare(n.kids[0].s, t)
             v = self.coerce(v, t)
         self.assign(n.kids[0], v)
-    elif k == "assign" and len(self.fn.lazyobj) + len(self.fn.lazyflag) > 0 and self.lazy_assign(n):
+    elif k == "assign" and len(self.fn.build.lazyobj) + len(self.fn.build.lazyflag) > 0 and self.lazy_assign(n):
         pass  # (x = o.f, o.f = x of a lazy numeric field local: dynamic.py)
     elif k == "assign":
         val = n.kids[-1]
@@ -739,10 +756,10 @@ def gen_stmt_main(self, n: Node) -> None:
             else:
                 v = self.expr(val, self.target_type(t0))
             src = self.joinsrc
-            moving = self.fn.idmove
-            passing = self.fn.idpass
-            self.fn.idmove = len(n.kids) == 2 and v.idexact and (t0.kind == "name" or t0.kind == "attr")
-            self.fn.idpass = len(n.kids) == 2 and (t0.kind == "name" or t0.kind == "attr") and self.id_move(val)
+            moving = self.fn.build.idmove
+            passing = self.fn.build.idpass
+            self.fn.build.idmove = len(n.kids) == 2 and v.idexact and (t0.kind == "name" or t0.kind == "attr")
+            self.fn.build.idpass = len(n.kids) == 2 and (t0.kind == "name" or t0.kind == "attr") and self.id_move(val)
             try:
                 if n.s == "local-retype":
                     self.joinsrc = val if t0.kind == "name" or t0.kind == "attr" else self.nokey  # (a call's value: see join_hint)
@@ -756,8 +773,8 @@ def gen_stmt_main(self, n: Node) -> None:
                         self.joinsrc = val if tgt.kind == "name" or tgt.kind == "attr" else self.nokey  # (each target's: box[0] = u = f(u))
                         self.assign(tgt, v)
             finally:
-                self.fn.idmove = moving
-                self.fn.idpass = passing
+                self.fn.build.idmove = moving
+                self.fn.build.idpass = passing
             self.joinsrc = src
         self.copying = False
     elif k == "annassign" and self.tmpl_ann(n.kids[1]):
@@ -773,11 +790,18 @@ def gen_stmt_main(self, n: Node) -> None:
         if len(n.kids) == 3:
             t = self.mapping_ann(t, n.kids[2])  # (x: dict[K, V] = defaultdict(...): the defaultdict's)
         if n.kids[0].kind == "name":
+            if t in ANNTYPES and len(self.hints) > 0:
+                # (a float variable that was given an int holds both, as an int or str one that
+                # was given an enum member does: a join's type, see ann_takes)
+                t = self.hints.get("global:" + n.kids[0].s if self.is_global(n.kids[0].s) else f"{self.fnkey(self.curfn)}|{n.kids[0].s}", t)
             self.declare(n.kids[0].s, t)
         if len(n.kids) == 3:
             v = self.expr(n.kids[2], t)
-            # (x: T | None = <a T> knows x holds a T, see narrowed)
-            self.assign(n.kids[0], v if n.kids[0].kind == "name" and ((is_opt(t) and self.widens(v.t, t)) or (is_union(unopt(t)) and (self.widens(v.t, t) or self.boxes(v.t, t)))) else self.coerce(v, t))
+            # (x: T | None = <a T> knows x holds a T, see narrowed. An int for a float variable or
+            # field, an enum member for an int or str one, is the store's to take or reject: its
+            # join, see join_hint)
+            takes = t in ANNTYPES and ann_takes(self, t, v.t) and (n.kids[0].kind == "name" or n.kids[0].kind == "attr")
+            self.assign(n.kids[0], v if takes or (n.kids[0].kind == "name" and ((is_opt(t) and self.widens(v.t, t)) or (is_union(unopt(t)) and (self.widens(v.t, t) or self.boxes(v.t, t))))) else self.coerce(v, t))
         if self.modlevel:
             self.ann_reads(n.kids[1])  # (module code's, which CPython evaluates after the value)
     elif k == "augassign":
@@ -954,7 +978,18 @@ def gen_stmt_main(self, n: Node) -> None:
                     if not joined:
                         self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
                     v = Val("undef", self.ret)
-            v = self.coerce(v, self.ret, f"the value {short(self.curfn.name)}() returns ({typestr(self.ret)})" if is_opt(v.t) else "")
+            if ann_site(self.ret) and ann_takes(self, self.ret, v.t) and ann_returns(self.curfn):
+                # (-> float that returns an int, -> int or -> str that returns an enum member, as
+                # CPython does: the return's join, see join_hint; a dataclass field's
+                # default_factory returns what the field holds: the field's)
+                if self.curfn.synthetic:
+                    was = self.join_at("ann:field", self.field_key(self.classes[self.curfn.cls], self.curfn.name[:-8]), self.ret)
+                else:
+                    was = self.join_at("ann:return", f"return:{self.curfn.node.line}", self.ret)
+                v = self.coerce(v, self.ret)
+                self.join_at(was[0], was[1], was[2])
+            else:
+                v = self.coerce(v, self.ret, f"the value {short(self.curfn.name)}() returns ({typestr(self.ret)})" if is_opt(v.t) else "")
             self.carried = v  # (the value first: a finally block runs after it is computed)
             ended = self.leave(0)
             v = self.carried
@@ -1031,7 +1066,7 @@ def gen_stmt_main(self, n: Node) -> None:
                 name = self.coerce(self.expr(dt.kids[1], "str"), "str", "the name in del os.environ[...]")
                 self.rt("pys_environ_del", "void", [f"ptr {name.v}"])
                 continue
-            o = self.expr(dt.kids[0], "") if dt.kind == "index" else Val("", "")
+            o = self.bdecay(self.expr(dt.kids[0], ""), BDEL) if dt.kind == "index" else Val("", "")  # (builtin_bases.py)
             nodel = "TypeError: 'NoneType' object does not support item deletion"
             if o.t == "dyn":
                 self.dyn_delitem(o, self.expr(dt.kids[1], "dyn"))  # (by its box's type: dynamic.py)
@@ -1218,10 +1253,13 @@ def gen_stmt_main(self, n: Node) -> None:
         else:
             self.modchk(n)  # (CPython reads its identity decorators before its body runs: Loader.identity_decos)
             self.hoist_class(self.classes[n.s])
-        if n.s in self.gflag:
+        if n.s in self.gflag and (k != "cdefaults" or "." not in n.s[n.s.rfind("$") + 1 :] or local_class(n.s)):
             self.mstore('bool', 'true', f'@g.{n.s}.def')
+        if k == "cdefaults":
+            nested_bound(self, n.s)
     elif k == "lclass":
         self.left_out(self.cnodes[n.line], self.unsupported[n.s])
+        nested_bound(self, n.s)
     elif k == "import":
         for a in n.kids:
             self.aliases[a.s] = a.kids[0].s
@@ -1258,7 +1296,8 @@ def gen_stmt_main(self, n: Node) -> None:
     elif k == "def" or k == "class" or k == "subclass":
         if self.modlevel:
             self.err(f"a {'class' if k == 'subclass' else k} statement inside a block of a module's code (if, try, for, while, with) is not supported: only at its top level")
-        self.err("a class inside a function is not supported")
+        why = LOCALWHY.get(n.line, "")
+        self.err("a class inside a function is not supported" + (": " + why if why != "" else ""))
     elif k == "badimport":
         self.err(n.s)
     elif k == "match":
@@ -1350,14 +1389,14 @@ def gen_augassign(self, n: Node) -> None:
         self.str_append(t, n.kids[1], "+=")
     elif t.kind == "name":
         fn = self.fn
-        held = fn.scalar_reads
+        held = fn.build.scalar_reads
         if (len(self.gidbox) > 0 or len(self.idbox) > 0) and op in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"] and self.scalar_read_value(t) and self.scalar_read_value(n.kids[1]):
-            fn.scalar_reads = True
+            fn.build.scalar_reads = True
         try:
             cur = self.read(t)
             value = self.inplace(op, cur, n.kids[1])
         finally:
-            fn.scalar_reads = held
+            fn.build.scalar_reads = held
         self.store_name(t.s, value)
     elif t.kind == "attr" and self.dotted(t) != "":
         self.err(f"assigning to {self.dotted(t)} is not supported; change its value in place")
@@ -1382,11 +1421,11 @@ def gen_augassign(self, n: Node) -> None:
         p = self.field(o, t.s, False)
         self.frozen(o.t, t.s)
         fn = self.fn
-        held = fn.scalar_reads
+        held = fn.build.scalar_reads
         if not held and self.idhere() and op in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"] and self.plain_field(t) in ["int", "float", "bool"] and self.scalar_read_value(n.kids[1]):
             # o.f op= v of a plain numeric field: as for a local (above), the old object
             # is an arithmetic operand only, and the store keeps the result's provenance
-            fn.scalar_reads = True
+            fn.build.scalar_reads = True
         try:
             cur = self.getfield(o, p, t.s)
             ci = self.classes[o.t]
@@ -1396,7 +1435,7 @@ def gen_augassign(self, n: Node) -> None:
                 self.err("rebinding __slots__ through an instance is not supported")
             nv = self.inplace(op, cur, n.kids[1])
         finally:
-            fn.scalar_reads = held
+            fn.build.scalar_reads = held
         if not self.frozen_store(o, t.s):
             self.setfield(o, p, t.s, nv)
     elif t.kind == "slice":
@@ -1431,9 +1470,24 @@ def gen_augassign(self, n: Node) -> None:
     elif t.kind == "index":
         o = self.expr(t.kids[0], "")
         sub = "TypeError: 'NoneType' object is not subscriptable"
+        if self.bkind(o.t) == "dict" and "__missing__" in self.classes[o.t].methods and self.bdecays(o.t, BITEM + BSTORE):
+            # o[k] op= v where o's class derives from dict and defines __missing__: o[k] as
+            # bmissing reads it, k evaluated once, then dict's own store of k (builtin_bases.py)
+            kn = self.vnode(self.expr(t.kids[1], targs(unopt(self.bview(o).t))[0]))
+            cur = self.bmissing(o, kn)
+            self.assign(mk("index", "", t.line, [self.vnode(o), kn]), self.inplace(op, cur, n.kids[1]))
+            return
+        if self.bdecays(o.t, BITEM + BSTORE):
+            o = self.bview(o)  # (o[k] op= v of the builtin container its class derives from: builtin_bases.py)
         if o.t == "dyn":
             k = self.dyn_box(self.expr(t.kids[1], "dyn"))  # (o[k] op= v, k evaluated once: dynamic.py)
             self.dyn_setitem(o, k, self.inplace(op, self.dyn_getitem(o, k), n.kids[1]))
+            return
+        if self.value_union(self.rec_type(o.t)):
+            # (o[k] op= v through a closed value union's value: o and k are evaluated once,
+            # and the item is read and stored back by the member the tag names, unions.py)
+            target = mk("index", "", t.line, [self.vnode(o), self.vnode(self.expr(t.kids[1], ""))])
+            self.assign(target, self.inplace(op, self.expr(target, ""), n.kids[1]))
             return
         if is_list(unopt(o.t)):
             et = elem(unopt(o.t))
@@ -1528,7 +1582,7 @@ def gen_str_append(self, t: Node, rhs: Node, shown: str) -> None:
     cur = self.read(t)
     self.appending = False
     b = self.expr(rhs, "str")
-    own = Val(self.owned[t.s], "*int")
+    own = Val(self.owned[t.s], "&int")
     if b.t != "str":
         self.mem_store(own, Val("0", "int"))  # (an optional str, or an error: arith's +, a read of cur as any other)
         self.store_name(t.s, self.arith("+", cur, b, shown))
@@ -1556,6 +1610,18 @@ def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
     # use __iadd__ & co when they define them, anything else is cur op rhs
     if cur.t == "dyn":
         return self.dyn_arith(op, cur, self.expr(rhs, "dyn"), True)  # (in place where its box's type is: dynamic.py)
+    if is_list(self.bbase(cur.t)) and ((op == "+" and "__iadd__" not in self.classes[cur.t].methods) or (op == "*" and "__imul__" not in self.classes[cur.t].methods)):
+        # o += xs, o *= n of a class deriving from list: list's own, in place, and o stays the
+        # object it is (builtin_bases.py)
+        if op == "+":
+            self.bfill(cur.t, "extend", [rhs])
+        gen_inplace(self, op, self.bview(cur), rhs)
+        return cur
+    if is_dict(self.bbase(cur.t)) and op == "|" and "__ior__" not in self.classes[cur.t].methods:
+        # o |= m of a class deriving from dict: dict's own update, and o stays the object it is
+        self.bfill(cur.t, "update", [rhs])
+        gen_inplace(self, op, self.bview(cur), rhs)
+        return cur
     if is_list(unopt(cur.t)) and op == "+":
         b = self.expr(rhs, cur.t)
         if is_opt(cur.t) or is_opt(b.t):
@@ -1799,6 +1865,9 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
         fn = it.kids[0].s
         args = it.kids[1:]
         if fn == "range":
+            sites = self.curfn.inert_sites
+            if sites is not None and self.drying == 0 and n in sites:
+                sites[n] = True
             vs = self.range_args(args)
             self.for_range(tgt, vs[0], vs[1], vs[2], body, hide, arg)
             return
@@ -1815,7 +1884,7 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
             ownk: list[int] = []  # (whether the loop owns each argument's generator: owned_gen)
             for a in args:
                 self.gencall = ""
-                v = self.expr(a, "")
+                v = self.bdecay(self.expr(a, ""), BREV if fn == "reversed" else BITER)  # (builtin_bases.py)
                 ownk.append(self.owned_gen(v, a))
                 if fn == "reversed" and v.t == "dyn":
                     rev = self.dyn_call(self.dyn_dispatcher("reversed", ["dyn"], "dyn", "__reversed__"), [v])
@@ -1863,7 +1932,7 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
             return
         if fn == "enumerate" and len(args) == 2 and (args[1].kind != "kw" or args[1].s == "start"):
             self.gencall = ""
-            seq = self.expr(args[0], "")
+            seq = self.bdecay(self.expr(args[0], ""), BITER)  # (builtin_bases.py)
             seq = seq if is_opt(seq.t) or seq.t in self.classes else self.iterable(seq)
             own = self.owned_gen(seq, args[0])
             obj = is_opt(seq.t) or seq.t in self.classes
@@ -1882,7 +1951,13 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
     if it.kind == "call" and len(it.kids) == 1 and it.kids[0].kind == "attr":
         m = it.kids[0].s
         if m == "items" or m == "keys" or m == "values":
-            o = self.unwrap(self.expr(it.kids[0].kids[0], ""), f"AttributeError: 'NoneType' object has no attribute '{m}'")
+            o = self.expr(it.kids[0].kids[0], "")
+            dicts = [x for x in umembers(unopt(self.rec_type(o.t))) if is_dict(x)] if self.value_union(self.rec_type(o.t)) else []
+            if len(dicts) == 1:
+                # (a closed value union's dict, as it is: another member has no such method)
+                o = self.uonly(Val(o.v, self.rec_type(o.t)).identity(o), dicts[0], "AttributeError", f"'{{}}' object has no attribute '{m}'")
+            else:
+                o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
             if is_dict(o.t):
                 self.for_seq(tgt, [o], m, body, "0", hide, arg)
             elif o.t == "kw[]" and m != "keys":
@@ -1953,7 +2028,10 @@ def gen_iterable(self, v: Val, msg: str = "TypeError: 'NoneType' object is not i
     # value the runtime's iterator over it (dyniter: dynamic.py)
     if v.t == "dyn":
         return Val(self.rt("pys_dyn_iter", "ptr", [f"ptr {v.v}"]), "dyniter")
-    v = self.unwrap(v, msg)
+    if self.value_union(self.rec_type(v.t)):
+        # (a closed value union's: the list, dict or str its tag names, unions.py)
+        return self.uiterable(Val(v.v, self.rec_type(v.t)).identity(v), msg)
+    v = self.unwrap(self.bdecay(v, BITER), msg)  # (builtin_bases.py)
     if is_kw(v.t):
         return self.kw_list(v)  # (iterating **kwargs gives the names)
     if v.t in self.nts:
@@ -2125,6 +2203,8 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
     # is every sequence's in a zip() with a dynamic value, whose next item may come from user
     # code, a __next__ or a generator, that changes an earlier sequence: #1164)
     now = nexts or len([s for s in seqs if is_gen(s.t)]) > 0 or (len(seqs) > 1 and len([s for s in seqs if s.t == "dyniter"]) > 0)
+    # (and a closed value union's, whose item its member's own test gives: useq_next)
+    now = now or len([s for s in seqs if self.value_union(s.t)]) > 0
     lc = self.label()
     ls = self.label()
     le = self.label()
@@ -2143,6 +2223,15 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
         s = seqs[k]
         if c is not None and self.is_iterator(s.t):
             vals.append(self.next_in(s, c))
+            go = self.label()
+            self.place(go)
+            lp.body = go
+            lp.tests.append(go)
+            lp.idx.append("")
+            at.append("")
+            continue
+        if self.value_union(s.t):
+            vals.append(self.useq_next(s, st[k], used[k], i, le))
             go = self.label()
             self.place(go)
             lp.body = go
@@ -2215,14 +2304,14 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
     for k in range(len(seqs) if not now else 0):
         vals.extend(self.seq_item(seqs[k], at[k], mode))
     if len(vals) == 1 and mode != "zip":
-        moving = self.fn.idmove
+        moving = self.fn.build.idmove
         # A single generator result owns this private nullable companion.
         # Transfer it to one loop local as an ordinary lone assignment does.
-        self.fn.idmove = len(seqs) == 1 and is_gen(seqs[0].t) and vals[0].idexact and tgt.kind == "name"
+        self.fn.build.idmove = len(seqs) == 1 and is_gen(seqs[0].t) and vals[0].idexact and tgt.kind == "name"
         try:
             self.assign(tgt, vals[0])
         finally:
-            self.fn.idmove = moving
+            self.fn.build.idmove = moving
     elif (tgt.kind == "tuple" or tgt.kind == "list") and len(tgt.kids) == len(vals) and not starred_target(tgt):
         for k2 in range(len(vals)):
             self.assign(tgt.kids[k2], vals[k2])
@@ -2245,17 +2334,17 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
         return [self.list_item(s, Val(j, "int"))]
     if is_vtuple(s.t):
         et = targs(s.t)[0]
-        if self.list_id_kind(self.ctype("list", [et])) != 0 and not self.fn.scalar_reads:
+        if self.list_id_kind(self.ctype("list", [et])) != 0 and not self.fn.build.scalar_reads:
             return [self.vtuple_item(s, Val(j, "int"))]
         # for_seq has checked the immutable length. Keep its unboxed/reference
         # fast path: the raw slots follow the length and companion pointer.
         off = self.scalar("add", [Val(j, "int"), Val("2", "int")])
-        return [self.from_slot(self.mload("int", self.maddr("int", s.v, off)), et)]
+        return [self.from_word(self.mload("int", self.maddr("int", s.v, off)), et)]
     if is_tuple(s.t) and targs(s.t)[0] == BIG:
         # (promoting ints: one's slot at j, and where it says so its Mpz word, past the items: bigints.py)
         return [self.big_item(s, Val(self.mload('int', self.maddr('int', f'{s.v}', f'{j}')), "int"), 0, j)]
     if is_tuple(s.t):
-        return [self.from_slot(self.mload('int', self.maddr('int', f'{s.v}', f'{j}')), targs(s.t)[0])]
+        return [self.from_word(self.mload('int', self.maddr('int', f'{s.v}', f'{j}')), targs(s.t)[0])]
     if s.t == "str":
         return [Val(self.rt("pys_str_get" if self.rtmode else "pys_text_at", "ptr", [f"ptr {s.v}", f"i64 {j}"]), "str")]
     if s.t == "bytes":
@@ -2300,6 +2389,16 @@ def gen_seq_start(self, s: Val, mode: str, made: SeqStart) -> None:
         rf = self.range_fields(s)
         made.st.append(self.rt("pys_range_len", "i64", [f"i64 {rf[0]}", f"i64 {rf[1]}", f"i64 {rf[2]}"]))
         made.used.append("")
+        return
+    if self.value_union(s.t) and not is_opt(s.t):
+        # (a closed value union's, which uiterable has checked: one cursor serves the dict or
+        # the str it may hold, and its size or length then is the member's: unions.py)
+        if mode == "reversed":
+            self.err(f"reversed() of a closed union value ({typestr(s.t)}) is not supported: narrow it with isinstance() first")
+        pos = self.alloca("int", "")
+        self.mstore('int', '0', pos)
+        made.st.append(pos)
+        made.used.append(self.useq_used(s))
         return
     if not (s.t == "str" or s.t == "bytes" or is_list(s.t) or is_vtuple(s.t) or is_dict(s.t) or is_set(s.t) or (s.t == "file" and mode != "reversed") or (is_tuple(s.t) and s.t != "tuple[]") or is_gen(s.t)):
         self.err(f"cannot iterate over {s.t}" if s.t != "file" else "a file is not reversible")

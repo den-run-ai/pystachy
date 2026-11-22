@@ -4,7 +4,6 @@ Each refutation corrupts actual compiler IR of examples/union_effects.py; Lean m
 the adapter must fall back to its conservative rules, while the original stays proved.
 """
 import copy
-import json
 import os
 from pathlib import Path
 import subprocess
@@ -29,7 +28,7 @@ def inspect(program, directory):
                             cwd=ROOT, env=env, capture_output=True, text=True, timeout=60)
     if result.returncode:
         raise AssertionError(result.stdout + result.stderr)
-    return json.loads((directory / "typed-after.json").read_text())
+    return boundary.read_snapshot((directory / "typed-after.json"), boundary.MAX_PROGRAM_BYTES)[0]
 
 
 class UnionEffectTests(unittest.TestCase):
@@ -91,8 +90,8 @@ class UnionEffectTests(unittest.TestCase):
             "undefined callee": [op("call", "None", "@f.elsewhere")],
             "generator operation on a raw pointer": [op("gen.resume", operands=[("%t3", "%ptr")])],
             "field of an unknown class": [
-                op("field.addr", "*int", results=[900], operands=[("%t3", "Unknown")]),
-                op("mem.store", operands=[("%t900", "*int"), ("1", "int")])],
+                op("field.addr", "&int", results=[900], operands=[("%t3", "Unknown")]),
+                op("mem.store", operands=[("%t900", "&int"), ("1", "int")])],
             "allocation used as a union": [
                 op("rt", "%ptr", "alloc", results=[900], operands=[("16", "int")]),
                 op("scalar.cast", "union[int,str]", "bitcast", [901], [("%t900", "%ptr")]),

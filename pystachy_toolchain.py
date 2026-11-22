@@ -57,8 +57,8 @@ MINIMAL_SHA256 = {
     "x86_64": "aa7aeba224afd47728c7733cd13fe6a3bd32a38cee42d8fc30dca23f86e18d85",
     "aarch64": "bf002c93b86956543ccd4b69dff0e7959769c104772772c4d8e5195bdc6fd087",
 }
-# Before glibc 2.34 the runtime does not link without -pthread.
-MINIMAL_GLIBC = (2, 34)
+# The archives' tools are built for glibc 2.28, the oldest that source builds are checked on.
+MINIMAL_GLIBC = (2, 28)
 # Where the driver looks for LLVM before PATH: llvm_dir in src/pystachy_compiler/driver.py.
 HOST_LLVM = ("/usr/lib/llvm-18/bin", "/opt/homebrew/opt/llvm@20/bin", "/usr/local/opt/llvm@20/bin",
              "/home/linuxbrew/.linuxbrew/opt/llvm@18/bin")
@@ -212,9 +212,9 @@ def available(bin_dir: Path, version: str) -> bool:
     )
 
 
-def ensure_toolchain() -> Path | None:
+def managed_toolchain() -> tuple[Path, str, str] | None:
+    """Expected installation directory, LLVM version and package architecture."""
     machine = platform.machine()
-    arch = None
     if sys.platform == "linux" and machine in ("x86_64", "aarch64"):
         try:
             distro = platform.freedesktop_os_release()
@@ -226,23 +226,33 @@ def ensure_toolchain() -> Path | None:
             version = "18.1.3"
         # Elsewhere a host's own LLVM keeps serving; without one, no compile could succeed.
         elif glibc() >= MINIMAL_GLIBC and not host_llvm():
-            key = f"minimal-{MINIMAL_VERSION}-{MINIMAL_REVISION}-{machine}"
+            arch = machine  # as the archives are named, and unlike a package architecture
+            key = f"minimal-{MINIMAL_VERSION}-{MINIMAL_REVISION}-{arch}"
             version = MINIMAL_VERSION
         else:
             return None
     elif sys.platform == "darwin" and machine == "arm64":
+        arch = "arm64"
         key = f"macos-{MACOS_VERSION}-arm64"
         version = MACOS_VERSION
     else:
         return None
 
-    import fcntl
-
     cache_home = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
     cache = Path(os.environ.get("PYSTACHY_LLVM_CACHE") or cache_home / "pystachy/toolchains")
-    cache = cache.expanduser().resolve()
+    return cache.expanduser().resolve() / key, version, arch
+
+
+def ensure_toolchain() -> Path | None:
+    installation = managed_toolchain()
+    if installation is None:
+        return None
+
+    import fcntl
+
+    destination, version, arch = installation
+    cache, key = destination.parent, destination.name
     cache.mkdir(parents=True, exist_ok=True)
-    destination = cache / key
     with (cache / f"{key}.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         if available(destination / "bin", version):
@@ -252,10 +262,10 @@ def ensure_toolchain() -> Path | None:
         with tempfile.TemporaryDirectory(prefix=f".{key}-", dir=cache) as temporary:
             staging = Path(temporary)
             payload = staging / "payload"
-            if arch is not None:
-                tool_dir = unpack_ubuntu(staging, payload, arch)
+            if arch in MINIMAL_SHA256:
+                tool_dir = unpack_minimal(staging, payload, arch)
             elif sys.platform == "linux":
-                tool_dir = unpack_minimal(staging, payload, machine)
+                tool_dir = unpack_ubuntu(staging, payload, arch)
             else:
                 tool_dir = unpack_macos(staging, payload)
             if not available(tool_dir, version):
@@ -266,7 +276,7 @@ def ensure_toolchain() -> Path | None:
                 )
                 if f"version {version}" not in result:
                     raise ValueError(f"expected LLVM {version} from {tool}, got {result.strip()}")
-            if arch is None and sys.platform == "linux":
+            if arch in MINIMAL_SHA256:
                 name_host_gcc(tool_dir)
             (payload / "bin").symlink_to(tool_dir.relative_to(payload), target_is_directory=True)
             if destination.exists():

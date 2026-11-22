@@ -64,6 +64,10 @@ compiler builds for runtime.py, in this process:
     pys_format_str) would recurse without end where nothing in the source shows a call. Recursion
     by name stays allowed; the check is conservative, as it does not follow descriptors (a str ==
     in pys_hash_str would be reported, through pys_eq's dict case).
+The runtime the driver builds must also call no function that only a recent C library has under
+that name: glibc 2.38 compiles strtol(), atoi() and sscanf() to __isoc23_* names, which an older
+glibc lacks, so runtime.c reads its numbers itself (decnum, hexnum). The check sees those names
+where the headers give them (glibc 2.38 and later), and nothing elsewhere.
 The exit status is 1 if a check fails. Clang and llvm-as come from PATH, or PYSTACHY_LLVM.
 """
 import builtins
@@ -540,7 +544,7 @@ def linked(rpy_ir, tmp):
     # runtime.py's IR linked with runtime.c's and optimized, as the driver builds the cached
     # runtime: (name -> its function (as functions gives it), name -> the messages of the raises in
     # its body: "Kind: text" of a pys_raise or the format of a pys_fail, "?" if not a constant,
-    # the functions opt marked nounwind)
+    # the functions opt marked nounwind, the C23 names of glibc 2.38 that it calls)
     rpy = os.path.join(tmp, "rtpy.ll")
     with open(rpy, "w", encoding="latin-1") as f:
         f.write(rpy_ir)
@@ -582,7 +586,7 @@ def linked(rpy_ir, tmp):
     groups = dict(re.findall(r"^attributes #(\d+) = \{ (.*) \}$", ll, re.M))
     nounwind = {m.group(1) for m in re.finditer(r"^define [^\n]*?@([\w.]+)\(.*\)([^{\n]*)\{$", ll, re.M)
                 if "nounwind" in m.group(2) or any("nounwind" in groups.get(g, "").split() for g in re.findall(r"#(\d+)", m.group(2)))}
-    return functions(ll), msgs, nounwind
+    return functions(ll), msgs, nounwind, sorted(set(re.findall(r"@(__isoc23_\w+)", ll)))
 
 
 def raises(fns, msgs, f):
@@ -668,7 +672,9 @@ def main():
     # effects of runtime.py's functions (see the docstring): R from the linked runtime; A, U and I
     # from the ops, through the functions they call, to a fixpoint
     with tempfile.TemporaryDirectory() as tmp:
-        lfns, lmsgs, nounwind = linked(rpy_ir, tmp)
+        lfns, lmsgs, nounwind, c23 = linked(rpy_ir, tmp)
+    for sym in c23:
+        bad.append(f"the runtime calls {sym}, which glibc before 2.38 lacks: read numbers with runtime.c's decnum and hexnum, not strtol, atoi or sscanf")
     letters = {}  # runtime.py's function -> the effect letters derived (R A U I)
     writes = {}
     used = state(ll)
@@ -899,7 +905,7 @@ def main():
         if uses_state(fns, used, sym, dw):
             derived.append("I")
         for i, p in enumerate(pys.rtsig(k)[1:]):
-            o = OWNER.get(k[: k.find(".") + 1], "") if p == "S" else "L" if p.startswith("list[") else "D" if p.startswith("dict[") or p.startswith("set[") else "F" if p == "file" else ""
+            o = OWNER.get(k[: k.find(".") + 1], "") if p == "S" or p == "U" else "L" if p.startswith("list[") else "D" if p.startswith("dict[") or p.startswith("set[") else "F" if p == "file" else ""
             if o and sym in eff and i < len(eff[sym]) and eff[sym][i] is not None:
                 derived.extend((["r" + o] if eff[sym][i][0] else []) + (["w" + o] if eff[sym][i][1] else []))
         for x in derived:

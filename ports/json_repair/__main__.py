@@ -1,4 +1,3 @@
-# pystachy: dynamic-any
 """File and pipe interface for the schema-free json_repair port."""
 import argparse
 import json

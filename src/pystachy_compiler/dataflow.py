@@ -78,7 +78,7 @@ def live_values(fn: IFn, blocks: dict[str, int]) -> dict[str, dict[str, bool]]:
     return live_at
 
 
-def forward_fixpoint(self) -> None:
+def forward_fixpoint(self) -> dict[str, UnionState]:
     # Run the analysis self over its function (self.fn, with self.blocks its labels' positions)
     # from the entry block until no block's starting facts change, then let it report. Its facts
     # are UnionStates over self.base and self.full. For each block taken from the worklist,
@@ -90,7 +90,7 @@ def forward_fixpoint(self) -> None:
     # again, once. Blocks are taken first in, first out, so the visits and their order depend
     # on the function alone. Only then does self.transfer(facts, op, label, True) see each
     # reached block's ops with its final facts: reporting on a first visit would miss a later
-    # unsafe join or loop back edge
+    # unsafe join or loop back edge. It returns each reached block's starting facts
     starts: dict[str, UnionState] = {"entry": UnionState(self.base, self.full)}
     pending: list[str] = ["entry"]
     queued: dict[str, bool] = {"entry": True}
@@ -120,3 +120,4 @@ def forward_fixpoint(self) -> None:
         for i in self.fn.blocks[self.blocks[label]].code:
             if i.op != "phi":
                 self.transfer(s, i, label, True)
+    return starts

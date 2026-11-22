@@ -51,7 +51,42 @@ def pys_m_isclose(a: float, b: float, rel_tol: float, abs_tol: float) -> int:
     return 1 if diff <= abs_tol else 0
 
 
-# ---------- checked integer powers and unsigned range arithmetic ----------
+# ---------- checked integer arithmetic and unsigned range arithmetic ----------
+
+
+def pys_floordiv(a: int, b: int) -> int:
+    # Handle -1 before computing a remainder, so the two instructions below can share one
+    # hardware division. sdiv(a, -1) is a checked negation, including MIN's overflow.
+    if b == -1:
+        return _rt.sdiv(a, -1)
+    q = _rt.sdiv(a, b)
+    # Signed division truncates toward zero. A negative, non-integral quotient is one lower.
+    if _rt.srem(a, b) != 0 and (a ^ b) < 0:
+        return _rt.wrap_sub(q, 1)
+    return q
+
+
+def pys_mod(a: int, b: int) -> int:
+    if b == -1:
+        return 0
+    r = _rt.srem(a, b)
+    # The machine remainder has the dividend's sign; Python's has the divisor's.
+    if r == 0 or (r ^ b) >= 0:
+        return r
+    return _rt.wrap_add(r, b)
+
+
+def pys_int_bit_length(a: int) -> int:
+    # Count bits of the magnitude, including 2**63 for the most negative int.
+    x = _rt.wrap_sub(0, a) if a < 0 else a
+    # Setting bit 0 preserves the highest set bit and gives zero an index of 0.
+    highest = _rt.wrap_sub(63, _rt.ctlz(x | 1))
+    return _rt.wrap_add(highest, int(a != 0))
+
+
+def pys_int_bit_count(a: int) -> int:
+    x = _rt.wrap_sub(0, a) if a < 0 else a
+    return _rt.ctpop(x)
 
 
 def pys_pow(a: int, b: int) -> int:
@@ -72,6 +107,124 @@ def pys_pow(a: int, b: int) -> int:
         if b == 0:
             return r
         x *= x
+
+
+def pys_idiv(a: int, b: int) -> float:
+    if b == 0:
+        raise ZeroDivisionError("division by zero")
+    # Bias the exactly representable interval [-2**53, 2**53) to [0, 2**54).
+    if _rt.lshr(_rt.wrap_add(a, 9007199254740992) | _rt.wrap_add(b, 9007199254740992), 54) == 0:
+        return _rt.fdiv(float(a), float(b))
+    x = _rt.wrap_sub(0, a) if a < 0 else a
+    y = _rt.wrap_sub(0, b) if b < 0 else b
+    # For a nonzero dividend, keep at least 55 quotient bits: 53 significand bits plus round and sticky.
+    shift = max(0, 55 + _rt.ctlz(x) - _rt.ctlz(y))
+    part = _rt.shl(x, shift)  # _rt.shl shifts a word by shift modulo 64
+    if shift < 64:
+        # Two right shifts give zero at shift == 0, where a shift by 64 would wrap.
+        hi = _rt.lshr(_rt.lshr(x, 1), 63 - shift)
+        lo = part
+    else:
+        # The first 64 shifts move x into the high word; part applies the remaining shifts.
+        hi = part
+        lo = 0
+    q = _rt.udiv_wide(hi, lo, y)
+    # The remainder is smaller than 2**64, so its low word alone tells us whether it is nonzero.
+    if _rt.wrap_mul(q, y) != lo:
+        q |= 1
+    # Only a quotient of 2**63 has its sign bit set; its signed float conversion is exactly -2**63.
+    # Give the power-of-two scale the result sign, including for a zero dividend.
+    scale_bits = _rt.shl(1023 - shift, 52) | ((a ^ b) & (-9223372036854775807 - 1))
+    return abs(float(q)) * _rt.bits_float(scale_bits)
+
+
+def mulmod(a: int, b: int, n: int) -> int:
+    # a * b % n of 64-bit patterns as unsigned ints: the product has 128 bits
+    return _rt.urem_wide(_rt.mul_hi(a, b), _rt.wrap_mul(a, b), n)
+
+
+def pys_powmod(a: int, b: int, m: int) -> int:
+    # pow(a, b, m) as CPython's long_pow: the result has the sign of m. The modulus is taken as
+    # an unsigned int, which holds the 2**63 of -2**63, and so are the values below it
+    if m == 0:
+        raise ValueError("pow() 3rd argument cannot be 0")
+    n = _rt.wrap_sub(0, m) if m < 0 else m
+    if n == 1:
+        return 0
+    x = _rt.urem(a, n)
+    if a < 0:
+        x = _rt.urem(_rt.wrap_sub(0, a), n)
+        if x != 0:
+            x = _rt.wrap_sub(n, x)
+    e = b
+    if b < 0:
+        # a negative exponent: the power of x's inverse modulo n (long_invmod), by Euclid's
+        # algorithm. s and t are the coefficients of x in p and q, below n in magnitude; the
+        # last t alone, which nothing reads, may be n itself and wrap
+        p = x
+        q = n
+        s = 1
+        t = 0
+        while q != 0:
+            d = _rt.udiv(p, q)
+            u = _rt.wrap_sub(p, _rt.wrap_mul(d, q))
+            w = _rt.wrap_sub(s, _rt.wrap_mul(d, t))
+            p = q
+            q = u
+            s = t
+            t = w
+        if p != 1:
+            raise ValueError("base is not invertible for the given modulus")
+        x = _rt.wrap_add(s, n) if s < 0 else s
+        e = _rt.wrap_sub(0, b)
+    r = 1
+    while e != 0:
+        if e & 1:
+            r = mulmod(r, x, n)
+        x = mulmod(x, x, n)
+        e = _rt.lshr(e, 1)
+    return _rt.wrap_sub(r, n) if m < 0 and r != 0 else r
+
+
+def pys_shl(a: int, b: int) -> int:
+    if b < 0:
+        raise ValueError("negative shift count")
+    if b < 64:
+        shifted = _rt.shl(a, b)
+        # Shifting back restores a exactly when no significant bit was lost.
+        if _rt.ashr(shifted, b) == a:
+            return shifted
+    elif a == 0:
+        return 0
+    raise OverflowError("integer result does not fit in 64 bits")
+
+
+def pys_shr(a: int, b: int) -> int:
+    if b < 0:
+        raise ValueError("negative shift count")
+    return _rt.ashr(a, b if b < 63 else 63)
+
+
+def pys_round_int(x: int, n: int) -> int:
+    # round(x, n) of an int: x, or for n < 0 the nearest multiple of m = 10**-n, ties to the even
+    # multiple. 10**19 is past 2**63 and 10**20 past 2**64: there x rounds to 0, or to 10**19 or
+    # its negative, which no 64-bit int holds
+    if n >= 0:
+        return x
+    if n < -19:
+        return 0
+    if n == -19:
+        if x > 5000000000000000000 or x < -5000000000000000000:
+            raise OverflowError("integer result does not fit in 64 bits")
+        return 0
+    m = 1
+    for _ in range(-n):
+        m *= 10
+    q = x // m
+    r = x % m  # x = q * m + r, 0 <= r < m (q * m itself may be below -2**63)
+    if 2 * r > m or (2 * r == m and q & 1 != 0):
+        q += 1
+    return q * m
 
 
 def pys_range_len(a: int, b: int, s: int) -> int:
@@ -191,6 +344,39 @@ def pys_m_perm(n: int, k: int) -> int:
     for i in range(k):
         r *= n - i
     return r
+
+
+# ---------- any, all and the sums of ints ----------
+# A list of ints or bools holds each item in an 8-byte slot. From an int start, sum() adds them
+# with the checked arithmetic; from a float start, each as a float, without compensation. (For
+# the sums and the product of a list that may hold an int past 64 bits, the compiler first calls
+# pys_list_narrow, which refuses one: NARROWED.)
+
+
+def pys_any(xs: list[int]) -> int:
+    for x in xs:
+        if x != 0:
+            return 1
+    return 0
+
+
+def pys_all(xs: list[int]) -> int:
+    for x in xs:
+        if x == 0:
+            return 0
+    return 1
+
+
+def pys_sum_int(xs: list[int], s: int) -> int:
+    for x in xs:
+        s += x
+    return s
+
+
+def pys_sum_int_float(xs: list[int], s: float) -> float:
+    for x in xs:
+        s += float(x)
+    return s
 
 
 # ---------- sum of floats ----------
@@ -313,6 +499,181 @@ def pys_m_prod_float(xs: list[float], start: float) -> float:
 
 def pys_m_floats(xs: list[int]) -> list[float]:
     return [float(x) for x in xs]
+
+
+# ---------- math.hypot, math.dist and math.fma ----------
+# hypot and dist are CPython's vector_norm, not libm's hypot, so that the last bit agrees: the
+# coordinates are scaled by a power of two so that the largest is in [0.5, 1), which loses
+# nothing; each square is exact as a float and what fma() shows the float left out; the squares
+# are summed from 1.0, which keeps every sum exact but for what the two frac sums gather; and the
+# square root gets one correction from the difference of its square. It never raises: the result
+# is inf where a coordinate is, else nan where one is. The largest coordinate is found in a
+# first pass over the list, so that no copy of the coordinates is needed.
+# Derived from CPython's Modules/mathmodule.c, vector_norm.
+# Copyright (c) 2001-2024 Python Software Foundation; All Rights Reserved.
+# Used under the PSF License Agreement; see THIRD_PARTY_NOTICES.
+
+
+def norm_tiny(max: float) -> bool:
+    # max > 0 is below 2**-1024: frexp()'s exponent e of it is below -1023, and no float is
+    # 2**-e. Such coordinates are first divided by 2**-1022, the smallest normal float, exactly
+    return _rt.float_bits(max) < 1125899906842624  # (2**50)
+
+
+def norm_scale(max: float) -> float:
+    # ldexp(1.0, -e) for the e of frexp(max), 2**-1024 <= max < 2**1024: max * scale is in [0.5, 1)
+    b = _rt.float_bits(max)
+    be = _rt.lshr(b, 52)  # (the exponent's bits: max > 0)
+    if be >= 2045:
+        return _rt.bits_float(_rt.shl(1, 2096 - be))  # 2**-1023 and 2**-1024, which are subnormal
+    if be == 0:
+        return _rt.bits_float(_rt.shl(2046 if b < 2251799813685248 else 2045, 52))  # (max is; 2**51)
+    return _rt.bits_float(_rt.shl(2045 - be, 52))
+
+
+def norm_done(csum: float, frac1: float, frac2: float, scale: float) -> float:
+    h = _rt.sqrt(csum - 1.0 + (frac1 + frac2))
+    hi = -h * h
+    frac1 += _rt.fma(-h, h, -hi)
+    t = csum + hi
+    frac2 += (csum - t) + hi
+    x = t - 1.0 + (frac1 + frac2)
+    h += _rt.fdiv(x, 2.0 * h)  # (h and scale are above zero: nothing to check)
+    return _rt.fdiv(h, scale)
+
+
+def norm_small(p: list[float], q: list[float], paired: bool, max: float) -> float:
+    # the norm of p, or of p - q, where the largest coordinate is below 2**-1024 (norm_tiny): each
+    # is divided by 2**-1022 first, exactly, and the result multiplied by it. It has a loop of
+    # its own, so that the others do no more for each coordinate than scale it
+    scale = norm_scale(max / 2.2250738585072014e-308)
+    csum = 1.0
+    frac1 = 0.0
+    frac2 = 0.0
+    for i in range(len(p)):
+        c = p[i] - q[i] if paired else p[i]
+        v = abs(c) / 2.2250738585072014e-308 * scale
+        hi = v * v
+        frac1 += _rt.fma(v, v, -hi)
+        t = csum + hi
+        frac2 += (csum - t) + hi
+        csum = t
+    return 2.2250738585072014e-308 * norm_done(csum, frac1, frac2, scale)
+
+
+def norm_pair(a: float, b: float, max: float) -> float:
+    # the norm of two coordinates, a and b >= 0, whose largest is max >= 2**-1024
+    scale = norm_scale(max)
+    csum = 1.0
+    frac1 = 0.0
+    frac2 = 0.0
+    v = a * scale
+    hi = v * v
+    frac1 += _rt.fma(v, v, -hi)
+    t = csum + hi
+    frac2 += (csum - t) + hi
+    csum = t
+    v = b * scale
+    hi = v * v
+    frac1 += _rt.fma(v, v, -hi)
+    t = csum + hi
+    frac2 += (csum - t) + hi
+    return norm_done(t, frac1, frac2, scale)
+
+
+def pys_m_hypot(x: float, y: float) -> float:
+    a = abs(x)
+    b = abs(y)
+    max = 0.0
+    if a > max:
+        max = a
+    if b > max:  # (a nan is never the max)
+        max = b
+    if math.isinf(max):
+        return max
+    if math.isnan(x) or math.isnan(y):
+        return _rt.bits_float(9221120237041090560)  # (a quiet nan, 0x7ff8 << 48)
+    if max == 0.0:
+        return max
+    if norm_tiny(max):
+        d = 2.2250738585072014e-308
+        return d * norm_pair(a / d, b / d, max / d)
+    return norm_pair(a, b, max)
+
+
+def pys_m_hypot_list(p: list[float]) -> float:
+    max = 0.0
+    nan = False
+    for c in p:
+        v = abs(c)
+        if v != v:
+            nan = True
+        if v > max:
+            max = v
+    if math.isinf(max):
+        return max
+    if nan:
+        return _rt.bits_float(9221120237041090560)
+    if max == 0.0 or len(p) <= 1:
+        return max
+    if norm_tiny(max):
+        return norm_small(p, p, False, max)
+    scale = norm_scale(max)
+    csum = 1.0
+    frac1 = 0.0
+    frac2 = 0.0
+    for c in p:
+        v = abs(c) * scale
+        hi = v * v
+        frac1 += _rt.fma(v, v, -hi)
+        t = csum + hi
+        frac2 += (csum - t) + hi
+        csum = t
+    return norm_done(csum, frac1, frac2, scale)
+
+
+def pys_m_dist(p: list[float], q: list[float]) -> float:
+    n = len(p)
+    if n != len(q):
+        raise ValueError("both points must have the same number of dimensions")
+    max = 0.0
+    nan = False
+    for i in range(n):
+        v = abs(p[i] - q[i])
+        if v != v:
+            nan = True
+        if v > max:
+            max = v
+    if math.isinf(max):
+        return max
+    if nan:
+        return _rt.bits_float(9221120237041090560)
+    if max == 0.0 or n <= 1:
+        return max
+    if norm_tiny(max):
+        return norm_small(p, q, True, max)
+    scale = norm_scale(max)
+    csum = 1.0
+    frac1 = 0.0
+    frac2 = 0.0
+    for i in range(n):
+        v = abs(p[i] - q[i]) * scale
+        hi = v * v
+        frac1 += _rt.fma(v, v, -hi)
+        t = csum + hi
+        frac2 += (csum - t) + hi
+        csum = t
+    return norm_done(csum, frac1, frac2, scale)
+
+
+def pys_m_fma(x: float, y: float, z: float) -> float:
+    # x * y + z, rounded once
+    r = _rt.fma(x, y, z)
+    if math.isnan(r) and not math.isnan(x) and not math.isnan(y) and not math.isnan(z):
+        raise ValueError("invalid operation in fma")
+    if math.isinf(r) and math.isfinite(x) and math.isfinite(y) and math.isfinite(z):
+        raise OverflowError("overflow in fma")
+    return r
 
 
 # ---------- str methods ----------
@@ -780,7 +1141,7 @@ def uchar(s: str, i: int, n: int) -> int:
     k = 1 if c > 244 else 4 if c >= 240 else 3 if c >= 224 else 2 if c >= 194 else 1
     if k == 1 or k > _rt.wrap_sub(n, i):
         return c * 8 + 1
-    v = c & (127 >> k)
+    v = c & _rt.lshr(127, k)
     for j in range(1, k):
         b = _rt.byte(s, _rt.wrap_add(i, j))
         if b & 192 != 128:
@@ -876,7 +1237,7 @@ def wsat(s: str, i: int, n: int) -> int:
     if c < 128:
         return 1 if ws(c) else -1
     u = uchar(s, i, n)
-    return u & 7 if uspace(u >> 3) else -(u & 7)
+    return u & 7 if uspace(_rt.lshr(u, 3)) else -(u & 7)
 
 
 def back(s: str, j: int) -> int:
@@ -1964,7 +2325,21 @@ def pys_str_splitlines(s: str, keep: int) -> list[str]:
 
 
 def pys_getcwd() -> str: ...
-def pys_path_join(a: str, b: str) -> str: ...
+
+
+def pys_path_join(a: str, b: str) -> str:
+    # os.path.join(a, b), as posixpath.join steps through its parts: b alone if it is absolute
+    # or a is empty, else a, a "/" unless a ends with one, and b
+    if len(a) == 0 or (len(b) > 0 and _rt.byte(b, 0) == 47):
+        return b
+    if _rt.byte(a, len(a) - 1) == 47:
+        return a + b
+    n = len(a)
+    r = _rt.str_new(_rt.wrap_add(_rt.wrap_add(n, 1), len(b)))
+    _rt.copy(r, 0, a, 0, n)
+    _rt.str_put(r, n, 47)
+    _rt.copy(r, _rt.wrap_add(n, 1), b, 0, len(b))
+    return _rt.str_done(r)
 
 
 def last_part(p: str) -> int:
@@ -2118,6 +2493,119 @@ def pys_hash_int(k: int) -> int:
     # a round of SplitMix64's mixer (0xBF58476D1CE4E5B9 is -4658895280553007687 as a 64-bit int)
     h = _rt.wrap_mul(k ^ _rt.lshr(k, 30), -4658895280553007687)
     return h ^ _rt.lshr(h, 31)
+
+
+# ---------- int and its text: str(i) and int(s, base) ----------
+# The digits are written and read here. runtime.c keeps the two steps that need its tables and
+# its repr: what a str that is not ASCII becomes first (pys_num_ascii), and the error for a str
+# that is no int (pys_int_badlit, which does not return).
+
+
+def pys_str_int(v: int) -> str:
+    # str(v). The digits of |v|, an unsigned 64-bit pattern (-2**63's is its own), are counted
+    # and then written from the last one. The arithmetic wraps where it cannot overflow, so
+    # that nothing here raises but the allocation
+    neg = 1 if v < 0 else 0
+    u = _rt.wrap_sub(0, v) if v < 0 else v
+    n = neg
+    q = u
+    while True:
+        n = _rt.wrap_add(n, 1)
+        q = _rt.udiv(q, 10)
+        if q == 0:
+            break
+    r = _rt.str_new(n)
+    if neg != 0:
+        _rt.str_put(r, 0, 45)
+    for i in range(n - 1, neg - 1, -1):
+        _rt.str_put(r, i, _rt.wrap_add(48, _rt.urem(u, 10)))
+        u = _rt.udiv(u, 10)
+    return _rt.str_done(r)
+
+
+def numws(c: int) -> bool:
+    # the whitespace that int() and float() strip around a number, and no other
+    return c == 32 or (c >= 9 and c <= 13)
+
+
+def digitv(c: int) -> int:
+    # the value of byte c as a digit of a base up to 36, or 99. Both readings are computed and
+    # one is selected: a branch on digit or letter is mispredicted for hex digits
+    d = _rt.wrap_sub(c, 48)
+    a = _rt.wrap_sub(c | 32, 87)
+    if a < 10 or a > 35:
+        a = 99
+    return d if d >= 0 and d < 10 else a
+
+
+def pys_num_ascii(s: str) -> str: ...
+def pys_int_badlit(s: str, base: int) -> None: ...
+
+
+def pys_int_str(s: str, base: int) -> int:
+    # int(s, base): CPython's PyLong_FromString on the ASCII form of s, with its checks in its
+    # order. Base 0 takes the base from a prefix, and then only 0 may begin with a 0 (octal)
+    if base != 0 and (base < 2 or base > 36):
+        raise ValueError("int() base must be >= 2 and <= 36, or 0")
+    t = pys_num_ascii(s) if nonascii(s) else s
+    p = 0
+    e = len(t)
+    while p < e and numws(_rt.byte(t, p)):
+        p += 1
+    while e > p and numws(_rt.byte(t, e - 1)):
+        e -= 1
+    neg = False
+    if p < e and (_rt.byte(t, p) == 43 or _rt.byte(t, p) == 45):
+        neg = _rt.byte(t, p) == 45
+        p += 1
+    b = base
+    if e - p >= 2 and _rt.byte(t, p) == 48:
+        x = _rt.byte(t, p + 1) | 32
+        pb = 16 if x == 120 else 8 if x == 111 else 2 if x == 98 else 0
+        if pb != 0 and (b == 0 or b == pb):
+            b = pb
+            p += 2
+            if p < e and _rt.byte(t, p) == 95:
+                p += 1
+    octal = False
+    if b == 0:
+        b = 10
+        octal = p < e and _rt.byte(t, p) == 48
+    # The value is gathered below zero, where -2**63 has room. lim is the least it may be, and
+    # digit d fits where acc * b - d >= lim, which cut and rest (|lim| divided by b) decide
+    # without a division for each digit. A digit that does not fit leaves acc as it is
+    lim = -9223372036854775807 - 1 if neg else -9223372036854775807
+    cut = _rt.wrap_sub(0, _rt.udiv(_rt.wrap_sub(0, lim), b))
+    rest = _rt.urem(_rt.wrap_sub(0, lim), b)
+    acc = 0
+    nd = 0
+    ovf = False
+    prev = 0
+    q = p
+    while q < e:  # digits, with single underscores between them
+        c = _rt.byte(t, q)
+        d = digitv(c)
+        if d < b:
+            nd += 1
+            if acc < cut or (acc == cut and d > rest):
+                ovf = True
+            else:
+                acc = _rt.wrap_sub(_rt.wrap_mul(acc, b), d)
+        elif c != 95 or q == p or prev == 95:
+            break
+        prev = c
+        q += 1
+    while q < e and numws(_rt.byte(t, q)):  # whitespace before a NUL, where CPython's C string ends
+        q += 1
+    if nd == 0 or prev == 95 or (q < e and _rt.byte(t, q) != 0):
+        pys_int_badlit(s, base)
+    if b & (b - 1) != 0 and nd > 4300:  # CPython's limit for its quadratic conversion
+        raise ValueError(f"Exceeds the limit (4300 digits) for integer string conversion: value has {nd} digits; use sys.set_int_max_str_digits() to increase the limit")
+    if q < e or (octal and acc != 0):
+        pys_int_badlit(s, base)
+    if ovf:
+        raise OverflowError("int() result does not fit in 64 bits")
+    return acc if neg else _rt.wrap_sub(0, acc)
 
 
 # ---------- formatting: f"{x:spec}" ----------

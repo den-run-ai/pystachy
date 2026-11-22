@@ -101,7 +101,7 @@ class ListWriteContractTests(unittest.TestCase):
             self.assertLessEqual(parsed.call_count, 2)  # first construction and declaration
             self.assertEqual(tuple(g.rtfns["list.append"].sig), signature)
 
-    def assert_rejected(self, i, fragment, promoting=False, builder=True):
+    def assert_rejected(self, i, fragment, promoting=False, builder=True, verifier=""):
         with patch.dict(diagnostics.INTFILES, {0: True} if promoting else {}, clear=True):
             error = list_write_error(i, promoting)
             self.assertIn(fragment, error)
@@ -117,7 +117,7 @@ class ListWriteContractTests(unittest.TestCase):
                         else:
                             g.verify(function_with(i), False)
                     self.assertEqual(raised.exception.code, 1)
-                    self.assertIn(error, errors.getvalue())
+                    self.assertIn(verifier if verifier and not construction else error, errors.getvalue())
                     if construction:
                         self.assertEqual(g.fn.blocks[0].code, [])
 
@@ -247,7 +247,8 @@ class ListWriteContractTests(unittest.TestCase):
         for field, value in (("t", "int"), ("r", [1]), ("x", "int"), ("k", 1), ("b", ["entry"])):
             i = list_write()
             setattr(i, field, value)
-            self.assert_rejected(i, "invalid", builder=False)
+            # (a label count the operation table refuses fails the op's row before its own check)
+            self.assert_rejected(i, "invalid", builder=False, verifier="rt with 1 labels, where the operation table has i" if field == "b" else "")
 
     def test_concrete_semantics_retain_the_existing_runtime_abi(self):
         for element in ("int", "float", "str", "dyn"):
@@ -391,7 +392,7 @@ class ListReadEmissionTests(unittest.TestCase):
         def observe(g, fn):
             if fn.f.name == "first":
                 ops = [i for b in fn.blocks for i in b.code]
-                self.assertEqual([i.t for i in ops if i.op == "phi"], ["%slot"])
+                self.assertEqual([i.t for i in ops if i.op == "phi"], ["*int"])
                 self.assertEqual([i.t for i in ops if i.op == "list.load"], ["*int"])
                 seen.append(True)
             original(g, fn)

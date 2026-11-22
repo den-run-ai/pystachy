@@ -1,0 +1,3 @@
+40
+TypeError object of type 'bool' has no len()
+[exit 0]

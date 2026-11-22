@@ -18,15 +18,17 @@ the program's classes, functions the compiler writes once every class that is bo
 from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
 from src.pystachy_compiler.bigints import held
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, TupleBoxes, dynamic_file, dynamic_program, int_lists, int_program
+from src.pystachy_compiler.class_values import boxed_class_record
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, TupleBoxes, dynamic_file, dynamic_program, int_lists, int_program, static_file
 from src.pystachy_compiler.frames import Reduce
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
-from src.pystachy_compiler.specs import BIG, COMPLEXC, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
+from src.pystachy_compiler.reflection import hook_of
+from src.pystachy_compiler.specs import BIG, BYTEARRAYC, COMPLEXC, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, made_var, mentions, mk
-from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_clsval, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_clsval, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, lib_source, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -73,6 +75,19 @@ def dyn_builtin_type(t: str) -> str:
 def gen_dyn_policy(self, line: int) -> bool:
     # does the module of source line line compile Any as dyn
     return dynamic_file(line // LINES)
+
+
+STATICMOD = "this module is marked '# pystachy: static', which holds no Any value"
+
+
+def gen_static_value(self, v: Val) -> Val:
+    # v, an expression's value, where the module being compiled is static (STATICFILES): an Any
+    # value, or a container or Callable of them, is an error there, at the line that makes it.
+    # Speculative typing (dry) reports nothing, and the compiler's own dispatchers, which other
+    # modules' operations ask for, are no module's code
+    if self.drying == 0 and not self.curfn.synthetic and static_file(self.line // LINES) and holds_dyn(v.t):
+        self.err(f"{STATICMOD}: this expression is one ({typestr(v.t)}). Give it a concrete type, or narrow it with isinstance() in a module without the marker")
+    return v
 
 
 def gen_identity_modules(self, mods: list[Mod]) -> None:
@@ -229,6 +244,16 @@ def gen_identity_call(self, f: FnInfo) -> None:
     if (home in self.idhint) != (here in self.idhint):
         if all(self.identity_inert(t, [], True) for t in f.ptypes) and self.identity_inert(f.ret, [], True):
             return
+        # A tracked direct call may pass raw numbers to a hinted scalar kernel. Its body
+        # must prove every input read before this compilation can finish (function_body).
+        if (home in self.idhint and here != "?" and here not in self.idoff and
+                (f.inert_sites is not None or f.ll not in self.compiled) and f.node.kind == "def" and
+                not f.synthetic and f.cls == "" and f.clo < 0 and not f.gen and not f.generic and
+                not f.inst and not f.infer and f.vararg < 0 and f.kwarg < 0 and
+                all(t in ["int", "float", "bool"] for t in f.ptypes) and self.identity_inert(f.ret, [], True)):
+            if f.inert_sites is None:
+                f.inert_sites = {}
+            return
         self.identity_event(f"hinted call of {f.name}()")
     if home == "?" or here == "?" or (home in self.idoff) == (here in self.idoff):
         return
@@ -311,6 +336,10 @@ def gen_dyn_boxable(self, t: str) -> str:
         return ""
     if is_clsval(t):
         return ""  # (an ordinary class's class object: its class box, class_values.py)
+    if self.bkind(t) != "":
+        # (an Any value's operations are its box's class's: the builtin container's own, which
+        # the class leaves to it, would not be found there: builtin_bases.py)
+        return f"an object of {short(t)}, a class that derives from {self.bkind(t)}, as an Any value is not supported yet: its class would be lost"
     if t in self.classes and t not in self.tmpl:
         if self.classes[t].exc != "":
             return f"an exception object ({typestr(t)}) as Any is not supported yet"
@@ -321,6 +350,9 @@ def gen_dyn_boxable(self, t: str) -> str:
             if len(ms) > 0:
                 what = f"a {short(t)} member" if self.derives(t, kind) else f"a {short(t)} value, which may be a {short(ms[0])} member,"
                 return f"{what} cannot become an Any value: {'a StrEnum' if kind == 'enum$StrEnum' else 'an IntEnum' if kind == 'enum$IntEnum' else 'an IntFlag'} member is an object of its class, where CPython's is also {'a str' if kind == 'enum$StrEnum' else 'an int'}, which isinstance() of the Any value would find (give its .value)"
+        if hook_of(self, t) != 0:
+            # (an Any value's attribute is found among its class's by name: no case calls the method)
+            return f"a {short(t)} object as an Any value is not supported: its class{'' if hook_of(self, t) == 1 else ', or one derived from it,'} defines __getattr__, which the attribute lookups of an Any value do not call (#1536)"
         return ""
     if is_opt(t):
         return self.dyn_boxable(unopt(t))
@@ -1334,6 +1366,174 @@ def gen_xdecline(self, method: FnInfo, after: bool) -> None:
     self.place(answered)
 
 
+def dyn_xown(self, c: str) -> list[str]:
+    # the static types whose boxes the comparison methods of library class c take, or [] for
+    # a class whose methods take any value. CPython's deque compares with deques, its bytearray
+    # with bytearrays and bytes (which no box holds yet), its weak reference with weak references,
+    # and its dict subclasses, which are lib/collections' mappings here (dict_class), with dicts
+    # and one another, as their _dict_eq tests: each returns NotImplemented for any other value.
+    # Its mappingproxy compares its dict with the other value, so it takes what a dict takes, and
+    # those mappings take it; an object of another class then answers with its own method, which
+    # is given the proxy here and the dict in CPython (lib/compatibility.md#types). lib's bodies
+    # are written for those operands: for another one they read a field it lacks or call it, or
+    # do not compile for an Any value
+    if c == BYTEARRAYC:
+        return [BYTEARRAYC, "bytes"]
+    if dyn_xdeque(self, c) or dyn_xlib(self, c, "_weakref$ReferenceType", "_pystachy_weakref.py"):
+        return [self.tmpl_of(c)]
+    if dyn_xmap(self, c):
+        return ["dict[dyn,dyn]", "collections$defaultdict", "collections$OrderedDict", "collections$Counter", "_pystachy_mappingproxy$mappingproxy"]
+    return []
+
+
+def dyn_xlib(self, c: str, name: str, source: str) -> bool:
+    # is c the class name of lib's file source, or a specialization of it
+    if c not in self.classes:
+        return False
+    o = self.classes[c].origin if self.classes[c].origin != "" else c
+    return o == name and lib_source(self.classes[o].node.line, self.libdir, source)
+
+
+def dyn_xdeque(self, c: str) -> bool:
+    # is c lib/collections' deque, or a specialization of it
+    return dyn_xlib(self, c, "collections$deque", "collections/__init__.py")
+
+
+def dyn_xmap(self, c: str) -> bool:
+    # is c one of lib's mappings, whose == compares a dict's items: lib/collections' (dict_class)
+    # or mappingproxy (types.MappingProxyType), or a specialization of one
+    return self.dict_class(c) or dyn_xlib(self, c, "_pystachy_mappingproxy$mappingproxy", "_pystachy_mappingproxy.py")
+
+
+def dyn_xkind(self, c: str, m: str) -> bool:
+    # does dispatcher @dyn.cmp.<c>.<m> compare items (dyn_xequal): the == of lib's deque or one of
+    # its mappings, which dyn_xbody asks for == and for != alone. Any other method of theirs, an
+    # ordering, keeps the cases of its own body
+    return m == "__eq__" and (dyn_xdeque(self, c) or dyn_xmap(self, c))
+
+
+def dyn_xitems(self, c: str, x: str) -> str:
+    # the method or field of lib container c that gives the items which == of it and an object of
+    # class x (or a dict, "") compares: a deque's list (_items()), a mapping's dict (_dict(), or
+    # the field _mapping of a mappingproxy, which has no method that gives its dict: a program
+    # holding the proxy must not reach it), or the counts of a Counter and another one that are
+    # not zero (_counts()), else ""
+    if dyn_xdeque(self, c):
+        return "_items"
+    if not dyn_xmap(self, c):
+        return ""
+    if not self.dict_class(c):
+        return "_mapping"
+    return "_counts" if self.tmpl_of(c) == "collections$Counter" and x != "" and self.tmpl_of(x) == self.tmpl_of(c) else "_dict"
+
+
+def dyn_xtype(self, c: str, x: str) -> str:
+    # the static type of those items, or "" where c has none
+    name = dyn_xitems(self, c, x)
+    if name in self.classes[c].methods:
+        return self.classes[c].methods[name].ret
+    return self.classes[c].ftypes.get(name, "")
+
+
+def dyn_xread(self, v: Val, x: str) -> Val:
+    # those items of lib container v (dyn_xitems). A dispatcher's code has no module, so the
+    # field is read here as lib's own module reads it, not as a program's attribute (glue_field)
+    name = dyn_xitems(self, v.t, x)
+    if name in self.classes[v.t].methods:
+        return self.expr(mk("call", "", self.line, [mk("attr", name, self.line, [self.vnode(v)])]), "")
+    return self.getfield(v, self.field(v, name), name)
+
+
+def dyn_xpair(self, a: str, b: str) -> bool:
+    # does dyn_xsame compare values of static types a and b
+    return a == b or self.wider(a, b) != "" or (self.ueq_type(a) and self.ueq_type(b)) or self.container_pair_type(a, b)
+
+
+def dyn_xsame(self, a: Val, b: Val) -> Val:
+    # a == b of two lists or two dicts that dyn_xpair takes, each item read in its own layout, as
+    # the code of a module that opts in to dynamic Any compares them (cmp2). A dispatcher's code
+    # has no module, so the comparison of two layouts with no common one is chosen here
+    if a.t != b.t and self.wider(a.t, b.t) == "" and not (self.ueq_type(a.t) and self.ueq_type(b.t)):
+        return self.container_pair_eq("==", a, b)
+    return self.cmp2("==", a, b)
+
+
+def dyn_xpeer(self, c: str, x: str) -> bool:
+    # does == of lib's deque or mapping c have a case for an object of boxed class x: another of
+    # its kind (dyn_xown) with another layout, a deque of other items or a mapping of another
+    # class or of other items, whose items dyn_xequal compares with c's
+    if dyn_xdeque(self, c) != dyn_xdeque(self, x) or dyn_xmap(self, c) != dyn_xmap(self, x):
+        return False
+    a = dyn_xtype(self, c, x)
+    b = dyn_xtype(self, x, c)
+    return a != "" and b != "" and dyn_xpair(self, a, b)
+
+
+def dyn_xequal(self, a: Val, b: Val) -> Val:
+    # a == b of lib's deque or mapping a and b, another of its kind (dyn_xpeer) or a dict's
+    # payload (dyn_xdict): CPython's deques are equal where their items are, and its dict
+    # subclasses, the mappings here, where their items are in any order, as dict's own method
+    # answers after theirs return NotImplemented. Two OrderedDicts also have their keys in one
+    # order, and two Counters the same counts, a missing one being zero. lib's methods say the
+    # same in typed code (deque.__eq__, _dict_eq, OrderedDict.__eq__ and Counter.__eq__), but are
+    # not compiled for an Any operand: they would call its _items() or _dict(), whose typed
+    # result no box holds, and a class that the program boxes later would add its case to that
+    # call's dispatcher. Here each object's items are read as they are, by the method or field
+    # its class has (dyn_xread)
+    line = self.line
+    x = dyn_xread(self, a, "" if is_dict(b.t) else b.t)
+    y = b if is_dict(b.t) else dyn_xread(self, b, a.t)
+    same = dyn_xsame(self, x, y)
+    if is_dict(b.t) or self.tmpl_of(a.t) != "collections$OrderedDict" or self.tmpl_of(b.t) != "collections$OrderedDict":
+        return same
+    ordered = self.label()
+    end = self.label()
+    ph = Ins("phi", "bool", "")
+    self.incoming(ph, "false", self.cur)
+    self.cbr(same.v, ordered, end)
+    self.place(ordered)
+    keys = [self.expr(mk("call", "", line, [mk("attr", "keys", line, [self.vnode(v)])]), "") for v in [a, b]]
+    self.incoming(ph, dyn_xsame(self, keys[0], keys[1]).v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), "bool")
+
+
+def dyn_xpeers(self, c: str, m: str, a: Val, b: Val, inv: bool) -> None:
+    # return what dispatcher @dyn.cmp.<c>.<m> answers for object a of class c and box b: the
+    # status of c's method m for b's concrete class, behind exact DynType guards, or of != where
+    # inv inverts an answer of ==
+    f = self.dyn_dispatcher(f"cmp.{c}.{m}", [DYN, c], "int", m)
+    result = self.dyn_call(f, [b, a])
+    if inv:
+        flip = Val(self.scalar("xor", [result, Val("1", "int")]), "int")
+        result = Val(self.select(self.num_cmp("<", result, Val("2", "int")).v, flip, result), "int")
+    self.ret_(result)
+
+
+def dyn_xdict(self, a: Val, b: Val) -> None:
+    # dispatcher @dyn.cmp's case (dyn_xkind) for lib mapping a and a box b that holds a dict: the
+    # items of a's dict and b's (dyn_xequal). A dict whose items have no comparison with a's
+    # (dyn_xpair) stays unsupported, as one whose comparison does not compile. A deque takes no
+    # dict: no case
+    if not dyn_xmap(self, a.t):
+        return
+    hit = self.label()
+    miss = self.label()
+    self.cbr(self.dyn_test(b, ["dict[dyn,dyn]"]), hit, miss)
+    self.place(hit)
+    attempt = f"{a.t}.__eq__:concrete:dict[dyn,dyn]"
+    items = dyn_xtype(self, a.t, "")
+    if attempt in self.xnot or items == "" or not dyn_xpair(self, items, "dict[dyn,dyn]"):
+        self.ret_(Val("3", "int"))
+    else:
+        self.xtry = attempt
+        same = dyn_xequal(self, a, self.dyn_payload(b, "dict[dyn,dyn]"))
+        self.xtry = ""
+        self.ret_(Val(self.select(same.v, Val("1", "int"), Val("0", "int")), "int"))
+    self.place(miss)
+
+
 def gen_dyn_xbody(self, c: str) -> None:
     # the body of @o.x.<class> (dyn_xhelper): c's own method, which takes b as its parameter's type
     # takes an Any value; != is not == where c has no __ne__, as object.__ne__ inverts __eq__. A
@@ -1361,6 +1561,16 @@ def gen_dyn_xbody(self, c: str) -> None:
         self.place(cdecline)
         self.ret_(Val("2", "int"))
         self.place(cgo)
+    own = dyn_xown(self, c)
+    if len(own) > 0:
+        # (lib's containers compare with their own kinds, dyn_xown: CPython's return
+        # NotImplemented for any other value, as complex's does above)
+        ogo = self.label()
+        odecline = self.label()
+        self.cbr(self.dyn_test(b, own), ogo, odecline)
+        self.place(odecline)
+        self.ret_(Val("2", "int"))
+        self.place(ogo)
     for k in range(len(XCMP)):
         m = XCMP[k]
         inv = False
@@ -1401,6 +1611,14 @@ def gen_dyn_xbody(self, c: str) -> None:
                         self.ret_(Val(self.select(r, Val("1", "int"), Val("0", "int")), "int"))
                 self.place(dynamic)
             key = f"{c}.{m}" + (":dynamic" if adapt else "")
+            if k < 2 and dyn_xkind(self, c, "__eq__"):
+                # (lib's deque or mapping and another of its kind, which the guard above let
+                # through: their items, by the cases of dyn_xpeer and dyn_xdict, and not the
+                # method's body for an Any operand, see dyn_xequal. Their != inverts ==, as their
+                # __ne__ methods do)
+                dyn_xpeers(self, c, "__eq__", a, b, k == 1)
+                self.place(nxt)
+                continue
             if key in self.xnot:
                 rebound = f"{c}.{m}:discarded-operand"
                 if len(ps) == 2 and method.deco == "" and rebound not in self.xnot and comparison_discards_operand(method.node.kids[2], method.params[0], method.params[1]):
@@ -1436,12 +1654,7 @@ def gen_dyn_xbody(self, c: str) -> None:
                     self.xtry = shape
                     self.instance(method, [c, canonical], [])
                     self.xtry = ""
-                    f = self.dyn_dispatcher(f"cmp.{c}.{m}", [DYN, c], "int", m)
-                    result = self.dyn_call(f, [b, a])
-                    if inv:
-                        flip = Val(self.scalar("xor", [result, Val("1", "int")]), "int")
-                        result = Val(self.select(self.num_cmp("<", result, Val("2", "int")).v, flip, result), "int")
-                    self.ret_(result)
+                    dyn_xpeers(self, c, m, a, b, inv)
                 else:
                     self.ret_(Val("3", "int"))
                 self.place(nxt)
@@ -1476,6 +1689,8 @@ def gen_dyn_xbody(self, c: str) -> None:
 def gen_dyn_box(self, v: Val) -> Val:
     # v as a dyn value (dyn_boxable says which values can be)
     t = self.rec_type(v.t)
+    if t != DYN and self.drying == 0 and not self.curfn.synthetic and static_file(self.line // LINES):
+        self.err(f"{STATICMOD}: a value of type {typestr(v.t)} would be boxed as one here (what takes it is annotated Any, in a module that opts in to dynamic Any)")
     if t == BIG:
         return box_big(self, v)
     if t == DYN:
@@ -1504,9 +1719,9 @@ def gen_dyn_box(self, v: Val) -> Val:
         # exactly this object's box. The result slot is reset before each call;
         # after the call only lazy boxing writes it. Reload for earlier aliases.
         # Selected/narrowed storage and reads across rebinding keep the checks below.
-        b = self.mem_load(Val(v.idslot, "*" + DYN))
+        b = self.mem_load(Val(v.idslot, "&" + DYN))
         box = self.rt("pys_dyn_int_box", "ptr", [f"i64 {v.v}", f"ptr {b.v}"]) if t == "int" else self.rt("pys_dyn_float_box", "ptr", [f"double {v.v}", f"ptr {b.v}"])
-        self.mem_store(Val(v.idslot, "*" + DYN), Val(box, DYN))
+        self.mem_store(Val(v.idslot, "&" + DYN), Val(box, DYN))
         return Val(box, DYN)
     if (t == "int" or t == "float") and v.idslot != "":
         # a variable's value: the box of its object (dyn_id_held), where that holds this value of
@@ -1516,7 +1731,7 @@ def gen_dyn_box(self, v: Val) -> Val:
         kept = self.idstores.get(v.idslot, 0) == v.idgen
         live = "true" if kept else "false"
         if not kept and v.idcounter != "":
-            live = self.num_cmp("==", self.mem_load(Val(v.idcounter, "*int")), Val(v.idversion, "int")).v
+            live = self.num_cmp("==", self.mem_load(Val(v.idcounter, "&int")), Val(v.idversion, "int")).v
         b = self.dyn_id_held(v)
         chk = self.label()
         hit = self.label()
@@ -1526,7 +1741,7 @@ def gen_dyn_box(self, v: Val) -> Val:
         self.place(chk)
         typ = Val(self.rtdata("pys_dyntype_int" if t == "int" else "pys_dyntype_float"), "dyntype")
         st = self.ptr_cmp("==", Val(self.dyn_typeof(b), "dyntype"), typ).v
-        sp = self.num_cmp("==", self.dyn_raw(b), Val(self.to_slot(v), "int")).v
+        sp = self.num_cmp("==", self.dyn_raw(b), self.slot_word(v)).v
         self.cbr(self.scalar("and", [Val(st, "bool"), Val(sp, "bool")]), hit, miss)
         self.place(hit)
         self.br(end)
@@ -1542,7 +1757,7 @@ def gen_dyn_box(self, v: Val) -> Val:
             empty = self.ptr_cmp("==", b, Val("null", DYN)).v
             self.cbr(self.scalar("and", [Val(empty, "bool"), Val(live, "bool")]), keep, end)
             self.place(keep)
-            self.mem_store(Val(v.idslot, "*" + DYN), Val(nb, DYN))
+            self.mem_store(Val(v.idslot, "&" + DYN), Val(nb, DYN))
             self.incoming(ph, nb, keep)
         self.br(end)
         self.place(end)
@@ -1661,12 +1876,12 @@ def box_big(self, v: Val) -> Val:
         self.incoming(wp, made, self.cur)
         live = "true" if self.idstores.get(v.idslot, 0) == v.idgen else "false"
         if live == "false" and v.idcounter != "":
-            live = self.num_cmp("==", self.mem_load(Val(v.idcounter, "*int")), Val(v.idversion, "int")).v
+            live = self.num_cmp("==", self.mem_load(Val(v.idcounter, "&int")), Val(v.idversion, "int")).v
         if live != "false":
             keep = self.label()
             self.cbr(live, keep, done)
             self.place(keep)
-            self.mem_store(Val(v.idslot, "*" + DYN), Val(made, DYN))
+            self.mem_store(Val(v.idslot, "&" + DYN), Val(made, DYN))
             self.incoming(wp, made, self.cur)
         self.br(done)
         self.place(done)
@@ -1699,10 +1914,10 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         # A closed numeric body cannot observe an internal alias and returns at most
         # one object. Its copies may carry nullable provenance until that return;
         # ordinary bodies must materialize the shared object before copying it. A
-        # call's private result slot that a lone assignment stores (IFn.idmove) is
+        # call's private result slot that a lone assignment stores (IFn.build.idmove) is
         # no alias: the store takes its object, boxed or not, as a return does.
-        moved = (self.fn.idmove and v.idexact and ".box." not in v.idslot) or (self.fn.idpass and ".box." in v.idslot)
-        b = self.dyn_id_held(v).v if self.fn.numeric_only or moved else self.dyn_id_box(v).v
+        moved = (self.fn.build.idmove and v.idexact and ".box." not in v.idslot) or (self.fn.build.idpass and ".box." in v.idslot)
+        b = self.dyn_id_held(v).v if self.fn.build.numeric_only or moved else self.dyn_id_box(v).v
     elif v.lit and (v.t == unopt(t) or (v.t == "int" and unopt(t) == BIG) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))) and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))):
         # store_name can retain t until a pending type join restarts compilation to widen
         # it. A provisional int slot may receive a float literal: its LLVM hex bits
@@ -1717,14 +1932,14 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         # Boxing a conditional or alias copy may reveal the destination's own object.
         # Keep its generation so earlier unboxed reads can find that newly made box.
         # Compare objects, not payloads: equal replacements must still retire reads.
-        old = self.mem_load(Val(slot, "*" + DYN))
+        old = self.mem_load(Val(slot, "&" + DYN))
         same = self.ptr_cmp("==", old, Val(b, DYN))
         bound = self.ptr_cmp("!=", old, Val("null", DYN))
         step = self.select(self.scalar("and", [same, bound]), Val("0", "int"), Val("1", "int"))
-    self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
+    self.mem_store(Val(slot, "&" + DYN), Val(b, DYN))
     self.idstores[slot] = self.idstores.get(slot, 0) + 1
     if slot.startswith("%") and ".box." in slot:
-        counter = Val(slot.replace(".box.", ".boxgen."), "*int")
+        counter = Val(slot.replace(".box.", ".boxgen."), "&int")
         # Machine add deliberately wraps, without signed-overflow flags. A local read
         # can survive only the finite stores in its expression, not 2**64 rebindings.
         serial = self.scalar("add", [self.mem_load(counter), Val(step, "int")])
@@ -1753,17 +1968,17 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
     # box the slot holds now, which is v's object as an Any value, and the stores into the slot so
     # far (dyn_id_held)
     local = slot.startswith("%") and ".box." in slot
-    if self.fn.scalar_reads:
+    if self.fn.build.scalar_reads:
         # A proven scalar arithmetic consumer uses only the payload. Its subtree has
         # no stores or user calls, so it cannot publish an alias or observe this object.
         # Ordinary reads still snapshot, and every store still updates its box.
         return
     v.idslot = slot
-    v.idheld = self.mem_load(Val(slot, "*" + DYN)).v
+    v.idheld = self.mem_load(Val(slot, "&" + DYN)).v
     v.idgen = self.idstores.get(slot, 0)
     if local:
         v.idcounter = slot.replace(".box.", ".boxgen.")
-        v.idversion = self.mem_load(Val(v.idcounter, "*int")).v
+        v.idversion = self.mem_load(Val(v.idcounter, "&int")).v
     if slot.startswith("@g.") and slot[3:-4] in self.intglobals:
         # module_ints excludes rebinding/deletion across the whole import graph.
         # Initialization guards precede this read; dyn_id_store made its box ready.
@@ -1784,7 +1999,7 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
                 box = self.rt("pys_dyn_big_box", "ptr", [f"i64 {self.big_lo(v).v}", f"ptr {self.big_hi(v).v}", f"ptr {v.idheld}"])
             else:
                 box = self.rt("pys_dyn_int_box", "ptr", [f"i64 {v.v}", f"ptr {v.idheld}"]) if v.t == "int" else self.rt("pys_dyn_float_box", "ptr", [f"double {v.v}", f"ptr {v.idheld}"])
-            self.mem_store(Val(slot, "*" + DYN), Val(box, DYN))
+            self.mem_store(Val(slot, "&" + DYN), Val(box, DYN))
             v.idfrom = box
             v.idslot = ""
             return
@@ -1796,7 +2011,7 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
         # A cell may hold a joined/optional number too. Box its current member,
         # without consulting the slot again, while the snapshot is still live.
         b = self.dyn_id_box(Val(v.v, v.t)).v
-        self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
+        self.mem_store(Val(slot, "&" + DYN), Val(b, DYN))
         made = self.cur
         self.br(end)
         self.place(end)
@@ -1816,11 +2031,11 @@ def gen_dyn_id_held(self, v: Val) -> Val:
     if self.idstores.get(v.idslot, 0) != v.idgen:
         if v.idcounter == "":
             return b
-        live = self.num_cmp("==", self.mem_load(Val(v.idcounter, "*int")), Val(v.idversion, "int")).v
-        now = self.mem_load(Val(v.idslot, "*" + DYN))
+        live = self.num_cmp("==", self.mem_load(Val(v.idcounter, "&int")), Val(v.idversion, "int")).v
+        now = self.mem_load(Val(v.idslot, "&" + DYN))
         now = Val(self.select(live, now, Val("null", DYN)), DYN)
     else:
-        now = self.mem_load(Val(v.idslot, "*" + DYN))
+        now = self.mem_load(Val(v.idslot, "&" + DYN))
     return Val(self.select(self.ptr_cmp("!=", b, Val("null", DYN)).v, b, now), DYN)
 
 
@@ -1934,16 +2149,16 @@ def gen_lazy_fields(self, f: FnInfo, body: list[Node]) -> None:
         bits[names[j]] = 1 << j
     for j in range(len(movers)):
         bits[movers[j]] = 1 << (len(names) + j)
-    lazy_block(body, bits, 0, 0, 0, fn.lazylines, fn.lazymasks, True)
+    lazy_block(body, bits, 0, 0, 0, fn.build.lazylines, fn.build.lazymasks, True)
     for x in names + movers:
-        fn.movebit[x] = bits[x]
+        fn.build.movebit[x] = bits[x]
     for x in names:
-        fn.lazyobj[x] = keys[x][: keys[x].find(".")]
-        fn.lazyfield[x] = keys[x][keys[x].find(".") + 1:]
-        fn.lazybit[x] = bits[x]
-        fn.lazyflag[x] = self.alloca("bool", "")  # (false where the function begins)
-    fn.lazyreads = [st for st in reads if st.kids[0].s in fn.lazyobj]
-    fn.lazywbs = [st for st in wbs if st.kids[1].s in fn.lazyobj and st.kids[0].kids[0].s == fn.lazyobj[st.kids[1].s] and st.kids[0].s == fn.lazyfield[st.kids[1].s]]
+        fn.build.lazyobj[x] = keys[x][: keys[x].find(".")]
+        fn.build.lazyfield[x] = keys[x][keys[x].find(".") + 1:]
+        fn.build.lazybit[x] = bits[x]
+        fn.build.lazyflag[x] = self.alloca("bool", "")  # (false where the function begins)
+    fn.build.lazyreads = [st for st in reads if st.kids[0].s in fn.build.lazyobj]
+    fn.build.lazywbs = [st for st in wbs if st.kids[1].s in fn.build.lazyobj and st.kids[0].kids[0].s == fn.build.lazyobj[st.kids[1].s] and st.kids[0].s == fn.build.lazyfield[st.kids[1].s]]
 
 
 def gen_id_move(self, e: Node) -> bool:
@@ -1954,22 +2169,22 @@ def gen_id_move(self, e: Node) -> bool:
     # then hand x's object on as it is, boxed or not, as a return does: no other binding holds
     # it afterwards, so a copy (dyn_id_store) or an argument (pcoerce) needs no box
     fn = self.fn
-    n = fn.idstmt
+    n = fn.build.idstmt
     if e.kind != "name":
         return False
     x = e.s
-    if n is None or x not in fn.movebit or x not in self.idbox or ".box." not in self.idbox[x] or x in self.cells or x in self.compvars:
+    if n is None or x not in fn.build.movebit or x not in self.idbox or ".box." not in self.idbox[x] or x in self.cells or x in self.compvars:
         return False
     if n.kind != "assign" and n.kind != "annassign" and n.kind != "expr" and n.kind != "return":
         return False
-    if n.line not in fn.lazylines:
+    if n.line not in fn.build.lazylines:
         return False
     out = -1
-    ns = fn.lazylines[n.line]
+    ns = fn.build.lazylines[n.line]
     for j in range(len(ns)):
         if ns[j] is n:
-            out = fn.lazymasks[n.line][2 * j + 1]
-    if (out & fn.movebit[x]) != 0:
+            out = fn.build.lazymasks[n.line][2 * j + 1]
+    if (out & fn.build.movebit[x]) != 0:
         return False
     path: list[Node] = []
     if not id_path(n, e, path):
@@ -2088,15 +2303,15 @@ def gen_id_stmt(self, n: Node) -> None:
     # statement n, where a function has lazy field locals or moves: its barrier first
     # (lazy_barrier), and the statement for id_move while it compiles
     fn = self.fn
-    if len(fn.lazyobj) > 0:
+    if len(fn.build.lazyobj) > 0:
         self.line = n.line
         self.lazy_barrier(n)
-    held = fn.idstmt
-    fn.idstmt = n
+    held = fn.build.idstmt
+    fn.build.idstmt = n
     try:
         self.stmt_main(n)
     finally:
-        fn.idstmt = held
+        fn.build.idstmt = held
 
 
 def gen_lazy_barrier(self, n: Node) -> None:
@@ -2106,17 +2321,17 @@ def gen_lazy_barrier(self, n: Node) -> None:
     if self.term or self.lazy_inert(n):
         return
     mask = -1
-    if n.line in fn.lazylines:
-        ns = fn.lazylines[n.line]
+    if n.line in fn.build.lazylines:
+        ns = fn.build.lazylines[n.line]
         for j in range(len(ns)):
             if ns[j] is n:
-                mask = fn.lazymasks[n.line][2 * j]
-    for x in [y for y in fn.lazyobj]:
-        if (mask & fn.lazybit[x]) == 0:
-            self.mem_store(Val(fn.lazyflag[x], "*bool"), Val("false", "bool"))
+                mask = fn.build.lazymasks[n.line][2 * j]
+    for x in [y for y in fn.build.lazyobj]:
+        if (mask & fn.build.lazybit[x]) == 0:
+            self.mem_store(Val(fn.build.lazyflag[x], "&bool"), Val("false", "bool"))
         elif x not in self.idbox or self.ltype.get(x, "") not in ["int", "float"]:
             # (read later, but no store has given it a slot yet: no sharing starts from here)
-            del fn.lazyobj[x]
+            del fn.build.lazyobj[x]
         else:
             self.lazy_resolve(x)
 
@@ -2128,21 +2343,21 @@ def gen_lazy_resolve(self, x: str) -> None:
     t = self.ltype.get(x, "")
     if self.term or x not in self.idbox or (t != "int" and t != "float"):
         return
-    o = fn.lazyobj[x] if x in fn.lazyobj else ""
+    o = fn.build.lazyobj[x] if x in fn.build.lazyobj else ""
     if o == "" or o not in self.ltype or self.ltype[o] not in self.classes:
         return
-    flag = Val(fn.lazyflag[x], "*bool")
+    flag = Val(fn.build.lazyflag[x], "&bool")
     ci = self.classes[self.ltype[o]]
     res = self.label()
     end = self.label()
     self.cbr(self.mem_load(flag).v, res, end)
     self.place(res)
-    slot = Val(self.fgep(self.mem_load(Val(self.lreg[o], "*" + self.ltype[o])), ci.fbox[fn.lazyfield[x]]), "*" + DYN)
+    slot = Val(self.fgep(self.mem_load(Val(self.lreg[o], "&" + self.ltype[o])), ci.fbox[fn.build.lazyfield[x]]), "&" + DYN)
     held = self.mem_load(slot)
-    v = self.mem_load(Val(self.lreg[x], "*" + t))
+    v = self.mem_load(Val(self.lreg[x], "&" + t))
     box = self.rt("pys_dyn_int_box", "ptr", [f"i64 {v.v}", f"ptr {held.v}"]) if t == "int" else self.rt("pys_dyn_float_box", "ptr", [f"double {v.v}", f"ptr {held.v}"])
     self.mem_store(slot, Val(box, DYN))
-    self.mem_store(Val(self.idbox[x], "*" + DYN), Val(box, DYN))
+    self.mem_store(Val(self.idbox[x], "&" + DYN), Val(box, DYN))
     self.mem_store(flag, Val("false", "bool"))
     self.br(end)
     self.place(end)
@@ -2155,30 +2370,30 @@ def gen_lazy_store(self, o: Val, box: str, name: str) -> bool:
     # and the local shares the field's object. True where the write-back wrote the slot
     fn = self.fn
     obj = o
-    wb = fn.lazywb if fn.lazywb != "" and fn.lazyfield.get(fn.lazywb, "") == name and fn.lazywb in self.idbox else ""
-    old = self.mem_load(Val(box, "*" + DYN))
+    wb = fn.build.lazywb if fn.build.lazywb != "" and fn.build.lazyfield.get(fn.build.lazywb, "") == name and fn.build.lazywb in self.idbox else ""
+    old = self.mem_load(Val(box, "&" + DYN))
     keep = Val("false", "bool")
     if wb != "":
-        keep = self.mem_load(Val(fn.lazyflag[wb], "*bool"))  # (x already is the field's object)
-    for y in fn.lazyflag:
-        oy = fn.lazyobj.get(y, "")
-        if y == wb or fn.lazyfield.get(y, "") != name or y not in self.idbox or oy == "" or self.ltype.get(oy, "") not in self.classes:
+        keep = self.mem_load(Val(fn.build.lazyflag[wb], "&bool"))  # (x already is the field's object)
+    for y in fn.build.lazyflag:
+        oy = fn.build.lazyobj.get(y, "")
+        if y == wb or fn.build.lazyfield.get(y, "") != name or y not in self.idbox or oy == "" or self.ltype.get(oy, "") not in self.classes:
             continue
         if name not in self.classes[self.ltype[oy]].fbox:
             continue
-        flag = Val(fn.lazyflag[y], "*bool")
+        flag = Val(fn.build.lazyflag[y], "&bool")
         on = self.mem_load(flag)
-        same = self.ptr_cmp("==", self.mem_load(Val(self.lreg[oy], "*" + self.ltype[oy])), Val(obj.v, obj.t))
+        same = self.ptr_cmp("==", self.mem_load(Val(self.lreg[oy], "&" + self.ltype[oy])), Val(obj.v, obj.t))
         cond = Val(self.scalar("and", [on, same]), "bool")
         cond = Val(self.scalar("and", [cond, Val(self.scalar("xor", [keep, Val("true", "bool")]), "bool")]), "bool")
-        own = self.mem_load(Val(self.idbox[y], "*" + DYN))
-        self.mem_store(Val(self.idbox[y], "*" + DYN), Val(self.select(cond.v, old, own), DYN))
+        own = self.mem_load(Val(self.idbox[y], "&" + DYN))
+        self.mem_store(Val(self.idbox[y], "&" + DYN), Val(self.select(cond.v, old, own), DYN))
         self.mem_store(flag, Val(self.select(cond.v, Val("false", "bool"), on), "bool"))
     if wb == "":
         return False
-    mine = self.mem_load(Val(self.idbox[wb], "*" + DYN))
-    self.mem_store(Val(box, "*" + DYN), Val(self.select(keep.v, old, mine), DYN))
-    self.mem_store(Val(fn.lazyflag[wb], "*bool"), Val("true", "bool"))
+    mine = self.mem_load(Val(self.idbox[wb], "&" + DYN))
+    self.mem_store(Val(box, "&" + DYN), Val(self.select(keep.v, old, mine), DYN))
+    self.mem_store(Val(fn.build.lazyflag[wb], "&bool"), Val("true", "bool"))
     return True
 
 
@@ -2186,21 +2401,21 @@ def gen_lazy_assign(self, n: Node) -> bool:
     # assignment statement n where it reads a field into a lazy local (x = o.f) or writes one
     # back (o.f = x), compiled so; False where it is not one (or no longer may be)
     fn = self.fn
-    if fn.lazyoff > 0:
+    if fn.build.lazyoff > 0:
         return False
-    if len([st for st in fn.lazyreads if st is n]) > 0:
+    if len([st for st in fn.build.lazyreads if st is n]) > 0:
         x = n.kids[0].s
-        if x not in fn.lazyobj or self.dyn_widened(x):
+        if x not in fn.build.lazyobj or self.dyn_widened(x):
             return False
-        t = self.lazy_field(fn.lazyobj[x], fn.lazyfield[x], n.line)
+        t = self.lazy_field(fn.build.lazyobj[x], fn.build.lazyfield[x], n.line)
         if t == "" or self.ltype.get(x, t) != t or x in self.nonevars:
             return False
-        held = fn.scalar_reads
-        fn.scalar_reads = True  # (the field's object, without the snapshot that boxes it)
+        held = fn.build.scalar_reads
+        fn.build.scalar_reads = True  # (the field's object, without the snapshot that boxes it)
         try:
             v = self.expr(n.kids[1], t)
         finally:
-            fn.scalar_reads = held
+            fn.build.scalar_reads = held
         src = self.joinsrc
         self.joinsrc = n.kids[1]
         if n.s == "local-retype":
@@ -2209,26 +2424,26 @@ def gen_lazy_assign(self, n: Node) -> bool:
             self.assign(n.kids[0], v)
         self.joinsrc = src
         if x in self.idbox and self.ltype.get(x, "") == t and not self.term:
-            self.mem_store(Val(fn.lazyflag[x], "*bool"), Val("true", "bool"))
+            self.mem_store(Val(fn.build.lazyflag[x], "&bool"), Val("true", "bool"))
         return True
-    if len([st for st in fn.lazywbs if st is n]) > 0:
+    if len([st for st in fn.build.lazywbs if st is n]) > 0:
         x = n.kids[1].s
         t = self.ltype.get(x, "")
         # A barrier can retire a candidate before its first binding. Its flag slot
         # remains, but later barriers no longer track it: never restart sharing.
-        if x not in fn.lazyobj or x not in fn.lazyflag or x not in self.idbox or (t != "int" and t != "float") or self.plain_field(n.kids[0]) != t:
+        if x not in fn.build.lazyobj or x not in fn.build.lazyflag or x not in self.idbox or (t != "int" and t != "float") or self.plain_field(n.kids[0]) != t:
             return False
-        held = fn.scalar_reads
-        fn.scalar_reads = True  # (x's number: lazy_store gives the field x's object)
+        held = fn.build.scalar_reads
+        fn.build.scalar_reads = True  # (x's number: lazy_store gives the field x's object)
         try:
             v = self.expr(n.kids[1], t)
         finally:
-            fn.scalar_reads = held
-        fn.lazywb = x
+            fn.build.scalar_reads = held
+        fn.build.lazywb = x
         try:
             self.assign(n.kids[0], v)
         finally:
-            fn.lazywb = ""
+            fn.build.lazywb = ""
         return True
     return False
 
@@ -2237,14 +2452,14 @@ def gen_lazy_while(self, n: Node) -> None:
     # a while statement: no sharing starts in a loop whose test may run code, which no barrier
     # precedes on the way back to it
     fn = self.fn
-    off = len(fn.lazyobj) > 0 and not self.lazy_test(n.kids[0])
+    off = len(fn.build.lazyobj) > 0 and not self.lazy_test(n.kids[0])
     if off:
-        fn.lazyoff += 1
+        fn.build.lazyoff += 1
     try:
         self.while_(n)
     finally:
         if off:
-            fn.lazyoff -= 1
+            fn.build.lazyoff -= 1
 
 
 def gen_dyn_union_box(self, v: Val) -> Val:
@@ -2349,12 +2564,12 @@ def gen_dyn_typeof(self, v: Val) -> str:
 
 
 def gen_dyn_raw(self, v: Val) -> Val:
-    # Opaque identity bits, with no claim about the box's Python type. Only
-    # direct integer equality comparisons may consume this result.
+    # Opaque identity bits, with no claim about the box's Python type, read as an int by a bits
+    # cast. Only direct integer equality comparisons may consume this result.
     i = Ins("dyn.raw", "%slot", "")
     i.a = [Val(v.v, DYN)]
     self.put(i, 2)
-    return Val(tmpname(i.r[1]), "int")
+    return self.cast(Val(tmpname(i.r[1]), "%slot"), "int", "bits")
 
 
 def gen_dyn_payload(self, v: Val, t: str) -> Val:
@@ -2365,7 +2580,7 @@ def gen_dyn_payload(self, v: Val, t: str) -> Val:
         return r
     if t == "None" or t == NONEVAR:
         return Val("null", "None")
-    i = Ins("dyn.payload", "%slot", t)
+    i = Ins("dyn.payload", "*" + t, t)
     i.a = [Val(v.v, DYN)]
     self.put(i, 2)
     return self.from_slot(tmpname(i.r[1]), t)
@@ -2406,13 +2621,13 @@ def gen_dyn_unbox(self, v: Val, t: str, what: str = "") -> Val:
         return self.class_value_unbox(v, t)
     if dyn_builtin_type(t) != "":
         r = self.rt("pys_dyn_unbox", "i64", [f"ptr {v.v}", f"ptr {self.dyn_type(t)}"])
-        x = self.from_slot(self.to_slot(Val(r, "int")), t) if t != "int" else Val(r, "int")
+        x = self.from_word(r, t) if t != "int" else Val(r, "int")
         if t == "int" or t == "float":
             x.idfrom = v.v  # (a box of exactly type t: pys_dyn_unbox)
         return x
     if t in self.classes and t not in self.tmpl and self.classes[t].exc == "":
         r = self.rt("pys_dyn_unbox", "i64", [f"ptr {v.v}", f"ptr {self.dyn_class_type(t)}"])
-        return self.from_slot(self.to_slot(Val(r, "int")), t)
+        return self.from_word(r, t)
     if is_union(unopt(t)):
         ms = umembers(unopt(t)) + (["None"] if is_opt(t) or self.optional(unopt(t)) == unopt(t) else [])
         self.dyn_check(v, ms, typestr(t))
@@ -3017,7 +3232,7 @@ def gen_dyn_identity(self, op: str, a: Val, b: Val) -> Val:
     sp = self.num_cmp("==", self.dyn_raw(x), self.dyn_raw(y)).v
     nf = self.ptr_cmp("!=", ta, Val(self.rtdata("pys_dyntype_float"), "dyntype")).v
     ni = self.ptr_cmp("!=", ta, Val(self.rtdata("pys_dyntype_int"), "dyntype")).v
-    fl = self.mload("int", self.maddr("int", ta.v, "5"))  # (its DynType's flags)
+    fl = self.mload("int", self.maddr("dyntype", ta.v, "5"))  # (its DynType's flags)
     nb = self.num_cmp("==", Val(self.scalar("and", [Val(fl, "int"), Val(str(DF_BOXID), "int")]), "int"), Val("0", "int")).v
     nf = self.scalar("and", [Val(self.scalar("and", [Val(nf, "bool"), Val(ni, "bool")]), "bool"), Val(nb, "bool")])
     alike = self.scalar("and", [Val(st, "bool"), Val(self.scalar("and", [Val(sp, "bool"), Val(nf, "bool")]), "bool")])
@@ -3260,7 +3475,7 @@ def gen_dyn_slice(self, o: Val, bs: list[Node]) -> Val:
 def gen_dyn_type_name(self, v: Val) -> Val:
     # type(v).__name__: its DynType's name
     t = self.dyn_typeof(v)
-    return Val(self.mload("%ptr", self.maddr("%ptr", t, "2", True)), "str")
+    return Val(self.mload("str", self.maddr("dyntype", t, "2", True)), "str")
 
 
 # ---- the dispatchers: functions of the program that the compiler writes once every class that
@@ -3351,7 +3566,7 @@ def gen_dyn_body(self, key: str) -> None:
             self.ret_(Val("false", "bool"))
             return
         typ = self.dyn_typeof(o)
-        cid = Val(self.mload("int", self.maddr("int", typ, "3")), "int")
+        cid = Val(self.mload("int", self.maddr("dyntype", typ, "3")), "int")
         hit = self.label()
         miss = self.label()
         self.switch(cid, [str(self.ocls[c]) for c in classes], [hit for _ in classes], miss)
@@ -3391,7 +3606,7 @@ def gen_dyn_body(self, key: str) -> None:
         # This metatype's payload is an internal record pointer, not a native
         # Python value type for dyn.payload. Read its proven pointer slot with
         # the ordinary typed-memory operation instead.
-        rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+        rec = Val(boxed_class_record(self, o), "%ptr")
         word = "0" if key == "get.__name__" else "1" if key == "get.__qualname__" else "2"
         self.ret_(self.dyn_box(Val(self.mload("str", self.maddr("%ptr", rec.v, word)), "str")))
         self.place(miss)
@@ -3399,7 +3614,7 @@ def gen_dyn_body(self, key: str) -> None:
         dyn_class_members(self, f, key, o, ps[1:])
     arith = (key.startswith("op") or key.startswith("iop")) and dunder != ""
     r = "__r" + dunder[2:] if arith else ""
-    # the case of the receiver's class, by one switch on its DynType's class id (word 3: a class's
+    # the case of the receiver's class, by one switch on its DynType's class id (field 3: a class's
     # dense O<id>, which its DynType holds, or -1 for a builtin or function DynType, which takes
     # the rest), which LLVM can make a jump table, rather than a comparison with each class's
     # DynType in turn (#799). A subclass has a DynType of its own, so its case is exact too
@@ -3407,7 +3622,7 @@ def gen_dyn_body(self, key: str) -> None:
     labels = [self.label() for x in arms]
     rest = self.label()
     if len(arms) > 0:
-        cid = Val(self.mload("int", self.maddr("int", t.v, "3")), "int")
+        cid = Val(self.mload("int", self.maddr("dyntype", t.v, "3")), "int")
         self.switch(cid, [str(self.ocls[x]) for x in arms], labels, rest)
     for j in range(len(arms)):
         c = arms[j]
@@ -3534,6 +3749,8 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         # Same-hierarchy comparisons already use the typed helper, not @o.x.
         if self.derives(c, own) or self.derives(own, c):
             return False
+        if dyn_xkind(self, own, dunder):
+            return dyn_xpeer(self, own, c)
         method = self.classes[own].methods[dunder]
         canonical = method.ptypes[1] if method.ptypes[1] in self.classes else own
         expected = comparison_layout(self.classes[canonical])
@@ -3710,6 +3927,12 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
             self.ret_(Val("3", "int"))
             return
         self.xtry = attempt
+        if dyn_xkind(self, receiver.t, dunder):
+            # (lib's deque or mapping and another of its kind, dyn_xpeer: their items)
+            same = dyn_xequal(self, receiver, x)
+            self.xtry = ""
+            self.ret_(Val(self.select(same.v, Val("1", "int"), Val("0", "int")), "int"))
+            return
         # Preserve typed storage and aliasing; no field is copied or reboxed. Keep
         # each failed arm separate from the generic and annotated typed attempts.
         original = self.classes[receiver.t].methods[dunder]
@@ -4103,7 +4326,7 @@ def builtin_arity(bt: str, m: str, n: int) -> str:
 def boxed_list_items(self, sources: list[Val]) -> Val:
     # A fresh outer list holds boxes of the original items. Read native
     # layouts with their identity/wide companions, even in a checked caller.
-    result = Val(self.rt("pys_list_new", "ptr", ["i64 0"]), "list[dyn]")
+    result = Val(self.rt("pys_list_new", "ptr", ["i64 0"], t="list[dyn]"), "list[dyn]")
     for source in sources:
         ctr = self.alloca("int", "")
         self.mstore("int", "0", ctr)
@@ -4272,7 +4495,7 @@ def dyn_class_calls(self, key: str, o: Val, args: list[Val]) -> None:
     # A class box identifies its canonical record, not one instance layout.
     # Reuse the program's adapters/initializers, including the annotation-backed
     # factories prepared separately under the whole-compilation retry contract.
-    rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+    rec = Val(boxed_class_record(self, o), "%ptr")
     an = self.dyn_call_args(key, args)
     classes = [c for c in self.classes if "@pys.refl.c." + c in self.reflrecs and self.classes[c].origin == "" and "__init__" in self.classes[c].methods]
     for c in classes:
@@ -4501,7 +4724,7 @@ def dyn_class_members(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> Non
     other = self.label()
     self.cbr(self.ptr_cmp("==", Val(self.dyn_typeof(o), "dyntype"), Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, box, other)
     self.place(box)
-    rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+    rec = Val(boxed_class_record(self, o), "%ptr")
     lacking = self.label()
     for c in kinds:
         kind = kinds[c]
@@ -4550,6 +4773,8 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
     if promote:
         key = key[:-8]
     if key.startswith("cmp."):
+        if dyn_xkind(self, ps[1].t, self.dynkeys[key]):
+            dyn_xdict(self, ps[1], ps[0])
         self.ret_(Val("3", "int"))
         return
     o = ps[0]
@@ -5120,7 +5345,7 @@ def gen_dyn_star_call(self, o: Val, args: list[Node], method: str = "", found: V
         ismethod = self.ptr_cmp("==", found, Val("null", DYN)).v
         who = Val(self.select(ismethod, o, found), DYN)
         namefn = self.select(ismethod, Val(methodname.ll, "%ptr"), Val(name.ll, "%ptr"))
-    pos = Val(self.rt("pys_list_new", "ptr", ["i64 0"]), "list[dyn]")
+    pos = Val(self.rt("pys_list_new", "ptr", ["i64 0"], t="list[dyn]"), "list[dyn]")
     kws = self.expr(mk("dict", "", self.line, []), "dict[dyn,dyn]")
     positional = [a for a in args if a.kind not in ["kw", "dstar"]]
     sole = len(positional) == 1 and positional[0].kind == "starred"
@@ -5218,7 +5443,7 @@ def dyn_packed_name(self, o: Val, method: str) -> None:
     rest = self.label()
     self.cbr(self.ptr_cmp("==", typ, Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, meta, rest)
     self.place(meta)
-    rec = self.mload("%ptr", self.maddr("%ptr", o.v, "1"))
+    rec = boxed_class_record(self, o)
     mod = Val(self.mload("str", self.maddr("%ptr", rec, "2")), "str")
     qual = Val(self.mload("str", self.maddr("%ptr", rec, "1")), "str")
     self.ret_(self.concat([mod, Val(self.sconst("."), "str"), qual, Val(self.sconst("()"), "str")]))
@@ -5248,7 +5473,7 @@ def dyn_packed_default(self, f: FnInfo, pre: list[Val], j: int) -> Val:
         if self.fn_identity(f) and numeric_identity(t):
             clo = self.closures[f.clo]
             offset = len(clo.caps) + closure_default_slots(clo) + len(clo.iflags) + clo.defs.index(j)
-            value.idfrom = self.mload("dyn", self.maddr("%ptr", pre[0].v, str(offset), True))
+            value.idfrom = self.mload("dyn", self.maddr("int", pre[0].v, str(offset), True))
     elif df.dglob[j] != "":
         t = t if t != "" else df.dtypes[j]
         value = Val(self.mload(t, df.dglob[j]), t)
@@ -5436,7 +5661,7 @@ def dyn_packed_body(self, f: FnInfo, o: Val, pos: Val, kws: Val, method: str) ->
     other = self.label()
     self.cbr(self.ptr_cmp("==", typ, Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, meta, other)
     self.place(meta)
-    rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+    rec = Val(boxed_class_record(self, o), "%ptr")
     for c in [x for x in self.classes if "@pys.refl.c." + x in self.reflrecs and self.classes[x].origin == "" and "__init__" in self.classes[x].methods]:
         hit = self.label()
         rest = self.label()
@@ -5518,7 +5743,7 @@ def gen_dyn_sum_start(self, r: Reduce, start: Val) -> None:
     # addition. Leaving a phase is permanent, including overflow or a user callback.
     value = self.dyn_box(start)
     self.guard(self.dyn_test(value, ["str"]), "TypeError: sum() can't sum strings [use ''.join(seq) instead]")
-    self.mem_store(Val(r.acc, "*dyn"), value)
+    self.mem_store(Val(r.acc, "&dyn"), value)
     self.mstore("float", fbits("0.0"), r.facc)
     self.mstore("float", fbits("0.0"), r.comp)
     kind = Val(self.dyn_typeof(value), "dyntype")
@@ -5533,7 +5758,7 @@ def gen_dyn_sum_start(self, r: Reduce, start: Val) -> None:
     # CPython unboxes an integer start; a callback must see a new box when that
     # phase ends, even when it is the first item. Preserve other starts' identity.
     n = self.dyn_payload(value, "int")
-    self.mem_store(Val(r.acc, "*dyn"), Val(self.rt("pys_dyn_int", "ptr", [f"i64 {n.v}"]), DYN))
+    self.mem_store(Val(r.acc, "&dyn"), Val(self.rt("pys_dyn_int", "ptr", [f"i64 {n.v}"]), DYN))
     self.br(end)
     self.place(nonint)
     self.cbr(self.ptr_cmp("==", kind, Val(self.dyn_type("float"), "dyntype")).v, floats, end)
@@ -5556,8 +5781,8 @@ def gen_dyn_sum_item(self, r: Reduce, value: Val) -> None:
     end = self.label()
     self.cbr(self.num_cmp("==", phase, Val("1", "int")).v, floats, others)
     self.place(others)
-    total = self.dyn_arith("+", self.mem_load(Val(r.acc, "*dyn")), item)
-    self.mem_store(Val(r.acc, "*dyn"), total)
+    total = self.dyn_arith("+", self.mem_load(Val(r.acc, "&dyn")), item)
+    self.mem_store(Val(r.acc, "&dyn"), total)
     ints = self.label()
     self.cbr(self.num_cmp("==", phase, Val("0", "int")).v, ints, end)
     self.place(ints)
@@ -5592,7 +5817,7 @@ def gen_dyn_sum_item(self, r: Reduce, value: Val) -> None:
     # Flush the compensation before calling user code; never re-enter the float
     # phase even if that callback returns a float. Wide ints also take this path.
     partial = Val(self.comp_end(r.facc, r.comp), "float")
-    self.mem_store(Val(r.acc, "*dyn"), self.dyn_arith("+", partial, item))
+    self.mem_store(Val(r.acc, "&dyn"), self.dyn_arith("+", partial, item))
     self.mstore("int", "2", r.phase)
     self.br(end)
     self.place(end)
@@ -5606,7 +5831,7 @@ def gen_dyn_sum_end(self, r: Reduce) -> Val:
     end = self.label()
     self.cbr(self.num_cmp("==", phase, Val("1", "int")).v, floats, others)
     self.place(floats)
-    self.mem_store(Val(r.acc, "*dyn"), self.dyn_box(Val(self.comp_end(r.facc, r.comp), "float")))
+    self.mem_store(Val(r.acc, "&dyn"), self.dyn_box(Val(self.comp_end(r.facc, r.comp), "float")))
     self.br(end)
     self.place(others)
     self.cbr(self.num_cmp("==", phase, Val("0", "int")).v, ints, end)
@@ -5614,15 +5839,15 @@ def gen_dyn_sum_end(self, r: Reduce) -> Val:
     # Even an empty small-int sum returns a freshly boxed result (subject to the
     # runtime's small-int cache); bool/wide/custom starts retain their identity.
     # The small-int phase keeps an int box, and testing its tag guards the read.
-    acc = self.mem_load(Val(r.acc, "*dyn"))
+    acc = self.mem_load(Val(r.acc, "&dyn"))
     small = self.label()
     self.cbr(self.ptr_cmp("==", Val(self.dyn_typeof(acc), "dyntype"), Val(self.dyn_type("int"), "dyntype")).v, small, end)
     self.place(small)
     n = self.dyn_payload(acc, "int")
-    self.mem_store(Val(r.acc, "*dyn"), Val(self.rt("pys_dyn_int", "ptr", [f"i64 {n.v}"]), DYN))
+    self.mem_store(Val(r.acc, "&dyn"), Val(self.rt("pys_dyn_int", "ptr", [f"i64 {n.v}"]), DYN))
     self.br(end)
     self.place(end)
-    return self.mem_load(Val(r.acc, "*dyn"))
+    return self.mem_load(Val(r.acc, "&dyn"))
 
 
 def gen_dyn_sum(self, xs: Val, start: Val) -> Val:
@@ -5657,7 +5882,7 @@ def gen_dyn_sum(self, xs: Val, start: Val) -> Val:
     return self.dyn_sum_end(r)
 
 
-def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool) -> Val | None:
+def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool, policy: bool = True) -> Val | None:
     # json.loads(), json.dumps(), or the native _raw_decode adapter in an opt-in module:
     # dyn: lib's function of Any values (JSONANY, which the loader adds to a program that has such
     # a module and json) where the document is Any values, so that loads() decodes it into Any's
@@ -5665,10 +5890,23 @@ def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool)
     # None, json's own function of JSONValue. _raw_decode explicitly requests Any storage;
     # loads() where its result becomes Any storage (want
     # holds Any values); dumps() where its argument does, or is a list, dict or tuple display or a
-    # list or dict comprehension, which is then Any's
+    # list or dict comprehension, which is then Any's. A module that does not opt in (policy
+    # false) makes no Any value, but dumps() of one an opt-in module gave it is the same call:
+    # json's own function would check it against JSONValue, whose containers Any's are not
     q = JSONANY + "$" + name[name.find("$") + 1 :]
     if q not in self.funcs:
         return None
+    if not policy:
+        objs = [x for x in args if x.kind == "kw" and x.s == "obj"]
+        if len(args) == 0 or args[0].kind == "starred" or args[0].kind == "dstar" or (args[0].kind == "kw" and len(objs) != 1):
+            return None
+        first = args[0] if args[0].kind != "kw" else objs[0].kids[0]
+        # (a variable, an attribute, an item or a call's result: typed as json's parameter
+        # takes it, so that what is no Any value compiles as before, by json's own function)
+        if first.kind not in ["name", "attr", "index", "call"] or not holds_dyn(self.dry(first, self.funcs[name].ptypes[0])):
+            return None
+        self.add(Ins("init", "", JSONANY))
+        return self.call_fn(self.funcs[q], [], args, want, resultsoft=resultsoft)
     if name == "json$loads" or name == "json$_raw_decode":
         if name == "json$loads" and not holds_dyn(want):
             return None

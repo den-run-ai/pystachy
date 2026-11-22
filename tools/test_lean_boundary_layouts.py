@@ -272,24 +272,24 @@ class DynamicABI(unittest.TestCase):
     def setUpClass(cls):
         source = (ROOT / "runtime.c").read_text()
         cls.declarations = "\n".join(re.search(pattern, source)[0] for pattern in (
-            r"struct DynType \{[^\n]+\};", r"struct Dyn \{[^\n]+\};"))
+            r"struct DynType \{[^\n]+\};", r"struct Dyn \{[^\n]+\};", r"typedef struct \{ Str \*name, \*qual,[^\n]+\} ReflRec;"))
 
-    def offsets(self, declarations):
-        declarations = "#include <stdint.h>\n#include <stddef.h>\ntypedef int64_t I;\ntypedef struct Dyn Dyn;\ntypedef struct DynType DynType;\ntypedef struct Str Str;\n" + declarations
+    def offsets(self, declarations, target=()):
+        declarations = "#include <stdint.h>\n#include <stddef.h>\ntypedef int64_t I;\ntypedef struct Dyn Dyn;\ntypedef struct DynType DynType;\ntypedef struct Str Str;\ntypedef struct ReflName ReflName;\ntypedef struct ReflField ReflField;\n" + declarations
         fields = [("box_tag", "Dyn", "t"), ("box_payload", "Dyn", "v"),
-                  ("kind", "DynType", "kind"), ("cls", "DynType", "cls"),
-                  ("base", "DynType", "base"), ("flags", "DynType", "flags")]
+                  ("kind", "DynType", "kind"), ("name", "DynType", "name"), ("cls", "DynType", "cls"),
+                  ("base", "DynType", "base"), ("flags", "DynType", "flags"), ("recflags", "ReflRec", "flags")]
         for name, struct, member in fields:
             declarations += f"\nconst uint64_t abi_{name} = offsetof({struct}, {member});"
-        result = subprocess.run([CLANG, "-x", "c", "-S", "-emit-llvm", "-o", "-", "-"],
+        result = subprocess.run([CLANG, *target, "-ffreestanding", "-x", "c", "-S", "-emit-llvm", "-o", "-", "-"],
                                 input=declarations, text=True, capture_output=True, timeout=20)
         self.assertEqual(result.returncode, 0, result.stderr)
         return {name: int(value) for name, value in re.findall(r"^@abi_(\w+) = .*constant i64 (\d+)", result.stdout, re.M)}
 
     def test_named_runtime_offsets_and_payload_lowering(self):
         offsets = self.offsets(self.declarations)
-        self.assertEqual(offsets, {"box_tag": 0, "box_payload": 8, "kind": 0, "cls": 24, "base": 32, "flags": 40})
-        self.assertEqual(int(bridge.CLASS_WORD) * 8, offsets["cls"])
+        self.assertEqual(offsets, {"box_tag": 0, "box_payload": 8, "kind": 0, "name": 16, "cls": 24, "base": 32, "flags": 40, "recflags": 24})
+        self.assertEqual(int(bridge.CLASS_FIELD) * 8, offsets["cls"])
         generated = SimpleNamespace(out=[])
         payload = Ins("dyn.payload", "%slot", "float")
         payload.r, payload.a = [1, 2], [Val("%box", "dyn")]
@@ -299,6 +299,25 @@ class DynamicABI(unittest.TestCase):
         self.assertIsNotNone(word)
         self.assertEqual(int(word[1]) * 8, offsets["box_payload"])
         self.assertIn("%t2 = load i64, ptr %t1", "\n".join(generated.out))
+
+    def test_dispatch_field_addresses_follow_target_abi(self):
+        fields = (("name", "dyntype", 2), ("cls", "dyntype", 3), ("flags", "dyntype", 5), ("recflags", "classrec", 3))
+        module = []
+        for name, record, index in fields:
+            generated = SimpleNamespace(out=[])
+            address = Ins("mach.addr", "%ptr", record)
+            address.r, address.a = [1], [Val("null", "%ptr"), Val(str(index), "int")]
+            gen_lower_ins(generated, None, address)
+            module.extend([f"define i64 @{name}() {{", *generated.out, "%offset = ptrtoint ptr %t1 to i64",
+                           "ret i64 %offset", "}"])
+        for target in ((), ("--target=wasm32-wasi",)):
+            with self.subTest(target=target):
+                expected = self.offsets(self.declarations, target)
+                result = subprocess.run([CLANG, *target, "-x", "ir", "-Wno-override-module", "-O1", "-S",
+                                         "-emit-llvm", "-o", "-", "-"], input="\n".join(module),
+                                        capture_output=True, text=True, timeout=20, check=True)
+                observed = re.findall(r"define [^@]*@(\w+)\(\)[^{]*\{\s*ret i64 (\d+)", result.stdout)
+                self.assertEqual({key: int(value) for key, value in observed}, {key: expected[key] for key, _, _ in fields})
 
     def test_same_width_runtime_field_swaps_change_named_offsets(self):
         original = self.offsets(self.declarations)

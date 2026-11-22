@@ -1,0 +1,5 @@
+ok
+timeout 3 Timeout('after 3s') Timeout Client.Timeout __main__ <class '__main__.Client.Timeout'>
+error negative Error('negative') Client.Error <class '__main__.Client.Error'>
+Error Client.Error __main__ True
+[exit 0]

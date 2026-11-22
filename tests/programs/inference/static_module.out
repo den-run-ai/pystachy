@@ -1,0 +1,6 @@
+1 x [1.5]
+dict of 2 list of 2 demo 2.5
+{"count": 2, "name": "demo", "rows": [{"id": 1, "tags": ["a", "c"]}, {"id": 2.5}]}
+6.5
+[1, 'two', None] ['int', 'str', 'NoneType']
+[exit 0]

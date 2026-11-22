@@ -1,6 +1,6 @@
 name = "pystachy-boundary"
 version = "0.1.0"
-defaultTargets = ["PystachyBoundary", "PystachyLayout", "PystachyAlias", "PystachyCompanion", "PystachyAccess", "PystachyInt", "PystachyStorage", "PystachyInline", "PystachyGuards", "PystachyPipeline", "PystachyShape", "GuardAudit", "Audit", "pystachy-boundary", "pystachy-access", "pystachy-int", "pystachy-alias", "pystachy-companion", "pystachy-pipeline", "pystachy-shape"]
+defaultTargets = ["PystachyBoundary", "PystachyLayout", "PystachyAlias", "PystachyCompanion", "PystachyAccess", "PystachyInt", "PystachyStorage", "PystachyInline", "PystachyGuards", "PystachyPipeline", "PystachyShape", "PystachyDominance", "GuardAudit", "Audit", "pystachy-boundary", "pystachy-access", "pystachy-int", "pystachy-alias", "pystachy-companion", "pystachy-pipeline", "pystachy-shape"]
 
 [[lean_lib]]
 name = "PystachyAlias"
@@ -31,6 +31,9 @@ name = "PystachyPipeline"
 
 [[lean_lib]]
 name = "GuardAudit"
+
+[[lean_lib]]
+name = "PystachyWasmFrame"
 
 [[lean_lib]]
 name = "Audit"
@@ -64,6 +67,9 @@ root = "PipelineMain"
 
 [[lean_lib]]
 name = "PystachyShape"
+
+[[lean_lib]]
+name = "PystachyDominance"
 
 [[lean_exe]]
 name = "pystachy-shape"

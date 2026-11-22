@@ -1,369 +1,34 @@
-# Build the minimal LLVM toolchain (docs/llvm-toolchain.md) from LLVM's pinned release sources, for
-# x86-64 and for ARM64, each on its own runners. Compiling LLVM and clang takes about two CPU-hours,
-# so for each architecture one job compiles the table generators that every other object file waits
-# for, six jobs each compile one slice of the object files, and another finds them all compiled and
-# links, checks and packs the archive. The objects are cached under a hash of every compile command:
-# a run with the same hash compiles nothing. Given a revision, a run on main publishes the archives
-# that bootstrapped Pystachy as the assets of one release.
+# Trial only, not for merging: the pinned archives on glibc 2.28, the oldest C library that source
+# builds are checked on. Each archive is the one an earlier trial run built and kept as an artifact.
 name: LLVM toolchain
 
-# Nothing but a person starts a run: an uncached one takes two hours of runner time.
 on:
   push:
     branches: [claude/gracious-cannon-a68uaf-trial]
-  workflow_dispatch:
-    inputs:
-      revision:
-        description: 'Publish the archives as release llvm-toolchain-<LLVM release>-<revision>, for example 1; empty builds only'
-        required: false
-        type: string
 
 concurrency:
-  group: llvm-toolchain-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  group: llvm-toolchain-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
+  actions: read
 
 env:
-  # The image and the recipe's settings of docs/llvm-toolchain.md; ninja is the build tool. The image
-  # is an index: each runner pulls its own architecture's.
   IMAGE: quay.io/pypa/manylinux_2_28@sha256:834a11a02642a46e580b62f25f5b04588355092c8677eaf0393e3ea1997001a3
-  NINJA: ninja==1.13.2
-  OUT: build/llvm-toolchain
+  ARCHIVES_RUN: "44777759298"
 
 jobs:
-  generators:
-    name: compile the table generators (${{ matrix.arch }})
+  source:
+    name: trial - source build on glibc 2.28 with the archive (${{ matrix.arch }})
     runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
-    timeout-minutes: 15
-    strategy:
-      matrix:
-        arch: [x86_64, aarch64]
-    # A matrix job has one set of outputs: each architecture writes the two that carry its name.
-    outputs:
-      key-x86_64: ${{ steps.fingerprint.outputs.key-x86_64 }}
-      key-aarch64: ${{ steps.fingerprint.outputs.key-aarch64 }}
-      cached-x86_64: ${{ steps.cached.outputs.cached-x86_64 }}
-      cached-aarch64: ${{ steps.cached.outputs.cached-aarch64 }}
-    env:
-      ARCH: ${{ matrix.arch }}
-    steps:
-      # Before an hour of compiling, not after it.
-      - name: Publish only from main and under a revision number
-        if: inputs.revision != ''
-        env:
-          REVISION: ${{ inputs.revision }}
-        run: '[[ $GITHUB_REF == refs/heads/main && $REVISION =~ ^[1-9][0-9]*$ ]]'
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          persist-credentials: false
-
-      # Every job mounts the checkout at /src: an object's key is its compile command, paths included.
-      # The two architectures' commands differ, in their targets' sources at least, and so do the keys.
-      - name: Hash the compile commands
-        id: fingerprint
-        run: |
-          fingerprint=$(docker run --rm -v "$PWD:/src" -w /src "$IMAGE" \
-            sh -c "pipx install '$NINJA' >&2 && tools/llvm_toolchain.sh fingerprint '$OUT'")
-          [[ $fingerprint =~ ^[0-9a-f]{64}$ ]]
-          echo "key=llvm-toolchain-objects-$fingerprint" >> "$GITHUB_OUTPUT"
-          echo "key-$ARCH=llvm-toolchain-objects-$fingerprint" >> "$GITHUB_OUTPUT"
-
-      # The objects of a run with the same compile commands are this run's: nothing is compiled, and
-      # package restores them. GitHub drops a cache that no run has read for seven days.
-      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        id: objects
-        with:
-          path: ${{ env.OUT }}/objects
-          key: ${{ steps.fingerprint.outputs.key }}
-          lookup-only: true
-
-      - name: Tell the later jobs whether this architecture's objects are cached
-        id: cached
-        env:
-          HIT: ${{ steps.objects.outputs.cache-hit }}
-        run: echo "cached-$ARCH=$HIT" >> "$GITHUB_OUTPUT"
-
-      - name: Compile LLVM's table generators
-        if: steps.objects.outputs.cache-hit != 'true'
-        run: |
-          docker run --rm -v "$PWD:/src" -w /src "$IMAGE" \
-            sh -c "pipx install '$NINJA' && tools/llvm_toolchain.sh generators '$OUT'"
-
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
-        if: steps.objects.outputs.cache-hit != 'true'
-        with:
-          name: llvm-objects-${{ matrix.arch }}-generators
-          path: ${{ env.OUT }}/objects/
-          if-no-files-found: error
-          retention-days: 1
-          overwrite: true
-
-  compile:
-    name: compile (${{ matrix.arch }}, slice ${{ matrix.slice }} of 6)
-    needs: generators
-    # A job's condition cannot name its matrix: the slices are skipped when both architectures'
-    # objects are cached, and where one's are, its slices start and skip their steps.
-    if: needs.generators.outputs.cached-x86_64 != 'true' || needs.generators.outputs.cached-aarch64 != 'true'
-    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
-    timeout-minutes: 15
-    strategy:
-      matrix:
-        arch: [x86_64, aarch64]
-        slice: ["0", "1", "2", "3", "4", "5"]
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        if: needs.generators.outputs[format('cached-{0}', matrix.arch)] != 'true'
-        with:
-          persist-credentials: false
-
-      # No run-id or token: download-artifact can only select this workflow run here.
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
-        if: needs.generators.outputs[format('cached-{0}', matrix.arch)] != 'true'
-        with:
-          name: llvm-objects-${{ matrix.arch }}-generators
-          path: ${{ env.OUT }}/objects
-
-      # A slice without the generators' objects would compile them itself, at two to three minutes.
-      - name: Compile one slice of the object files
-        if: needs.generators.outputs[format('cached-{0}', matrix.arch)] != 'true'
-        env:
-          SLICE: ${{ matrix.slice }}
-        run: |
-          docker run --rm -v "$PWD:/src" -w /src "$IMAGE" \
-            sh -c "pipx install '$NINJA' && tools/llvm_toolchain.sh compile '$OUT' '$SLICE' 6"
-
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
-        if: needs.generators.outputs[format('cached-{0}', matrix.arch)] != 'true'
-        with:
-          name: llvm-objects-${{ matrix.arch }}-${{ matrix.slice }}
-          path: ${{ env.OUT }}/objects/
-          if-no-files-found: error
-          retention-days: 1
-          overwrite: true  # allow a rerun of one slice
-
-  package:
-    name: link, check and pack (${{ matrix.arch }})
-    needs: [generators, compile]
-    # Skipped slices are the cached case; without a condition, a skipped job skips those after it.
-    if: >-
-      ${{ !cancelled() && needs.generators.result == 'success'
-      && (needs.compile.result == 'success' || needs.compile.result == 'skipped') }}
-    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
-    timeout-minutes: 15
-    strategy:
-      matrix:
-        arch: [x86_64, aarch64]
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          persist-credentials: false
-
-      # One job cannot compile LLVM within its time limit, so a cache that has gone fails here.
-      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        if: needs.generators.outputs[format('cached-{0}', matrix.arch)] == 'true'
-        with:
-          path: ${{ env.OUT }}/objects
-          key: ${{ needs.generators.outputs[format('key-{0}', matrix.arch)] }}
-          fail-on-cache-miss: true
-
-      # Its own architecture's alone: an object's key does not name the machine that compiled it.
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
-        if: needs.generators.outputs[format('cached-{0}', matrix.arch)] != 'true'
-        with:
-          pattern: llvm-objects-${{ matrix.arch }}-*
-          path: ${{ env.OUT }}/objects
-          merge-multiple: true
-
-      # An object that no slice compiled is compiled here, so a wrong slice costs time, not the result.
-      - name: Link, check and pack
-        run: |
-          docker run --rm -v "$PWD:/src" -w /src -e LLVM_TOOLCHAIN_OBJECTS="$OUT/objects" \
-            -e LLVM_TOOLCHAIN_GLIBC=2.28 -e LLVM_TOOLCHAIN_GLIBCXX=3.4.25 "$IMAGE" \
-            sh -c "pipx install '$NINJA' && tools/llvm_toolchain.sh build '$OUT'"
-
-      # Only after a build that passed its check, and only the objects of this build.
-      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        if: needs.generators.outputs[format('cached-{0}', matrix.arch)] != 'true'
-        with:
-          path: ${{ env.OUT }}/objects
-          key: ${{ needs.generators.outputs[format('key-{0}', matrix.arch)] }}
-
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
-        with:
-          name: pystachy-llvm-linux-${{ matrix.arch }}
-          path: |
-            ${{ env.OUT }}/pystachy-llvm-*.tar.xz
-            ${{ env.OUT }}/pystachy-llvm-*.tar.xz.sha256
-          if-no-files-found: error
-          retention-days: 30
-          overwrite: true
-
-  bootstrap:
-    name: bootstrap Pystachy with the archive (${{ matrix.arch }})
-    needs: package
-    if: ${{ !cancelled() && needs.package.result == 'success' }}
-    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
-    timeout-minutes: 15
-    strategy:
-      matrix:
-        arch: [x86_64, aarch64]
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
-        with:
-          python-version-file: .python-version
-
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
-        with:
-          name: pystachy-llvm-linux-${{ matrix.arch }}
-          path: ${{ env.OUT }}
-
-      - name: Check the archive and select it
-        run: |
-          cd "$OUT"
-          sha256sum -c pystachy-llvm-*.tar.xz.sha256
-          tar -xJf pystachy-llvm-*.tar.xz
-          cd "$(../../tools/llvm_toolchain.sh name)"
-          sha256sum -c --quiet MANIFEST.sha256
-          cat share/BUILD.txt
-          echo "PYSTACHY_LLVM=$PWD/bin" >> "$GITHUB_ENV"
-
-      # The runner has a distribution's LLVM too: the release in clang's version shows which one runs.
-      - name: Check the toolchain and the compiler's fixed points
-        run: |
-          toolchain=$OUT/$(tools/llvm_toolchain.sh name)
-          tools/llvm_toolchain.sh check "$toolchain"
-          tools/setup.sh --check | tee "$RUNNER_TEMP/setup.log"
-          grep -q "clang version $(sed -n '1s/^LLVM \([0-9.]*\) .*/\1/p' "$toolchain/share/BUILD.txt")" "$RUNNER_TEMP/setup.log"
-          make
-
-      - name: Native JIT and AOT on two corpus areas
-        run: make test FILES="tests/programs/generators/*.py tests/programs/exceptions/*.py"
-
-  publish:
-    name: publish the archives
-    needs: [package, bootstrap]
-    # Only archives that both bootstrapped Pystachy, and only when the run was given a revision.
-    if: ${{ !cancelled() && needs.bootstrap.result == 'success' && inputs.revision != '' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    concurrency:
-      group: llvm-toolchain-publication
-      cancel-in-progress: false
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
-        with:
-          pattern: pystachy-llvm-linux-*
-          path: ${{ env.OUT }}
-          merge-multiple: true
-
-      # A draft until the archives have been read back; never the repository's latest release.
-      - name: Publish the archives as release assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REVISION: ${{ inputs.revision }}
-        run: |
-          [[ $GITHUB_REF == refs/heads/main ]]
-          python3 tools/llvm_toolchain_release.py --repository "$GITHUB_REPOSITORY" --commit "$GITHUB_SHA" \
-            --revision "$REVISION" "$OUT"/pystachy-llvm-*.tar.xz
-
-  # Trial only: everything the publication does before it publishes, on a draft that is then deleted.
-  rehearse:
-    name: trial - rehearse the publication on a draft
-    needs: [package, bootstrap]
-    if: ${{ !cancelled() && needs.bootstrap.result == 'success' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: write
-    env:
-      GH_TOKEN: ${{ github.token }}
-      TAG: llvm-toolchain-18.1.8-999
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
-        with:
-          pattern: pystachy-llvm-linux-*
-          path: ${{ env.OUT }}
-          merge-multiple: true
-
-      - name: Create the draft, upload, read back and stop before publishing
-        run: |
-          sha256sum "$OUT"/pystachy-llvm-*.tar.xz
-          python3 - "$OUT"/pystachy-llvm-*.tar.xz <<'PY'
-          import os
-          from pathlib import Path
-          import sys
-
-          sys.path.insert(0, "tools")
-          import llvm_toolchain_release as release
-          import pystachy_toolchain
-
-
-          class Reached(Exception):
-              pass
-
-
-          def run(*arguments):
-              print("gh", *arguments, flush=True)
-              if arguments[:2] == ("release", "edit"):
-                  raise Reached
-              result = release.gh(*arguments)
-              print(f"  exit {result.returncode} {result.stderr.strip()[:300]!r}", flush=True)
-              return result
-
-
-          # As the command line pins them, but for this revision: these builds must be the pinned bytes.
-          pinned = ("999", {pystachy_toolchain.minimal_archive(machine) + ".tar.xz": digest
-                            for machine, digest in pystachy_toolchain.MINIMAL_SHA256.items()})
-          try:
-              release.publish(os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_SHA"], "999",
-                              [Path(argument) for argument in sys.argv[1:]], run=run, pinned=pinned)
-          except Reached:
-              print("the draft was created, uploaded and read back: the publishing step was reached")
-          else:
-              sys.exit("the rehearsal did not stop before publishing")
-          PY
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,tagName,targetCommitish,assets \
-            --jq '{isDraft, tagName, targetCommitish, assets: [.assets[] | {name, size, digest}]}'
-          [ "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" = true ]
-
-      - name: Delete the draft
-        if: always()
-        run: |
-          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes || true
-          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2> "$RUNNER_TEMP/view.err"; then
-            echo "the draft $TAG is still there" >&2; exit 1
-          fi
-          grep "release not found" "$RUNNER_TEMP/view.err"
-
-  # Trial only: the download on distributions that have no LLVM, this runner standing in for the release.
-  smoke:
-    name: trial - download on ${{ matrix.image }} (${{ matrix.arch }})
-    needs: package
-    if: ${{ !cancelled() && needs.package.result == 'success' }}
-    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
-    timeout-minutes: 25
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         arch: [x86_64, aarch64]
-        image: ["debian:12", "debian:13", "rockylinux:9", "amazonlinux:2023", "ubuntu:22.04", "fedora:latest", "opensuse/leap:15.6"]
+    env:
+      ARCH: ${{ matrix.arch }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -373,6 +38,70 @@ jobs:
         with:
           name: pystachy-llvm-linux-${{ matrix.arch }}
           path: serve
+          run-id: ${{ env.ARCHIVES_RUN }}
+          github-token: ${{ github.token }}
+
+      - name: The archive is the pinned one
+        run: |
+          (cd serve && sha256sum -c ./*.sha256)
+          python3 - "$ARCH" serve/pystachy-llvm-*.tar.xz <<'PY'
+          import hashlib
+          from pathlib import Path
+          import sys
+
+          import pystachy_toolchain as toolchain
+
+          machine, archive = sys.argv[1], Path(sys.argv[2])
+          assert archive.name == toolchain.minimal_archive(machine) + ".tar.xz", archive.name
+          assert hashlib.sha256(archive.read_bytes()).hexdigest() == toolchain.MINIMAL_SHA256[machine]
+          print(archive.name, "is the pinned archive; the download's floor is glibc", toolchain.MINIMAL_GLIBC)
+          PY
+          mkdir "$RUNNER_TEMP/llvm"
+          tar -xJf serve/pystachy-llvm-*.tar.xz -C "$RUNNER_TEMP/llvm" --strip-components=1
+          ls "$RUNNER_TEMP/llvm/bin"
+
+      - name: main's check on glibc 2.28 (tools/manylinux_check.sh)
+        run: |
+          docker run --rm -v "$PWD:/src" -v "$RUNNER_TEMP/llvm:/llvm:ro" -w /src -e PYSTACHY_LLVM=/llvm/bin \
+            "$IMAGE" tools/manylinux_check.sh
+
+      # Only the four cases that docs/testing.md names as the system's may fail.
+      - name: The whole corpus there, JIT and AOT
+        run: |
+          docker run --rm -v "$PWD:/src" -v "$RUNNER_TEMP/llvm:/llvm:ro" -w /src -e PYSTACHY_LLVM=/llvm/bin \
+            "$IMAGE" sh -c 'export PATH=/opt/python/cp311-cp311/bin:$PATH
+              tests/run.sh ./pystachy "jit aot" > build/manylinux/full.log 2>&1; echo "tests/run.sh: exit $?"'
+          grep '^FAIL' build/manylinux/full.log | sort || true
+          tail -1 build/manylinux/full.log
+          grep -q ' passed, ' build/manylinux/full.log
+          for name in $(grep '^FAIL' build/manylinux/full.log | sed 's/^FAIL \([^ ]*\) .*/\1/' | sort -u); do
+            case "$name" in
+              exec_signal|float_power_rounding|lib_statistics|upstream_math_testfiles) ;;
+              *) echo "unexpected failure: $name"; grep -A12 "^FAIL $name " build/manylinux/full.log | head -60; exit 1 ;;
+            esac
+          done
+
+  # The download where a host has no LLVM, this runner standing in for the release.
+  smoke:
+    name: trial - download on ${{ matrix.image }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, aarch64]
+        image: ["almalinux:8", "rockylinux:8"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+        with:
+          name: pystachy-llvm-linux-${{ matrix.arch }}
+          path: serve
+          run-id: ${{ env.ARCHIVES_RUN }}
+          github-token: ${{ github.token }}
 
       - name: Install with pip and uv in the container and compile with the downloaded toolchain
         env:
@@ -384,4 +113,3 @@ jobs:
           grep -n -A3 "^MINIMAL_RELEASE" pystachy_toolchain.py
           docker run --rm --network host -v "$PWD:/src:ro" "$DISTRIBUTION" sh /src/.github/trial-smoke.sh
           cat "$RUNNER_TEMP/serve.log"
-

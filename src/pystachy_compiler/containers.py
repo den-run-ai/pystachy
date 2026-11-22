@@ -1,11 +1,12 @@
 """Containers component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.builtin_bases import BITER, BREPR, BSHOW
 from src.pystachy_compiler.analysis import none_display, walrus_names
 from src.pystachy_compiler.bigints import big_tree, held, narrow_type
 from src.pystachy_compiler.conversions import ends_in_id
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
 from src.pystachy_compiler.frames import IterArg, SetArg
-from src.pystachy_compiler.ir import Ins, Val
+from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import BIG, BIGOPT, EMPTYFS, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS, VTUPLE_ITEMS
@@ -34,6 +35,8 @@ from src.pystachy_compiler.utils import (
     list_identity_kind,
     literal,
     lookable,
+    rt_bind,
+    rt_subst,
     selem,
     set_base,
     targs,
@@ -158,8 +161,8 @@ def gen_none_container(self, e: Node) -> Val:
             self.err(f"can't multiply sequence by non-int of type '{tname(n.t)}'")
         return Val(self.rt("pys_list_mul", "ptr", [f"ptr {xs.v}", f"i64 {n.v}"]), xs.t)
     if e.kind == "list":
-        r = self.rt("pys_list_new", "ptr", [f"i64 {len(e.kids)}"])
         t = self.ctype("list", [NONE_ITEM])
+        r = self.rt("pys_list_new", "ptr", [f"i64 {len(e.kids)}"], t=t)
         for _ in e.kids:
             self.list_write("list.append", [Val(r, t), Val("0", "*" + NONE_ITEM)])
         return Val(r, t)
@@ -173,7 +176,7 @@ def gen_none_container(self, e: Node) -> Val:
         ks.append(k)
     if self.key_problem(kt) != "":
         self.err(self.key_problem(kt))
-    r = self.rt("pys_dict_new", "ptr", [f"i64 {self.key_kind(kt, True)}", f"i64 {len(ks)}"])
+    r = self.rt("pys_dict_new", "ptr", [f"i64 {self.key_kind(kt, True)}", f"i64 {len(ks)}"], t=self.ctype("dict", [kt, NONE_ITEM]))
     for k in ks:
         self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(self.store_key(k, kt)), "i64 0"], self.key_fx(kt))
     return Val(r, self.ctype("dict", [kt, NONE_ITEM]))
@@ -194,9 +197,12 @@ def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = Fa
     old = ""
     l0 = ""
     ldone = ""
+    load = Ins("mach.load", "%ptr", "")  # (of the constant, whose type its items give: below)
     if const:
         self.global_var(g, "frozenset[?]")
-        old = self.mload('%ptr', g)
+        load.a = [Val(g, "%ptr")]
+        self.put(load, 1)
+        old = tmpname(load.r[0])
         l0 = self.cur
         lmake = self.label()
         ldone = self.label()
@@ -238,12 +244,13 @@ def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = Fa
         self.err(self.elem_problem(et))
     if const:
         self.globs[gi].t = self.ctype("frozenset", [et])
+        load.t = self.globs[gi].t
     items = [self.set_coerce(v, et) for v in items]
-    r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"])
+    r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"], t=self.ctype("set", [et]))
     for v in items:
         self.set_store(r, v, et)
     if folded or (len(items) > 2 and folds(mk("tuple", "", n.line, n.kids))):
-        c = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"])
+        c = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"], t=self.ctype("set", [et]))
         self.rt("pys_set_update_list", "void", [f"ptr {c}", f"ptr {self.rt('pys_set_list', 'ptr', [f'ptr {r}'])}"], self.key_fx(et))
         r = c
         if const:
@@ -256,7 +263,7 @@ def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = Fa
             self.incoming(ph, r, l1)
             r = self.phi(ph)
         if not folded:
-            m = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"])
+            m = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"], t=self.ctype("set", [et]))
             self.rt("pys_set_update", "void", [f"ptr {m}", f"ptr {r}"], self.key_fx(et))
             r = m
     return Val(r, self.ctype("frozenset" if folded else "set", [et]))
@@ -269,7 +276,7 @@ def gen_star_items(self, x: Node) -> Val:
     if self.iterator_call(x) or self.is_mapcall(x) or (x.kind == "listcomp" and x.s == "gen"):
         return self.consume(x, "")
     none = "TypeError: Value after * must be an iterable, not NoneType"
-    v = self.unwrap(self.expr(x, ""), none)
+    v = self.unwrap(self.bdecay(self.expr(x, ""), BITER), none)  # (builtin_bases.py)
     if v.t in self.nts:
         self.notnone(v, none)
         v = self.ntup(v, True)
@@ -349,7 +356,7 @@ def gen_star_display(self, n: Node, want: str) -> Val:
             # (a list of other items, an int's where they are int | str: each converted)
             item = made_var("__pys_item", n.line)
             parts[i] = self.listcomp(mk("listcomp", "", n.line, [item, item, self.vnode(parts[i])]), self.ctype("list", [et]))
-    r = self.rt("pys_list_new_atomic" if atomic_list(self.ctype("list", [et])) else "pys_list_new", "ptr", [f"i64 {len([b for b in lists if not b])}"])
+    r = self.rt("pys_list_new_atomic" if atomic_list(self.ctype("list", [et])) else "pys_list_new", "ptr", [f"i64 {len([b for b in lists if not b])}"], t=self.ctype("list", [et]))
     for i in range(len(parts)):
         if lists[i]:
             self.rt("pys_list_extend", "void", [f"ptr {r}", f"ptr {parts[i].v}"])
@@ -412,7 +419,7 @@ def gen_set_rekind(self, v: Val, et: str) -> Val:
     t = self.ctype(set_base(v.t), [et])
     if self.set_kind(selem(v.t)) == self.set_kind(et):
         return Val(v.v, t)
-    r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"])
+    r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"], t=self.ctype("set", [et]))
     self.rt("pys_set_update", "void", [f"ptr {r}", f"ptr {v.v}"], self.key_fx(et))
     return Val(r, t)
 
@@ -598,7 +605,7 @@ def gen_set_new(self, name: str, args: list[Node], want: str, resultsoft: bool =
             return Val(self.rt("pys_set_new", "ptr", ["i64 0"]), EMPTYFS)
         if w == "":
             self.err(f"cannot infer the type of an empty {name}; add a type annotation ({'s: set[T] = set()' if not fz else 'f: frozenset[T] = frozenset()'})")
-        return Val(self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(w))}"]), w)
+        return Val(self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(w))}"], t=self.ctype("set", [selem(w)])), w)
     v = self.siter(args[0], selem(w) if w != "" else "", f"{name}()", resultsoft)
     it = self.iter_elem(v.t)
     t = self.ctype(name, [selem(w) if w != "" else "None" if it == NONE_ITEM else self.none_items(it)])  # (set([None, None]): set[None])
@@ -606,7 +613,7 @@ def gen_set_new(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return Val(v.v, t)  # (frozenset(f) of a frozenset is f; an AbstractSet's value may be a set, and is copied)
     if is_set(v.t):
         return Val(self.rt("pys_set_copy", "ptr", [f"ptr {v.v}"]), t)
-    r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(t))}"])
+    r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(t))}"], t=self.ctype("set", [selem(t)]))
     self.supdate(r, v, selem(t))
     return Val(r, t)
 
@@ -618,8 +625,10 @@ def gen_setop(self, op: str, a: Val, b: Val) -> Val:
         self.err(f"unsupported operand types for {op}: {typestr(a.t)} and {typestr(b.t)} (a set holds elements of one type)")
     fn = "pys_set_or" if op == "|" else "pys_set_and" if op == "&" else "pys_set_sub" if op == "-" else "pys_set_xor"
     ab = self.set_pair(a, b, w)  # (a set[str] and a set[str | None]: tables of one kind)
-    # (the result is of the left operand's kind of set, which CPython's is: an AbstractSet's too)
-    return Val(self.rt(fn, "ptr", [f"ptr {ab[0].v}", f"ptr {ab[1].v}"], self.key_fx(selem(a.t)) + self.key_fx(selem(b.t))), self.ctype(set_base(a.t), [w]))
+    # (the result is of the left operand's kind of set, which CPython's is: an AbstractSet's too;
+    # a union, intersection or symmetric difference may hold b's elements, a difference only a's)
+    t = self.ctype(set_base(a.t), [w])
+    return Val(self.rt(fn, "ptr", [f"ptr {ab[0].v}", f"ptr {ab[1].v}"], self.key_fx(selem(a.t)) + self.key_fx(selem(b.t)), t if fn != "pys_set_sub" else ""), t)
 
 def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
     # a method of a set or frozenset o, run as CPython's setobject.c runs it; the iterables the
@@ -719,7 +728,7 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
             r = o if n > 0 else Val(self.rt("pys_set_copy", "ptr", [ov]), o.t)
             for x in sa:
                 v = self.stake(o, m, x)
-                r = Val(self.rt("pys_set_and" if is_set(v.t) else "pys_set_and_list", "ptr", [f"ptr {r.v}", f"ptr {self.keys_list(v).v}"], kx), o.t)
+                r = Val(self.rt("pys_set_and" if is_set(v.t) else "pys_set_and_list", "ptr", [f"ptr {r.v}", f"ptr {self.keys_list(v).v}"], kx, o.t if is_set(v.t) else ""), o.t)
             if m == "intersection":
                 return r
             self.rt("pys_set_assign", "void", [ov, f"ptr {r.v}"])  # (o takes the intersection's table)
@@ -753,7 +762,7 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
         ov = f"ptr {self.set_rekind(o, selem(v.t)).v}"
         kx = self.key_fx(selem(v.t))
     if m == "symmetric_difference":
-        return Val(self.rt("pys_set_xor" if is_set(v.t) else "pys_set_xor_dict" if is_dict(v.t) else "pys_set_xor_list", "ptr", [ov, f"ptr {v.v}"], kx), o.t)
+        return Val(self.rt("pys_set_xor" if is_set(v.t) else "pys_set_xor_dict" if is_dict(v.t) else "pys_set_xor_list", "ptr", [ov, f"ptr {v.v}"], kx, o.t if is_set(v.t) else ""), o.t)
     if m == "symmetric_difference_update":
         self.rt("pys_set_ixor" if is_set(v.t) else "pys_set_ixor_dict" if is_dict(v.t) else "pys_set_ixor_list", "void", [ov, f"ptr {v.v}"], kx)
         return none
@@ -812,8 +821,8 @@ def gen_fromkeys(self, args: list[Node], want: str, resultsoft: bool = False) ->
         K = "dyn"
         v = self.coerce(v, "dyn")
     if is_dict(xs.t):
-        return Val(self.rt("pys_dict_fromkeys_dict", "ptr", [f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
-    return Val(self.rt("pys_dict_fromkeys", "ptr", [f"i64 {self.key_kind(K, True)}", f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
+        return Val(self.rt("pys_dict_fromkeys_dict", "ptr", [f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K), t), t)
+    return Val(self.rt("pys_dict_fromkeys", "ptr", [f"i64 {self.key_kind(K, True)}", f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K), t), t)
 
 def gen_affix_any(self, tup: Val, m: str, av: list[str], base: str = "str") -> Val:
     # s.startswith((a, b, ...), start, end) (or endswith), as CPython's loop over the tuple: each
@@ -943,7 +952,8 @@ def gen_hash_kind(self, c: str) -> str:
     ms = self.classes[c].methods
     if "__hash__" in ms and ("__eq__" not in ms or self.derives(ms["__hash__"].cls, ms["__eq__"].cls)):
         return "user"
-    return "" if "__eq__" in ms else "id"
+    # (nor a class that derives from a builtin container, whose __eq__ and __hash__ = None it has)
+    return "" if "__eq__" in ms or self.bkind(c) != "" else "id"
 
 def gen_hash_classes(self, t: str) -> list[ClassInfo]:
     # the classes an object of static class t may be of (its own, and those derived from it),
@@ -1080,7 +1090,7 @@ def gen_int_any_lookup(self, d: Val, k: Val, get: bool) -> str:
     self.cbr(self.num_cmp(">=", Val(e, "int"), Val("0" if get else "-1", "int")).v, fast, slow)
     self.place(fast)
     value = self.rt("pys_dict_val", "i64", [f"ptr {d.v}", f"i64 {e}"]) if get else self.scalar("add", [Val(e, "int"), Val("1", "int")])
-    ph = Ins("phi", "int", "")
+    ph = Ins("phi", "*" + targs(d.t)[1] if get and is_dict(d.t) else "int", "")  # (a value's packed slot, or a found flag)
     self.incoming(ph, value, self.cur)
     self.br(end)
     self.place(slow)
@@ -1181,27 +1191,35 @@ def gen_store_elem(self, k: Val, et: str) -> Val:
         self.err(f"a {typestr(k.t)} element is added to a set of {typestr(et)} elements, where CPython keeps an element it adds as the bool it is (True, not 1): convert the bool with int()")
     return self.list_hold(k, et) if held(narrow_type(et)) != narrow_type(et) else self.coerce(k, et)  # (a tuple of ints as the set holds it: bigints.held)
 
-def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str) -> str:
-    # the slot fn(av) returns, a dict lookup of key k (x: key_fx of the dict's keys, of type kt); a
-    # key that is None is in no dict whose keys cannot be None (none_key: one whose keys can looks
-    # None up as any key): the result is then the slot none, or with none "" KeyError: None
+def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str, dt: str = "", t: str = "") -> str:
+    # the slot fn(av) returns, a dict lookup of key k (x: key_fx of the dict's keys, of type kt; t:
+    # the slot's type, where its builder gives it: gen_rt); a key that is None is in no dict whose
+    # keys cannot be None (none_key: one whose keys can looks None up as any key): the result is
+    # then the slot none, or with none "" KeyError: None. dt: the dict's type, which types that
+    # slot where none is given and its builder gives no type
     if not is_opt(k.t) or none_key(kt):
-        return self.rt(fn, "i64", av, x)
+        return self.rt(fn, "i64", av, x, t)
     if none == "":
         self.guard(self.ptr_cmp('==', k, Val('null', 'None')).v, "KeyError: None")
-        return self.rt(self.dict_key_fn(fn, k), "i64", self.keyed(k, av), x)
+        return self.rt(self.dict_key_fn(fn, k), "i64", self.keyed(k, av), x, t)
     l1 = self.label()
     l2 = self.label()
     l3 = self.label()
     self.cbr(self.ptr_cmp('==', k, Val('null', 'None')).v, l1, l2)
     self.place(l2)
-    r = self.rt(self.dict_key_fn(fn, k), "i64", self.keyed(k, av), x)
+    name = self.dict_key_fn(fn, k)
+    r = self.rt(name, "i64", self.keyed(k, av), x, t)
     e2 = self.cur
     self.br(l3)
     self.place(l1)
     self.br(l3)
     self.place(l3)
-    ph = Ins("phi", "%slot", "")
+    # (the type of the word fn returns from this dict, as Gen.instantiate types the call: the type
+    # its builder gives (t), else its signature's with S the dict's type; not the signature's *V,
+    # whose type variable only an rt op may name, and which a class V would name)
+    bound: dict[str, str] = {}
+    rt_bind("S", dt, bound, False)
+    ph = Ins("phi", t if t != "" else rt_subst(self.rtfns[self.runtime(name)].sig[0], bound), "")
     self.incoming(ph, none, l1)
     self.incoming(ph, r, e2)
     return self.phi(ph)
@@ -1250,6 +1268,8 @@ def gen_to_str(self, v: Val) -> Val:
         return Val(self.select(v.v, Val(self.sconst("True"), "str"), Val(self.sconst("False"), "str")), "str")
     if t == "None" or t == NONEVAR:
         return Val(self.sconst("None"), "str")  # (also a local that only None has reached so far: none_read)
+    if self.bdecays(t, BSHOW):
+        return self.to_str(self.bview(v))  # (the builtin container's, which its class derives from: builtin_bases.py)
     if t in self.classes:
         return self.obj_str(v, "__str__")
     if t == "opt[str]":
@@ -1430,12 +1450,14 @@ def gen_hash_value(self, v: Val) -> Val:
 def gen_hashable(self, t: str) -> bool:
     # can hash() take a value of type t (but an object's, obj_hash): a number, a str, None, an
     # object, a frozenset (runtime.c's hfset, of the hashes its table keeps) or a tuple of such
-    # items, or one of these that may be None
+    # items, or one of these that may be None; a union of numbers and strs
     u = unopt(t)
     if u == "int" or u == BIG or u == "bool" or u == "float" or u == "str" or u == "bytes" or u == "None" or u == "exctype" or is_clsval(u) or self.key_class(u):
         return True
     if is_fset(u):
         return self.elem_problem(selem(u)) == ""
+    if is_union(t) and self.scalar_union(t):
+        return True  # (an int | float, as a float field that was given an int is: its member's, runtime.c's hitem)
     return (is_tuple(u) or is_vtuple(u)) and all(self.hashable(x) for x in targs(u))
 
 def gen_repr(self, v: Val) -> Val:
@@ -1458,6 +1480,8 @@ def gen_repr(self, v: Val) -> Val:
         return self.refl_union_str(v, "__repr__")  # (each class's: reflection.py)
     if self.object_union(v.t):
         return self.uop(v, "repr")  # (the member's: unions.py)
+    if self.bdecays(v.t, BREPR):
+        return self.repr(self.bview(v))  # (the builtin container's, which its class derives from: builtin_bases.py)
     if v.t in self.classes:
         return self.obj_str(v, "__repr__")
     if v.t == "None" or v.t == NONEVAR:

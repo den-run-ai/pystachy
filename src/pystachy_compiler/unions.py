@@ -1,13 +1,13 @@
 """Explicit closed scalar, container and native reference unions."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import ann_target
-from src.pystachy_compiler.diagnostics import dynamic_program, int_lists
+from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, where
 from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, FXBIT, NONEVAR, OPTTYPES
-from src.pystachy_compiler.utils import elem, is_callable, is_clsval, is_dict, is_fn, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
+from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, FXBIT, NONEVAR, OPTTYPES, PYMETHODS
+from src.pystachy_compiler.utils import elem, has_method, is_callable, is_clsval, is_dict, is_fn, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, tname, typestr, umembers, unopt
 
 def gen_uboxes(self, a: str, b: str) -> bool:
     # is a value of type a one of union type b (or b | None) once boxed: a member's (one that
@@ -99,6 +99,12 @@ def gen_uop(self, v: Val, op: str) -> Val:
             if nxt != "":
                 self.place(nxt)
             continue
+        if op == "len" and not (members[i] == "str" or is_list(members[i]) or is_dict(members[i])):
+            # (a number: CPython's error for that object, as len() of it alone is rejected)
+            self.raise_("TypeError", self.sconst(f"object of type '{tname(members[i])}' has no len()"))
+            if nxt != "":
+                self.place(nxt)
+            continue
         if op == "repr" and members[i] not in self.classes:
             result = self.repr(self.scalar_view(v))  # (the runtime reads the box's own tag)
         else:
@@ -110,6 +116,248 @@ def gen_uop(self, v: Val, op: str) -> Val:
             self.place(nxt)
     self.place(end)
     return Val(self.phi(ph), t)
+
+# ---- a closed value union's own operations (None | bool | int | float | str | list | dict, as
+# json.JSONValue is): the member that the box's tag names performs them, natively, and a member
+# that cannot raises the error CPython raises for that object. Each tag is tested by a branch of
+# its own, so that the payload's read follows the test of the tag it belongs to (union_proof.py).
+
+def gen_ureject(self, o: Val, keep: list[str], kind: str, text: str, none: str = "") -> Val:
+    # o, a closed union's value that may be None, where only a value of one of types keep goes
+    # on: None and the other members raise kind (an exception class) with text, in which {} is
+    # the type's name (none: the whole text for None, where the caller has one). The value, as
+    # the union it holds
+    t = unopt(o.t)
+    o = self.unone(o, none if none != "" else text.replace("{}", "NoneType"), kind)
+    bad = [m for m in umembers(t) if m not in keep]
+    if len(bad) == 0:
+        return o
+    tag = self.mload('int', o.v)
+    for m in bad:
+        arm = self.label()
+        nxt = self.label()
+        self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(m)), "int")).v, arm, nxt)
+        self.place(arm)
+        self.raise_(kind, self.sconst(text.replace("{}", tname(m))))
+        self.place(nxt)
+    return o
+
+def gen_uonly(self, o: Val, m: str, kind: str, text: str) -> Val:
+    # the value of member type m that closed union value o holds: None and the other members
+    # raise, as ureject's do
+    t = unopt(o.t)
+    o = self.unone(o, text.replace("{}", "NoneType"), kind)
+    tag = self.mload('int', o.v)
+    ok = self.label()
+    bad = self.label()
+    self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(m)), "int")).v, ok, bad)
+    self.place(bad)
+    others = [x for x in umembers(t) if x != m]
+    for i in range(len(others)):
+        if i + 1 < len(others):
+            arm = self.label()
+            nxt = self.label()
+            self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(others[i])), "int")).v, arm, nxt)
+            self.place(arm)
+            self.raise_(kind, self.sconst(text.replace("{}", tname(others[i]))))
+            self.place(nxt)
+        else:
+            self.raise_(kind, self.sconst(text.replace("{}", tname(others[i]))))
+    self.place(ok)
+    return self.uget(Val(o.v, t), m)
+
+def gen_uiter_items(self, t: str) -> list[str]:
+    # the types of the items a loop takes from a value of closed union t: a list member's items,
+    # a dict member's keys, a str member's characters
+    items: list[str] = []
+    for m in umembers(t):
+        if is_list(m):
+            items.append(elem(m))
+        elif is_dict(m):
+            items.append(targs(m)[0])
+        elif m == "str":
+            items.append("str")
+    return items
+
+def gen_uiterable(self, v: Val, msg: str) -> Val:
+    # what a for loop steps through where v is a closed value union's (Gen.iterable): the value
+    # itself, known to hold a list, a dict or a str. None raises msg and a number CPython's
+    # TypeError here, where the loop's iterator is made, before another sequence of a zip() is
+    # asked for an item. for_seq then takes each item by the tag (useq_used, useq_next)
+    t = unopt(v.t)
+    items = self.uiter_items(t)
+    if len(items) == 0 or self.rtmode:
+        self.err(f"cannot iterate over {typestr(v.t)}")
+    it = self.union_type(items)
+    if it.startswith("!"):
+        self.err(f"iterating over a closed union value ({typestr(v.t)}) is not supported ({it[1:]}): narrow it with isinstance() first")
+    keep = [m for m in umembers(t) if is_list(m) or is_dict(m) or m == "str"]
+    return self.ureject(v, keep, "TypeError", "'{}' object is not iterable", msg[11:] if msg.startswith("TypeError: ") else msg)
+
+def gen_useq_used(self, s: Val) -> str:
+    # what the iterator over closed union value s (uiterable) records when it is made, as
+    # seq_start does for each type: a dict's size and a str's length, 0 for a list
+    members = [m for m in umembers(s.t) if is_list(m) or is_dict(m) or m == "str"]
+    tag = self.mload('int', s.v)
+    end = self.label()
+    ph = Ins("phi", "int", "")
+    for m in members:
+        arm = self.label()
+        nxt = self.label()
+        self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(m)), "int")).v, arm, nxt)
+        self.place(arm)
+        self.incoming(ph, "0" if is_list(m) else self.mload('int', self.uget(s, m).v), self.cur)
+        self.br(end)
+        self.place(nxt)
+    self.unreachable()  # (another member raised: uiterable)
+    self.place(end)
+    return self.phi(ph)
+
+def gen_useq_next(self, s: Val, pos: str, used: str, i: str, le: str) -> Val:
+    # the next item of closed union value s in a for loop (for_seq), which goes to le at its
+    # end: the list's, by index against its current length, the dict's, by entry, failing if it
+    # changed size, or the str's, by its byte cursor, each as that type's own loop takes it
+    # (pos: the entry or cursor; used: useq_used's; i: the loop's count), as a value of the
+    # union of their item types (uiter_items)
+    it = self.union_type(self.uiter_items(s.t))
+    members = [m for m in umembers(s.t) if is_list(m) or is_dict(m) or m == "str"]
+    tag = self.mload('int', s.v)
+    end = self.label()
+    ph = Ins("phi", it, "")
+    for m in members:
+        arm = self.label()
+        nxt = self.label()
+        self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(m)), "int")).v, arm, nxt)
+        self.place(arm)
+        x = self.uget(s, m)
+        go = self.label()
+        j = i
+        if is_list(m):
+            self.cbr(self.num_cmp('<', Val(i, "int"), Val(self.list_len(x), "int")).v, go, le)
+            self.place(go)
+        elif is_dict(m):
+            j = self.rt("pys_dict_next", "i64", [f"ptr {x.v}", f"i64 {self.mload('int', pos)}", f"i64 {used}", f"i64 {i}"])
+            self.cbr(self.num_cmp('>=', Val(j, "int"), Val('0', "int")).v, go, le)
+            self.place(go)
+            self.mstore('int', self.scalar('add', [Val(j, 'int'), Val('1', 'int')]), pos)
+        else:
+            j = self.mload('int', pos)
+            self.cbr(self.int_ucmp('<', Val(j, "int"), Val(used, "int")).v, go, le)
+            self.place(go)
+            self.mstore('int', self.rt("pys_text_next", "i64", [f"ptr {x.v}", f"i64 {j}"]), pos)
+        item = self.coerce(self.seq_item(x, j, "")[0], it)
+        self.incoming(ph, item.v, self.cur)
+        self.br(end)
+        self.place(nxt)
+    self.unreachable()  # (another member raised: uiterable)
+    self.place(end)
+    return Val(self.phi(ph), it)
+
+def umethod_mismatch(m: str, member: str, ts: list[str]) -> str:
+    # what o.m(args) does where a closed union's value o is of type member and its positional
+    # arguments are of builtin types ts, for the methods that a list shares with a dict or a
+    # str but that take other arguments (pop, index, count): "" for the member's own call;
+    # "TypeError: ..." for CPython's error; "KeyError" where a dict has no key of that type;
+    # "default" where its pop() then gives the default
+    plain = all([t in ["None", "bool", "int", "float", "str"] or is_list(t) or is_dict(t) for t in ts])
+    if not plain:
+        return ""
+    if is_list(member) and m == "pop":
+        if len(ts) > 1:
+            return f"TypeError: pop expected at most 1 argument, got {len(ts)}"
+        if len(ts) == 1 and ts[0] != "int" and ts[0] != "bool":
+            return f"TypeError: '{tname(ts[0])}' object cannot be interpreted as an integer"
+    if is_dict(member) and m == "pop":
+        if len(ts) == 0:
+            return "TypeError: pop expected at least 1 argument, got 0"
+        if len(ts) > 2:
+            return f"TypeError: pop expected at most 2 arguments, got {len(ts)}"
+        if is_list(ts[0]) or is_dict(ts[0]):
+            return f"TypeError: unhashable type: '{tname(ts[0])}'"
+        if (targs(member)[0] == "str") != (ts[0] == "str"):
+            return "KeyError" if len(ts) == 1 else "default"
+    if is_list(member) and m == "count" and len(ts) != 1:
+        return f"TypeError: list.count() takes exactly one argument ({len(ts)} given)"
+    if member == "str" and (m == "count" or m == "index") and len(ts) > 0 and ts[0] != "str":
+        return f"TypeError: must be str, not {tname(ts[0])}"
+    return ""
+
+def gen_uvalue_method(self, o: Val, m: str, args: list[Node], want: str, resultsoft: bool) -> Val:
+    # o.m(args) of a closed value union's value: the method of the member that its tag names. A
+    # member whose type has no such method in CPython (and None) raises AttributeError, before
+    # the arguments are evaluated, as CPython looks the attribute up first. Where one member has
+    # it, the call is its own; where several do (pop, copy, index), each argument is evaluated
+    # once and the results are their union
+    t = unopt(o.t)
+    if len([x for x in umembers(t) if is_list(x)]) > 1 or len([x for x in umembers(t) if is_dict(x)]) > 1:
+        # (lists, or dicts, of several item types: no one call's arguments suit them all)
+        self.err("closed union method calls require narrowing with isinstance() first")
+    havers: list[str] = []
+    for x in umembers(t):
+        base = "list" if is_list(x) else "dict" if is_dict(x) else x
+        if base in PYMETHODS and m in PYMETHODS[base]:
+            if base == "bool" and has_method("int", m):
+                base = "int"  # (a bool's are an int's: the call is of its int, below)
+            if not (has_method(base, m) or (base == "str" and (m == "format" or m == "format_map"))):
+                self.err(f"{base}.{m}() is not supported, and a closed union's value ({typestr(o.t)}) may be a {base}: narrow it with isinstance() first")
+            havers.append(x)
+    if len(havers) == 0:
+        self.err(f"no member of {typestr(o.t)} has a method {m}(): closed union method calls select a str, list, dict or number member's method")
+    missing = f"'{{}}' object has no attribute '{m}'"
+    if len(havers) == 1:
+        only = self.uonly(o, havers[0], "AttributeError", missing)
+        return self.method(self.as_int(only) if only.t == "bool" else only, m, args, want, resultsoft)
+    o = self.ureject(o, havers, "AttributeError", missing)
+    bound: list[Node] = []
+    for a in args:
+        if a.kind == "starred" or a.kind == "dstar":
+            self.err("closed union methods do not support unpacked arguments: narrow the value with isinstance() first")
+        if a.kind == "kw":
+            bound.append(mk("kw", a.s, a.line, [self.vnode(self.expr(a.kids[0], ""))]))
+        else:
+            bound.append(self.vnode(self.expr(a, "")))
+    tag = self.mload('int', o.v)
+    end = self.label()
+    results: list[Val] = []
+    edges: list[str] = []
+    narrow = dict(self.narrowed)
+    for x in havers:
+        arm = self.label()
+        nxt = self.label()
+        self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(x)), "int")).v, arm, nxt)
+        self.place(arm)
+        self.narrowed = dict(narrow)
+        result = Val("null", "None")
+        problem = umethod_mismatch(m, x, [self.expr(b, "").t for b in bound if b.kind != "kw"])
+        if problem.startswith("TypeError: "):
+            self.raise_("TypeError", self.sconst(problem[11:]))
+        elif problem == "KeyError":
+            self.raise_("KeyError", self.repr(self.expr(bound[0], "")).v, self.sconst("KeyError"))
+        elif problem == "default":
+            result = self.expr(bound[1], "")
+        else:
+            result = self.method(self.as_int(self.uget(o, x)) if x == "bool" else self.uget(o, x), m, bound)
+        if not self.term:
+            results.append(result)
+            edges.append(self.cur)
+            self.br(end)
+        self.place(nxt)
+    self.unreachable()  # (another member raised: ureject)
+    self.narrowed = narrow
+    self.place(end)
+    if len(results) == 0:
+        self.unreachable()
+        return Val("null", "None")
+    if all([r.t == "None" for r in results]):
+        return Val("null", "None")
+    rt = self.union_type([r.t for r in results])
+    if rt.startswith("!"):
+        self.err(f"unsupported call of {m}() on {typestr(o.t)}: its members' results ({', '.join([typestr(r.t) for r in results])}) have no union; narrow it with isinstance() first")
+    ph = Ins("phi", rt, "")
+    for i in range(len(results)):
+        r = self.convert_at(results[i], rt, edges[i])
+        self.incoming(ph, r.v, self.convedge)
+    return Val(self.phi(ph), rt)
 
 def gen_scalar_view(self, v: Val) -> Val:
     # The box of a union of objects and scalars, where its tag is one of the scalars', as a
@@ -216,16 +464,16 @@ def gen_utag(self, t: str) -> int:
         self.utags[t] = len(self.utags) + 1
     return self.utags[t]
 
-def gen_ubox(self, v: Val, m: str) -> str:
-    # v, of member type m, as a union's box (a class's object that may be None: null)
-    b = self.rt("pys_ubox", "ptr", [f"i64 {self.utag(m)}", "i64 " + self.to_slot(Val(v.v, m))])
+def gen_ubox(self, v: Val, m: str, u: str) -> str:
+    # v, of member type m, as a box of union u (a class's object that may be None: null)
+    b = self.rt("pys_ubox", "ptr", [f"i64 {self.utag(m)}", "i64 " + self.to_slot(Val(v.v, m), False, True)], t=u)
     if m not in self.classes or v.v in self.nn:
         return b
-    return self.select(self.ptr_cmp('==', v, Val('null', 'None')).v, Val('null', '%ptr'), Val(b, '%ptr'))
+    return self.select(self.ptr_cmp('==', v, Val('null', 'None')).v, Val('null', u), Val(b, u))
 
 def gen_uget(self, u: Val, m: str) -> Val:
     # the value a union's box u holds, known to be of member type m
-    i = Ins("union.payload", "%slot", m)
+    i = Ins("union.payload", "*" + m, m)
     i.a = [u]
     self.put(i, 2)
     return self.from_slot(tmpname(i.r[1]), m).identity(u)
@@ -293,7 +541,7 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
             # None holds no box for: Pystachy's TypeError, where CPython stores the None)
             self.notnone(v, f"TypeError: a value used as {typestr(t)} is None; annotate it {typestr(t)} | None")
             self.nn[v.v] = True
-        return Val(self.ubox(v, src), t).identity(v)
+        return Val(self.ubox(v, src, t), t).identity(v)
     if not none_ok:
         if self.join_hint(t, v.t):
             return Val("undef", t)  # (see join_hint)
@@ -358,11 +606,11 @@ def gen_class_union(self, v: Val, nt: str) -> Val:
             no = self.label()
             self.cbr(hit, yes, no)
             self.place(yes)
-            self.incoming(ph, self.ubox(Val(v.v, m), m), self.cur)
+            self.incoming(ph, self.ubox(Val(v.v, m), m, nt), self.cur)
             self.br(end)
             self.place(no)
         else:
-            self.incoming(ph, self.ubox(Val(v.v, m), m), self.cur)
+            self.incoming(ph, self.ubox(Val(v.v, m), m, nt), self.cur)
             self.br(end)
     self.place(end)
     return Val(self.phi(ph), nt).identity(v)
@@ -808,9 +1056,94 @@ def gen_fnkey(self, f: FnInfo) -> str:
     return k + "(" + self.stable(f.ikey) + ")" if f.inst else k
 
 
+def field_home(self, ci: ClassInfo, name: str) -> ClassInfo:
+    # the class that declares field name of class ci (field_root): of a class template's
+    # specialization, the template, where its body annotates the field float, int or str (its
+    # specializations share that annotation, and so the join of a value given to it: ann_takes)
+    root = self.field_root(ci, name)
+    return self.classes[root.origin] if root.origin != "" and name in self.classes[root.origin].fann else root
+
+
 def gen_field_key(self, ci: ClassInfo, name: str) -> str:
     # the key for joins of field name of class ci: of the class that declares it (see stable)
-    return f"field:{self.stable(self.field_root(ci, name).name)}.{name}"
+    return f"field:{self.stable(field_home(self, ci, name).name)}.{name}"
+
+
+FLOATAT = "float:at"  # (no location's key: where the program first gave an int to one annotated float)
+MEMBERAT = "member:at"  # (and where it first gave an enum member to one annotated int or str, its types)
+ANNTYPES = ["float", "int", "str"]  # (the annotations whose locations join: ann_takes)
+
+
+def float_takes(vt: str) -> bool:
+    # is vt the type of a number that a location annotated float holds too, as it is: an int (a
+    # promoting one as well) or a bool, which PEP 484 accepts where a float is expected and
+    # CPython stores unconverted, or a union of numbers, as such a location has once it joined.
+    # Only a store that was an error joins one (join_hint), which then is an int | float (or a
+    # bool | float, ...), as if annotated so; what holds only floats keeps its type
+    return vt == "int" or vt == "bool" or vt == BIG or (is_union(vt) and all([m == "int" or m == "float" or m == "bool" for m in umembers(vt)]))
+
+
+def member_takes(self, t: str, vt: str) -> bool:
+    # is vt the type of a member of an enum class whose objects are also CPython's ints (IntEnum,
+    # IntFlag) or strs (StrEnum), where t is that type (int or str: enum_builtin), or a union of
+    # such members and t: a location annotated t holds one as it is, as CPython stores it, and its
+    # class, repr(), type() and isinstance() stay the member's. Only a store that was an error
+    # joins one (join_hint): the location then holds a union of both, an int | C, as if annotated
+    # so; what holds only ints or strs keeps its type
+    if is_union(vt):
+        return len([m for m in umembers(vt) if m != t and not member_takes(self, t, m)]) == 0
+    return (t == "int" or t == "str") and vt in self.classes and self.enum_builtin(vt) == t
+
+
+def ann_takes(self, t: str, vt: str) -> bool:
+    # does a location annotated t (float, int or str, ANNTYPES), or of the union an earlier join
+    # gave it, hold a value of type vt too, as it is (float_takes, member_takes)
+    if is_union(t):
+        return len([m for m in umembers(t) if m in ANNTYPES and ann_takes(self, m, vt)]) > 0
+    return (t == "float" and float_takes(vt)) or member_takes(self, t, vt)
+
+
+def ann_open(self) -> bool:
+    # may a location annotated float, int or str join now: not in an attempt that an error
+    # declines (xtry: a comparison's or an adapter's of a program with Any values), whose int for
+    # a float declines it, as before, so that no declined code widens storage; a narrowing's
+    # attempt drops its joins where it is declined (err)
+    return self.xtry == "" or self.xtry.startswith("narrow:")
+
+
+def ann_site(t: str) -> bool:
+    # can a location of type t be one annotated float, int or str, before or after its join
+    # (ann_takes)
+    return t in ANNTYPES or (is_union(t) and len([m for m in umembers(t) if m in ANNTYPES]) > 0)
+
+
+def field_value(self, ci: ClassInfo, name: str, v: Val) -> Val:
+    # v as a value of field name of class ci, where no store of the object's field takes it: the
+    # default its class body gives it, or the argument of the __init__ @dataclass writes. An int
+    # for a field annotated float joins the field, as a store does (setfield, join_hint), and so
+    # does an enum member for one annotated int or str
+    t = ci.ftypes[name]
+    if not ann_site(t) or not ann_takes(self, t, v.t) or name not in field_home(self, ci, name).fann:
+        return self.coerce(v, t)
+    was = self.join_at("ann:field", self.field_key(ci, name), t)
+    cv = self.coerce(v, t)
+    self.join_at(was[0], was[1], was[2])
+    return cv
+
+
+def ann_returns(f: FnInfo) -> bool:
+    # may the return of f, annotated -> float, -> int or -> str, join with what it returns
+    # (ann_takes; join_hint, whose key is its def's, "return:" and the line: its instances and its
+    # class's specializations share the join): a function's or a method's whose def has the
+    # annotation, but a special method's, whose result the operation that calls it checks, and a
+    # function that C or CPython calls. Of the functions the compiler writes (a Callable's
+    # adapter, a dispatcher, ...), only a dataclass field's default_factory, whose join is the
+    # field's
+    if f.synthetic:
+        return f.name.endswith(".factory")
+    if f.node.kind != "def" or len(f.node.kids) < 3 or f.node.kids[1].kind == "noann" or f.gen or f.extern or f.export or f.pyexport or f.iters:
+        return False
+    return f.cls == "" or not (f.name.startswith("__") and f.name.endswith("__"))
 
 
 def gen_local_hint(self, name: str) -> str:
@@ -833,21 +1166,29 @@ def gen_join_hint(self, t: str, vt: str) -> bool:
     # join_at set it), does not take: unless this is the last pass, a join gives the location
     # the union of both types, as if annotated (Gen.newhints, which the next pass compiles it
     # with: see Rejoin), and the store is dropped; False where the location is annotated or
-    # another kind's, or the union is no type a join gives
+    # another kind's, or the union is no type a join gives. A location annotated float, int or
+    # str (a variable, a field: "ann:field", or a function's return: "ann:return") joins too, but
+    # only with the values it also holds (ann_takes: the numbers a float does, the enum members an
+    # int or a str does), from its annotation's type or from the join an earlier pass gave it
     if self.final or self.joinkind == "" or t != self.jointype or self.drying > 0 or self.rtmode:
         return False
     key = ""
+    ann = self.joinkind == "ann:field" or self.joinkind == "ann:return"
     if self.joinkind == "local":
         body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
-        if self.joinname in self.curfn.params or self.joinname in self.compvars or ann_target(body, self.joinname):
+        if self.joinname in self.curfn.params or self.joinname in self.compvars:
             return False
+        ann = ann_target(body, self.joinname)
         key = f"{self.fnkey(self.curfn)}|{self.joinname}"
     elif self.joinkind == "global":
-        if self.joinname in self.constflags or owner(self.joinname) not in self.inits or ann_target(self.inits[owner(self.joinname)].node.kids, self.joinname):
+        if self.joinname in self.constflags or owner(self.joinname) not in self.inits:
             return False
+        ann = ann_target(self.inits[owner(self.joinname)].node.kids, self.joinname)
         key = f"global:{self.joinname}"
-    elif self.joinkind == "field" or self.joinkind == "return":
+    elif self.joinkind == "field" or self.joinkind == "return" or ann:
         key = self.joinname
+    if ann and not (ann_takes(self, t, vt) and (t in ANNTYPES or (ann_site(t) and self.hints.get(key, "") == t)) and ann_open(self)):
+        return False
     j = self.join_type(self.newhints.get(key, t), vt)
     if key != "" and (j == "" or j == t or j == self.hints.get(key, "")) and (is_list(t) or is_dict(t)) and self.join_type(t, vt) == t:
         # a list or dict of another item type, which the location's cannot be as it is: where a
@@ -872,6 +1213,12 @@ def gen_join_hint(self, t: str, vt: str) -> bool:
     if key == "" or j == "" or j == t or j == self.hints.get(key, ""):
         return False
     self.newhints[key] = j
+    at = FLOATAT if float_takes(vt) else MEMBERAT
+    if ann and self.joinkind != "local" and at not in self.hints and at not in self.newhints:
+        # (the first such store, which an error names: err; a member's with the annotation and its
+        # class)
+        base = [m for m in umembers(t) if m in ANNTYPES and ann_takes(self, m, vt)][0] if is_union(t) else t
+        self.newhints[at] = where(self.line) if at == FLOATAT else f"{where(self.line)}|{base}|{vt}"
     return True
 
 
@@ -922,11 +1269,14 @@ def gen_join_type(self, a: str, b: str) -> str:
 
 def gen_joinable(self, t: str) -> bool:
     # can a join give a location type t: T | None, or a union of int, float, bool and str (that
-    # may be None), whose operations select the member's by the tag (see unumeric)
+    # may be None), whose operations select the member's by the tag (see unumeric), with the
+    # members of enum classes whose objects are also CPython's ints or strs (member_takes) where
+    # it has that type: an int | C, whose member keeps its class
     u = unopt(t)
     if not is_union(u):
         return is_opt(t)
-    return all([m in ["int", "float", "bool", "str"] for m in umembers(u)])
+    ms = umembers(u)
+    return all([m in ["int", "float", "bool", "str"] or (m in self.classes and self.enum_builtin(m) in ms) for m in ms])
 
 
 def gen_replay_state(self) -> list[int]:

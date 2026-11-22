@@ -26,9 +26,9 @@ import re
 import subprocess
 import sys
 
-from check_lean_boundary import (INVOKES, MAX_PROGRAM_BYTES, OP_KEYS, OUTCOMES, SEVERITY,
-                                 TERMINATORS, Unsupported, check_header, checker_result, name,
-                                 read_snapshot, require)
+from check_lean_boundary import (INVOKES, MAX_PROGRAM_BYTES, OUTCOMES, SEVERITY,
+                                 TERMINATORS, Unsupported, check_header, checker_result,
+                                 instruction_fields, name, read_snapshot, require)
 from check_lean_effects import WORD, fresh_addresses, fresh_store, summaries, tagged_classes
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -97,7 +97,7 @@ MAX_TYPE = 1 << 20
 
 def instruction(value, slot=False):
     """A validated operation of the snapshot (a type, such as a long tuple's, can be long)."""
-    require(isinstance(value, dict) and set(value) == OP_KEYS, "invalid instruction fields")
+    require(instruction_fields(value), "invalid instruction fields")
     for key in ("op", "text", "descriptor"):
         require(isinstance(value[key], str) and len(value[key]) <= 4096, f"invalid instruction {key}")
     require(isinstance(value["type"], str) and len(value["type"]) <= MAX_TYPE, "invalid instruction type")
@@ -1150,11 +1150,14 @@ def class_relation(snapshot):
     table = snapshot.get("classes")
     if table is None:
         return (lambda c, d: True), (lambda c: False)
+    # (each entry also holds its class's struct, which the relation does not read)
     require(isinstance(table, dict) and len(table) <= 65536 and all(
-        isinstance(name_, str) and isinstance(entry, dict) and set(entry) == {"base", "roles", "overlaps", "tagged"}
+        isinstance(name_, str) and isinstance(entry, dict)
+        and set(entry) == {"base", "roles", "overlaps", "tagged", "fields", "flags", "boxes"}
         and isinstance(entry["base"], str) and type(entry["tagged"]) is bool
         and isinstance(entry["roles"], list) and all(isinstance(role, str) for role in entry["roles"])
         and isinstance(entry["overlaps"], list) and all(isinstance(other, str) for other in entry["overlaps"])
+        and isinstance(entry["fields"], list) and isinstance(entry["flags"], dict) and isinstance(entry["boxes"], dict)
         for name_, entry in table.items()), "invalid classes table")
 
     @functools.lru_cache(maxsize=None)
@@ -1322,8 +1325,9 @@ def normalize_program(snapshot, function, effects_of=None, derefs=None, record=N
                      if used]
         return [other for other in field_classes if not related(cls, other)] + (
             raw_cells if known_class(cls) else [])
-    # An env is an array of pointers to closure cells. Recognize only constant
-    # pointer-slot loads from a value whose definition/parameter has env type.
+    # Each capture slot holds a pointer to a cell. Current snapshots index eight-byte
+    # words; older native snapshots use pointer strides. Require a constant slot
+    # and an explicit pointer load from an environment in either representation.
     # The captured cell itself is mutable: reuse read_field's heap invalidation,
     # never private-slot persistence. Do not infer a cell from an arbitrary ptr.
     environments = {f"%t{number}" for op in definitions.values() if op["type"] == "env"
@@ -1331,7 +1335,7 @@ def normalize_program(snapshot, function, effects_of=None, derefs=None, record=N
     environments.update(f"%a{index}" for index, parameter in enumerate(fn.get("parameters", []))
                         if parameter.get("representation") == "env")
     environment_slots = {f"%t{op['results'][0]}" for op in definitions.values()
-                         if op["op"] == "mach.addr" and op["text"] == "%ptr"
+                         if op["op"] == "mach.addr" and op["text"] in ("int", "%ptr")
                          and len(op["results"]) == 1 and len(op["operands"]) == 2
                          and op["operands"][0]["value"] in environments
                          and isinstance(operand_of(op["operands"][1]["value"]), int)

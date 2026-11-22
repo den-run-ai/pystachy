@@ -5,6 +5,10 @@ A str holds bytes in Pystachy; here it holds one character per byte (as Latin-1 
 as pystachy.py reads its sources, so len(), indexing and slicing agree. str_new gives a bytearray,
 which str_put and copy change, and str_done turns into such a str.
 """
+import math
+import struct
+from fractions import Fraction
+
 M64 = (1 << 64) - 1
 
 
@@ -67,6 +71,18 @@ def lshr(a, n):
     return i64((a & M64) >> (n & 63))
 
 
+def ashr(a, n):
+    return i64(a) >> (n & 63)
+
+
+def ctlz(a):
+    return 64 - (a & M64).bit_length()
+
+
+def ctpop(a):
+    return (a & M64).bit_count()
+
+
 def null(s):
     return s is None
 
@@ -98,8 +114,85 @@ def urem(a, b):
     return i64((a & M64) % (b & M64))
 
 
+def sdiv(a, b):
+    if b == 0:
+        raise ZeroDivisionError("integer division or modulo by zero")
+    if a == -(1 << 63) and b == -1:
+        raise OverflowError("integer result does not fit in 64 bits")
+    q = abs(a) // abs(b)
+    return -q if (a < 0) != (b < 0) else q
+
+
+def srem(a, b):
+    if b == 0:
+        raise ZeroDivisionError("integer modulo by zero")
+    r = abs(a) % abs(b)
+    return -r if a < 0 else r
+
+
 def mul_ovf(a, b):
     return not -(1 << 63) <= a * b < 1 << 63
+
+
+def mul_hi(a, b):
+    return i64(((a & M64) * (b & M64)) >> 64)
+
+
+def udiv_wide(hi, lo, d):
+    if d == 0:
+        raise ZeroDivisionError("integer division or modulo by zero")
+    return i64((((hi & M64) << 64) | (lo & M64)) // (d & M64))
+
+
+def urem_wide(hi, lo, d):
+    if d == 0:
+        raise ZeroDivisionError("integer division or modulo by zero")
+    return i64((((hi & M64) << 64) | (lo & M64)) % (d & M64))
+
+
+def float_bits(x):
+    return struct.unpack("<q", struct.pack("<d", x))[0]
+
+
+def bits_float(i):
+    return struct.unpack("<d", struct.pack("<q", i))[0]
+
+
+def fma(x, y, z):
+    # x * y + z rounded once, with no errors: an inf or a nan where math.fma raises
+    if math.isfinite(x) and math.isfinite(y) and math.isfinite(z):
+        r = Fraction(x) * Fraction(y) + Fraction(z)
+        if r == 0:
+            # a zero product and a zero z add as two zeros do, by their signs; a product that z
+            # cancels leaves +0.0
+            if x == 0.0 or y == 0.0:
+                return 0.0 * (math.copysign(1.0, x) * math.copysign(1.0, y)) + z
+            return 0.0
+        try:
+            return float(r)
+        except OverflowError:
+            return math.inf if r > 0 else -math.inf
+    if math.isnan(x) or math.isnan(y) or math.isnan(z):
+        return math.nan
+    if (math.isinf(x) and y == 0.0) or (math.isinf(y) and x == 0.0):
+        return math.nan
+    if math.isinf(x) or math.isinf(y):
+        p = math.copysign(math.inf, math.copysign(1.0, x) * math.copysign(1.0, y))
+        return math.nan if math.isinf(z) and z != p else p
+    return z
+
+
+def fdiv(x, y):
+    # x / y as IEEE 754 divides: by a zero, an inf of the signs' product, or a nan for 0 / 0
+    if y != 0.0:
+        return x / y
+    if x != x or x == 0.0:
+        return math.nan
+    return math.copysign(math.inf, x) * math.copysign(1.0, y)
+
+
+def sqrt(x):
+    return math.sqrt(x) if x >= 0.0 else math.nan if x == x else x
 
 
 def find_sub(h, n, st, en):

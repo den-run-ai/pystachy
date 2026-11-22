@@ -6,12 +6,14 @@ import errno
 import hashlib
 import http.client
 import io
+import os
 from pathlib import Path
 import re
 import socket
 import socketserver
 import ssl
 import subprocess
+import sys
 import tarfile
 import tempfile
 import threading
@@ -408,6 +410,49 @@ class ManagedToolchainTests(unittest.TestCase):
             self.assertEqual(fetch.call_count, 2)
             extract.assert_not_called()
 
+    def test_doctor_observes_missing_partial_and_complete_managed_installs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "_pystachy_source").symlink_to(Path(toolchain.__file__).parent)
+            cache = root / "managed"
+            dest = cache / f"ubuntu-{toolchain.UBUNTU_REVISION}-amd64"
+            env = {key: val for key, val in os.environ.items() if not key.startswith("PYSTACHY_")}
+            env.update(PYSTACHY_LLVM_CACHE=str(cache), PYSTACHY_CACHE=str(root / "runtime"))
+            script = """from unittest.mock import patch
+from _pystachy_source import pystachy_cli, pystachy_toolchain as tc
+with (patch.object(tc.sys, 'platform', 'linux'), patch.object(tc.platform, 'machine', return_value='x86_64'),
+      patch.object(tc.platform, 'freedesktop_os_release', return_value={'ID': 'ubuntu', 'VERSION_ID': '24.04'}),
+      patch.object(tc, 'ensure_toolchain', side_effect=AssertionError('doctor tried to install LLVM'))):
+    pystachy_cli.main()
+"""
+
+            def doctor():
+                result = subprocess.run([sys.executable, "-B", "-c", script, "doctor"],
+                                        cwd=root, env=env, text=True, capture_output=True, timeout=20)
+                self.assertEqual(result.stderr, "")
+                self.assertFalse((root / "runtime").exists())
+                return result
+
+            first = doctor()
+            self.assertEqual(first.returncode, 1)
+            self.assertIn("pending download on first compile", first.stdout)
+            self.assertFalse(cache.exists())
+            (dest / "bin").mkdir(parents=True)
+            for tool in toolchain.TOOLS:
+                binary = dest / "bin" / tool
+                binary.write_text("#!/bin/sh\necho 'LLVM version 18.1.3'\n")
+                binary.chmod(0o700)
+            partial = doctor()
+            self.assertEqual(partial.returncode, 1)
+            self.assertIn("clang: 18.1.3", partial.stdout)
+            self.assertIn("pending download on first compile", partial.stdout)
+            header = dest / "lib/clang/18/include/stddef.h"
+            header.parent.mkdir(parents=True)
+            header.touch()
+            ready = doctor()
+            self.assertEqual(ready.returncode, 0, ready.stdout)
+            self.assertIn("Managed LLVM 18.1.3: cached", ready.stdout)
+
     def test_partial_install_is_not_published_and_retry_is_cached(self):
         def partial_install(staging, payload, arch):
             payload.mkdir()
@@ -569,11 +614,12 @@ class MinimalToolchainTests(unittest.TestCase):
             ({"glibc": toolchain.MINIMAL_GLIBC}, True),
             ({"distro": ubuntu_22, "glibc": (2, 35)}, True),
             ({"distro": OSError("no os-release")}, True),
-            ({"glibc": (2, 33)}, False),  # the runtime does not link there
+            ({"distro": {"ID": "almalinux", "VERSION_ID": "8.10"}, "glibc": (2, 28)}, True),
+            ({"glibc": (2, 27)}, False),  # the archive's tools do not start there
             ({"glibc": ()}, False),  # musl
             ({"llvm": True}, False),  # the host's LLVM keeps serving
             ({"machine": "aarch64"}, True),
-            ({"machine": "aarch64", "glibc": (2, 33)}, False),
+            ({"machine": "aarch64", "glibc": (2, 27)}, False),
             ({"machine": "riscv64"}, False),  # no archive is published
         )
         for host, selected in hosts:
@@ -599,6 +645,39 @@ class MinimalToolchainTests(unittest.TestCase):
                     toolchain.ensure_toolchain()
                 minimal.assert_not_called()
                 named.assert_not_called()
+
+    def test_macos_keeps_the_upstream_release(self):
+        with ExitStack() as stack:
+            for each in (patch.dict(toolchain.os.environ, {"PYSTACHY_LLVM_CACHE": str(self.cache)}),
+                         patch.object(toolchain.sys, "platform", "darwin"),
+                         patch.object(toolchain.platform, "machine", return_value="arm64")):
+                stack.enter_context(each)
+            others = [stack.enter_context(patch.object(toolchain, name))
+                      for name in ("unpack_ubuntu", "unpack_minimal", "name_host_gcc")]
+            stack.enter_context(patch.object(toolchain, "unpack_macos", side_effect=ValueError("upstream")))
+            with self.assertRaisesRegex(ValueError, "upstream"):
+                toolchain.ensure_toolchain()
+            for other in others:
+                other.assert_not_called()
+
+    def test_doctor_is_told_of_the_archive_only_where_it_would_be_downloaded(self):
+        for machine in ("x86_64", "aarch64"):
+            with self.subTest(machine=machine), ExitStack() as stack:
+                self.host(stack, machine=machine)
+                key = f"minimal-{toolchain.MINIMAL_VERSION}-{toolchain.MINIMAL_REVISION}-{machine}"
+                self.assertEqual(toolchain.managed_toolchain(),
+                                 (self.cache.resolve() / key, toolchain.MINIMAL_VERSION, machine))
+        for host in ({"llvm": True}, {"glibc": (2, 27)}, {"glibc": ()}, {"machine": "riscv64"}):
+            with self.subTest(host=host), ExitStack() as stack:
+                self.host(stack, **host)
+                self.assertIsNone(toolchain.managed_toolchain())
+        self.assertFalse(self.cache.exists())  # asking installs nothing
+
+    def test_no_host_older_than_the_archives_are_built_for_downloads_one(self):
+        workflow = (Path(toolchain.__file__).parent / ".github/workflows/llvm-toolchain.yml").read_text()
+        built_for = re.findall(r"LLVM_TOOLCHAIN_GLIBC=([0-9]+)\.([0-9]+)", workflow)
+        self.assertEqual(len(built_for), 1)  # the newest glibc symbols its check lets the tools need
+        self.assertGreaterEqual(toolchain.MINIMAL_GLIBC, tuple(map(int, built_for[0])))
 
     def test_glibc_is_the_running_c_library_s_release(self):
         for answer, expected in (("glibc 2.39", (2, 39)), ("glibc 2.4", (2, 4)), ("glibc 2.41.9000", (2, 41, 9000)),

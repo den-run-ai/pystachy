@@ -21,4 +21,8 @@ for n in ns:
     print(n, [n / d for d in ds])
 for d in ds:
     print(d, [d / n for n in ns if n != 0])
+# At 1.0, successive floats differ by 1024 / p62. Check both ties and their neighbors.
+for offset in (511, 512, 513, 1535, 1536, 1537):
+    n = p62 + offset
+    print((n / p62).hex(), (-n / p62).hex(), (n / -p62).hex(), (-n / -p62).hex())
 print(zero / zero)

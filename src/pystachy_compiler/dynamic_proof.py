@@ -26,8 +26,8 @@ DK_NONE = 0
 DK_INT = 2
 DK_OBJ = 8
 DF_ROLE = 256
-# the i64 word of a DynType that holds its class number, which class dispatchers switch on
-CLASS_WORD = "3"
+# the field of a DynType that holds its class number, which class dispatchers switch on
+CLASS_FIELD = "3"
 # runtime.c's builtin DynTypes and their kinds: their class number is -1, and they have no base
 BUILTIN_KINDS: dict[str, int] = {
     "@pys_dyntype_none": 0, "@pys_dyntype_bool": 1, "@pys_dyntype_int": 2, "@pys_dyntype_bigint": 2,
@@ -121,7 +121,7 @@ class DynamicProof:
         self.visits = 0
         self.payloads = 0
         # the tags each payload type accepts, the tags for which each runtime test (its op and
-        # DynType) holds, the class number word addresses and class numbers of the tags that
+        # DynType) holds, the class number field addresses and class numbers of the tags that
         # dyn.type reads, and the tags of each class number a switch tests
         self.accepts: dict[str, dict[str, bool]] = {}
         self.tests: dict[str, list[str]] = {}
@@ -140,7 +140,7 @@ class DynamicProof:
         # (each in a pass of its own: a block can be listed before one that runs first)
         for b in fn.blocks:
             for i in b.code:
-                if i.op == "mach.addr" and i.s == "int" and len(i.r) == 1 and len(i.a) == 2 and i.a[0].v in tags and i.a[1].v == CLASS_WORD:
+                if i.op == "mach.addr" and i.s == "dyntype" and len(i.r) == 1 and len(i.a) == 2 and i.a[0].v in tags and i.a[1].v == CLASS_FIELD:
                     self.addresses["%t" + str(i.r[0])] = True
         for b in fn.blocks:
             for i in b.code:
@@ -254,7 +254,7 @@ class DynamicProof:
                     s.boolean(r, s.conditional(v, i.s == "!="), s.conditional(v, i.s == "=="))
                     break
         elif i.op == "mach.addr" and r in self.addresses:
-            # the class number word of a tag, then the class number it holds
+            # the class number field of a tag, then the class number it holds
             s.copy("A:" + r, self.key(s, i.a[0].v, True))
         elif i.op == "mach.load" and r in self.numbers:
             s.copy("C:" + r, "A:" + i.a[0].v)
@@ -262,7 +262,7 @@ class DynamicProof:
             addr = i.a[0].v
             typ = self.private[addr]
             # A forged operand/result annotation cannot change a slot's contract.
-            if i.t != typ or i.a[0].t != "*" + typ:
+            if i.t != typ or i.a[0].t != "&" + typ:
                 if checking:
                     self.bad.append("dynamic guard proof needs matching private load types")
                     self.badblocks.append(block)
@@ -275,7 +275,7 @@ class DynamicProof:
             typ = self.private[addr]
             s.forget("M:" + addr)
             self.forget_bool(s, addr)
-            if i.a[0].t != "*" + typ or i.a[1].t != typ:
+            if i.a[0].t != "&" + typ or i.a[1].t != typ:
                 if checking:
                     self.bad.append("dynamic guard proof needs matching private store types")
                     self.badblocks.append(block)

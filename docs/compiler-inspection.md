@@ -81,7 +81,12 @@ DynType descriptor the program emits for its classes, functions and generators.
 A dynamic box's tag is the address of one of these or of a runtime.c builtin.
 Each entry records the descriptor's kind, class number (the word class
 dispatchers switch on), base, secondary role, flags and the static type of the
-payload its boxes hold.
+payload its boxes hold. Its `lowering` record holds everything else that LLVM
+lowering reads (settings, globals, constants, runtime and extern declarations,
+dispatch tables and each function's attributes), so that the module that
+`typed_ir_text.py print` writes from it compiles to `llvm.ll`
+([text form](typed-ir.md#text-form)); with `--function`, the module of the
+selected functions does not compile.
 
 ## Three questions to try
 
@@ -143,12 +148,33 @@ These are cache keys, so repeated identical calls appear once. Identities are
 local to each attempt. On failure, the map contains only completed selections
 and the diagnostic context gives the rejected request when available.
 
+## Annotated source
+
+`tools/annotate_ir.py` shows a program as Cython's annotate view does: each source line,
+then the typed-IR instructions that carry its line, each followed by the LLVM lines that
+lowering emitted for it. A line's heading counts its runtime calls (LLVM calls of `pys_`
+functions) and joins its instructions' [effects](typed-ir.md#effects).
+
+```sh
+python3 tools/annotate_ir.py tools/inspection_examples/score_samples.py
+python3 tools/annotate_ir.py PROGRAM.py --html /tmp/annotated.html
+```
+
+`--html` writes one self-contained page whose lines are shaded by their runtime calls, and
+`--json` the records. The hosted compiler compiles the program once in a worker, with line
+tables and the IR check; the program is not run. The typed IR is what lowering prints, and the
+LLVM IR is lowering's output before LLVM optimizes it. An instruction with no line of its own
+(line 0) is shown with the one before it. Only the program's own file is annotated.
+
 ## Reading the report accurately
 
 - **Locations:** diagnostics retain the compiler's file and line directly.
-  Function snapshots link to the function's definition. Instructions do not
-  currently retain source spans; no column or exact instruction location is
-  inferred from LLVM text.
+  Function snapshots link to the function's definition. Each instruction's
+  `location` is the file and line of the statement it implements, decoded as the
+  function's but with `precision: "line"`; prologue code has its function's
+  definition line ([locations](typed-ir.md#locations)). No column or span is
+  recorded. A snapshot's `files` lists the program's source files in the order the
+  compiler numbers them, which `typed_ir_text.py print --locations` follows.
 - **Types:** signatures and operands preserve Pystachy's native type spellings,
   which can expose distinctions such as `int`, `int+`, `dyn` and closed unions.
 - **Effects:** function summaries come from the compiler's last analysis and may
@@ -284,7 +310,9 @@ Diagnostic codes are deliberately coarse in this prototype:
 An ordinary rejection is not automatically a compiler defect. The existing text
 message and specialization notes remain the explanation; the code provides a
 stable category, not one unique identifier for every language restriction. The
-tool stops at the compiler's first terminal diagnostic and adds no error recovery.
+tool stops at the compiler's first terminal diagnostic and adds no error recovery;
+the [rejection survey](porting.md#survey-a-programs-rejections) lists further
+rejections of a program by compiling a copy with the rejected functions stubbed.
 An unavailable input also retains `PYS0001`, with phase `input`, but has outcome
 `error` rather than a language rejection. An existing non-regular input produces
 `PYS9001` in phase `input` without invoking the compiler.

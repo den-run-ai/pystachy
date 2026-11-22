@@ -1,0 +1,6 @@
+TestThings.test_classes.<locals>.Point(x=1, y=0) True 3 <class '__main__.TestThings.test_classes.<locals>.Point'>
+caught MyError TestThings.test_classes.<locals>.MyError boom
+Color.RED Color.BLUE [<Color.RED: 1>, <Color.BLUE: 2>] RED
+sub base 2
+ok TestThings.test_classes
+[exit 0]

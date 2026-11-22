@@ -6,10 +6,12 @@ import PystachyAlias
 import PystachyCompanion
 import PystachyAccess
 import PystachyInt
+import PystachyWasmFrame
 import PystachyInline
 import PystachyStorage
 import PystachyPipeline
 import PystachyShape
+import PystachyDominance
 
 /- Fail the build if the public guarantees depend on an admitted proof, a
 custom assumption, or native computation trusted by the kernel. The three
@@ -17,7 +19,8 @@ allowed axioms are Lean's standard logical axioms, not assumptions about IR. -/
 open Lean in
 run_cmd do
   let allowed := #[``propext, ``Classical.choice, ``Quot.sound]
-  for theoremName in #[``PystachyBoundary.check_iff,
+  for theoremName in #[``PystachyWasmFrame.accepted_frame,
+      ``PystachyBoundary.check_iff,
       ``PystachyLayout.checked_projection, ``PystachyLayout.accepted_layout_projection,
       ``PystachyAlias.accepted_reference_roundtrip, ``PystachyAlias.accepted_alias_write,
       ``PystachyAlias.accepted_traces_reference, ``PystachyAlias.accepted_root_chain,
@@ -59,7 +62,12 @@ run_cmd do
       ``PystachyShape.checkBlock_sound, ``PystachyShape.distinct_sound,
       ``PystachyShape.covers_sound, ``PystachyShape.accepted_wellFormed,
       ``PystachyShape.accepted_single_definition,
-      ``PystachyShape.accepted_terminator_last] do
+      ``PystachyShape.accepted_terminator_last,
+      ``PystachyDominance.isAnc_sound, ``PystachyDominance.walk_dominated,
+      ``PystachyDominance.blockMap_sound, ``PystachyDominance.lookup_sound,
+      ``PystachyDominance.definedBefore_sound, ``PystachyDominance.definedAtEnd_sound,
+      ``PystachyDominance.accepted_defined_before_use,
+      ``PystachyDominance.accepted_phi_defined] do
     let axioms ← collectAxioms theoremName
     for axiomName in axioms do
       unless allowed.contains axiomName do

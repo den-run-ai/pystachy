@@ -202,6 +202,16 @@ scopelib.keep(outer())
                 forced, _ = self.compile(source, full=True)
                 self.assertEqual(ir, forced)
 
+    def test_percent_padding_limits_numeric_boxes(self):
+        source = 'from _pystachy_percent import percent_format\nprint(percent_format("%+08d", 7))\n'
+        ir, _ = self.compile(source, helper=False)
+        bodies = functions(ir)
+        output = bodies["@f._pystachy_percent$_output"]
+        # The settings can still acquire companions as they enter the typed helper.
+        self.assertLessEqual(len(BOXING.findall(output)), 3)
+        padding = bodies["@f._pystachy_percent$_pad_output"]
+        self.assertLessEqual(len(BOXING.findall(padding)), 2)
+
     def test_tomllib_flags_keep_typed_private_storage(self):
         source = 'import tomllib\nprint(tomllib.loads("a.b = 1\\na.c = 2\\n[x]\\ny = 3"))\n'
         ir, generations = self.compile(source, helper=False)
@@ -308,15 +318,15 @@ print(c.step('abc'), c.pos)
         self.assertIn("", final.idoff)
         for fn in final.fns:
             if final.fn_home(fn.f) == "":
-                self.assertEqual(fn.lazyflag, {})
-                self.assertEqual(fn.lazybit, {})
+                self.assertEqual(fn.build.lazyflag, {})
+                self.assertEqual(fn.build.lazybit, {})
         for body in self.main_functions(final, ir).values():
             self.assertIsNone(BOXING.search(body))
             self.assertNotIn(".box.", body)
         # The same read/write-back shape still uses main's field-sharing optimization
         # in a module that tracks identity, rather than disabling that optimization.
         _, tracked = self.compile("# pystachy: dynamic-any\n" + source)
-        self.assertTrue(any(fn.lazyflag for fn in tracked[-1].fns if fn.f.ll == "@m.Cursor.step"))
+        self.assertTrue(any(fn.build.lazyflag for fn in tracked[-1].fns if fn.f.ll == "@m.Cursor.step"))
 
     def test_promoting_literals_and_chained_stores_follow_identity_scope(self):
         source = """# pystachy: python-int
@@ -464,6 +474,38 @@ print(p.step('def'), inertlib.decode('1000'))
                 self.assertIsNone(BOXING.search(functions(ir)[fn.f.ll]))
         baseline, _ = self.compile(source, hints=False)
         self.assertIn("%C.inertlib$Cursor = type {i64, ptr}", baseline)
+
+    def test_arithmetic_arguments_keep_hinted_kernel(self):
+        source = "# pystachy: dynamic-any\nimport inertlib\nprint(inertlib.mandel(5, 3, 12))\n"
+        helper = "# pystachy: identity-inert\n" + (ROOT / "bench/mandel.py").read_text().split("img = mandel")[0]
+        ir, generations = self.compile(source, helper)
+        self.assertEqual([g.idevent for g in generations], [""])
+        self.assertIn("inertlib", generations[-1].idhint)
+        kernel = "@f.inertlib$mandel"
+        self.assertIsNone(BOXING.search(functions(ir)[kernel]))
+        baseline, _ = self.compile(source, helper, hints=False)
+        self.assertIn("@pys_dyn_float_box(", functions(baseline)[kernel])
+
+    def test_observable_inputs_restore_unhinted_ir(self):
+        source = "# pystachy: dynamic-any\nimport inertlib\nprint(inertlib.check(float('nan')))\n"
+        prelude = "# pystachy: identity-inert\n"
+        cases = [
+            ("", "y = x\n    return bool(y)"),
+            ("", "return x in (x,)"),
+            ("", "return bool(+x)"),
+            ("def observe(a: float) -> bool:\n    return a > 0\n", "return observe(x)"),
+            ("saved = 1.5\n", "global saved\n    saved = x\n    return True"),
+            ("", "def capture() -> float:\n        return x\n    return capture() > 0"),
+            ("class Peer:\n    def __eq__(self, y: float) -> bool:\n        return y > 0\n", "return Peer() == x"),
+            ("def range(a: float) -> list[int]:\n    return [int(a)]\n", "for i in range(x):\n        pass\n    return False"),
+        ]
+        for extra, body in cases:
+            with self.subTest(body=body):
+                helper = prelude + extra + "def check(x: float) -> bool:\n    " + body + "\n"
+                ir, generations = self.compile(source, helper)
+                self.assertTrue(generations[0].idevent)
+                baseline, _ = self.compile(source, helper, hints=False)
+                self.assertEqual(ir, baseline)
 
     def test_json_keeps_typed_parser_without_numeric_companions(self):
         source = (ROOT / "bench/pyperformance/json_loads.py").read_text()

@@ -1,0 +1,22 @@
+'000000' '007\x00' 4302 10 ValueError 'Exceeds the limit (4300 digits) for integer string conversion: value has' 140
+'000000' '07 \x00' 4303 10 ValueError 'Exceeds the limit (4300 digits) for integer string conversion: value has' 140
+'000000' '\t\n\x00x' 4305 10 ValueError 'Exceeds the limit (4300 digits) for integer string conversion: value has' 140
+'000000' '02\x00 ' 4303 3 ValueError 'Exceeds the limit (4300 digits) for integer string conversion: value has' 140
+'000000' '001\x00' 4302 0 ValueError 'Exceeds the limit (4300 digits) for integer string conversion: value has' 140
+'-00000' '007\x00' 4303 10 ValueError 'Exceeds the limit (4300 digits) for integer string conversion: value has' 140
+'000000' '007x' 4302 10 ValueError "invalid literal for int() with base 10: '0000000000000000000000000000000" 240
+'000000' '07 x' 4303 10 ValueError "invalid literal for int() with base 10: '0000000000000000000000000000000" 240
+'000000' '07_\x00' 4303 10 ValueError "invalid literal for int() with base 10: '0000000000000000000000000000000" 240
+'000000' '007_' 4302 10 ValueError "invalid literal for int() with base 10: '0000000000000000000000000000000" 240
+'000000' '007\x00' 4302 16 ValueError "invalid literal for int() with base 16: '0000000000000000000000000000000" 240
+'000000' '0007' 4301 16 7
+'000000' '007\x00' 4301 10 ValueError "invalid literal for int() with base 10: '0000000000000000000000000000000" 240
+'000000' '0007' 4300 10 7
+'12\x00' '12\x00' 3 10 ValueError "invalid literal for int() with base 10: '12\\x00'" 48
+'12 \x00' '12 \x00' 4 10 ValueError "invalid literal for int() with base 10: '12 \\x00'" 49
+'12\x0034' '2\x0034' 5 10 ValueError "invalid literal for int() with base 10: '12\\x0034'" 50
+'\x00' '\x00' 1 10 ValueError "invalid literal for int() with base 10: '\\x00'" 46
+'0x1f\x00' 'x1f\x00' 5 0 ValueError "invalid literal for int() with base 0: '0x1f\\x00'" 49
+'999999' '999\x00' 31 10 ValueError "invalid literal for int() with base 10: '999999999999999999999999999999\\" 76
+'999999' '9999' 30 10 999999999999999999999999999999
+[exit 0]

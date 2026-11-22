@@ -26,6 +26,7 @@ The example's typed and dynamic views share the same list; see the
 | To… | Read |
 | --- | --- |
 | Decide whether a boundary needs dynamic storage | [Admission and containment](#admission-and-containment) and the [library inventory](dynamic-any-boundaries.md) |
+| Assert that a module holds no dynamic value | [Static modules](#static-modules) |
 | Choose annotations and container layouts | [Selecting dynamic storage](#selecting-dynamic-storage) |
 | Pass values between typed and dynamic code | [The typed/dynamic contract](#the-typeddynamic-contract) |
 | Use classes, reducers and runtime argument packs | [Class values and type-keyed registries](#class-values-and-type-keyed-registries) |
@@ -68,6 +69,39 @@ requests and retained memory. Check CPython parity, GC stress, ordinary typed
 controls and a negative control that restores the old footprint. Preserve the
 existing [checked identity fallback](#identity-scope) until a narrower proof covers
 the same observable behavior. Promoting-int policy remains independent.
+
+## Static modules
+
+A module that must hold no `Any` value can say so. Put this comment before any code:
+
+```python
+# pystachy: static
+import json
+
+doc = json.loads('{"rows": [1, 2]}')  # typed JSONValue: accepted
+print(doc["rows"][1])
+```
+
+In that module, an expression that is an `Any` value, or a container or `Callable` of
+them, is a compile error at its line, and so is a typed value that would be boxed
+because what takes it is annotated `Any` in an opt-in module. The comment only
+rejects: a module that compiles with it compiles to the same code without it.
+`typing.Any` keeps its [inference meaning](language/typing.md#supported-types) there,
+and [closed unions](language/typing.md#operations-on-closed-unions) hold mixed values.
+
+| In a static module | Result |
+| --- | --- |
+| `tomllib.loads(text)` | Rejected: the document is a `dict` of `Any` values |
+| `logging.warning("%d items", n)` | Rejected: the arguments would be boxed |
+| `json.loads(text)`, an `int \| str` union, a template's `Any` parameter | Accepted: no dynamic value |
+| `# pystachy: dynamic-any` in the same file | Rejected: the two comments contradict |
+
+The check is strict on purpose: it has no rule yet for a value that is narrowed with
+`isinstance()` as soon as it arrives, so code that reads an opt-in library's `Any`
+results belongs in a module without the comment. It also does not see numeric identity
+boxes, which a module inside an opt-in module's [import closure](#identity-scope)
+still allocates. Fixtures: `tests/programs/inference/static_module.py` and
+`tests/errors/inference/static_*.py`.
 
 ## Promoting integers
 
@@ -141,6 +175,13 @@ objects as it passes between typed functions and dynamic code. The decoder
 promotes integer tokens beyond 64 bits without a caller `python-int` pragma; the
 decimal digit limit and fixed-width scanner indices still apply. See the
 [JSON prototype](json.md#in-modules-that-opt-in-to-dynamic-any).
+
+A module that does not opt in makes no `Any` value, but it may hold one that an
+opt-in module returned. `json.dumps()` of such a variable, attribute, item or call
+result uses the same encoder there, `default=` included, so a module that only
+serializes a result needs no opt-in
+(`tests/programs/inference/dynany_dumps_caller.py`). `json.loads()` and a display
+keep `JSONValue` storage in that module.
 
 Without `sort_keys`, the encoder observes a `default()` callback's changes to later
 values and deletion of later keys. Structural changes can differ from CPython's
@@ -769,6 +810,31 @@ no range, as CPython's does (`tests/programs/inference/dynany_range_eq_other.py`
 `Any` takes any operand, also between typed objects of its class
 (`tests/programs/inference/dynany_eq_any_param.py`).
 
+The library's `deque`, `bytearray`, `defaultdict`, `OrderedDict`, `Counter` and `weakref.ref`
+decline a value of another kind, as CPython's methods return `NotImplemented` for it: a deque
+takes deques, a bytearray takes bytearrays, a weak reference takes weak references, and each
+mapping takes dicts and these mappings (`dynany_deque_eq_other.py`,
+`dynany_bytearray_eq_other.py`, `dynany_counter_eq_other.py`, `dynany_ordereddict_eq_other.py`,
+`dynany_defaultdict_eq_other.py`, `dynany_weakref_eq_other.py` and
+`dynany_container_eq_mixed.py` in `tests/programs/inference/`). A `types.MappingProxyType` is
+one of these mappings: CPython's compares its dict with the other value, so it is equal to a
+dict or a mapping of equal items and declines a value that is no mapping
+(`tests/programs/inference/dynany_mappingproxy_eq.py`). An object of another class then answers
+with its own `__eq__`, which is given the view where CPython gives it the dict
+(`tests/deviations/dynany_mappingproxy_eq_object.py`).
+
+Two of these containers of one kind compare their items, each read in its own layout: deques
+of different item types, and a mapping with a dict or with a mapping of another class or item
+type. Two `OrderedDict`s also compare the order of their keys, and two `Counter`s their counts,
+a missing count being zero (`dynany_deque_eq_items.py`, `dynany_deque_two_types.py`,
+`dynany_mapping_eq_dict.py`, `dynany_mapping_eq_mixed.py`, `dynany_mapping_any_items.py` and
+`dynany_mappingproxy_eq.py` in `tests/programs/inference/`). The compiler emits these cases
+itself, behind exact `DynType` guards: it does not compile the library methods' bodies for an
+`Any` operand, which would call the operand's typed storage through a dispatcher. Item layouts
+that `==` does not pair in a module that opts in, such as a mapping of typed lists and a dict
+of `Any` values, still raise the unsupported-comparison `TypeError`, a limit that #803 tracks
+(`tests/deviations/dynany_mapping_eq_nested.py`).
+
 One whose parameter has no annotation, or
 `object`, is compiled for an `Any` operand there; where its body does not compile for one (a typed
 list compared with an `Any` value's field), the compiler also tries the body against the
@@ -862,9 +928,12 @@ raise an explicit `TypeError` until runtime insertion order is supported (#489),
 deferred text conversion; `hasattr` and `dir` use the normal assignment flags. Iteration
 already in progress retains its dictionary-size mutation check. This boundary is recorded
 in `tests/deviations/dynany_cmp_field_reflection.py`.
-Custom `__getattr__`/`__getattribute__` methods remain explicit compile-time rejections,
-not new supported lookup paths. This matrix does not establish a complete comparison
-contract or implement the broader operation-table design in #803.
+A custom `__getattribute__` remains an explicit compile-time rejection, and so does an
+object of a class with `__getattr__` as an `Any` value: typed code calls that method
+([attribute fallback](language/semantics.md#attribute-fallback)), but the lookups of an
+`Any` value do not, so neither is a new supported lookup path here. This matrix does not
+establish a complete comparison contract or implement the broader operation-table design
+in #803.
 
 ### Comparison selection and failures
 
@@ -1478,7 +1547,8 @@ or of a class that takes it as its role. Its control-flow proof covers copies, p
 branches, simultaneous phis, loops, exception edges, `pys_dyn_isa` tests and
 class dispatchers' switches, losing facts on rebinding and refusing to infer facts
 for escaping storage. Identity comparisons use `dyn.raw` for opaque bits, which
-the verifier permits only in direct integer equality comparisons. See the
+the verifier permits only as a cast to an int that a direct integer equality comparison
+reads. See the
 [IR contracts](typed-ir.md) for the exact scope and remaining assumptions.
 
 The optional
@@ -1536,7 +1606,15 @@ module's dependencies.
 
 Calls may exchange strings, bytes, bools, `None`, boxed values and
 representations that already carry no numeric companion, including recursive `JSONValue`
-storage. Numeric scalars, scalar unions and numeric lists do not qualify.
+storage. A tracked caller can also pass plain `int` and `float` arguments to a
+hinted module's top-level, nongeneric function when it takes only numeric arguments
+(including bools) and returns an already eligible type. Each numeric argument must
+be used only directly in builtin range loops, primitive `+`, `-`, `*`, `/` or
+value comparisons. The compiler checks the operand types when emitting the body.
+Forwarding an argument, observing its identity, a shadowed range, or an unproved
+operation restores normal tracking. This check is available when the crossing is
+known before the callee body is built. Numeric scalar returns, scalar unions and
+numeric lists keep the usual fallback.
 
 A hinted class may
 cross directly as a typed handle; observing its numeric fields, boxing it, mixing tracked and

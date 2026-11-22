@@ -40,7 +40,7 @@ print(h.box.value)
 
 class GenericStateTests(unittest.TestCase):
     def setUp(self):
-        self.roots = [diagnostics.FILES, diagnostics.DYNFILES, diagnostics.IDINERT,
+        self.roots = [diagnostics.FILES, diagnostics.DYNFILES, diagnostics.STATICFILES, diagnostics.IDINERT,
                       diagnostics.INTFILES, diagnostics.INTSPANS, diagnostics.CAPTURED,
                       LAMBDAS, driver.RENAMED, driver.LIBS, driver.LINKDL,
                       GLUE, SPECSHOW, loader.ENUMCLASSES]

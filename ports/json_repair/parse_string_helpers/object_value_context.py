@@ -1,4 +1,3 @@
-# pystachy: dynamic-any
 from collections.abc import Callable
 
 from ..utils.constants import STRING_DELIMITERS  # noqa: TID252

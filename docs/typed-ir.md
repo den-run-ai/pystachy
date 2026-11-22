@@ -59,13 +59,24 @@ stages in order, for both ordinary programs and `runtime.py`:
 | `discover_program(prepared)` | Reachable functions, module initializers, specializations and helpers produce typed `IFn` bodies. C declarations become validated ABI plans with their dependencies registered. Empty-container holes resolve as types become known; a pending inference retry prevents completion. |
 | `analyze_program()` | Callback versions and the function index are complete. Effect summaries and the recursion policy precede requested typed-IR verification. |
 | `optimize_program()` | Enabled typed-IR passes run under their existing prerequisites, preserved facts and invalidation contracts. Exception regions remain in pre-lowering form. |
-| `finalize_program()` | Required exception edges and tuple-return ABI decisions are ready for the backend. Runtime-module and CPython-export admission checks have passed. Function bodies, ABI plans and representation tables remain available for inspection. |
+| `finalize_program()` | Required exception edges, tuple-return ABI decisions and the key kinds of holes (`Gen.key_kinds`) are ready for the backend, which asks the frontend nothing. Runtime-module and CPython-export admission checks have passed. Function bodies, ABI plans and representation tables remain available for inspection, and print as a module that [compiles](#text-form). |
 | `lower_program()` | Each function's layout reads first become machine operations (`Gen.machine_ir`, see [machine lowering](#machine-lowering)). Function, adapter and module lowering serialize LLVM. Function bodies are consumed; summaries remain available. |
 
 `Gen.typed_program(modules)` runs through finalization without calling
 `lower_program`. This is an internal, attempt-local boundary for tools that need
 the whole finalized typed program before function/module LLVM lowering. `Gen.program`
 preserves the ordinary complete-compilation entry point by calling both.
+
+The driver's `compile_program(path, source, dirs, ext)` returns LLVM text for
+the native CLI, JIT and AOT. A caller supplying `backend=emit` receives the
+concrete return type of `emit(gen)`. The driver calls it with the current
+attempt's finalized functions and module tables. A backend can read those
+records and return its artifact directly. If it declines a feature, it can
+call `gen.lower_program()` once, while the records are still intact, to use
+LLVM in the same attempt. Inference retries discard the attempt. Emitters
+should publish bytes, files or diagnostics only after `compile_program` returns.
+The [Wasm source compiler](../tools/wasm_from_source.py) returns either module
+bytes or a named refusal carrying optional fallback LLVM text.
 
 `PipelineState` enforces the stage order. It rejects premature or repeated
 lowering, repeated stages, and attempts to continue a stage that failed or
@@ -132,11 +143,15 @@ static branch need not be type-checked. The [typing](language/typing.md) and
 | Class | Holds |
 |---|---|
 | `Val` | An operand's spelling (`v`) and canonical static type (`t`) |
-| `Ins` | An operation, result type, immediate data, typed operands, result numbers and labels |
+| `Ins` | An operation, result type, immediate data, typed operands, result numbers, labels and source line |
 | `Blk` | A basic block's label, instruction list and enclosing exception handler |
 | `Loop` | Loop shape, sequences and indices used by loop optimizations |
 | `Try` | The source-level shape of a try statement; LLVM lowering uses block handler metadata |
 | `IFn` | Function signature, parameter indices, entry slots, blocks, loops, handlers and effect summary |
+
+`IFn.build` holds what the frontend keeps of a body while it builds it: lazy field locals,
+numeric identity tracking and exception-binding indexes (`FnBuild` in
+[symbols](../src/pystachy_compiler/symbols.py)). No pass, analysis or lowering reads it.
 
 Types are canonical strings, such as `list[int]`, `dict[str,int]`, `opt[str]` and
 `union[int,str]`; `exc` is an exception, `exctype` its class (the exception itself, as a
@@ -170,9 +185,9 @@ holds an `A` have every effect, as an `O` does.
 
 Identity comparisons use a separate pure `dyn.raw` operation: its empty `s` claims no
 Python type, and its `%slot` result is only opaque payload bits. With
-`PYSTACHY_IRCHECK=1`, those bits may appear only as a direct integer `==` or `!=`
-operand; no arithmetic, pointer conversion, store, call, phi or select may consume
-them, and the operation's internal address cannot escape. This distinguishes a
+`PYSTACHY_IRCHECK=1`, those bits may appear only as a `bits` [cast](#casts) to an `int`, which
+only a direct integer `==` or `!=` may read; no arithmetic, pointer conversion, store, call,
+phi or select may consume them, and the operation's internal address cannot escape. This distinguishes a
 float's or reference's identity bits from a typed integer extraction while keeping
 the same LLVM loads. A live, non-null box remains a frontend obligation. The result
 does not establish that its source has any particular dynamic type.
@@ -198,7 +213,7 @@ conditions that refer to a previous phi value, a class test that admits None, a
 base's test before a subclass's read and a switch on another box's class number.
 A bounded model compares its verdicts on class tests and dispatch with a concrete
 interpreter. [A test](../tools/test_typed_dynamic_tables.py) checks the runtime facts
-it copies (DynType kinds and flags, builtin DynTypes, the class number word and
+it copies (DynType kinds and flags, builtin DynTypes, the class number field and
 constant boxes) against runtime.c, as it does the Lean bridge's.
 
 In a module that opts in to [promoting ints](python-int.md), an `int` value is `int+`, an LLVM
@@ -211,7 +226,7 @@ past the `n` items: a `tuple.load` or `tuple.store` whose `k` is that slot and w
 `int+` reaches it (`tslots`, `hislot`), and a read of it is guarded by its item's slot
 (`big_item`). Descriptors give such an item as `i`: such a tuple reaches the runtime narrowed
 (`to_slot`), and its `repr()`, comparisons and `hash()` are compiled item by item.
-An `Ins` uses only the fields its operation needs:
+An `Ins` uses only the fields its operation needs, and every op has a `line`:
 
 | Field | Meaning |
 |---|---|
@@ -221,6 +236,7 @@ An `Ins` uses only the fields its operation needs:
 | `r` | Result/value numbers reserved for lowering |
 | `a` | Typed operands in evaluation order |
 | `b` | Successor labels, phi predecessors or invoke edges |
+| `line` | Source location: the line of the statement it implements ([locations](#locations)) |
 
 ### Operand values
 
@@ -264,6 +280,7 @@ specialized classes are supplied by the frontend; the IR does not turn them into
 | Fixed tuple slots | `tuple.load`, `tuple.store` |
 | Object layout addresses | `field.addr` |
 | Container payload conversions | `slot.pack`, `slot.unpack` |
+| A value read at another type of its LLVM type, which lowering erases | `cast` |
 | Fresh empty result layout | `empty.kind` (typed dict/set key kind, or a deferred result hole) |
 | Closed union reads | `union.tag`, `union.payload`, `union.raw` |
 | Dynamic box reads | `dyn.type`, `dyn.payload`, `dyn.raw` |
@@ -282,79 +299,237 @@ specialized classes are supplied by the frontend; the IR does not turn them into
 
 Each row of `OPS` gives an operation's effects, how many operands, result numbers and labels
 it holds, which of the fields `t` (result type), `s` (text), `k` (integer) and `x` (descriptor)
-it may set, and which result number names its value for the passes. `IROPS`, the result
-counts and the value index are read from those rows. With `PYSTACHY_IRCHECK=1` the verifier
-holds every instruction to its row before the checks specific to its operation run.
-`tools/typed_ir_ops.py --write` writes this table from the rows, and `--check` fails when
-it is out of date.
+it may set, which result number names its value for the passes, and the types of its operands
+and result. `IROPS`, the result counts and the value index are read from those rows. With
+`PYSTACHY_IRCHECK=1` the verifier holds every instruction to its row's shape and then to its
+types, before the checks specific to its operation run, as MLIR's operation definitions
+generate a verifier from declared type constraints. `tools/typed_ir_ops.py --write` writes
+the tables below from the rows, and `--check` fails when they are out of date.
+
+A row names each of `s`, `k` and `x` for what it means to the operation, as MLIR's operations
+name their attributes: `num.cmp`'s `s` is its `operator`, `rt`'s are its `entry`, `hole` and
+`descriptor`, `field.addr`'s `k` its member `index`. The [text form](#text-form) writes each
+field by that name, and the comment above `OPS` says what each name means. An `operator`
+selects an arithmetic, conversion or comparison operation's computation (`ovf`'s `+`,
+`scalar.bin`'s `fmul`, `num.cmp`'s `<`), and the text writes it bare, as LLVM and MLIR write a
+comparison's predicate.
+
+The types column reads `OPERAND, ... -> RESULT`. Each entry is a type (`bool`, `%slot`), a
+type class from the second table, or holds a variable such as `$T`. A variable is the same
+type wherever its row names it, alone or inside a type (`&$T`, `list[$E]`), and its class
+follows one of its names (`$T:native`); `select` is `bool, $T:scalar, $T -> $T`. The last
+operand's entry holds for any further operands the count admits, so `switch` is `int, int`.
+A runtime call's types are an instance of its `RUNTIME` signature (see
+[runtime calls](#runtime-calls)) and a compiled call's its callee's. The column constrains
+each instruction's own operand types.
+
+An operand's type is how its instruction reads the value. In MLIR a value has one type, which
+every use shares, and an op converts it. With `PYSTACHY_IRCHECK=1`, after each operation's own
+checks, the verifier requires an operand that names a result, a parameter or a slot's register
+to read it at the type its definition gives, or by one of the views of the third table
+(`TYPE_VIEWS`): readings of the same bits that no op writes yet, such as a runtime call's
+`%slot` result read as `int` or an empty list's `list[?]` read as `list[int]`. Any other
+difference is an error: an `int` read as a `float`, a `list[int]` as a `list[str]`, a class
+as an unrelated class, another op's `%ptr` as a `str`. A [cast](#casts) makes the reading
+explicit instead.
+An address has a type of its own, `&T`, and a packed slot (an eight-byte word that holds a
+`T`) the type `*T`, so no view reads one as the other: a slot's register, `field.addr` and the
+identity result's `%idret` define addresses, which memory ops, compiled calls and phis read.
+An op that makes a packed slot gives it its type: `slot.pack`, a list read, a tuple item's
+`tuple.load`, a union's or dynamic box's payload. `%slot` remains for eight bytes that claim no
+type: a box's payload bits, a raw identity word, a word that a runtime call returns as an
+`int`, which `slot.unpack` then reads through `%slot`. A value whose definition gives only a
+machine type, a runtime type variable or a placeholder is read at related types by every
+operand that names its own. Of the views that narrow, `opt[U]` read as `U` needs a proof: with
+`PYSTACHY_IRCHECK=1` the closed-union proof must show the value not `None` where it is read (see
+[reads of optional values](#reads-of-optional-values)). The others (`bits` of a runtime call's
+word, a derived class, other union members) take the frontend's word for a test before them:
+they are the casts that MLIR would write as ops, and the fourth table's kinds of `cast` write
+some of them so.
+
+Some result numbers only name an intermediate LLVM value of their operation's lowering:
+`ovf`'s `{i64, i1}` pair, the three addresses of `list.load`, the address of a `tuple.load`.
+A row lists those as temporaries (`OP_TEMPS`), and the verifier rejects an operand that names
+one, whatever block defines it.
 
 <!-- typed-ir-ops: begin (written by tools/typed_ir_ops.py --write) -->
 
-| Operation | Effects | Operands | Results | Labels | Fields | Value |
-|---|---|---|---|---|---|---|
-| `slot` | entry storage | 0 | 1 | 0 | `t`, `s`, `k` | none |
-| `rt` | per instruction | 0 or more | 0 or 1, by signature | 0, or 2 as an invoke | `t`, `s`, `k`, `x` | first |
-| `call` | per instruction | 0 or more | 0 or 1, by signature | 0, or 2 as an invoke | `t`, `s`, `x` | none |
-| `icall` | per instruction | 1 or more | 0 or 1, by signature | 0, or 2 as an invoke | `t` | none |
-| `init` | per instruction | 0 | 0 | 0, or 2 as an invoke | `s` | none |
-| `br` | ends its block | 0 | 0 | 1 | none | none |
-| `cbr` | ends its block | 1 | 0 | 2 | none | none |
-| `switch` | ends its block | 2 or more | 0 | one per operand | none | none |
-| `check` | ends its block, `R` | 1 | 0 | 1 | `s`, `x` | none |
-| `ret` | ends its block | 0 to 1 | 0 | 0 | none | none |
-| `ret.none` | ends its block | 0 | 0 | 0 | none | none |
-| `raise` | ends its block, `R`, `N` | 2 | 0 | 0 | `s` | none |
-| `unreachable` | ends its block | 0 | 0 | 0 | none | none |
-| `phi` | none | 1 or more | 1 | one per operand | `t` | none |
-| `select` | none | 3 | 1 | 0 | `t` | first |
-| `ovf` | none | 2 | 3 | 0 | `t`, `s` | none |
-| `list.load` | `rL` | 2 | 4 | 0 | `t` | none |
-| `list.store` | `rL`, `wL` | 3 | 3 | 0 | none | none |
-| `list.len` | `rL` | 1 | 1 | 0 | `t` | first |
-| `alloc.fixed` | `A` | 0 | 1 | 0 | `t` | none |
-| `vtuple.make` | `A` | 0 or more | 1 | 0 | `t` | none |
-| `mem.load` | per instruction | 1 | 1 | 0 | `t` | first |
-| `mem.store` | per instruction | 2 | 0 | 0 | none | none |
-| `mach.load` | per instruction | 1 | 1 | 0 | `t`, `s` | first |
-| `mach.store` | per instruction | 2 | 0 | 0 | `s` | none |
-| `mach.addr` | none | 2 | 1 | 0 | `t`, `s`, `k` | first |
-| `tuple.load` | `rL`, `rD`, `rO` | 1 | 2 | 0 | `t`, `s`, `k` | each |
-| `tuple.store` | `wL`, `wD`, `wO` | 2 | 1 | 0 | `s`, `k` | each |
-| `field.addr` | none | 1 | 1 | 0 | `t`, `k` | first |
-| `slot.pack` | none | 1 | 1 | 0 | `t` | first |
-| `slot.unpack` | none | 1 | 1 | 0 | `t` | first |
-| `scalar.bin` | none | 1 to 2 | 1 | 0 | `t`, `s`, `x` | first |
-| `scalar.cast` | none | 1 | 1 | 0 | `t`, `s` | first |
-| `scalar.cmp` | none | 2 | 1 | 0 | `t`, `s` | first |
-| `num.cast` | none | 1 | 1 | 0 | `t` | first |
-| `num.cmp` | none | 2 | 1 | 0 | `t`, `s` | first |
-| `int.ucmp` | none | 2 | 1 | 0 | `t`, `s` | first |
-| `ptr.cmp` | none | 2 | 1 | 0 | `t`, `s` | first |
-| `empty.kind` | `wD` | 1 | 1 | 0 | `k` | none |
-| `union.tag` | `rL`, `rD`, `rO` | 1 | 1 | 0 | `t` | none |
-| `union.payload` | `rL`, `rD`, `rO` | 1 | 2 | 0 | `t`, `s` | second |
-| `union.raw` | `rL`, `rD`, `rO` | 1 | 2 | 0 | `t` | second |
-| `dyn.type` | none | 1 | 1 | 0 | `t` | first |
-| `dyn.payload` | none | 1 | 2 | 0 | `t`, `s` | second |
-| `dyn.raw` | none | 1 | 2 | 0 | `t` | second |
-| `big.make` | none | 2 | 2 | 0 | `t` | second |
-| `big.lo` | none | 1 | 1 | 0 | `t` | first |
-| `big.hi` | none | 1 | 1 | 0 | `t` | first |
-| `landing` | ends its block | 1 | 2 | 1 | `t` | none |
-| `throw` | ends its block, `R`, `N` | 1 | 0 | 0 | none | none |
-| `exc.match` | none | 2 | 2 | 0 | `t` | none |
-| `gen.start` | ends its block, `A` | 1 | 0 | 1 | none | none |
-| `gen.yield` | ends its block, `U` | 1 to 3 | 2 | 1 | `k` | none |
-| `gen.ret` | ends its block | 0 to 2 | 2 | 0 | none | none |
-| `gen.promise` | none | 0 to 1 | 1 | 0 | `t` | none |
-| `gen.resume` | `U` | 1 | 0 | 0, or 2 as an invoke | none | none |
-| `gen.drop` | `A`, `I`, `rL`, `wL`, `rD`, `wD`, `rO`, `wO`, `rG`, `wG`, `rF`, `wF` | 1 | 0 | 0 | none | none |
+| Operation | Effects | Operands | Results | Labels | Fields | Value | Types |
+|---|---|---|---|---|---|---|---|
+| `slot` | entry storage | 0 | 1 | 0 | `t`, `s:name`, `k:kind` | none | `-> any` |
+| `rt` | per instruction | 0 or more | 0 or 1, by signature | 0, or 2 as an invoke | `t`, `s:entry`, `k:hole`, `x:descriptor` | first | per instruction |
+| `call` | per instruction | 0 or more | 0 or 1, by signature | 0, or 2 as an invoke | `t`, `s:callee`, `x:hint` | none | per instruction |
+| `icall` | per instruction | 1 or more | 0 or 1, by signature | 0, or 2 as an invoke | `t` | none | per instruction |
+| `init` | per instruction | 0 | 0 | 0, or 2 as an invoke | `s:module` | none | per instruction |
+| `br` | ends its block | 0 | 0 | 1 | none | none | none |
+| `cbr` | ends its block | 1 | 0 | 2 | none | none | `bool` |
+| `switch` | ends its block | 2 or more | 0 | one per operand | none | none | `int, int` |
+| `check` | ends its block, `R` | 1 | 0 | 1 | `s:message`, `x:key` | none | `bool` |
+| `ret` | ends its block | 0 to 1 | 0 | 0 | none | none | `return` |
+| `ret.none` | ends its block | 0 | 0 | 0 | none | none | none |
+| `raise` | ends its block, `R`, `N` | 2 | 0 | 0 | `s:exception` | none | `str, str` |
+| `unreachable` | ends its block | 0 | 0 | 0 | none | none | none |
+| `phi` | none | 1 or more | 1 | one per operand | `t` | none | `$T -> $T` |
+| `select` | none | 3 | 1 | 0 | `t` | first | `bool, $T:scalar, $T -> $T` |
+| `ovf` | none | 2 | 3: temporary, value, value | 0 | `t`, `s:operator` | none | `int, int -> int` |
+| `list.load` | `rL` | 2 | 4: value, temporary, temporary, temporary | 0 | `t` | none | `list[$E:item], int -> *$E` |
+| `list.store` | `rL`, `wL` | 3 | 3: temporary, temporary, temporary | 0 | none | none | `list[$E:item], int, *$E` |
+| `list.len` | `rL` | 1 | 1 | 0 | `t` | first | `list[$E:item] -> int` |
+| `alloc.fixed` | `A` | 0 | 1 | 0 | `t` | none | `-> layout` |
+| `vtuple.make` | `A` | 0 or more | 1 | 0 | `t` | none | `$E:velem -> vtuple[$E]` |
+| `mem.load` | per instruction | 1 | 1 | 0 | `t` | first | `&$T:native -> $T` |
+| `mem.store` | per instruction | 2 | 0 | 0 | none | none | `&$T:native, $T` |
+| `mach.load` | per instruction | 1 | 1 | 0 | `t`, `s:metadata` | first | `%ptr -> machine` |
+| `mach.store` | per instruction | 2 | 0 | 0 | `s:metadata` | none | `%ptr, machine` |
+| `mach.addr` | none | 2 | 1 | 0 | `t`, `s:element`, `k:inbounds` | first | `%ptr, int -> %ptr` |
+| `tuple.load` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t`, `s:item`, `k:index` | each | `ftuple -> packed` |
+| `tuple.store` | `wL`, `wD`, `wO` | 2 | 1: temporary | 0 | `s:item`, `k:index` | each | `ftuple, packed` |
+| `field.addr` | none | 1 | 1 | 0 | `t`, `k:index` | first | `class -> &$F` |
+| `slot.pack` | none | 1 | 1 | 0 | `t` | first | `native -> packed` |
+| `slot.unpack` | none | 1 | 1 | 0 | `t` | first | `packed -> native` |
+| `cast` | none | 1 | 1 | 0 | `t`, `s:operator` | none | `any -> any` |
+| `scalar.bin` | none | 1 to 2 | 1 | 0 | `t`, `s:operator`, `x:flags` | first | `$T:arith, $T -> $T` |
+| `scalar.cast` | none | 1 | 1 | 0 | `t`, `s:operator` | first | `bits -> bits` |
+| `scalar.cmp` | none | 2 | 1 | 0 | `t`, `s:operator` | first | `$T:bits, $T -> bool` |
+| `num.cast` | none | 1 | 1 | 0 | `t` | first | `numeric -> number` |
+| `num.cmp` | none | 2 | 1 | 0 | `t`, `s:operator` | first | `$N:number, $N -> bool` |
+| `int.ucmp` | none | 2 | 1 | 0 | `t`, `s:operator` | first | `int, int -> bool` |
+| `ptr.cmp` | none | 2 | 1 | 0 | `t`, `s:operator` | first | `ref, ref -> bool` |
+| `empty.kind` | `wD` | 1 | 1 | 0 | `k:hole` | none | `dictset` |
+| `union.tag` | `rL`, `rD`, `rO` | 1 | 1 | 0 | `t` | none | `union -> int` |
+| `union.payload` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t`, `s:member` | second | `union -> packed` |
+| `union.raw` | `rL`, `rD`, `rO` | 1 | 2: temporary, value | 0 | `t` | second | `union -> %slot` |
+| `dyn.type` | none | 1 | 1 | 0 | `t` | first | `dyn -> dyntype` |
+| `dyn.payload` | none | 1 | 2: temporary, value | 0 | `t`, `s:type` | second | `dyn -> packed` |
+| `dyn.raw` | none | 1 | 2: temporary, value | 0 | `t` | second | `dyn -> %slot` |
+| `big.make` | none | 2 | 2: temporary, value | 0 | `t` | second | `int, %ptr -> int+` |
+| `big.lo` | none | 1 | 1 | 0 | `t` | first | `int+ -> int` |
+| `big.hi` | none | 1 | 1 | 0 | `t` | first | `int+ -> %ptr` |
+| `landing` | ends its block | 1 | 2: temporary, temporary | 1 | `t` | none | `%addr -> exc` |
+| `throw` | ends its block, `R`, `N` | 1 | 0 | 0 | none | none | `exc` |
+| `exc.match` | none | 2 | 2: temporary, value | 0 | `t` | none | `exc, str -> bool` |
+| `gen.start` | ends its block, `A` | 1 | 0 | 1 | none | none | `str` |
+| `gen.yield` | ends its block, `U` | 1 to 3 | 2: temporary, temporary | 1 | `k:cleanup` | none | `%slot, %ptr, dyn` |
+| `gen.ret` | ends its block | 0 to 2 | 2: temporary, temporary | 0 | none | none | `%slot, %ptr` |
+| `gen.promise` | none | 0 to 1 | 1 | 0 | `t` | none | `gen -> %ptr` |
+| `gen.resume` | `U` | 1 | 0 | 0, or 2 as an invoke | none | none | `gen` |
+| `gen.drop` | `A`, `I`, `rL`, `wL`, `rD`, `wD`, `rO`, `wO`, `rG`, `wG`, `rF`, `wF` | 1 | 0 | 0 | none | none | `gen` |
+
+| Type class | Admits |
+|---|---|
+| `any` | any type |
+| `native` | a native value type: no machine type (%), address (&), packed slot (*) or descriptor (#) |
+| `scalar` | a native value type other than None, a machine scalar (%ptr, %byte, %i32, %slot) or a packed slot |
+| `machine` | a native value type other than None, %ptr, %byte, %i32, %slot or a packed slot |
+| `packed` | a packed slot *T of a native T, or %slot: eight bytes that claim no type |
+| `ref` | a native reference type or None |
+| `number` | int or float |
+| `numeric` | bool, int or float |
+| `arith` | bool, %byte, %i32, int or float |
+| `bits` | bool, %byte, %i32, int, float or %ptr |
+| `union` | a closed union of two or more distinct members, none of them optional |
+| `ftuple` | a fixed tuple |
+| `class` | a declared class |
+| `layout` | a declared class or a fixed tuple |
+| `velem` | a runtime-length tuple's element type |
+| `item` | a list's item type: one type, no machine representation |
+| `dictset` | a dict or a set |
+| `gen` | a generator |
+| `return` | the function's return type, or T where it is opt[T] of a reference T |
+
+| Type view | An operand of type U reads a value of definition type D where |
+|---|---|
+| `machine` | U is D's machine type: %ptr for a reference, an address &T or None (null), %slot for a packed slot *T or an int, %addr for a slot's address |
+| `bits` | D is %ptr, read as a reference or an address &T, or %slot, read as an int, a packed slot *T or an rt op's bool, where an rt op defines it (its RUNTIME result type) or an rt op's operand of a runtime type variable (*T, S) reads it; another op's word is read through a bits cast |
+| `instance` | D or U holds an empty container's placeholder (list[?], or opt[None] for a local first assigned None) or a runtime type variable (T K V S U R) that no binding replaced (Gen.instantiate), in an rt op's result or operand or where no class has its name: each stands for one type |
+| `alias` | one object by two types: a str and a bytes, an exc and its exctype, a recursive alias rec[A] and A's definition (or a union of fewer members stored in it), a set, a frozenset and an AbstractSet, a fixed tuple and a keyword record (kw[...]), a generator with and without its return type; inside brackets an int and an int+, and inside a tuple's a bool read as an int |
+| `int slot` | an int read as a packed slot *int, which holds its value, and back |
+| `optional` | D read as opt[D] of a reference D, None as any reference or opt[...], or opt[U] as U where the closed-union proof shows the value not None (ircheck.optional_reads) |
+| `class` | a class read as a class derived from it, as one of its bases or as a class derived from a base that has a common derived class with it; a closed union read as one with a common member |
+| `runtime bool` | an rt op's bool result, which the runtime ABI passes as an int, read as an int; an int read as an rt op's bool operand |
+| `method` | a bound method fn[m:C.f] or fn[d:f:C] read as its receiver C, and back; a closure fn[c:...] read as its env |
+| `builtin base` | an object of a class deriving from list or dict read as that container, list[T] or dict[K, V] as Gen.bview reads it, and back |
+
+| Cast kind | Reads |
+|---|---|
+| `bits` | a machine word, which its definition gives only that type, as a typed value: %ptr as a reference or an address &T, %slot as an int or a packed slot *T |
+| `object` | a %ptr as a closed union of classes: the object that a box of the union holds (Gen.cmp_object's phi), which only a ptr.cmp, a mach.load of its class word (an int or a %ptr) and member casts read |
+| `member` | an object cast's value as one of its union's classes or a class derived from one: Gen.cmp_alts makes one for each class it tells apart, beside the object cast, and only code that a test of the object's class leads to reads it |
+| `opaque` | a reference as a str, and back, in lib/_pystachy_copy.py, whose deep-copy memo keeps any reference as a str |
 
 <!-- typed-ir-ops: end -->
 
 "Per instruction" effects are a call's (its runtime entry's or its callee's summary) or a
 memory operation's (its address's): see [effects](#effects). An invoke is a call that an
 exception edge has made end its block.
+
+### Runtime calls
+
+A runtime function's `RUNTIME` signature may name type variables (see [effects](#effects)):
+`dict.getitem` is `*V:S,*K`, a dict and a packed key to a packed value. An `rt` instruction
+holds an instance of it, as every MLIR operand and result has a concrete type. Once a function
+is built, `Gen.instantiate` binds each variable to the type of the value that the first operand
+naming it reads, then `S`, the receiver, to the receiver's type and with it `T`, `K` and `V`,
+where nothing bound them, to what that holds, and writes the signature's types with the
+variables replaced:
+
+    %t9 = rt dict.getitem (dict[str,int] %t4, *str %t8) : *int
+
+An operand's own type comes first because it may differ from the receiver's items: a search
+compares a value of another type with them. A result type that the call's builder gives
+(`gen_rt`'s `t`) binds before them, so that no operand overrides it: a new list's items, a
+union's box (`R`), the items of a concatenation or of a set's union, intersection or symmetric
+difference, which may be either operand's (`R`), and `d.get(k)`'s value or None. An operand
+that reads a value that claims no type (`%slot`, `%ptr`) reads it at that type. With
+`PYSTACHY_IRCHECK=1` the verifier binds the operands in the same order and the result last, so
+that what they bind checks it, and requires one type for each variable and the signature's LLVM
+types (`rt_instance_error`); each operand then reads its value at its type or by a view. The
+receiver binds only what the other operands leave, so an item or a container that a call writes
+into it is checked against its items only for lists (`list_write_error`). A comparison's
+operands are `*T` and `*U`, and another container than the receiver is `U`, as they need not
+share a type. A variable still stands for any type where nothing binds it and in the rt ops that
+a pass adds later (`unionslots`' boxes, `dictfuse`'s lookups), and an empty container keeps its
+placeholder (`list[?]`) until the use that types it. A runtime function that may return what its
+type excludes keeps `%ptr`: iteration's `dyn.next` returns null at the end, and `exc.id` a user
+exception's object.
+
+### Casts
+
+A `cast` reads its operand's value at another type of the same LLVM type (`utils.lt`), as
+`%t9 = cast bits (%ptr %t8) : &int` reads a closure environment's word as the address of the
+variable's cell. Its text is its kind (the fourth table, `CAST_KINDS`), and with
+`PYSTACHY_IRCHECK=1` the verifier holds it to its kind's rule (`ircheck.cast_error`), which
+holds of the value its operand reads, read at the type the value's definition gives it: no
+view may stand between them, since a `%ptr` reads any reference and a `%slot` any packed slot.
+A `bits` cast reads a word that its definition types only as `%ptr` or `%slot` as a typed
+value. An `object` cast reads the object that a box of a closed union of classes holds, which
+`Gen.cmp_object` gets as a `%ptr`, as that union, and only identity tests, a load of its class
+word and `member` casts may read that value. `Gen.cmp_alts` makes the `member` casts beside it,
+one for each class it tells the object apart as; each reads the object as one of the union's
+classes, and only the code that a test of the object's class tag leads to reads it. An `opaque`
+cast reads a reference as a `str` and back in the deep-copy memo of `lib/_pystachy_copy.py`.
+Like the views that narrow, a cast takes the
+frontend's word for what it reads; unlike them it is an op, which the verifier checks and the
+passes see. The frontend makes them where an operand used to read another op's machine word as a
+typed value: a closure's cells, numeric identity boxes' addresses, dynamic identity words, a
+tuple's `Mpz` words, the payload bits that `unionslots` keeps in an `int` slot, and the
+comparison of a union of classes' objects ([#1603](https://github.com/den-run-ai/pystachy/issues/1603)).
+Where an op can state a word's type, it does instead: a `mach.load` of an exception, a
+generator's name or a frozenset constant, a `select` that boxes an object as a union, a `phi`
+of class objects.
+
+A cast has no effect, and LLVM lowering erases it (`Gen.erase_casts`, its first step): an operand
+that reads a cast reads what it casts, at the operand's own type. Its value's number would
+shift every later LLVM name, so `Gen.cast` numbers it below zero while its function is built
+and `Gen.number_casts` numbers the function's casts after its last value once it is complete;
+`IFn.casts` keeps those numbers and a pass's casts, which `cast_number` numbers as the pass's
+other values. Lowering then takes the casts' numbers out, every number above one one less for
+each below it, so that the LLVM text is the one the program would have without casts. Values
+(`Gen.canon`) and the union proofs take a cast for its operand, and the passes' budgets leave
+casts out: their size limits (`real_n`, `real_ops`), the operands `charslots` counts and the
+ops that the walk back to a load's reaching store counts (`Gen.reaching`). The Lean adapters
+read a snapshot's functions without their casts (`check_lean_boundary.erase_casts`); the shape
+checker reads them as they are.
 
 The operation registry is closed: unknown operations, including `raw`, are rejected.
 Operations carry typed operands and finite operators, predicates, flags and metadata;
@@ -365,7 +540,7 @@ and kind as lowering does (`slot_register`), never by number alone. A stack tupl
 (`k` 2) is a tuple value.
 
 `mem.load` and `mem.store` keep a native value type on both sides of a typed
-address (`*int`, `*Box`, and so on). The verifier checks operand counts, matching
+address (`&int`, `&Box`, and so on). The verifier checks operand counts, matching
 address/value/result types, result numbers and absence of unused metadata; runtime
 pseudo-types and nested address types are rejected. Lowering selects the existing
 native LLVM type (`None` payloads use a null pointer). Variable and parameter slots,
@@ -402,8 +577,11 @@ attributes, or specialization on runtime lengths. The verifier checks the suppor
 element representations, operand agreement, result count and allocation declaration.
 
 `tuple.load` and `tuple.store` retain a fixed tuple's type, constant item index and
-declared item type while transferring an opaque `%slot`. The verifier checks that the
-index selects that member and that load results and store operands are slots. Native
+declared item type while transferring the item's packed slot `*T` (a promoting int's
+64-bit `*int`; a word past the items, its Mpz pointer, is the untyped `%slot`, which a `bits`
+cast reads as an `int`). The verifier
+checks that the index selects that member and that load results and store operands are
+its packed slot or `%slot`. Native
 packing and unpacking remain separate typed operations. These instructions replace raw
 LLVM in fixed tuple reads and heap/stack construction, preserving the existing layout,
 conservative memory effects and dictionary-key canonicalization. Variable-length tuple
@@ -450,7 +628,9 @@ A raw copy does not establish a type for interpreting the bits. The verifier fol
 provenance through slots, phis and selects; interpreting it requires the matching member,
 and rebuilding a box requires its tag and payload to agree. A raw copy alone is valid.
 Domains come from definitions, parameter and storage declarations, not narrowed use-site
-annotations. A box read through an indexed machine slot of a tuple whose items are all of one
+annotations. A union of native classes, or a class beside a scalar, can hold a null box even
+without an explicit optional type. Its tag and payload reads need a nonnull proof. A complex
+number beside scalars uses the scalar union representation. A box read through an indexed machine slot of a tuple whose items are all of one
 union type (a loop over a `tuple[U, U]` or `tuple[U, ...]`, also one that may be `None`, where
 it is not) has that union's members, as a list item read has its list's declared element type:
 container typing is its own contract. Tests cover missing/wrong guards, different boxes, joins, loop backedges,
@@ -461,12 +641,40 @@ provably disjoint fresh storage retain facts across unrelated writes.
 Standalone tag reads and box construction also require these proofs. An integer
 machine load whose defined source is a union is checked as a tag read, including its
 nonnull requirement; one from a `tuple[T, ...] | None` reads its length word, no tag. A
-machine-pointer `select` between `None` and boxes built in the function (an object that may
-be `None` is boxed this way) has those boxes' members and `None`, whatever is known of its
-condition: a later read still needs its own None test. Simple guards of immutable,
+`select` whose values are each `None` or a box built in the function, whatever its type, has
+those boxes' members and `None`, whatever is known of its condition: a later read still needs
+its own None test (an object that may be `None` is boxed this way, in a `select` of the
+union's type). Simple guards of immutable,
 nonnullable union parameters can be proved by a bounded predecessor walk without allocating
 dataflow states. Mutable slots, nullable sources, raw payload transport and unsupported
 control-flow shapes fall back to the general solver.
+
+<a id="reads-of-optional-values"></a>
+An operand that reads a value whose definition gives it `opt[U]`, of a reference `U`, at a type
+without `None` (the `optional` view that narrows; `ircheck.optional_reads`) needs the same
+proof that the value is not `None` there (`UnionProof.check_some`): a test of it against
+`None` on every path to the read, a test of the storage it was loaded from with no write
+between that may change it, or a store of a value that is never `None` (a constant's symbol,
+a value of a type without `None`). A `select` reads each value only where its condition
+selects it, and a `phi` on the edge it names; code that no path reaches needs nothing. The
+test may compare the reference or its machine word with null (`ptr.cmp`, or `scalar.cmp` of
+the `%ptr`s). An attribute path, such as `record.name` read again after `record.name is not
+None`, is a field of the object that a parameter, a local's slot or a global still holds: each
+`field.addr` of that field reads one storage key (`UnionProof.field_key`), which a store to the
+slot or the global forgets, as a store to a field of an object of a class that may be the same
+object, or a call that writes objects, does. A call writes a global's storage only with the
+`wG` effect, and an object's only with `wO`. The verifier runs the general solver for every
+function with such a read.
+For a function whose only obligations are optional reads, a bounded check can prove loads
+from up to 62 private slots. A successful null test marks the slot on its nonnull edge, a
+store replaces the mark, and a join retains it only on every incoming path. The check follows
+short-circuit Boolean phis when the incoming branch decides their value. Escaped slots,
+field and global reads, and control flow it cannot certify go through the general solver.
+
+[`optional.tir`](../tools/fixtures/typed_ir/optional.tir) holds the cases the proof admits and
+those it rejects. A runtime function's signature says `opt[T]` where it takes or returns
+`None` (`bopen`'s encoding, `exc.setcause`'s cause, `exc.cause`'s result), and `getenv`'s
+result is the call's `R`: a `str` where the default is one, else `opt[str]`.
 
 The finite worklist joins possible tags and common equalities until stable, without a path
 product or an iteration cutoff. Conditional facts survive boolean phis and short-circuit
@@ -516,6 +724,12 @@ operators/conversions and extra metadata. These operations are pure; frontend gu
 retain responsibility for bounds, overflow and division checks. `select` also checks
 its boolean condition and matching result/value types.
 
+Runtime mode's wide primitives (`_rt.mul_hi`, `_rt.udiv_wide`, `_rt.urem_wide`) compute in `%i128`.
+`scalar.bin` and `scalar.cmp` accept that type, and `scalar.cast` only extends an `int`
+to it (`zext`) and truncates it back (`trunc`); no value of it is stored, selected or
+passed. `_rt.float_bits` and `_rt.bits_float` are the `bitcast` conversions between
+`float` and `int`.
+
 A masked expression that fits in 32 bits is computed in `%i32` operations and zero-extended
 (`gen_low32`): `x & y` with a constant from 0 to 2**32 - 1 on a side, a literal or a module's
 int constant, and on the other only int literals, such constants and the reads that cannot
@@ -534,7 +748,9 @@ keeps the 64-bit steps.
 that have no Python value type: closure code/environment pointers, loop/reduction
 temporaries, variable tuple traversal, string headers and bytes. Storage retains native value
 types or one of the finite machine types (`%ptr`, `%byte`, `%i32`); addresses carry
-explicit operands and indices. String alias/range metadata and in-bounds addressing are finite
+explicit operands and indices. For a DynType address the index selects the name, class id or
+flags field of the runtime record. A classrec index selects the reflection record flags.
+Lowering uses the target ABI to place those fields. String alias/range metadata and in-bounds addressing are finite
 choices checked before lowering. These operations preserve the existing effects,
 layout and guard order; they do not introduce unchecked Python operations.
 
@@ -611,9 +827,10 @@ Allocation-triggered collection can close unreachable files; that unspecified cl
 is represented by `A`, rather than adding file or I/O effects to every allocation.
 
 Each `RUNTIME` entry has the form `result:params|effects|symbol`. Its type variables are `S`
-(receiver), `T` (element), `K` (key) and `V` (value); `*X` means an eight-byte container slot,
-`#` a static type descriptor, and `%X` a physical LLVM type. An empty symbol means
-`pys_<key>` with dots replaced by underscores. Calls are checked against the entries;
+(receiver), `T` (element), `K` (key), `V` (value), `U` (a second value's type) and `R` (a result
+whose type the call gives), which each call instantiates ([runtime calls](#runtime-calls));
+`*X` means an eight-byte container slot, `#` a static type descriptor, and `%X` a physical LLVM
+type. An empty symbol means `pys_<key>` with dots replaced by underscores. Calls are checked against the entries;
 `tools/check_runtime.py` checks them against the C and subset runtime implementations.
 
 ### Shared native-list storage contracts
@@ -899,7 +1116,8 @@ see [architecture](internals.md#errors-and-cleanup) for the runtime overview.
 
 ## Machine lowering
 
-`Gen.lower` begins with `Gen.machine_ir`, the last typed-IR stage. Until then a read of a
+`Gen.lower` begins with `Gen.erase_casts` (see [casts](#casts)) and `Gen.machine_ir`, the last
+typed-IR stage. Until then a read of a
 runtime layout keeps its meaning: `list.len`, `union.tag`, `union.payload`, `union.raw`,
 `dyn.type`, `dyn.payload` and `dyn.raw` carry their receiver's type, effects and guard proofs
 through the passes, the verifier and the inspection snapshots. The stage rewrites each into the
@@ -924,10 +1142,18 @@ decides a fixed tuple's slots while its function is printed.
 
 ## Validation
 
-- `make check-ir` verifies generated IR and checks IR probes, including calls, function attributes
-  and effect summaries.
+- `make check-ir` verifies generated IR, among its checks each operand's type against its
+  value's [definition](#operation-reference) and each op's [source line](#locations), and checks
+  IR probes, including calls, function attributes and effect summaries.
 - `tools/typed_ir_ops.py --check` fails when the [operation reference](#operation-reference)
   differs from `OPS`.
+- `tools/typed_ir_text.py verify tools/fixtures/typed_ir/invalid.tir` holds the verifier to
+  the error each function of the file expects, `classes.tir` holds the verifier's class view
+  to the classes its module declares, and `fields.tir` its `field.addr` rule to their structs
+  (see [text form](#text-form)).
+- `tools/test_typed_ir_compile.py` (in `make check-fast`) prints a sample of programs' modules,
+  compiles them from text and requires the compiler's LLVM byte for byte;
+  `tools/typed_ir_text.py roundtrip` measures it for any programs.
 - `make check-runtime` checks runtime signature/effect declarations.
 - `make irsame` and `make irsame-py` compare a refactor's IR, diagnostics and exit status with a
   reference compiler. Behavior changes need their own explicit tests, not a byte-identical promise.
@@ -939,35 +1165,196 @@ self-compile timings in the design log are not current test totals or performanc
 
 ## Text form
 
-`tools/typed_ir_text.py` prints a function's IR as text and parses it back. One instruction
-is one line: its result numbers, the operation, the fields it sets, its typed operands, its
-labels and its result type.
+`tools/typed_ir_text.py` prints a module's or a function's IR as text and parses it back. One
+instruction is one line: its results, the operation, its fields, its typed operands, its labels,
+its result type and, on request, its [location](#locations).
 
 ```text
 L7:
-  %10 = mach.load(%ptr %h.5) : int
-  %11 = list.len(list[float] %t4) : int
-  %12 = num.cmp s=< (int %t10, int %t11) : bool
+  %t10 = mach.load(%ptr %h.5) : int
+  %t11 = list.len(list[float] %t4) : int
+  %t12 = num.cmp < (int %t10, int %t11) : bool
   cbr(bool %t12) -> L13, L9
 L13:
-  %14 = rt s=list.get (list[float] %t4, int %t10) : *float
+  %t14 ~%t28 ~%t29 ~%t30 = list.load(list[float] %t4, int %t10) : *float
+  %t15 = slot.unpack(*float %t14) : float
 ```
 
-Printing and parsing are inverse: a printed function parses to the record it was printed
-from, and a text that is not in the printed form is rejected. The record holds a function's
-symbol, parameters, return type, effects, slots, blocks, check targets and loops, as the
-[inspection snapshots](compiler-inspection.md) do. `to_ifn` builds the compiler's own `IFn`
-from it, so a test writes IR as text, runs the verifier or one pass and compares the printed
-result: [`tools/test_typed_ir_text.py`](../tools/test_typed_ir_text.py) runs `listget` on
-[a fixture](../tools/fixtures/typed_ir/score_samples.listget.before.tir) that way, and
-checks that the fixture is what the compiler emits. The text holds no module data, class
-layouts or runtime declarations, so a function that needs those is tested from source. It
-is a test and review form of the hosted compiler, not an interchange format.
+A result is written as operands name it: `%tN`, or a slot's register (`%samples.2 = slot
+name=samples : list[float]`, `%h.5` for an unnamed one). A `~` marks a temporary of the
+operation's lowering, which no operand names: in `~%t6 %t7 %t8 = ovf + (int %t4, int %t5)`,
+`%t6` is the `{i64, i1}` pair that the sum `%t7` and the overflow flag `%t8` are read from.
+
+The fields follow the operation's name, each as `NAME=VALUE` by the name its
+[row](#operation-reference) gives it: `rt entry=repr descriptor=Li`, `field.addr index=1`,
+`tuple.load item=int index=1`, `check message="KeyError: 'k'"`. An operator is written bare,
+first: `num.cmp <`, `scalar.bin fmul`, `ovf +`. A field that holds its default (`""` or 0) is
+omitted, and one that its operation's row does not name is written by its letter (`s=`, `k=`,
+`x=`), so that a record the verifier rejects still prints. A value is quoted where it holds a
+space or would read as a field.
+
+Types are the compiler's canonical strings. Most are Python's (`int`, `list[float]`,
+`opt[int]`); `&X` is the address of storage that holds an `X`, so `mem.load(&int %s.3)` reads
+the slot at `%s.3`, and `*X` is an eight-byte word that holds an `X`, as `list.load` returns a
+list item; `%ptr`, `%byte`, `%i32` and `%slot` are machine types with no Python meaning.
+
+A text holds functions alone, or a module: its attributes on its `module` line, its
+declarations between that line and `}`, then its functions, each written as it is alone. `print`
+writes a typed-after snapshot as a module. Its first declarations are the snapshot's tables of
+the program's classes, DynTypes and class layouts, which the verifier reads (the module's
+attributes and lowering's declarations, below, are left out here):
+
+```text
+module complete opts=[...] {
+  class Both base=Storage roles=[Reader] tagged fields=[" class":int value:int " Storage.0":bool " Storage.box.0":dyn] flags=[value:2] boxes=[value:3]
+  class Reader overlaps=[Storage] tagged fields=[" class":int]
+  class Storage overlaps=[Reader] tagged fields=[" class":int value:int] flags=[value:2] boxes=[value:3]
+  dyntype @dt.Both kind=8 cls=1 flags=256 base=@dt.Storage role=@dt.Reader payload=Both
+  layout Both descriptor=@dt.Both base=@dt.Storage role=@dt.Reader number=1 members=[int int bool dyn] llvm=[i64 i64 i1 ptr]
+}
+
+function @m.Storage.__init__.1(self: Both, value: int) -> None effects=wO {
+```
+
+A class gives its single base, a class of the program or a builtin exception class; its
+fieldless secondary bases (`roles`); the unrelated classes it shares a subclass with
+(`overlaps`); whether its objects begin with a class tag; and its struct, as `field.addr`
+indexes it. `fields` lists its fields in order with their types, and `flags` and `boxes` give
+the index of a field's "is assigned" flag and identity box. A hidden field's name begins with
+a space, so it is quoted. A class's own flags take the indexes after its fields, and its own
+boxes those after its flags. A derived class's struct begins with its base's, so the base's
+flags and boxes are hidden fields of it: `Both` keeps the flag and identity box of `value` at
+2 and 3, where `Storage`'s struct has them, as its fields `" Storage.0"` and
+`" Storage.box.0"`. A `dyntype` is a DynType that the program emits for dynamic values, with
+its kind, class number, flags, base and role DynTypes and the static type of its boxes'
+payload, and a `layout` is the struct of a class that has one. A field that holds its default
+(`""`, `[]`, `{}`, 0 or false) is omitted.
+
+A typed-after snapshot is taken at the lowering boundary, once finalization has run, and its
+module also holds everything else that LLVM lowering (`Gen.lower_program`: `gen_lower`,
+`gen_lower_module` and their helpers) reads: the module's attributes, lowering's declarations
+after the layouts, in their order, and each function's attributes after its effects. Of a
+program with a class, a dict filled after it was made empty and a recursive function (some of
+its declarations left out):
+
+```text
+module complete opts=[charslots listget listguard dictfuse tupleiter listfast moduleints fieldtbaa tupleret unionslots nullcheck allocelide callbacks] {
+  class Point fields=[x:int y:int]
+  hole 1 type=dict[str,int]
+  global @g.counts type=dict[?,?]
+  global @g.points type=list[Point]
+  root @g.counts
+  root @g.points
+  const @s.2 kind=string text=a
+  const @tc.0 kind=tuple text=tuple[int,str] items=(int 1, str @s.2)
+  runtime dict.new
+  runtime recursion.enter
+  keykind dict[str,int] kind=1
+}
+
+function @f.fact(n: int) -> int effects="R I" name=fact rdepth=%t1 closed {
+```
+
+<a id="lowering-state"></a>
+
+| What lowering reads | In the text |
+|---|---|
+| The optimizations on (`Gen.opts`: allocelide, fieldtbaa, listguard), exceptions on (`Gen.eh`), generator `send`/`throw` (`gproto`), the dynamic Any and promoting int opt-ins (`dynamic_program()`, `int_program()`) | module attributes `opts`, `exceptions`, `protocol`, `dynamic`, `promoting` |
+| Each class's struct (`struct_types`, `field_tag`, `ref_free`) in `Gen.classes` order, its base, `exc` and `mod` (`fn_home`); the class templates (`Gen.tmpl`) | `class`, in the compiler's order, with `template`, `exception`, `module` |
+| The types of holes (`Gen.holes`) and the key kinds of their dicts and sets (`Gen.keykinds`, `builtkinds`) | `hole N type=T`, `keykind T kind=K built=K` |
+| Globals (`Gen.globs`) and the GC roots `@main` hands the runtime (`gcroots`) | `global SYMBOL type=T`, `root VALUE` |
+| Module data (`Gen.consts`, and its `@tc.` constant tuples, `tconstdata`) | `const NAME kind=K text=... refs=[...] items=(T V, ...)` |
+| Runtime functions and data declared, in order (`Gen.rtfns`, `rtdatas`) | `runtime KEY`, `rtdata SYMBOL` |
+| Extern and C ABI plans (`Gen.externs`: `ExternDecl`) | `extern KEY symbol=... params=[...] result=...` and the plan's fields |
+| The object dispatchers' classes (`Gen.ocls`, `ocmp`, `hcls`, `one`, `xobj`: `gen_dispatch`) | module attributes `objects`, `compared`, `hashed`, `unequal`, `crossed` |
+| Generator types that never recur (`Gen.genplain`) and modules that track no numeric identity (`idoff`) | module attributes `plain`, `untracked` |
+| Closed recursion (`Gen.rdpass`, `IFn.rdepth`) and tuples returned by value (`vrets`, `vconst`, `vcalls`) | function attributes `closed`, `rdepth`, `tupleret`, `tupleconst`, `tuplecalls` |
+| A function's `FnInfo` (`name`, `cls`, `deco`, `nullable_self`, `mod`, `home`, `node.kind`, `export`, `pyexport`, `extern`, `gret`) and its casts' numbers (`IFn.casts`, which `erase_casts` renumbers by) | function attributes `name`, `class`, `decorator`, `nullable`, `module`, `home`, `kind`, `export`, `pyexport`, `extern`, `gret`, `casts` |
+| `IFn.ps`, `pads` and `n` | derived from the parameters not typed `None`, the landing ops and the largest number the function names (its casts' too); the printer names a function whose `ps` or `pads` differ `unsupported` |
+| Lowering's own state (`Gen.out`, `tbaa`, `ftags`, `coros`, `rangeused` and its other flags) | none: lowering starts it empty |
+
+Lowering asks the frontend nothing. The key kind of a dict or set that a hole made (`key_kind`)
+may add a descriptor's string constant or number an object class, which lowering used to do;
+`Gen.key_kinds` now resolves them when finalization ends, in the order lowering reads them, and
+lowering reads the tables. `complete` says that a module holds this state; `unsupported` names
+what the printer found it cannot hold yet.
+
+`compile` builds a fresh `Gen` that holds a module's state (`gen_for_module`) and runs the
+compiler's own `Gen.lower_program`, with the module's opt-ins set as lowering reads them, so
+a module printed from a snapshot compiles to the LLVM module that the compiler emitted for the
+program, byte for byte, as MLIR's printed modules round-trip:
+
+```sh
+python3 tools/inspect_compiler.py prog.py --output /tmp/inspect --typed-after-only
+python3 tools/typed_ir_text.py print /tmp/inspect/typed-after.json > prog.tir
+python3 tools/typed_ir_text.py compile prog.tir -o prog.ll  # (prog.ll is /tmp/inspect/llvm.ll)
+python3 tools/typed_ir_text.py roundtrip tests/programs/*/*.py --jobs 2
+```
+
+`roundtrip` does the first three steps for each program and compares the LLVM, which
+[`tools/test_typed_ir_compile.py`](../tools/test_typed_ir_compile.py) requires of a sample:
+classes, closures, generators, exceptions, unions, dynamic Any, promoting ints, tuples returned
+by value, closed recursion, key kinds, object dispatchers and C externs. `compile` fails closed:
+it refuses a module that is not `complete` or that names something `unsupported`, an extension
+module's entry points (`pystachy ext`: `Gen.funcs`, `gen_pyext`), runtime.py's module
+(`Gen.rtdefs`) and LLVM line tables (`PYSTACHY_DEBUG_LINES=1`: the program's files, working
+directory, definitions' lines and renamed classes), which the text does not hold yet.
+
+Printing and parsing are inverse: a module or a function printed with its locations parses to
+the record it was printed from, and a text that is not in the printed form is rejected. A function record holds
+a function's symbol, parameters, return type, effects, attributes, slots, blocks, check targets
+and loops, as the [inspection snapshots](compiler-inspection.md) do, and a module record holds
+its attributes, the declarations and its function records. `to_ifn` builds the compiler's own
+`IFn` from a function record, so a test writes IR as text, runs the verifier or one pass and
+compares the printed result: [`tools/test_typed_ir_text.py`](../tools/test_typed_ir_text.py) runs `listget`
+on [a fixture](../tools/fixtures/typed_ir/score_samples.listget.before.tir) that way, and
+checks that the fixture is what the compiler emits. It is a test and review form of the
+hosted compiler, not a versioned interchange format: its declarations follow the compiler's
+tables, and a text printed by one compiler compiles only with the same compiler.
+
+`verify` runs the verifier on each function of a text file, as MLIR's `-verify-diagnostics`
+does. A comment line `; expected-error {{MESSAGE}}` says that the function's verification
+fails with an error containing MESSAGE in the block that holds the line, and a function
+without one must verify. The verifier stops at its first error, so a function expects one
+at most. [`invalid.tir`](../tools/fixtures/typed_ir/invalid.tir) breaks one rule per
+function: each kind of shape and type rule of an operation's row, some operations' own
+checks, block structure, and the values operands name. Its last function verifies. A
+module's functions are verified with its classes, which the class view of an operand's type
+relates by their bases, secondary bases and overlaps; a function list declares none.
+[`classes.tir`](../tools/fixtures/typed_ir/classes.tir) reads a class as its base, as a
+derived class, as a secondary base, as a class it overlaps and as `object`, which verify, and
+as unrelated classes, which do not. A `field.addr` addresses a member of its class's declared
+struct, at the member's type: [`fields.tir`](../tools/fixtures/typed_ir/fields.tir) addresses
+fields, flags and identity boxes, a base's among them, which verify, and indexes past a
+class's struct and members at other types, which do not. A struct that no class could have,
+such as a field declared twice or a flag past the class's members, is an error of the text.
+
+### Locations
+
+Every instruction records its source location in `Ins.line`, as every MLIR operation carries a
+`loc`: the line of the statement it implements, numbered as diagnostics number lines (a file's
+index times 10,000,000 plus its line). The frontend gives each op it builds, slots included,
+the line it is compiling. A function's prologue (entry depth, parameter stores, cells) takes
+its `def` line; module code's prologue takes its block's line 1, which the compiler numbers in
+the main program's file even for an imported module. A pass gives an op it creates the line of
+the op it derives from: listguard's tests take their loop's line, a depth restoration its
+`return`'s and exception lowering's branch its `raise`'s. With `PYSTACHY_IRCHECK=1`, the
+verifier rejects an op without a line in any function the compiler built (`IFn.located`), but in
+a shared raise block that checks of several lines reach, which line tables number 0 as LLVM
+numbers merged code. IR written as text may leave lines unknown (0), as MLIR's verifier
+accepts unknown locations.
+Only LLVM line tables (`PYSTACHY_DEBUG_LINES=1`) print them.
+
+Text holds locations only on request, as MLIR prints them only with `-mlir-print-debuginfo`:
+`print --locations` appends `loc(12)` for line 12 of the main program's file and `loc(3:12)`
+for line 12 of file 3, the snapshot's `files[3]`. The parser reads either back, and an
+instruction without one has line 0.
 
 The optional [Lean shape checker](../tools/lean_boundary/SHAPE.md) reads the same records
 and the operation table. For the functions it accepts it proves the table's counts and
-fields, one terminator at each block's end, resolved labels and one definition for each
-value number that an operand reads. It proves no dominance, typing or lowering property.
+fields, one terminator at each block's end, resolved labels, one definition for each value
+number that an operand reads, and that the definition is reached on every path to the read.
+It proves no typing or lowering property.
 
 <a id="73-a-webassembly-gc-backend"></a>
 <a id="74-the-cpython-extension-mode-4-4"></a>
@@ -978,9 +1365,19 @@ value number that an operand reads. It proves no dominance, typing or lowering p
 
 ## Remaining work
 
-Typed instruction coverage is complete for the LLVM backend. Further backend neutrality
-needs shared compiler/runtime layout definitions and a clearer separation of frontend
-elaboration from machine contracts. WebAssembly GC, more general check elimination and a
+Typed instruction coverage is complete for the LLVM backend, and a module's [text](#text-form)
+holds what lowering reads of a program: printed at the lowering boundary, it compiles to the
+compiler's LLVM. It does not hold yet an extension module's entry points (`Gen.funcs`,
+`gen_pyext`), runtime.py's module (`Gen.rtdefs`) or the inputs of LLVM line tables
+(`PYSTACHY_DEBUG_LINES=1`), which `compile` refuses; its tables follow `Gen`'s and are not
+versioned. Further backend neutrality needs shared compiler/runtime layout definitions and a
+clearer separation of frontend elaboration from machine contracts. Operands still read values
+through the views of
+`TYPE_VIEWS`: precise result types for empty containers and for runtime calls that return
+untyped memory (`alloc`), and casts for the views that still narrow unproved (a runtime
+call's word read through `bits`, a derived class) would leave each value one type, as MLIR's
+are; `opt[U]` read as `U` already needs a proof (see
+[reads of optional values](#reads-of-optional-values)). WebAssembly GC, more general check elimination and a
 Python-object representation backend are design possibilities, not supported modes.
 
 CPython extension modules **are supported** through `pystachy ext` and boundary wrappers.

@@ -14,7 +14,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Ins, Val
+from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Ins, Loop, Val
 from src.pystachy_compiler.ircheck import RESULT_NUMBERS
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.machine_ir import WORD_READS, machine_ops
@@ -176,6 +176,99 @@ class MachineStageTests(unittest.TestCase):
         for line in legacy(i):
             self.assertIn(line, text)
         self.assertEqual([x.op for x in fn.blocks[0].code], ["mach.addr", "mach.load", "ret.none"])
+
+
+def op(name, t, s, operands, numbers, labels=()):
+    i = Ins(name, t, s)
+    i.a = [Val(v, ty) for v, ty in operands]
+    i.r = list(numbers)
+    i.b = list(labels)
+    return i
+
+
+def cast_function(cast):
+    """A function whose frontend made values 1 to 3 (and, with cast, the cast 4 after them), to
+    which a pass then added a value and a block (numbered after them, as a pass numbers)."""
+    first = 5 if cast else 4
+    code = [op("mach.load", "%ptr", "", [("%a0", "%ptr")], [1])]
+    if cast:
+        code.append(op("cast", "&int", "bits", [("%t1", "%ptr")], [4]))
+    code += [op("mem.load", "int", "", [("%t4" if cast else "%t1", "&int")], [2]),
+             op("num.cmp", "bool", "<", [("%t2", "int"), ("0", "int")], [3]),
+             op("scalar.bin", "int", "add", [("%t2", "int"), ("1", "int")], [first]),
+             op("cbr", "", "", [("%t3", "bool")], [], [f"L{first + 1}", f"L{first + 1}"])]
+    fn = function([("entry", code), (f"L{first + 1}", [op("ret", "", "", [(f"%t{first}", "int")], [])])])
+    fn.f.params, fn.f.ptypes, fn.f.ret, fn.ps = ["p"], ["%ptr"], "int", [0]
+    fn.casts = [4] if cast else []
+    fn.n = first + 1  # (its label's number, the last it has)
+    return fn
+
+
+class CastErasureTests(unittest.TestCase):
+    """Lowering erases casts with their numbers: the LLVM text is the one without them."""
+
+    def lowered(self, fn):
+        g = Gen()
+        g.lower(fn)
+        return "\n".join(g.out)
+
+    def test_a_cast_and_its_number_go(self):
+        fn = cast_function(True)
+        text = self.lowered(fn)
+        self.assertEqual(text, self.lowered(cast_function(False)))
+        self.assertNotIn("cast", [i.op for b in fn.blocks for i in b.code])
+        self.assertIn("  %t2 = load i64, ptr %t1", text)  # (the load reads what the cast cast)
+        self.assertIn("  %t4 = add i64 %t2, 1", text)  # (the pass's value, numbered as without the cast)
+        self.assertEqual((fn.n, fn.casts, fn.blocks[1].label), (5, [], "L5"))
+
+    def test_a_dropped_casts_number_goes_too(self):
+        fn = cast_function(True)
+        fn.blocks[0].code.pop(1)
+        fn.blocks[0].code[1].a[0] = Val("%t1", "&int")  # (a pass dropped the cast: no op names it any more)
+        self.assertEqual(self.lowered(fn), self.lowered(cast_function(False)))
+
+    def test_casts_are_numbered_after_the_functions_values(self):
+        g = Gen()
+        word = Val(g.mload("%ptr", "%a0"), "%ptr")
+        cell = g.cast(word, "&int", "bits")
+        value = g.mem_load(cell)
+        self.assertTrue(cell.v.startswith("%t-"))  # (below zero while the function is built)
+        last = g.n
+        g.number_casts()
+        cast, = [i for i in g.fn.blocks[0].code if i.op == "cast"]
+        self.assertEqual((cast.r, g.n, g.fn.casts), ([last + 1], last + 1, [last + 1]))
+        load, = [i for i in g.fn.blocks[0].code if i.op == "mem.load"]
+        self.assertEqual((load.a[0].v, load.r), (f"%t{last + 1}", [int(value.v[2:])]))
+
+    def test_a_loops_values_name_its_numbered_casts(self):
+        # (a loop's stop, sequences and indexes are values, which the loop passes read by name)
+        g = Gen()
+        word = g.cast(Val(g.mload("%slot", "%a0"), "%slot"), "int", "bits")
+        lp = Loop("seq", "L1", "L2", "L3", "L4")
+        lp.stop = Val(word.v, "int")
+        lp.idx = [word.v]
+        g.fn.loops.append(lp)
+        g.number_casts()
+        cast, = [i for i in g.fn.blocks[0].code if i.op == "cast"]
+        self.assertEqual((lp.stop.v, lp.idx), (f"%t{cast.r[0]}", [f"%t{cast.r[0]}"]))
+
+    def test_calls_that_return_slots_keep_their_marks(self):
+        # (Gen.vcalls marks a call that returns its tuple's slots by its function and value: the mark
+        # goes with its number, also where a call's new name is another's old one, the other's
+        # block coming later)
+        code = [op("mach.load", "%ptr", "", [("%a0", "%ptr")], [1]),
+                op("cast", "&int", "bits", [("%t1", "%ptr")], [2]),
+                op("call", "tuple[int,int]", "@pair", [], [4]),
+                op("call", "tuple[int,int]", "@pair", [], [3]),
+                Ins("ret.none", "", "")]
+        fn = function([("entry", code)])
+        fn.f.params, fn.f.ptypes, fn.ps = ["p"], ["%ptr"], [0]
+        fn.casts = [2]
+        g = Gen()
+        g.vcalls = {"@machine %t4": True, "@machine %t3": True, "@other %t3": True}
+        g.erase_casts(fn)
+        self.assertEqual([i.r for i in fn.blocks[0].code if i.op == "call"], [[3], [2]])
+        self.assertEqual(sorted(g.vcalls), ["@machine %t2", "@machine %t3", "@other %t3"])
 
 
 class MachineCheckTests(unittest.TestCase):

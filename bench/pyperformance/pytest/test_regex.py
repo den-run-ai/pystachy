@@ -1,7 +1,23 @@
-"""Result checks of the three existing regex benchmark ports."""
+"""Result checks of the regex benchmark ports."""
+import regex_compile
 import regex_dna
 import regex_effbot
 import regex_v8
+
+
+def test_regex_compile():
+    regexes = regex_compile.capture_regexes("bench/pyperformance/data/regex_compile.txt")
+    assert len(regexes) == 4267
+    compiled = 0
+    for regex, flags, pattern in regexes:
+        if pattern is not None:
+            assert flags == 0 and pattern.pattern == regex
+            assert regex_compile.re.compile(pattern, flags) is pattern
+            compiled += 1
+    assert compiled == 1470
+    assert regexes[0] == ("Python|Perl", 0, None)
+    regex_compile.bench_regex_compile(1, regexes[:300])
+    assert len(regex_compile.TIMED) == 1 and regex_compile.TIMED[0] >= 0.0
 
 
 def test_regex_dna():

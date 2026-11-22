@@ -297,3 +297,13 @@ On Rocky Linux 9.9, the oldest C library of these, `make` with the archive also 
 fixed points without `-pthread`, and `make test` passed all 8,784 JIT and AOT runs. The other
 six ran the installation check alone. With glibc 2.28 and with musl nothing is downloaded:
 AlmaLinux 8.10 and Alpine were checked.
+
+The same check then ran on GitHub's runners in containers of those seven distributions for
+each architecture, with the provisioner as it is now and a server on the runner in place of the
+release; each archive was the one pinned above, and on ARM64 the C libraries, compilers and
+Pythons were the table's. All fourteen passed. On Amazon Linux 2023 for ARM64 the downloaded
+clang found GCC through the `--gcc-triple=aarch64-amazon-linux` that the provisioner wrote, and
+before that was added a build there did not link; no other host needed one. On Rocky Linux 9.9
+for ARM64, `make` with the archive reached both fixed points and `make test` passed all 8,818
+JIT and AOT runs. A run that built both archives from cached objects also rehearsed their
+publication on a draft release, up to the step that publishes, and then deleted the draft.

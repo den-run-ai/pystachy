@@ -31,10 +31,12 @@ from src.pystachy_compiler.utils import (
 )
 
 
-def gen_to_slot(self, v: Val, keep: bool = False) -> str:
+def gen_to_slot(self, v: Val, keep: bool = False, opaque: bool = False) -> str:
     # v in an 8-byte slot. A slot holds a 64-bit int, so a promoting int is narrowed, and so is a
     # tuple of them, into the tuple of their 64-bit ints, which is the same tuple (bigints.py), as
-    # the runtime reads it; but kept (keep) as an item of a tuple of its type
+    # the runtime reads it; but kept (keep) as an item of a tuple of its type. The slot is the
+    # packed slot *T of v's type T, or %slot where it goes on as bits (opaque): a box's payload,
+    # which unionslots may keep in an int, or an identity comparison's
     if v.t == BIG:
         v = self.big_narrow(v)  # (an 8-byte slot holds a 64-bit int: bigints.py)
     if v.t == BIGOPT:
@@ -43,14 +45,43 @@ def gen_to_slot(self, v: Val, keep: bool = False) -> str:
         v = self.big_tuple_narrow(v)
     if v.t == "int":
         return v.v
-    i = Ins("slot.pack", "%slot", "")
+    i = Ins("slot.pack", "%slot" if opaque else "*" + v.t, "")
     i.a = [v]
     self.put(i, 1)
     return tmpname(i.r[0])
 
+def gen_slot_word(self, v: Val) -> Val:
+    # the bits of v in an 8-byte slot (to_slot's opaque %slot) as an int, which an identity
+    # comparison compares with a box's payload (dyn_raw): a bits cast reads them, but an int's,
+    # which is its own slot
+    s = self.to_slot(v, False, True)
+    code = self.blk.code
+    if len(code) > 0 and code[len(code) - 1].op == "slot.pack" and tmpname(code[len(code) - 1].r[0]) == s:
+        return self.cast(Val(s, "%slot"), "int", "bits")
+    return Val(s, "int")
+
 def gen_from_slot(self, s: str, t: str) -> Val:
     # Recursive container slots hold the existing union-box pointer. Expose one
     # layer of its finite named type graph when reading the value.
+    t = self.rec_type(t)
+    if t == "int":
+        return Val(s, t)
+    # read through the packed slot *t where one of the block's last ops made s a packed slot (its
+    # type is then checked against t), else through the opaque %slot of a machine word
+    packed = False
+    code = self.blk.code
+    for j in range(len(code) - 1, max(len(code) - 64, 0) - 1, -1):
+        if len(code[j].r) > 0 and tmpname(code[j].r[len(code[j].r) - 1]) == s:
+            packed = code[j].t.startswith("*")
+            break
+    i = Ins("slot.unpack", t, "")
+    i.a = [Val(s, "*" + t if packed else "%slot")]
+    self.put(i, 1)
+    return Val(tmpname(i.r[0]), t)
+
+def gen_from_word(self, s: str, t: str) -> Val:
+    # the value of type t in machine word s, which a mach.load read as an int: from_slot's, but
+    # read as the opaque %slot, since no op claims a type for the word
     t = self.rec_type(t)
     if t == "int":
         return Val(s, t)
@@ -263,7 +294,7 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
     if is_fn(v.t) and is_callable(unopt(t)):
         return Val(self.to_callable(v, unopt(t)).v, t)  # (a function where a Callable is expected)
     if is_sopt(t) and v.t == unopt(t):
-        return Val(self.rt("pys_box", "ptr", ["i64 " + self.to_slot(v)]), t).identity(v)  # representation-only boxing
+        return Val(self.rt("pys_box", "ptr", ["i64 " + self.to_slot(v, False, True)], t=t), t).identity(v)  # representation-only boxing
     if v.t == "frozenset[dyn]" and is_fset(unopt(t)) and self.fset_unboxes(selem(unopt(t))):
         # a frozenset of Any values where a frozenset[T] or an AbstractSet[T] is expected: no code
         # changes it, so it crosses as a tuple does, a new frozenset of its elements, each checked
@@ -271,11 +302,11 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         # Any values does not: a copy would not see what its other holders add
         et = selem(unopt(t))
         dt = self.dyn_class_type(et) if et in self.classes else self.dyn_type(et)
-        return Val(self.rt("pys_set_unbox", "ptr", [f"ptr {v.v}", f"ptr {dt}", f"i64 {self.key_kind(et)}"]), t)
+        return Val(self.rt("pys_set_unbox", "ptr", [f"ptr {v.v}", f"ptr {dt}", f"i64 {self.key_kind(et)}"], t=self.ctype("set", [et])), t)
     if v.t == EMPTYFS and is_fset(unopt(t)):
         # frozenset() that nothing typed, where a frozenset[T] or an AbstractSet[T] is expected:
         # an empty one of T's (a new object: CPython's is one object, which only `is` tells)
-        return Val(self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(unopt(t)))}"]), t)
+        return Val(self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(unopt(t)))}"], t=self.ctype("set", [selem(unopt(t))])), t)
     if self.reboxes(v.t, t):
         # a tuple with an int where t holds an int | None (also deeper): a new tuple, of boxes
         return self.tuple_([self.coerce(self.tget(v, i), targs(t)[i], what) for i in range(len(targs(t)))])
@@ -302,8 +333,19 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         hint = " (an AbstractSet value is a set or a frozenset: make one of it, set(x) or frozenset(x))"
     if is_fn(t) and is_fn(v.t):
         hint = " (each function is a type of its own: a variable, a list's items or a dict's values hold one function)"
+    if (t == "int" or t == "str") and v.t in self.classes and self.enum_builtin(v.t) == t:
+        # (a member where only a variable, a field, a parameter or a return annotated int or str
+        # holds it as it is, as their union: unions.member_takes)
+        hint = f" (a member of {short(v.t)} is held as it is by a variable, field, parameter or return annotated {t}, not here: use its .value)"
+    if t == BIG and v.t in self.classes and self.enum_builtin(v.t) == "int":
+        # (where ints promote, a member is held as no int: docs/python-int.md)
+        hint = f" (a member of {short(v.t)} is no promoting int: use its .value)"
     if hint == "" and self.curfn.ll in self.guessed:
         hint = f" (perhaps because {self.guessed[self.curfn.ll]})"
+    if self.bkind(unopt(v.t)) != "" and unopt(t).startswith(self.bkind(unopt(v.t)) + "["):
+        # (builtin_bases.py: a list knows no class, so the object's would be lost there)
+        kind = self.bkind(unopt(v.t))
+        hint = f": an object of a class that derives from {kind} is not stored or passed as a {kind} yet, where it would lose its class (declare {short(unopt(v.t))} there, leave a parameter unannotated, or copy the items with {kind}(...))"
     self.err(f"expected {typestr(t)}, got {typestr(v.t)}{hint}")
     return v
 

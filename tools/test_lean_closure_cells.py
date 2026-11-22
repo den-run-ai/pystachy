@@ -1,12 +1,12 @@
 """Closure-cell identity must survive reads, and no intervening heap mutation."""
 import copy
-import json
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
 
+import check_lean_boundary as boundary
 import check_lean_access as access
 import test_lean_access as access_tests
 from test_lean_access import op
@@ -38,7 +38,11 @@ class ClosureCellTests(unittest.TestCase):
             self.assertEqual(access.run_checker(access.DEFAULT_CHECKER, access.encode(candidate), metadata), expected)
 
     def test_repeated_cell_reads_retain_the_same_guarded_dict(self):
-        self.assert_verdict(self.snapshot(), True)
+        snapshot = self.snapshot()
+        for stride in ("int", "%ptr"):
+            with self.subTest(stride=stride):
+                snapshot["functions"][0]["blocks"][0]["operations"][0]["text"] = stride
+                self.assert_verdict(snapshot, True)
 
     def test_writes_through_same_or_unknown_alias_kill_cell_identity(self):
         for address in ("%t21", "%a2"):
@@ -99,7 +103,7 @@ class ClosureCellTests(unittest.TestCase):
                                      "--output", str(inspected), "--typed-after-only"],
                                     cwd=ROOT, capture_output=True, text=True, timeout=60)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            snapshot = json.loads((inspected / "typed-after.json").read_text())
+            snapshot = boundary.read_snapshot((inspected / "typed-after.json"), boundary.MAX_PROGRAM_BYTES)[0]
             report, code = access.check_all(snapshot)
             self.assertEqual(code, 0, report)
             fib = next(record for record in report["functions"] if record["function"] == "@c.3.1")

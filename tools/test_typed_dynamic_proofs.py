@@ -17,7 +17,7 @@ class Case:
     def __init__(self, name="dynamic_guard", ptypes=None):
         self.g = Gen()
         f = FnInfo(name, "@" + name, Node("def", name, 1), "")
-        f.ptypes = ptypes or ["dyn", "dyn", "bool", "*dyn", "%ptr"]
+        f.ptypes = ptypes or ["dyn", "dyn", "bool", "&dyn", "%ptr"]
         f.params = ["p" + str(i) for i in range(len(f.ptypes))]
         self.fn = IFn(f)
         self.fn.ps = list(range(len(f.ptypes)))
@@ -54,10 +54,10 @@ class Case:
         return slot_register(i)
 
     def load(self, address, typ="dyn"):
-        return self.op("mem.load", typ, a=[(address, "*" + typ)])
+        return self.op("mem.load", typ, a=[(address, "&" + typ)])
 
     def store(self, address, value, typ="dyn"):
-        self.op("mem.store", a=[(address, "*" + typ), (value, typ)])
+        self.op("mem.store", a=[(address, "&" + typ), (value, typ)])
 
     def compare(self, value="%a0", member="float", pred="==", swap=False):
         tag = self.op("dyn.type", "dyntype", a=[(value, "dyn")])
@@ -109,11 +109,11 @@ class Case:
         notnone = self.compare(value, "none", "!=")
         return self.op("scalar.bin", "bool", "and", [(hit, "bool"), (notnone, "bool")])
 
-    def dispatch(self, cases, value="%a0", word="3", operand=None):
-        # a class dispatcher's switch on the class number word of value's DynType: cases maps
+    def dispatch(self, cases, value="%a0", field="3", operand=None, element="dyntype"):
+        # a class dispatcher's switch on the class number field of value's DynType: cases maps
         # each class number to its block; the rest go to "miss"
         tag = self.op("dyn.type", "dyntype", a=[(value, "dyn")])
-        address = self.op("mach.addr", "%ptr", "int", [(tag, "%ptr"), (word, "int")])
+        address = self.op("mach.addr", "%ptr", element, [(tag, "%ptr"), (field, "int")])
         number = self.op("mach.load", "int", a=[(address, "%ptr")])
         self.op("switch", a=[(operand or number, "int")] + [(n, "int") for n in cases],
                 b=["miss"] + list(cases.values()))
@@ -250,7 +250,7 @@ class DynamicGuardTests(unittest.TestCase):
             value = c.load(slot)
             c.guard(value)
             c.block("hit")
-            args = [("%a4", "%ptr")] + ([(slot, "*dyn")] if escaped else [])
+            args = [("%a4", "%ptr")] + ([(slot, "&dyn")] if escaped else [])
             c.op("icall", "None", a=args)
             c.payload(value if old else c.load(slot))
             c.finish_pair()
@@ -269,7 +269,7 @@ class DynamicGuardTests(unittest.TestCase):
             if mode == "alias":
                 c.op("mach.addr", "%ptr", "%ptr", [(slot, "%ptr"), ("0", "int")])
             else:
-                c.op("mem.store", a=[("@escaped", "**dyn"), (slot, "*dyn")])
+                c.op("mem.store", a=[("@escaped", "&&dyn"), (slot, "&dyn")])
             c.finish_pair()
             self.assert_safe(c, False)
 
@@ -393,7 +393,7 @@ class DynamicGuardTests(unittest.TestCase):
             c = Case()
             slot = c.slot()
             if mode == "store":
-                c.op("mem.store", a=[(slot, "*dyntype"), ("@pys_dyntype_float", "dyntype")])
+                c.op("mem.store", a=[(slot, "&dyntype"), ("@pys_dyntype_float", "dyntype")])
                 value = c.load(slot)
             else:
                 c.store(slot, "%a0")
@@ -574,14 +574,14 @@ class ClassAndContainerGuardTests(unittest.TestCase):
                     c.g.verify(c.fn, False)
 
     def test_a_switch_proves_only_its_own_tags_class_number(self):
-        for mode in ("other box", "other word", "parameter", "unknown number"):
+        for mode in ("other box", "other field", "raw word", "parameter", "unknown number"):
             with self.subTest(mode=mode):
                 c = self.classes()
                 if mode == "unknown number":
                     c.dispatch({"7": "base"})
                 else:
                     c.dispatch({"0": "base"}, value="%a1" if mode == "other box" else "%a0",
-                               word="2" if mode == "other word" else "3",
+                               field="2" if mode == "other field" else "3", element="int" if mode == "raw word" else "dyntype",
                                operand="%a4" if mode == "parameter" else None)
                 c.block("base")
                 c.payload(member="Base")
@@ -597,7 +597,7 @@ class ClassAndContainerGuardTests(unittest.TestCase):
         tag = c.op("dyn.type", "dyntype", a=[("%a0", "dyn")])
         c.op("br", b=["dispatch"])
         c.block("dispatch")
-        address = c.op("mach.addr", "%ptr", "int", [(tag, "%ptr"), ("3", "int")])
+        address = c.op("mach.addr", "%ptr", "dyntype", [(tag, "%ptr"), ("3", "int")])
         number = c.op("mach.load", "int", a=[(address, "%ptr")])
         c.op("switch", a=[(number, "int"), ("0", "int")], b=["miss", "base"])
         c.block("base")

@@ -1,6 +1,6 @@
 """Functions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends, targets
+from src.pystachy_compiler.analysis import globals_in, inert_input_sites, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends, targets
 from src.pystachy_compiler.diagnostics import Rejoin, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Try, Val
 from src.pystachy_compiler.symbols import FnInfo
@@ -28,6 +28,7 @@ from src.pystachy_compiler.utils import (
 def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     # the code generator's state at the start of function f, whose statements are body
     self.fn = IFn(f)
+    self.fn.located = True  # (each op it adds takes the line being compiled: Gen.add)
     self.blk = self.fn.blocks[0]
     self.ltype = {}
     self.lreg = {}
@@ -173,8 +174,13 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     del self.building[f.ll]
     self.selfcls = sel
     self.xtry = tried
+    sites = f.inert_sites
+    if sites is not None and not all(sites.values()):
+        self.identity_event(f"hinted call of {f.name}()")
+    self.number_casts()  # (after its last value: gen_cast)
+    self.instantiate(self.fn)
     self.fn.n = self.n
-    self.fn.otherbinds = None  # the binding index is needed only while building this function
+    self.fn.build.otherbinds = None  # the binding index is needed only while building this function
     self.fns.append(self.fn)
 
 def gen_numeric_proof(self, f: FnInfo, body: list[Node]) -> None:
@@ -248,11 +254,18 @@ def gen_receiver_fields(self, c: str, me: str, body: list[Node], names: dict[str
 def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
     # one compilation of f's code into a new IFn (gen_function)
     self.enter(f, body)
+    sites = f.inert_sites
+    if sites is not None:
+        sites.clear()  # a replay must validate the body and operand types it actually emits
+        inputs = [f.params[j] for j in range(len(f.params)) if f.ptypes[j] in ["int", "float"]]
+        plain_range = "range" not in self.assigned and "range" not in f.params and "range" not in self.aliases and "range" not in self.gtypes and "range" not in self.fglobals and not self.bound("range")
+        if not all(inert_input_sites(n, inputs, sites, plain_range) for n in body):
+            self.identity_event(f"hinted call of {f.name}()")
     if f.infer and f.ret == "" and len(self.hints) > 0 and self.fnkey(f) + "|return" in self.hints:
         f.ret = self.hints[self.fnkey(f) + "|return"]  # (a join's type: as if annotated, see join_hint)
         self.ret = f.ret
     self.numeric_proof(f, body)
-    self.fn.numeric_only = f.scalar_only
+    self.fn.build.numeric_only = f.scalar_only
     if takes_self(f) and not f.nullable_self:
         # Attribute calls check the receiver; explicit C.m(o, ...) may pass None and
         # uses its own specialization without these assumptions (including self loads).
@@ -273,7 +286,7 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             self.cells[cv] = self.rt("pys_alloc", "ptr", [("i64 23" if big else "i64 15") if identity_abi(f) else ("i64 15" if big else "i64 8")])
             if identity_abi(f) and self.fn_identity(f):
                 # Define the address before any branch or loop can first bind the cell.
-                self.idbox[cv] = self.maddr('%ptr', self.cells[cv], '2' if big else '1', True)
+                self.idbox[cv] = self.cast(Val(self.maddr('int', self.cells[cv], '2' if big else '1', True), "%ptr"), "&dyn", "bits").v
         lf: dict[str, bool] = {}
         for st in body if f.clo < 0 or self.closures[f.clo].name != "<lambda>" else []:
             lambda_flags(st, False, lf)
@@ -305,44 +318,49 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
                 incoming.idfrom = self.rt("pys_dyn_int_box" if t == "int" else "pys_dyn_float_box", "ptr", [f"{'i64' if t == 'int' else 'double'} %a{i}", f"ptr %aid{i}"])
             elif identity_abi(f) and t == BIG:
                 slot = self.alloca("dyn", "")
-                self.mem_store(Val(slot, "*dyn"), Val(f"%aid{i}", "dyn"))
+                self.mem_store(Val(slot, "&dyn"), Val(f"%aid{i}", "dyn"))
                 incoming.idslot = slot
                 incoming.idheld = f"%aid{i}"
                 incoming.idexact = True
             elif identity_abi(f) and numeric_identity(t):
                 incoming.idfrom = f"%aid{i}"
-            self.mem_store(Val(self.alloca("dyn", f.params[i]), "*dyn"), self.dyn_box(incoming))
+            self.mem_store(Val(self.alloca("dyn", f.params[i]), "&dyn"), self.dyn_box(incoming))
         elif f.cmprebind != "" and i == 1:
-            self.mem_store(Val(self.alloca(f.cmprebind, f.params[i]), "*" + f.cmprebind), self.coerce(Val(f"%a{i}", t), f.cmprebind))
+            self.mem_store(Val(self.alloca(f.cmprebind, f.params[i]), "&" + f.cmprebind), self.coerce(Val(f"%a{i}", t), f.cmprebind))
         elif t == NONEVAR:
             # A provisional argument is null-only until its producer's inference restarts.
             # The parameter's later stores can independently reveal its own payload type.
             pt = self.hints.get(f"none:{self.fnkey(f)}|{f.params[i]}", t)
-            self.mem_store(Val(self.alloca(pt, f.params[i]), "*" + pt), self.coerce(Val("null", "None"), pt))
+            self.mem_store(Val(self.alloca(pt, f.params[i]), "&" + pt), self.coerce(Val("null", "None"), pt))
         else:
-            self.mem_store(Val(self.alloca(t, f.params[i]), "*" + t), Val(f"%a{i}", t))
+            # (as its slot's type: the cell of an int a closure takes holds a promoting int in a
+            # module whose ints promote, gen_alloca)
+            slot = self.alloca(t, f.params[i])
+            held = self.ltype[f.params[i]]
+            self.mem_store(Val(slot, "&" + held), self.coerce(Val(f"%a{i}", t), held))
         if identity_abi(f) and numeric_identity(t) and f.params[i] in self.idbox:
-            self.mem_store(Val(self.idbox[f.params[i]], "*dyn"), Val(f"%aid{i}", "dyn"))
+            self.mem_store(Val(self.idbox[f.params[i]], "&dyn"), Val(f"%aid{i}", "dyn"))
         if f.params[i] in self.lflag:
-            self.mem_store(Val(self.lflag[f.params[i]], "*bool"), Val("true", "bool"))  # (a parameter that del unbinds)
+            self.mem_store(Val(self.lflag[f.params[i]], "&bool"), Val("true", "bool"))  # (a parameter that del unbinds)
     if f.clo >= 0:
         # a closure: the variables it takes are the cells its env holds
         c = self.closures[f.clo]
         for cv in c.nlw:
             self.nlw[cv] = True
-        env = self.mem_load(Val(self.lreg['.env'], "*env")).v
+        env = self.mem_load(Val(self.lreg['.env'], "&env")).v
         for i in range(len(c.caps)):
             if c.ctypes[i] == "None":
                 self.nonevars[c.caps[i]] = 0  # (a parameter whose argument is None: it reads as None)
                 continue
-            a = self.maddr('%ptr', env, f'{i}', True)
-            self.lreg[c.caps[i]] = self.mload('%ptr', a)
+            a = self.maddr('int', env, f'{i}', True)
+            # (its env's word holds the address of the variable's cell)
+            self.lreg[c.caps[i]] = self.cast(Val(self.mload('%ptr', a), "%ptr"), "&" + c.ctypes[i], "bits").v
             self.ltype[c.caps[i]] = c.ctypes[i]
             if numeric_identity(c.ctypes[i]) and identity_abi(f) and self.fn_identity(f):
-                self.idbox[c.caps[i]] = self.maddr('%ptr', self.lreg[c.caps[i]], '2' if int_program() else '1', True)
+                self.idbox[c.caps[i]] = self.cast(Val(self.maddr('int', self.lreg[c.caps[i]], '2' if int_program() else '1', True), "%ptr"), "&dyn", "bits").v
         for j in range(len(c.iflags)):
-            a = self.maddr('%ptr', env, f'{len(c.caps) + closure_default_slots(c) + j}', True)
-            self.iflag[c.iflags[j]] = self.mload('%ptr', a)
+            a = self.maddr('int', env, f'{len(c.caps) + closure_default_slots(c) + j}', True)
+            self.iflag[c.iflags[j]] = self.cast(Val(self.mload('%ptr', a), "%ptr"), "&bool", "bits").v
     self.none_ends()
     if f.gen:
         self.gen_begin(f)  # (a generator: a call makes it, and runs none of the code below)
@@ -352,11 +370,11 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         self.global_var(done, "bool")
         l1 = self.label()
         l2 = self.label()
-        self.cbr(self.mem_load(Val(done, "*bool")).v, l1, l2)
+        self.cbr(self.mem_load(Val(done, "&bool")).v, l1, l2)
         self.place(l1)
         self.ret_(Val("null", "None"))
         self.place(l2)
-        self.mem_store(Val(done, "*bool"), Val("true", "bool"))
+        self.mem_store(Val(done, "&bool"), Val("true", "bool"))
         # A retry after a failed initialization creates a fresh module in CPython. Its import
         # aliases start unbound too, even if the failed attempt had reached their imports.
         flags: dict[str, bool] = {}
@@ -369,7 +387,7 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             elif n.kind != "def" and n.kind != "lambda":
                 pending.extend(n.kids)
         for imported_name in flags:
-            self.mem_store(Val(self.imp_flag(imported_name, True), "*bool"), Val("false", "bool"))
+            self.mem_store(Val(self.imp_flag(imported_name, True), "&bool"), Val("false", "bool"))
     hm = ""
     mark = Val("", "")
     slot = ""
@@ -410,7 +428,7 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             self.ret_(Val("null", "None"))
         self.handler = ""
         e = self.landing(hm, slot, mark)
-        self.mem_store(Val(f"{f.ll}.done", "*bool"), Val("false", "bool"))
+        self.mem_store(Val(f"{f.ll}.done", "&bool"), Val("false", "bool"))
         self.throw(e)
     if not self.term and f.ret == "dyn":
         self.ret_(Val(self.rtdata("pys_dyn_none_box"), "dyn"))  # (None, as a dynamic value: dynamic.py)

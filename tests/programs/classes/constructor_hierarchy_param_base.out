@@ -1,0 +1,5 @@
+mods: init mods
+mods.shapes: init mods.shapes
+['<3>', '<x>', '<2.5>', '<[1, 2]>'] True
+view <3> wide <x>
+[exit 0]

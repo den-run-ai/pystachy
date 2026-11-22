@@ -285,18 +285,21 @@ def _format_char(v: Any) -> str:
 
 
 def _output(ctx: _Formatter, ch: str, s: str) -> str:
+    # Padding reads only the settings of this conversion, after value formatting has run.
+    return _pad_output(ctx.flags, ctx.sign, ctx.width, ctx.prec, ch, s)
+
+
+def _pad_output(flags: int, sign: bool, width: int, prec: int, ch: str, s: str) -> str:
     # unicode_format_arg_output(): s with the precision (of a str), the sign and the width
-    flags = ctx.flags
-    fill = "0" if ctx.sign and flags & _F_ZERO else " "
+    fill = "0" if sign and flags & _F_ZERO else " "
     length = len(s)
-    if ((ctx.width == -1 or ctx.width <= length) and (ctx.prec == -1 or ctx.prec >= length)
+    if ((width == -1 or width <= length) and (prec == -1 or prec >= length)
             and not flags & (_F_SIGN | _F_BLANK)):
         return s
-    if (ch == "s" or ch == "r" or ch == "a") and ctx.prec >= 0 and length > ctx.prec:
-        length = ctx.prec
+    if (ch == "s" or ch == "r" or ch == "a") and prec >= 0 and length > prec:
+        length = prec
     pindex = 0
     signchar = ""
-    sign = ctx.sign
     if sign:
         c = s[0]
         if c == "-" or c == "+":
@@ -309,7 +312,6 @@ def _output(ctx: _Formatter, ch: str, s: str) -> str:
             signchar = " "
         else:
             sign = False
-    width = ctx.width
     if width < length:
         width = length
     parts: list[str] = []
