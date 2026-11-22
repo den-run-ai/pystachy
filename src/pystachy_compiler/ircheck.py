@@ -661,7 +661,9 @@ def verify_dynamic_raw(self, fn: IFn) -> None:
 def gen_verify(self, fn: IFn, eh: bool) -> None:
     # PYSTACHY_IRCHECK=1: fn is well formed. Every op is in IROPS, an rt op's key in RUNTIME;
     # call and init ops call compiled
-    # functions (or, in runtime mode, runtime.c's functions that runtime.py declares); every block ends with its one terminator; branches go to blocks of fn; a phi
+    # functions (or, in runtime mode, runtime.c's functions that runtime.py declares); every block
+    # has a label of its own, the first block's being entry; every block ends with its one
+    # terminator; branches go to blocks of fn; a phi
     # starts its block, and its predecessors branch there; each op holds exactly the numbers
     # its lowering prints (Ins.r), and no number or label is above IFn.n. Exceptions (once the
     # passes of eh_ir have run, eh): a landing op is alone in its block, which only the unwind
@@ -707,6 +709,10 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
             self.bad_ir(fn, fn.blocks[0], f"slot {slot_register(i)} has no source line")
     for j in range(len(fn.blocks)):
         l = fn.blocks[j].label
+        if l == "":
+            self.bad_ir(fn, fn.blocks[j], f"block {j} without a label")
+        if (j == 0) != (l == "entry"):
+            self.bad_ir(fn, fn.blocks[j], "a block named entry that is not the first, or a first that is not entry")
         if l in at:
             self.bad_ir(fn, fn.blocks[j], "a second block of that name")
         if l.startswith("L") and int(l[1:]) > fn.n:
