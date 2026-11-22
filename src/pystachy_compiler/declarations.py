@@ -2105,8 +2105,6 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
             bt = self.classes[ci.base].ftypes.get(st.kids[0].s, "") if ci.base in self.classes else ""
             if t != "" and bt != "" and (self.widens(t, bt) or self.boxes(t, bt) or (t == "int" and bt == BIG)):
                 t = bt  # (a class attribute of the base bound again, with a value of its type)
-            if t == "" and ci.mod == "" and st.kids[1].kind == "name" and st.kids[1].s in self.classes and self.classes[st.kids[1].s].node.line in ENUMCLASSES:
-                self.err(f"class attribute '{st.kids[0].s}' of enum class {short(st.kids[1].s)} is not supported: a variable or a field (self.{st.kids[0].s} = {short(st.kids[1].s)}) may hold the class")
             if t == "" and ci.mod == "":
                 self.err(f"cannot infer the type of class attribute '{st.kids[0].s}'; annotate it ({st.kids[0].s}: {'Final[T]' if st.s == 'Final' else 'T'} = ...)")
             if t == "":
@@ -2825,19 +2823,20 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         local_names(guess_scope(f), asg)
         if e.s not in asg:
             return "type[" + e.s + "]"
-    if k == "name" and e.s in self.classes and self.classes[e.s].node.line in ENUMCLASSES and self.compiling:
+    if k == "name" and e.s in self.classes and self.classes[e.s].node.line in ENUMCLASSES and (self.compiling or f.node.kind == "class"):
         # an enum class: its EnumType object (a _FlagType's, of a flag class), which its module
         # binds after the class statement (Loader's enum_classes), of the specialization of
         # lib/enum.py's class template that that call's arguments pick: the class's name, its
-        # members, by name (and a flag's by value, its masks and its boundary). Once code is being
-        # compiled, as a class template's object (unless a local of the method has the class's
-        # name): a field that holds one makes its class a template too (stores_enum_class)
+        # members, by name (and a flag's by value, its masks and its boundary). A class attribute
+        # needs that same specialization during field declaration. Its value is loaded later,
+        # when the class body runs. In a method, wait for the compilation of its specialization
+        # (stores_enum_class). In either scope a local binding can hide the class name.
         asg = {}
         local_names(guess_scope(f), asg)
         g = e.s[: e.s.rfind("$") + 1] + "_pys_enum_" + short(e.s)
         v = self.globvalues[g] if g in self.globvalues else mk("pass", "", e.line, [])
         tc = v.kids[0].s if v.kind == "call" and len(v.kids) > 0 and v.kids[0].kind == "name" else ""
-        if e.s not in asg and (tc == "enum$EnumType" or tc == "enum$_FlagType") and tc in self.tmpl:
+        if e.s not in asg and (tc == "enum$EnumType" or tc == "enum$_FlagType") and tc in self.tmpl and "__init__" in self.classes[tc].methods:
             ets = ["str", "list[" + e.s + "]", "dict[str," + e.s + "]"]
             if tc == "enum$_FlagType":
                 ets = ets + ["dict[int," + e.s + "]", "int", "int", "int", "str"]
