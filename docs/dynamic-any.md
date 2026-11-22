@@ -738,6 +738,10 @@ nonnegative sign. For an in-range dynamic integer, the calling module's policy a
 with both opt-ins. Already-wide dynamic integers retain arbitrary-precision arithmetic;
 explicit [fixed-width destinations](python-int.md#64-bit-boundaries) can still narrow.
 
+A nonnegative typed `int` also retains its identity when `abs(x)` reaches an
+`Any` consumer such as `inspect.Parameter.default`. A negative input computes
+a new magnitude, subject to the small-integer cache.
+
 ### Dictionary union and updates
 
 `dict.update()` accepts a dict or pairs, where each pair is an iterable of two
