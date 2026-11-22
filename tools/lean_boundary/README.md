@@ -11,7 +11,7 @@ the model does not establish that the exporter or runtime implements that model.
 | Compiler stages | Completed stages form an ordered prefix; unfinished stages block new starts; lowering follows finalization and is terminal; successful inspection reports bind the snapshot to the terminal attempt ([PIPELINE.md](PIPELINE.md)) | Python state/exporter correspondence, stage body semantics and artifact authenticity |
 | Dynamic `Any` | Payload reads have matching type guards and compatible class layout prefixes | Exported layouts, runtime tag/boxing contracts and LLVM offsets |
 | Reference boxing | A non-null reference round trip preserves its address, mutable aliases and abstract tracing edge | Bounded C-AST adapter, physical layout correspondence and allocator/collector semantics |
-| Numeric-list identity | Initialized companions preserve identity readback and tracing after stores, reserve growth and contiguous slice/copy | Bounded C-AST adapter, valid nonoverflowing lengths, allocation-time liveness and collector semantics |
+| Numeric-list identity | Initialized companions preserve identity readback and tracing after stores, reserve growth and contiguous slice/copy | Bounded C-AST and Python-AST adapters, the compiler's lowering of `runtime.py`'s fields and words, valid nonoverflowing lengths, allocation-time liveness and collector semantics |
 | Lists, dictionaries and sets | Unchecked accesses have bounds/live-entry facts | Runtime effects and container contracts |
 | Closure cells and calls | Captured-container facts survive only valid reads; visible callee writes invalidate facts | Independent Python body-effect scan and cell ABI |
 | Promoting integers | Selected result-fit claims and actual checked `+`, `-`, `*` reconstruction paths | Other inline arithmetic, LLVM and integer runtime |
@@ -316,16 +316,21 @@ an anonymous union is rejected even if the runtime's own assertions allow it.
 The raw `Slot` must contain exactly one full word at offset zero, so padding cannot
 change the setter's stride or address. Member-name macros are undefined before
 independent layout extraction. Clang AST comparisons
-check the complete bounded constructor, companion allocation/materialization,
-clean-companion fast path, identity setter/getter, reserve and contiguous
-slice/copy bodies. Header and companion allocations must use scanned storage.
+check the complete bounded companion allocation/materialization, clean-companion
+fast path and identity setter/getter bodies, which `runtime.c` defines. The
+constructor, reserve and contiguous slice/copy are `runtime.py`'s: Python's AST of
+each must equal a reference contract, statement for statement, and `runtime.py`
+may only declare the allocators those trees call. Its field names resolve through
+the compiler's `List` record, which must be the header that clang lays out; the
+lowering of a field or a word to an address is trusted, as the C compiler's was.
+Header and companion allocations must use scanned storage.
 The adapter derives the copy's source/destination offsets, extra header words
 and scanned extent; Lean checks their relationships. The pointer attachment,
 setter and getter must retain the same addresses and `i + 1` word. Unknown
 statements, narrowing length/capacity fields, changed copy sources, truncated
-extents and missing/overwritten attachments fail closed. The reference spells
-out the raw-data store independently of `AT` and undefines callable macros before
-parsing, so those macros cannot rewrite both the code and its reference. Schema 2
+extents and missing/overwritten attachments fail closed, in either file. The C
+reference spells out the raw-data store independently of `AT` and undefines callable
+macros before parsing, so those macros cannot rewrite both the code and its reference. Schema 2
 requires both copy contracts; the native parser rejects omissions, schema
 downgrades, extra fields and oversized offsets. Run
 `python3.13 tools/check_lean_companion.py`; its tests and theorem axiom audit are

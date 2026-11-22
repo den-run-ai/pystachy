@@ -3687,6 +3687,12 @@ def pys_list_empty(l: _rt.Ptr) -> None:
 
 
 @_rt.unchecked
+def item_array(n: int, atomic: int) -> _rt.Ptr:
+    # an array of n items, of the kind asked for: atomic ones are never scanned
+    return pys_alloc_atomic(n * 8) if atomic != 0 else pys_alloc(n * 8)
+
+
+@_rt.unchecked
 def pys_list_make(cap: int, atomic: int) -> _rt.Ptr:
     # a new empty list with room for cap items, at least 4: scanned ones of at most 4 inline
     if atomic == 0 and cap <= 4:
@@ -3699,7 +3705,7 @@ def pys_list_make(cap: int, atomic: int) -> _rt.Ptr:
     l = pys_alloc(_rt.sizeof("List") - 1)
     c = cap if cap > 4 else 4
     _rt.set(l, "List.cap", c)
-    _rt.setp(l, "List.a", pys_alloc_atomic(c * 8) if atomic != 0 else pys_alloc(c * 8))
+    _rt.setp(l, "List.a", item_array(c, atomic))
     return l
 
 
@@ -3738,7 +3744,7 @@ def pys_list_reserve(l: _rt.Ptr, n: int) -> None:
     if _rt.getp(l, "List.a") is pys_rt_empty_inline() and c == 4:
         a = list_inline(l)  # (emptied, and its items fit inline again)
     else:
-        a = pys_alloc_atomic(c * 8) if pys_rt_atomic_items(_rt.getp(l, "List.a")) != 0 else pys_alloc(c * 8)
+        a = item_array(c, pys_rt_atomic_items(_rt.getp(l, "List.a")))
         _rt.cpy(a, _rt.getp(l, "List.a"), _rt.get(l, "List.len") * 8)
         if _rt.getp(l, "List.a") is list_inline(l):
             _rt.fill(_rt.getp(l, "List.a"), 0, 32)  # (moved: the header keeps none of them)
