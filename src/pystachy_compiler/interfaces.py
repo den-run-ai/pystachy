@@ -9,7 +9,7 @@ their table entry with the object, as a Callable's call calls its code with its 
 calls through the interface use (iface_finish): an implementation needs only what is called.
 """
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import where
+from src.pystachy_compiler.diagnostics import dynamic_program, where
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.names import MAPVIEW, OBJECT, SEQVIEW, SETVIEW, VIEWSHOW, short
@@ -789,7 +789,7 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
             body = [mk("return", "", line, [mk("call", "", line, [mk("name", "__pys_exc_user" if wrap else "__pys_exc_obj", line, []), clone(e)])])]
     elif derived and parts[0] == "is" and parts[1] != OBJECT:
         e = o
-        body = object_is_body(tab.impl, parts[1], line)  # (x is a number: object_is_num)
+        body = object_is_body(tab.impl, op[3:], line)  # (x is a number, object_is_num, or a reference: object_is_held)
     elif derived and parts[0] == "view":
         e = o
         body = view_body(self, parts[1], parts[2], tab.impl, line)  # (a view's operation on the container: view_slot)
@@ -956,9 +956,35 @@ def gen_object_is(self, x: Val, y: Val) -> Val:
     if self.is_iface(t):
         return self.ptr_cmp('==', self.iface_obj(x), self.iface_obj(y))
     if self.isref(t):
-        return self.ptr_cmp('==', self.iface_obj(x), y)  # (not held by a value of object, it is never x)
+        same = self.ptr_cmp('==', self.iface_obj(x), y)  # (the object that x holds as itself)
+        return object_is_held(self, x, y, same) if dynamic_program() else same
     self.err(f"comparing a value of object with a value of {typestr(t)} by 'is' is not supported")
     return Val("false", "bool")
+
+
+def object_is_held(self, x: Val, y: Val, same: Val) -> Val:
+    # x is y of a value of object x and an object y of a reference type (object_is) in a program
+    # with Any values: the object that x holds as itself (same), else, where x is not None, by
+    # x's table's entry, as an Any value that x holds may be y but its box is not
+    # (object_is_body); a value of another type is not y
+    line = self.line
+    end = self.label()
+    more = self.label()
+    ph = Ins("phi", "bool", "")
+    self.incoming(ph, "true", self.cur)
+    self.cbr(same.v, end, more)
+    self.place(more)
+    if x.v not in self.nn:
+        some = self.label()
+        self.incoming(ph, "false", self.cur)
+        self.cbr(self.ptr_cmp('==', x, Val('null', 'None')).v, end, some)
+        self.place(some)
+    e = mk("cmp", "is", line, [mk("name", "_o", line, []), mk("name", "_a0", line, [])])
+    r = self.iface_op(Val(x.v, OBJECT), "is|" + y.t, [y.t], "bool", e, f"its object is {typestr(y.t)}", [y])
+    self.incoming(ph, r.v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), "bool")
 
 
 def gen_object_is_object(self, x: Val, y: Val) -> Val:
@@ -1048,9 +1074,10 @@ def num_kind(t: str) -> str:
 
 
 def object_is_body(impl: str, h: str, line: int) -> list[Node]:
-    # the body of the entry of implementation impl for x is h, h a number of type h (object_is_num):
-    # a number of its kind is h where it equals it (a float by its bits: NaN is a NaN, 0.0 is not
-    # -0.0), any other value never
+    # the body of the entry of implementation impl for x is h, h a number of type h (object_is_num)
+    # or an object of a reference type h that x does not hold as itself (object_is_held): an Any
+    # value is h where it holds it; a number of its kind is h where it equals it (a float by its
+    # bits: NaN is a NaN, 0.0 is not -0.0); any other value never
     held = unopt(impl) if is_sopt(impl) else impl
     no = mk("return", "", line, [mk("False", "", line, [])])
     o = mk("name", "_o", line, [])
