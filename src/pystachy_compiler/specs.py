@@ -1402,6 +1402,12 @@ RUNTIME: dict[str, str] = {
 # the runtime's data that programs name (docs/dynamic-any.md): the DynTypes of the builtin types
 # and the constant boxes of None, True and False, with their LLVM types; a module declares those
 # it uses (Gen.rtdata), and tools/check_runtime.py checks that runtime.c defines them
+# Pointers in this private prefix use the same scanned slot type as other hidden
+# references. Integer fields are always i64, including on wasm32 (runtime.c).
+CONTAINER_HEADERS: dict[str, list[str]] = {
+    "list": ["int", "int", "str", "str"],
+    "dict": ["int", "int", "int", "int", "str", "str", "str", "str", "int", "int", "str", "str"],
+}
 CLASSREC_LL = "{ptr, ptr, ptr, i64, i64, ptr, i64, ptr}"
 DYNTYPE_LL = "{i64, ptr, ptr, i64, ptr, i64, ptr, ptr, ptr}"
 RTDATA: dict[str, str] = {"pys_dyn_none_box": "{ptr, i64}", "pys_dyn_true_box": "{ptr, i64}", "pys_dyn_false_box": "{ptr, i64}"}

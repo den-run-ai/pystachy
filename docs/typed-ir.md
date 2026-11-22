@@ -771,6 +771,7 @@ temporaries, variable tuple traversal, string headers and bytes. Storage retains
 types or one of the finite machine types (`%ptr`, `%byte`, `%i32`); addresses carry
 explicit operands and indices. For a DynType address the index selects the name, class id or
 flags field of the runtime record. A classrec index selects the reflection record flags.
+A `list.header` or `dict.header` index selects a member of a fresh builtin container when initializing a subclass.
 Lowering uses the target ABI to place those fields. String alias/range metadata and in-bounds addressing are finite
 choices checked before lowering. These operations preserve the existing effects,
 layout and guard order; they do not introduce unchecked Python operations.
