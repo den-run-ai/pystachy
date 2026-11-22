@@ -1258,8 +1258,12 @@ these objects. Dataclass fields annotated `Any` still require a concrete type.
 
 Each specialization is a distinct static type. One variable or container cannot hold both
 `Box[int]` and `Box[str]`, although both satisfy `isinstance(value, Box)` and use the name
-`Box` in runtime messages. Class attributes are shared. Compiler errors show the differing
-field types.
+`Box` in runtime messages. Class attributes are shared: one assigned through the class
+(`Box.limit = 10`, `cls.limit += 1`) is read with its current value by the objects of every
+specialization that have not assigned it themselves
+([test](../../tests/programs/classes/template_class_variable.py),
+[specializations that annotations name](../../tests/programs/classes/template_class_variable_declared.py)).
+Compiler errors show the differing field types.
 
 A bare class-template annotation such as `-> Box` lets a function infer which specialization
 it uses. Inside the class's own fields and methods, `Box` or `Self` denotes the current

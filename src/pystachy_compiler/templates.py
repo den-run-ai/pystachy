@@ -138,6 +138,14 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
             s.ftypes["__slots__"] = t.ftypes["__slots__"]
         s.fdefault = t.fdefault
         s.fglob = t.fglob
+        for x in t.fields:
+            if c + "." + x in self.cvars or (c + "." + x in self.cstores and x in t.fdefault and not self.is_dc(c)):
+                # (a class variable, C.x = v: its objects read the class's value until they assign
+                # x themselves, whichever specialization they are of; also one that a declaration's
+                # annotation makes before cvar_stores has found the program's stores, cstores,
+                # which then makes the class's global whether or not cvar_stores finds a store)
+                self.cvars[name + "." + x] = True
+                self.cvars[c + "." + x] = True
         fi = FnInfo("__init__", init.ll, init.node, name)
         fi.params = init.params
         fi.ptypes = [name] + ts
