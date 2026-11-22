@@ -143,7 +143,7 @@ test("direct exceptions, object dispatch and key layouts match CPython", async t
     "containers/tuple_runtime_object_compare", "generics/template_empty_forward",
     "classes/builtin_dict_basic", "classes/builtin_list_token_list",
     "reflection/callables", "exceptions/exc_class_values", "generators/gen_resume_typed_iterators",
-    "generators/gen_suspend_temporaries", "generators/gen_protocol_noeh", "generators/gen_resume_depth",
+    "generators/gen_suspend_temporaries", "generators/gen_protocol_noeh", "generators/gen_resume_depth", "generators/gen_tree",
     "library/lib_atexit", "library/lib_atexit_exit", "library/lib_atexit_uncaught",
   ];
   for (const fixture of cases) {

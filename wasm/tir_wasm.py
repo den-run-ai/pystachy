@@ -934,7 +934,41 @@ def generator_functions(m: Module, targets: dict[str, str], handles: set[str]) -
             functions.append(resume)
         else:
             functions.append(fn)
+    if handles:
+        check_generator_drops(m)
     return functions
+
+
+def check_generator_drops(m: Module) -> None:
+    # A counted drop enters the runtime only to run suspended cleanup. Match the
+    # original SSA handle before splitting the coroutine inserts spill reloads.
+    constructors: dict[str, str] = {}
+    cleanup: set[str] = set()
+    for fn in m.funcs:
+        if fn.coroutine:
+            if any(i.op == "gen.yield" and i.fields.get("cleanup", "0") != "0" for b in fn.blocks for i in b.code):
+                cleanup.add(fn.ret)
+            else:
+                constructors[fn.name] = fn.ret
+    for fn in m.funcs:
+        dropped: dict[str, str] = {}
+        for block in fn.blocks:
+            for i in block.code:
+                if i.op == "gen.drop" and len(i.args) == 1:
+                    handle = i.args[0]
+                    if handle.t not in m.plain_generators or handle.t in cleanup:
+                        dropped[handle.v] = handle.t
+        if dropped:
+            found: set[str] = set()
+            for block in fn.blocks:
+                for i in block.code:
+                    for name in i.res:
+                        if name in dropped:
+                            if i.op != "call" or constructors.get(i.fields.get("callee", ""), "") != dropped[name]:
+                                raise Refused(f"counted generator drop in {fn.name}")
+                            found.add(name)
+            if len(found) != len(dropped):
+                raise Refused(f"counted generator drop in {fn.name}")
 
 
 # ---------- emission ----------
@@ -1662,8 +1696,6 @@ class Emitter:
             if op == "gen.promise":
                 self.result(i, 0, "%ptr")
             elif op == "gen.drop":
-                if i.args[0].t not in self.m.plain_generators:
-                    raise Refused(f"counted generator drop in {self.fn.name}")
                 self.i64c(GENDONE)
                 self.mem(0x37, 3, GENSTATE * 8)
             else:

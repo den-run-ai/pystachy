@@ -157,6 +157,44 @@ final:
             with self.subTest(after=after), self.assertRaisesRegex(T.Refused, reason):
                 emit(source.replace(before, after))
 
+    def test_counted_generator_drop_requires_a_cleanup_free_constructor(self):
+        producer = """function @left() -> gen[int] coroutine {
+entry:
+  gen.start (str @name) -> first
+first:
+  ~%t0 ~%t1 = gen.yield (%slot 1) -> last
+last:
+  ~%t2 ~%t3 = gen.ret
+}
+"""
+        consumer = """module complete {
+  const @name kind=string text=g
+}
+function @main.init() -> None kind=block {
+entry:
+  %t0 = call callee=@left : gen[int]
+  gen.drop (gen[int] %t0)
+  ret
+}
+"""
+        clean = consumer + producer
+        self.assertIn(b"__indirect_function_table", emit(clean))
+        forwarded = clean.replace("  gen.drop (gen[int] %t0)",
+                                  "  %t1 = cast (gen[int] %t0) : gen[int]\n  gen.drop (gen[int] %t1)")
+        with self.assertRaisesRegex(T.Refused, "counted generator drop"):
+            emit(forwarded)
+
+        # Even if a future emitter handles cleanup yields, a second producer of
+        # the same handle type must not inherit the first one's simple drop.
+        mixed = clean + producer.replace("@left", "@right").replace("gen.yield (", "gen.yield cleanup=1 (")
+        T.check_generator_drops(T.parse(mixed))
+        dirty = mixed.replace("call callee=@left", "call callee=@right")
+        for source in (dirty, dirty.replace("module complete", "module complete plain=[gen[int]]")):
+            with self.subTest(source=source), self.assertRaisesRegex(T.Refused, "counted generator drop"):
+                T.check_generator_drops(T.parse(source))
+        with self.assertRaisesRegex(T.Refused, "yield with cleanup"):
+            emit(mixed)
+
     @unittest.skipUnless(shutil.which("node"), "node runs the module")
     def test_generator_resumes_at_the_yielding_phi_predecessor(self):
         source = """module complete {
