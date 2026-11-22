@@ -28,9 +28,19 @@ import struct
 import sys
 
 from src.pystachy_compiler.machine_ir import WORD_READS
-from src.pystachy_compiler.specs import RTSYM, RUNTIME
+from src.pystachy_compiler.specs import RTRECORDS, RTSYM, RUNTIME, rt_record_offset
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, is_tuple, lt, rtll, rtsig, rtsym, tslots
 from wasm.wasi_abi import LIBC_WRAPPERS
+
+# runtime.c's records (RTRECORDS) as wasm32 lays them out: a pointer is four bytes
+PTR = 4
+LIST_ITEMS_AT = rt_record_offset("List", "a", PTR)
+VTUPLE_ITEMS_AT = rt_record_offset("VTuple", "", PTR)  # (its items follow the record)
+RECORD_REFS: dict[str, int] = {}  # each record's pointers, and its words
+RECORD_WORDS: dict[str, int] = {}
+for _name in RTRECORDS:
+    RECORD_REFS[_name] = len([f for f in RTRECORDS[_name].split() if f.endswith("*")])
+    RECORD_WORDS[_name] = len(RTRECORDS[_name].split()) - RECORD_REFS[_name]
 
 I32 = 0x7F
 I64 = 0x7E
@@ -698,17 +708,18 @@ class Emitter:
                     functions = {fn.name: fn for fn in self.m.funcs}
                     strings = {data.name for data in self.m.consts if data.kind == "string"}
                 self.exception_descriptor(c, functions, strings)
-            elif c.kind == "classrec" and len(c.refs) == 5 and len(c.items) == 3:
-                # {ptr, ptr, ptr, i64, i64, ptr, i64, ptr}, at wasm32's offsets 0 4 8 16 24 32 40 48
-                for r in c.refs[0:3]:
-                    self.ref(r)
-                self.align8()
-                self.slot(c.items[0])
-                self.slot(c.items[1])
-                self.ref(c.refs[3])
-                self.align8()
-                self.slot(c.items[2])
-                self.ref(c.refs[4])
+            elif c.kind == "classrec" and len(c.refs) == RECORD_REFS["ReflRec"] and len(c.items) == RECORD_WORDS["ReflRec"]:
+                # runtime.c's ReflRec at wasm32's offsets: its pointers from refs, its words from items
+                nref = 0
+                nword = 0
+                for f in RTRECORDS["ReflRec"].split():
+                    if f.endswith("*"):
+                        self.ref(c.refs[nref])
+                        nref += 1
+                    else:
+                        self.align8()
+                        self.slot(c.items[nword])
+                        nword += 1
                 self.align8()
             else:
                 raise Refused(f"constants of kind {c.kind}")
@@ -725,18 +736,18 @@ class Emitter:
         # runtime.c's ExcClass: two string pointers, then three wasm32 function
         # pointers (table indices). SystemExit subclasses supply the last callback.
         cls = c.name[3:]
-        if not c.name.startswith("@x.") or cls not in self.m.classes or len(c.refs) != 5:
+        if not c.name.startswith("@x.") or cls not in self.m.classes or len(c.refs) != RECORD_REFS["ExcClass"]:
             raise Refused(f"exception descriptor {c.name}")
         if c.refs[0] not in strings or c.refs[1] not in strings:
             raise Refused(f"exception descriptor {c.name} requires string names")
         self.ref(c.refs[0])
         self.ref(c.refs[1])
-        for j in range(2, 5):
+        for j in range(2, len(c.refs)):
             target = c.refs[j]
-            if j == 4 and target == "null":
+            if j == len(c.refs) - 1 and target == "null":
                 self.ref("null")
                 continue
-            result = "exc" if j == 4 else "str"
+            result = "exc" if j == len(c.refs) - 1 else "str"
             if target not in functions or functions[target].ptypes != [cls] or functions[target].ret != result:
                 raise Refused(f"exception callback {target} must take {cls} and return {result}")
             if target not in self.callbacks:
@@ -1417,22 +1428,22 @@ class Emitter:
             # zeroed), then each item in an 8-byte slot, stored at its own type (a bool widened)
             p = self.local(i.res[0], I32)
             imp = self.alloc_import()
-            self.i64c(8 * (len(i.args) + 2))
+            self.i64c(VTUPLE_ITEMS_AT + 8 * len(i.args))
             self.op(0x10)
             uleb(self.code, self.fnindex[imp.sym])
             self.set(p)
             self.get(p)
             self.i64c(len(i.args))
-            self.mem(0x37, 3, 0)
+            self.mem(0x37, 3, rt_record_offset("VTuple", "len", PTR))
             for k in range(len(i.args)):
                 v = i.args[k]
                 ll = "i64" if v.t == "bool" else value_ll(v.t)
                 self.get(p)
                 self.push(v, ll)
-                self.mem(access(ll)[1], access(ll)[2], 8 * (k + 2))
+                self.mem(access(ll)[1], access(ll)[2], VTUPLE_ITEMS_AT + 8 * k)
         elif op == "list.load":
             self.address(i.args[0])
-            self.mem(0x28, 2, 16)  # (List.a: {len, cap, a})
+            self.mem(0x28, 2, LIST_ITEMS_AT)  # (List.a)
             self.push(i.args[1], "i64")
             self.op(0xA7)
             self.i32c(3)
@@ -1442,7 +1453,7 @@ class Emitter:
             self.set(self.local(i.res[0], I64))
         elif op == "list.store":
             self.address(i.args[0])
-            self.mem(0x28, 2, 16)
+            self.mem(0x28, 2, LIST_ITEMS_AT)
             self.push(i.args[1], "i64")
             self.op(0xA7)
             self.i32c(3)
@@ -1910,7 +1921,7 @@ def is_number(v: str) -> bool:
 def const_size(c: Const) -> int:
     # the bytes that lay_out_data writes for c
     if c.kind == "string":
-        return 24 + len(c.text) + 1
+        return rt_record_offset("Str", "", PTR) + len(c.text) + 1
     if c.kind == "tuple":
         return 8 * max(1, len(c.items))
     if c.kind == "listdata":
@@ -1918,9 +1929,9 @@ def const_size(c: Const) -> int:
     if c.kind == "fieldnames":
         return 4 * len(c.refs)
     if c.kind == "exception":
-        return 20
+        return rt_record_offset("ExcClass", "", PTR)
     if c.kind == "classrec":
-        return 56
+        return rt_record_offset("ReflRec", "", PTR)
     raise Refused(f"constants of kind {c.kind}")
 
 

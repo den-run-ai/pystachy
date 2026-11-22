@@ -14,6 +14,7 @@ from src.pystachy_compiler.bigints import held, narrow_type, search_type
 from src.pystachy_compiler.specs import (
     ARITY,
     BIG,
+    BIGLL,
     BIGOPT,
     CALLS,
     DEFAULTS,
@@ -1994,7 +1995,7 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
         lv = self.mload('%ptr', r.acc)
         if (r.t == "int" or r.t == BIG) and int_lists():
             # (its items may be past 64 bits: bigints.py; the result keeps the items' type)
-            big = Val(self.rt("pys_list_big_minmax", "{i64, ptr}", [f"ptr {lv}", f"i64 {1 if name == 'max' else 0}"]), BIG)
+            big = Val(self.rt("pys_list_big_minmax", BIGLL, [f"ptr {lv}", f"i64 {1 if name == 'max' else 0}"]), BIG)
             return big if r.t == BIG else self.big_narrow(big)
         return self.from_slot(self.rt("pys_list_minmax", "i64", [f"ptr {lv}", f"ptr {d}", f"i64 {1 if name == 'max' else 0}"]), r.t)
     if name != "sum":

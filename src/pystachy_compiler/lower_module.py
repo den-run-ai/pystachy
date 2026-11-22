@@ -9,7 +9,7 @@ from src.pystachy_compiler.ir import Data, Val
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import CLASSREC_LL, COMPLEXC, CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_DEPTH_TYPE, TBAA_FIELDS, TBAA_FLOOR, TBAA_FLOOR_TYPE, TBAA_LEN, TBAA_LIMIT, TBAA_LIMIT_TYPE, TBAA_NAMES, TBAA_SIZES
+from src.pystachy_compiler.specs import CLASSREC_LL, COMPLEXC, CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_DEPTH_TYPE, TBAA_FIELDS, TBAA_FLOOR, TBAA_FLOOR_TYPE, TBAA_LEN, TBAA_LIMIT, TBAA_LIMIT_TYPE, TBAA_NAMES, TBAA_SIZES, rt_record_ll, rt_record_values
 from src.pystachy_compiler.utils import RtFn, float_slot, lt, runtime_decl, typestr
 
 # pystachy run on Linux, which loads the runtime as a shared library (the driver's RTSO, #704): a
@@ -339,24 +339,21 @@ def lower_data(d: Data) -> str:
         # a class's reflection record (reflection.py): name, qualified name and module, flags,
         # the sorted name table and the field table with their lengths (null and 0 until a site
         # needs them). Internal, and its address is the class's identity: never merged
-        r = d.refs
-        return (f"{d.name} = internal constant {CLASSREC_LL} {{ptr {r[0]}, ptr {r[1]}, ptr {r[2]}, "
-                f"i64 {d.items[0].v}, i64 {d.items[1].v}, ptr {r[3]}, i64 {d.items[2].v}, ptr {r[4]}}}, align 8")
+        words = [x.v for x in d.items]
+        return f"{d.name} = internal constant {CLASSREC_LL} {{{rt_record_values('ReflRec', d.refs, words)}}}, align 8"
     if d.kind == "classnames":
         # the names a class's objects answer to, sorted by their bytes, each with its kind
-        es: list[str] = ["{ptr, i64} {ptr " + d.refs[j] + ", i64 " + d.items[j].v + "}" for j in range(len(d.refs))]
-        return f"{d.name} = internal constant [{len(es)} x {{ptr, i64}}] [{', '.join(es)}], align 8"
+        name = rt_record_ll("ReflName")
+        es: list[str] = [name + " {ptr " + d.refs[j] + ", i64 " + d.items[j].v + "}" for j in range(len(d.refs))]
+        return f"{d.name} = internal constant [{len(es)} x {name}] [{', '.join(es)}], align 8"
     if d.kind == "dyntype":
         # a class's DynType (dynamic.py): kind, descriptor, name, O<id>, base's DynType, flags,
         # and optional iter/next/len callbacks, as
         # runtime.c's struct DynType lays them out. Internal, and its address is the class's
         # identity to a dynamic value's box: never merged
         r = d.refs
-        it = r[3] if len(r) > 3 else "null"
-        nxt = r[4] if len(r) > 4 else "null"
-        length = r[5] if len(r) > 5 else "null"
-        desc = (f"{DYNTYPE_LL} {{i64 {d.items[0].v}, ptr {r[0]}, ptr {r[1]}, "
-                f"i64 {d.items[1].v}, ptr {r[2]}, i64 {d.items[2].v}, ptr {it}, ptr {nxt}, ptr {length}}}")
+        words = [x.v for x in d.items]
+        desc = f"{DYNTYPE_LL} {{{rt_record_values('DynType', r[:6], words)}}}"
         if len(r) == 7:
             # Only classes with a secondary role have this extra pointer.
             desc = f"{{{DYNTYPE_LL}, ptr}} {{{desc}, ptr {r[6]}}}"
@@ -364,7 +361,7 @@ def lower_data(d: Data) -> str:
     if d.kind == "dynbox":
         # a constant dynamic value (dynamic.py): its DynType and, as its payload, the address of its
         # last ref: a def's own DynType, or a str constant
-        return f"{d.name} = internal constant {{ptr, i64}} {{ptr {d.refs[0]}, i64 ptrtoint (ptr {d.refs[-1]} to i64)}}, align 8"
+        return f"{d.name} = internal constant {rt_record_ll('Dyn')} {{ptr {d.refs[0]}, i64 ptrtoint (ptr {d.refs[-1]} to i64)}}, align 8"
     if d.kind == "mpz":
         # A wide integer literal's immutable magnitude, matching mpz/mpz.c: signed
         # limb count followed by base-2**30 uint32_t digits, least significant first.
@@ -374,21 +371,22 @@ def lower_data(d: Data) -> str:
     if d.kind == "dynint":
         # an int literal's dynamic value (dynamic.py): int's DynType and the value. Internal, and
         # its address is the value's identity: never merged
-        return f"{d.name} = internal constant {{ptr, i64}} {{ptr {d.refs[0]}, i64 {d.items[0].v}}}, align 8"
+        return f"{d.name} = internal constant {rt_record_ll('Dyn')} {{ptr {d.refs[0]}, i64 {d.items[0].v}}}, align 8"
     if d.kind == "dynfloat":
         # A float literal's dynamic value: preserve the exact bits in its i64 payload and
         # retain its address as object identity, including separate positive/negative zero.
-        return f"{d.name} = internal constant {{ptr, i64}} {{ptr {d.refs[0]}, i64 {float_slot(d.items[0].v)}}}, align 8"
+        return f"{d.name} = internal constant {rt_record_ll('Dyn')} {{ptr {d.refs[0]}, i64 {float_slot(d.items[0].v)}}}, align 8"
     if d.kind == "classfields":
         # the fields of an object's __dict__ in their order: name, type descriptor, byte offset in
         # the class's layout (d.text) and that of its "is assigned" flag (-1: always assigned)
         es = []
+        field = rt_record_ll("ReflField")
         for j in range(len(d.refs) // 2):
             off = f"ptrtoint (ptr getelementptr ({d.text}, ptr null, i32 0, i32 {d.items[2 * j].v}) to i64)"
             fl = d.items[2 * j + 1].v
             flo = "-1" if fl == "-1" else f"ptrtoint (ptr getelementptr ({d.text}, ptr null, i32 0, i32 {fl}) to i64)"
-            es.append("{ptr, ptr, i64, i64} {ptr " + d.refs[2 * j] + ", ptr " + d.refs[2 * j + 1] + ", i64 " + off + ", i64 " + flo + "}")
-        return f"{d.name} = internal constant [{len(es)} x {{ptr, ptr, i64, i64}}] [{', '.join(es)}], align 8"
+            es.append(field + " {ptr " + d.refs[2 * j] + ", ptr " + d.refs[2 * j + 1] + ", i64 " + off + ", i64 " + flo + "}")
+        return f"{d.name} = internal constant [{len(es)} x {field}] [{', '.join(es)}], align 8"
     fail(f"internal error: no LLVM lowering for module data {d.kind}", 0)
     return ""
 

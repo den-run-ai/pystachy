@@ -540,6 +540,22 @@ def runtime_py(pys):
     return ir, ops
 
 
+def record_errors(ll, records):
+    # each record of RTRECORDS against runtime.c's struct of its name (clang's layout of it): a
+    # word is an i64 and an address a ptr, in order; a struct may end in a flexible array
+    bad = []
+    for name, fields in records.items():
+        m = re.search(r"^%struct\." + name + r" = type \{ (.*) \}$", ll, re.M)
+        if m is None:
+            bad.append(f"RTRECORDS: runtime.c has no struct {name}")
+            continue
+        have = [t for t in split_top(m.group(1)) if not t.startswith("[0 x ")]
+        want = ["ptr" if f.endswith("*") else "i64" for f in fields.split()]
+        if have != want:
+            bad.append(f"RTRECORDS: {name} is {{{', '.join(want)}}} to the compiler, {{{', '.join(have)}}} in runtime.c")
+    return bad
+
+
 def linked(rpy_ir, tmp):
     # runtime.py's IR linked with runtime.c's and optimized, as the driver builds the cached
     # runtime: (name -> its function (as functions gives it), name -> the messages of the raises in
@@ -673,6 +689,8 @@ def main():
     # from the ops, through the functions they call, to a fixpoint
     with tempfile.TemporaryDirectory() as tmp:
         lfns, lmsgs, nounwind, c23 = linked(rpy_ir, tmp)
+    from src.pystachy_compiler.specs import RTRECORDS
+    bad.extend(record_errors(ll, RTRECORDS))
     for sym in c23:
         bad.append(f"the runtime calls {sym}, which glibc before 2.38 lacks: read numbers with runtime.c's decnum and hexnum, not strtol, atoi or sscanf")
     letters = {}  # runtime.py's function -> the effect letters derived (R A U I)

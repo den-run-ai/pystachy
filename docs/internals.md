@@ -270,6 +270,15 @@ The `rt-abi` contract compares clang's `offsetof`/`sizeof` probes with that cons
 checks literal header values against their bytes, so exchanging same-typed cache fields
 cannot pass merely because their LLVM types match.
 
+The records of `runtime.c` that compiled code reads, writes or emits as constants (`Str`,
+`List`, `DynType`, class reflection records and others) have one layout definition: `RTRECORDS`
+in `specs.py` lists each record's fields in order, each a 64-bit word or a pointer. Lowering
+derives the records' LLVM types from it, so each target's ABI places their fields, and
+`STR_HEADER_SIZE` is the `Str` record's size. `wasm/tir_wasm.py` takes wasm32's byte offsets
+from `rt_record_offset`. `make check-runtime` compares each record with clang's layout of the
+`runtime.c` struct of its name. Frames, generator promises and closure environments are still
+laid out by each backend.
+
 `runtime.py` is compiled in a restricted runtime mode using `_rt` primitives, then linked with
 `runtime.c`. This reuses the compiler for string methods, formatting and numeric helpers.
 The [runtime guide](runtime-in-subset.md) covers those primitives and their constraints.

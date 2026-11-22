@@ -195,7 +195,85 @@ RTL: dict[str, str] = {
     "mul_hi": "int,int:int", "udiv_wide": "int,int,int:int", "urem_wide": "int,int,int:int", "float_bits": "float:int", "bits_float": "int:float",
     "fma": "float,float,float:float", "sqrt": "float:float", "fdiv": "float,float:float",
 }
-STR_HEADER_SIZE = 24  # offsetof(Str, s), checked against runtime.c and both CPython glues by rt-abi
+# runtime.c's records that compiled code reads, writes or emits as constants, and the one definition
+# of their layouts: each field in order, a 64-bit word or (*) a pointer. Lowering addresses a field
+# through the record's LLVM type (rt_record_ll), so that the target's layout places it (wasm32's
+# pointers are four bytes); wasm/tir_wasm.py, which lays out wasm32's memory itself, takes byte
+# offsets from rt_record_offset. tools/check_runtime.py compares each record with runtime.c's
+# struct of its name
+RTRECORDS: dict[str, str] = {
+    "Str": "len dict_hash chars1",
+    "List": "len cap a* ids*",
+    "VTuple": "len ids*",
+    "Dict": "len kind n size keys* vals* hs* idx* cut vatomic vb* kb*",
+    "Set": "len kind fill mask finger keys* hs* kb*",
+    "Dyn": "t* v",
+    "DynType": "kind desc* name* cls base* flags iter* next* len*",
+    "ReflRec": "name* qual* mod* flags nnames names* nfields fields*",
+    "ReflName": "name* kind",
+    "ReflField": "name* desc* off flag",
+    "ExcClass": "kind* disp* str* repr* exit*",
+    "Big": "lo hi*",
+}
+
+
+def rt_record_ll(name: str, upto: int = -1) -> str:
+    # the LLVM type of runtime record name (RTRECORDS), or of its first upto fields, through which
+    # a GEP addresses those fields as through the whole record's: a word is an i64, a pointer a ptr
+    fs = RTRECORDS[name].split()
+    if upto >= 0:
+        fs = fs[:upto]
+    return "{" + ", ".join(["ptr" if f.endswith("*") else "i64" for f in fs]) + "}"
+
+
+def rt_record_values(name: str, refs: list[str], words: list[str]) -> str:
+    # an LLVM constant's members of runtime record name: its pointers from refs, its words from
+    # words, each in order (a pointer past refs' end is null)
+    out: list[str] = []
+    r = 0
+    w = 0
+    for f in RTRECORDS[name].split():
+        if f.endswith("*"):
+            out.append("ptr " + (refs[r] if r < len(refs) else "null"))
+            r += 1
+        else:
+            out.append("i64 " + words[w])
+            w += 1
+    return ", ".join(out)
+
+
+def rt_record_index(name: str, field: str) -> int:
+    # the index of field in runtime record name (a GEP's), or -1
+    fs = RTRECORDS[name].split()
+    for j in range(len(fs)):
+        if fs[j] == field or fs[j] == field + "*":
+            return j
+    return -1
+
+
+def rt_record_offset(name: str, field: str, ptr: int) -> int:
+    # the byte offset of field in runtime record name where a pointer is ptr bytes (8, or wasm32's
+    # 4), each member at a multiple of its size as the targets' C ABIs place it; field "" gives the
+    # record's size, a multiple of its largest member, where a flexible array (Str's bytes, VTuple's
+    # items) begins. -1: no such field
+    at = 0
+    most = 1
+    for f in RTRECORDS[name].split():
+        size = ptr if f.endswith("*") else 8
+        at = (at + size - 1) // size * size
+        if f == field or f == field + "*":
+            return at
+        at += size
+        most = max(most, size)
+    if field != "":
+        return -1
+    return (at + most - 1) // most * most
+
+
+BIGLL = rt_record_ll("Big")  # a promoting int (bigints.py), {lo, hi} as runtime.c's Big returns it
+LIST_ITEMS = rt_record_index("List", "a")  # a List's item array, which lowering reads through
+LIST_ITEMS_LL = rt_record_ll("List", LIST_ITEMS + 1)  # the List's fields up to it
+STR_HEADER_SIZE = rt_record_offset("Str", "", 8)  # offsetof(Str, s), checked against runtime.c and both CPython glues by rt-abi
 TBAA_LEN = 3
 TBAA_BYTES = 4
 STRLEN_RANGE = 5  # !range of a str's length in runtime mode: 0 to 2**63 - 18 (_rt.str_new's limit)
@@ -1400,9 +1478,9 @@ RUNTIME: dict[str, str] = {
 # the runtime's data that programs name (docs/dynamic-any.md): the DynTypes of the builtin types
 # and the constant boxes of None, True and False, with their LLVM types; a module declares those
 # it uses (Gen.rtdata), and tools/check_runtime.py checks that runtime.c defines them
-CLASSREC_LL = "{ptr, ptr, ptr, i64, i64, ptr, i64, ptr}"
-DYNTYPE_LL = "{i64, ptr, ptr, i64, ptr, i64, ptr, ptr, ptr}"
-RTDATA: dict[str, str] = {"pys_dyn_none_box": "{ptr, i64}", "pys_dyn_true_box": "{ptr, i64}", "pys_dyn_false_box": "{ptr, i64}"}
+CLASSREC_LL = rt_record_ll("ReflRec")
+DYNTYPE_LL = rt_record_ll("DynType")
+RTDATA: dict[str, str] = {"pys_dyn_none_box": rt_record_ll("Dyn"), "pys_dyn_true_box": rt_record_ll("Dyn"), "pys_dyn_false_box": rt_record_ll("Dyn")}
 for _k in "none bool int bigint float str list intlist biglist dict tuple type".split():
     RTDATA["pys_dyntype_" + _k] = DYNTYPE_LL
 RTSYM: dict[str, str] = {}

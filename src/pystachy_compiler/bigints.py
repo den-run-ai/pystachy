@@ -12,12 +12,11 @@ from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_file, 
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.syntax import Node, made_var, mk
-from src.pystachy_compiler.specs import BIG, BIGOPT, CHECKED, IOPS, IRT, RANGEC, READ_HELPERS
+from src.pystachy_compiler.specs import BIG, BIGLL, BIGOPT, CHECKED, IOPS, IRT, RANGEC, READ_HELPERS
 from src.pystachy_compiler.utils import bool_for_int, elem, is_dict, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_vtuple, lookable, selem, targs, unopt
 
 # pys_big_op's operation codes (pys_mpz_binop's, then shifts and **)
 BIGOPS: dict[str, int] = {"+": 0, "-": 1, "*": 2, "//": 3, "%": 4, "&": 5, "|": 6, "^": 7, "<<": 8, ">>": 9, "**": 10}
-BIGLL = "{i64, ptr}"
 # the operators whose result an int of a module that opts in may need past 64 bits for: two ints
 # take them as promoting ints (% & | ^ >> of two 64-bit values always fit)
 PROMOTES: list[str] = ["+", "-", "*", "//", "<<", "**"]

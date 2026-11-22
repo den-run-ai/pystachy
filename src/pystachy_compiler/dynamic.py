@@ -26,7 +26,7 @@ from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
 from src.pystachy_compiler.reflection import hook_of
-from src.pystachy_compiler.specs import BIG, BYTEARRAYC, COMPLEXC, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
+from src.pystachy_compiler.specs import BIG, BIGLL, BYTEARRAYC, COMPLEXC, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, made_var, mentions, mk
 from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_clsval, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, lib_source, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
@@ -2575,7 +2575,7 @@ def gen_dyn_raw(self, v: Val) -> Val:
 def gen_dyn_payload(self, v: Val, t: str) -> Val:
     # the payload of box v, which a test proved to be of static type t
     if t == BIG:
-        r = Val(self.rt("pys_dyn_big_unbox", "{i64, ptr}", [f"ptr {v.v}"]), BIG)
+        r = Val(self.rt("pys_dyn_big_unbox", BIGLL, [f"ptr {v.v}"]), BIG)
         r.idfrom = v.v
         return r
     if t == "None" or t == NONEVAR:
@@ -4166,7 +4166,7 @@ def dyn_hint_result(self, value: Val, index: bool, hint: bool = False) -> Val:
             self.place(good)
         else:
             self.guard(self.scalar("xor", [Val(self.dyn_test(value, ["int", "bool"]), "bool"), Val("true", "bool")]), "TypeError: length is not an integer")
-        value = Val(self.rt("pys_dyn_big_of", "{i64, ptr}", [f"ptr {value.v}"]), BIG) if int_program() else self.dyn_payload(value, "int")
+        value = Val(self.rt("pys_dyn_big_of", BIGLL, [f"ptr {value.v}"]), BIG) if int_program() else self.dyn_payload(value, "int")
     if index and value.t in self.classes and "__index__" in self.classes[value.t].methods:
         self.notnone(value, "TypeError: length is not an integer")
         fm = self.classes[value.t].methods["__index__"]
