@@ -354,6 +354,22 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/inference/recursive_alias_tuple_leaf.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/recursive_alias_tuple_leaf.py:7: error: recursive type aliases are not supported: 'Pt' refers to itself",
+      "reason": "A closed union's box holds 64-bit ints, so a tuple of promoting ints is no member of it and the alias that lists one is no recursive graph.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/recursive_alias_tuple_leaf.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/recursive_alias_tuple_leaf.py:7: error: recursive type aliases are not supported: 'Pt' refers to itself",
+      "reason": "A closed union's box holds 64-bit ints, so a tuple of promoting ints is no member of it and the alias that lists one is no recursive graph.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/inference/scalar_union_arithmetic.py",
       "mode": "jit",
       "category": "unsupported-storage",

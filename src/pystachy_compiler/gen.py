@@ -671,6 +671,12 @@ from src.pystachy_compiler.declarations import (
     gen_rec_type as declarations_rec_type,
     gen_rec_fold as declarations_rec_fold,
     gen_recursive_aliases as declarations_recursive_aliases,
+    gen_rec_edge as declarations_rec_edge,
+    gen_rec_generic as declarations_rec_generic,
+    gen_rec_instance as declarations_rec_instance,
+    gen_rec_members as declarations_rec_members,
+    gen_rec_named as declarations_rec_named,
+    gen_rec_names as declarations_rec_names,
     gen_ann as declarations_ann,
     gen_ann_base as declarations_ann_base,
     gen_ann_items as declarations_ann_items,
@@ -3299,6 +3305,24 @@ class Gen:
 
     def recursive_aliases(self) -> None:
         return declarations_recursive_aliases(self)
+
+    def rec_edge(self, n: Node, name: str, tps: list[str]) -> bool:
+        return declarations_rec_edge(self, n, name, tps)
+
+    def rec_generic(self, name: str) -> bool:
+        return declarations_rec_generic(self, name)
+
+    def rec_instance(self, name: str, xs: list[Node]) -> str:
+        return declarations_rec_instance(self, name, xs)
+
+    def rec_members(self, name: str, tps: list[str], args: list[str]) -> list[str]:
+        return declarations_rec_members(self, name, tps, args)
+
+    def rec_named(self, name: str, members: list[str]) -> str:
+        return declarations_rec_named(self, name, members)
+
+    def rec_names(self, n: Node, names: list[str]) -> bool:
+        return declarations_rec_names(self, n, names)
 
     def subst_ann(self, n: Node, tps: list[str], args: list[Node]) -> Node:
         return declarations_subst_ann(self, n, tps, args)

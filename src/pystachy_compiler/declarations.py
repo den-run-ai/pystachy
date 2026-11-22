@@ -847,34 +847,114 @@ def gen_rec_fold(self, t: str) -> str:
             return "rec[" + name + "]"
     return t
 
+def gen_rec_edge(self, n: Node, name: str, tps: list[str]) -> bool:
+    # is annotation n recursive alias name itself, as its value names it: the name, or for a
+    # generic alias the name with its own type parameters tps, in their order (Value[F])
+    if len(tps) == 0:
+        return n.kind == "name" and n.s == name
+    if n.kind != "index" or n.kids[0].kind != "name" or n.kids[0].s != name:
+        return False
+    xs = n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]
+    return len(xs) == len(tps) and all([xs[i].kind == "name" and xs[i].s == tps[i] for i in range(len(tps))])
+
+def gen_rec_names(self, n: Node, names: list[str]) -> bool:
+    # does annotation n name one of names (the recursive alias, its type parameters) at any depth
+    if n.kind == "name" and n.s in names:
+        return True
+    return any([self.rec_names(k, names) for k in n.kids])
+
+def gen_rec_generic(self, name: str) -> bool:
+    # is name a generic PEP 695 alias whose value holds itself behind a list or a dict
+    # (type Value[F] = int | F | list[Value[F]] | dict[str, Value[F]]): its uses name a graph
+    # per type arguments (rec_instance), which unalias leaves whole
+    st = self.taliases[name]
+    if st.kind != "typealias" or st.kids[0].s == "" or self.alias_variadic(name):
+        return False
+    tps = self.alias_params(name)
+    for n in self.union_members(self.alias_value(name), []):
+        if n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "list" and self.rec_edge(n.kids[1], name, tps):
+            return True
+        if n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "dict" and n.kids[1].kind == "tuple" and len(n.kids[1].kids) == 2 and self.rec_edge(n.kids[1].kids[1], name, tps):
+            return True
+    return False
+
+def gen_rec_members(self, name: str, tps: list[str], args: list[str]) -> list[str]:
+    # the member types of recursive alias name's value, its self edges written rec[@] and its
+    # type parameters tps the types args; [] where the value is not of the supported shape:
+    # None, scalars, a type parameter, a tuple that names neither the alias nor a parameter,
+    # list[Self] and dict[str, Self]. Self edges occur only behind those containers
+    members: list[str] = []
+    recursive = False
+    for n in self.union_members(self.alias_value(name), []):
+        if n.kind == "None":
+            members.append("None")
+        elif n.kind == "name" and n.s in ["int", "float", "bool", "str"]:
+            members.append(n.s)
+        elif n.kind == "name" and n.s in tps:
+            members.append(args[tps.index(n.s)])
+        elif n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "list" and self.rec_edge(n.kids[1], name, tps):
+            members.append("list[rec[@]]")
+            recursive = True
+        elif n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "dict" and n.kids[1].kind == "tuple" and len(n.kids[1].kids) == 2 and n.kids[1].kids[0].kind == "name" and n.kids[1].kids[0].s == "str" and self.rec_edge(n.kids[1].kids[1], name, tps):
+            members.append("dict[str,rec[@]]")
+            recursive = True
+        elif n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "tuple" and not self.rec_names(n, [name] + tps):
+            t = self.ann(n)
+            if t.startswith("!") or not (is_tuple(t) or is_vtuple(t)):
+                return []
+            members.append(t)
+        else:
+            return []
+    return members if recursive else []
+
+def gen_rec_named(self, name: str, members: list[str]) -> str:
+    # make name a recursive graph of members (rec_members): the graph an earlier name has of
+    # the same members, else its own. A value of json.JSONValue is then one of a program's
+    # alias that lists JSONValue's members, as CPython's is. "", or why no union holds them
+    for x in list(self.recursive):
+        if self.union_type([m.replace("rec[@]", "rec[" + x + "]") for m in members]) == self.recursive[x]:
+            self.recursive[name] = self.recursive[x]
+            return ""
+    t = self.union_type([m.replace("rec[@]", "rec[" + name + "]") for m in members])
+    if t.startswith("!"):
+        return t[1:]
+    if not is_union(unopt(t)):
+        return "a recursive alias needs two member types"
+    self.recursive[name] = t
+    return ""
+
 def gen_recursive_aliases(self) -> None:
-    # Nongeneric PEP 695 aliases of scalar/None members, list[Self] and
+    # Nongeneric PEP 695 aliases of scalar/None members, tuples, list[Self] and
     # dict[str, Self]. Self edges occur only behind containers. Other recursive
     # forms keep alias_ann's diagnostic; no alias cycles or depth expansion.
+    # A generic alias of that shape names a graph where its type arguments are known
+    # (rec_instance).
     for name in self.taliases:
         st = self.taliases[name]
         if st.kind != "typealias" or st.kids[0].s != "":
             continue
-        members: list[str] = []
-        recursive = False
-        valid = True
-        for n in self.union_members(self.alias_value(name), []):
-            if n.kind == "None":
-                members.append("None")
-            elif n.kind == "name" and n.s in ["int", "float", "bool", "str"]:
-                members.append(n.s)
-            elif n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "list" and n.kids[1].kind == "name" and n.kids[1].s == name:
-                members.append("list[rec[" + name + "]]")
-                recursive = True
-            elif n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "dict" and n.kids[1].kind == "tuple" and len(n.kids[1].kids) == 2 and n.kids[1].kids[0].kind == "name" and n.kids[1].kids[0].s == "str" and n.kids[1].kids[1].kind == "name" and n.kids[1].kids[1].s == name:
-                members.append("dict[str,rec[" + name + "]]")
-                recursive = True
-            else:
-                valid = False
-        if valid and recursive:
-            t = self.union_type(members)
-            if is_union(unopt(t)):
-                self.recursive[name] = t
+        members = self.rec_members(name, [], [])
+        if len(members) > 0:
+            self.rec_named(name, members)
+
+def gen_rec_instance(self, name: str, xs: list[Node]) -> str:
+    # the type of generic recursive alias name (rec_generic) with type arguments xs: its
+    # graph for those types, named by them, or "!" and why not
+    args = [self.ann(x) for x in xs]
+    for i in range(len(args)):
+        if args[i].startswith("!"):
+            return args[i]
+        # (a promoting int is the 64-bit int a recursive alias's int member is: bigints.py)
+        args[i] = "int" if args[i] == BIG else "opt[int]" if args[i] == BIGOPT else args[i]
+    inst = name + "<" + ",".join(args).replace("[", "(").replace("]", ")") + ">"
+    if inst not in self.recursive:
+        members = self.rec_members(name, self.alias_params(name), args)
+        if len(members) == 0:
+            return f"!recursive type aliases are not supported: '{short(name)}' refers to itself"
+        why = self.rec_named(inst, members)
+        if why != "":
+            return f"!type alias '{short(name)}': {why}"
+    return self.recursive[inst]
 
 def gen_unalias(self, a: Node, seen: list[str]) -> Node:
     # annotation a with each type alias that it names replaced by the alias's value, where a
@@ -897,6 +977,10 @@ def gen_unalias(self, a: Node, seen: list[str]) -> Node:
         xs = a.kids[1].kids if a.kids[1].kind == "tuple" else [a.kids[1]]
         if len(tps) == 0 or len(xs) != len(tps) or self.alias_variadic(name) or self.newtype_name(name):
             return a  # (left for alias_ann's error)
+        if self.rec_generic(name):
+            # (a recursive alias's graph for these type arguments, which alias_ann names: rec_instance)
+            a.kids[1] = self.unalias(a.kids[1], seen)
+            return a
         # (the type arguments replace the type parameters first: in type Pair[Row] = ..., Row is
         # the parameter, not the module's alias Row)
         v = self.subst_ann(clone(self.alias_value(name)), tps, [self.unalias(x, seen) for x in xs])
@@ -938,6 +1022,8 @@ def gen_alias_ann(self, n: Node) -> str:
         return "!" + self.alias_arity(name, tps, len(xs))
     if n.kind == "name" and len(tps) > 0 and self.taliases[name].kind == "typealias":
         return f"!generic type alias '{short(name)}' needs its type arguments here ({short(name)}[{', '.join([short(x) for x in tps])}])"
+    if n.kind == "index" and self.rec_generic(name):
+        return self.rec_instance(name, xs)
     self.resolving.append(name)
     self.unaliased = 0
     t = self.ann(self.unalias(clone(n), []))
