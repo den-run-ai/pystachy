@@ -2979,8 +2979,10 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return "opt[callable[None]]"
         if c in self.tmpl:
             # a class template's object: of the specialization its arguments' types pick, once
-            # code is being compiled (a specialization compiles its special methods)
-            ts: list[str] = self.guess_args(self.classes[c].methods["__init__"], e.kids[1:], f) if self.compiling else ["!"]
+            # code is being compiled (a specialization compiles its special methods), or while
+            # template_bases makes a template hierarchy's specializations before that (tbasing:
+            # one made then compiles its special methods later, as one an annotation makes)
+            ts: list[str] = self.guess_args(self.classes[c].methods["__init__"], e.kids[1:], f) if self.compiling or self.tbasing > 0 else ["!"]
             lits = self.literal_args(self.classes[c].methods["__init__"], e.kids[1:]) if self.literal_class(c) and "!" not in ts else {}
             return self.specialize(c, ts, {}, False, lits) if "!" not in ts else ""
         if c in self.classes or c in self.unsupported:

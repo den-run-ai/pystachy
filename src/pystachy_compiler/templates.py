@@ -78,6 +78,11 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         return self.specing[doing]
     if len(self.making) >= 100:
         self.err(f"{short(c)}() needs more than 100 nested template functions; annotate its parameters")
+    p = ""
+    if self.tmpl_sub(t):
+        # (a subclass of a class template whose own __init__ is one: derives from the specialization
+        # of its base that its super().__init__(...) makes, sub_base)
+        p = self.sub_base(t, init, ts)
     t.nspec += 1
     name = f"{c}-{t.nspec}"
     self.specing[doing] = name
@@ -103,10 +108,32 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         s.fields_ready = t.fields_ready
         s.slots = t.slots
         s.slotlimit = t.slotlimit
-        s.fields = [x for x in t.fields]  # (its class attributes, which its specializations share)
-        for x in t.fields:
-            s.fpos[x] = t.fpos[x]
-            s.ftypes[x] = t.ftypes[x]
+        if p != "":
+            # (its base's fields, then the class attributes that its own body binds, as member_spec's)
+            pc = self.classes[p]
+            s.base = p
+            s.tvars = dict(pc.tvars)
+            for x in pc.fields:
+                s.fpos[x] = len(s.fields)
+                s.fields.append(x)
+                s.ftypes[x] = pc.ftypes[x]
+            for x in pc.fnone:
+                s.fnone[x] = pc.fnone[x]
+            for x in pc.fguess:
+                s.fguess[x] = pc.fguess[x]
+            for x in pc.fann:
+                s.fann[x] = pc.fann[x]
+            b = self.classes[t.base]
+            for x in t.fields:
+                if x not in b.ftypes:
+                    self.add_field(s, x, t.ftypes[x])
+                    if x in t.fann:
+                        s.fann[x] = t.fann[x]
+        else:
+            s.fields = [x for x in t.fields]  # (its class attributes, which its specializations share)
+            for x in t.fields:
+                s.fpos[x] = t.fpos[x]
+                s.ftypes[x] = t.ftypes[x]
         if "__slots__" in t.ftypes:
             s.ftypes["__slots__"] = t.ftypes["__slots__"]
         s.fdefault = t.fdefault
@@ -172,6 +199,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         key = ",".join([x + ":" + retoken(s.ftypes[x], name, "@") for x in s.fields])
         key += "".join([f";{x}={retoken(s.tvars[x], name, '@')}" for x in self.tparams.get(c, [])])
         key += "".join([f";{x}={lit_key(lits[x])}" for x in init.params if x in lits])  # (its __init__ reads them)
+        key += f";base={p}" if p != "" else ""
         if key in t.specs:
             del self.classes[name]
             self.nts.pop(name, False)
@@ -191,6 +219,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         if self.template_instances >= TEMPLATE_INSTANCES:
             self.err(f"compilation needs more than {TEMPLATE_INSTANCES} template specializations; annotate template parameters or reduce type combinations")
         self.template_instances += 1
+        if p != "" and self.compiling and self.tbasing == 0:
+            self.late_sub(c, ts, doing)  # (a new one that compiled code makes: the next pass makes it first)
         t.specs[key] = name
         if t.tag != 0:
             self.new_tag(s)  # (a template hierarchy's: its methods dispatch on the class of self)
@@ -218,6 +248,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
                 self.lib = False
                 g.mod = s.mod
                 s.methods[g.name] = g  # (x.setter: a property's setter)
+        if p != "":
+            self.inherit(s)  # (then its base's others, as member_spec's)
         s.hook = t.hook
         if c in self.cnts:
             self.dc_methods(s)  # (its __repr__)

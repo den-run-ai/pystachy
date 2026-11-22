@@ -1280,21 +1280,35 @@ template is a class of its own and the root of a hierarchy of its own:
   such subclass, for the same argument types, which derives from it: `StrStyle("x")` makes an
   object of the class that derives from the class of `Style("x")`
   ([test](../../tests/programs/classes/template_subclass_inherit.py)).
-- A subclass with an `__init__` of its own derives from one specialization: the one its
-  `super().__init__(...)` makes. Its parameters need concrete annotations, and its `__init__`
-  calls `super().__init__(...)` once, in a statement of its own, with arguments whose types are
-  known where the class is declared: literals, `None` and `()`, its parameters' annotations,
-  functions and the template's defaults
-  ([test](../../tests/programs/classes/template_subclass_super.py)).
+- A subclass with an annotated `__init__` of its own derives from one specialization: the one
+  its `super().__init__(...)` makes. Its `__init__` calls `super().__init__(...)`, or
+  `Base.__init__(self, ...)` of the base it names, once, in a statement of its own, with
+  arguments whose types are known where the class is declared: literals, `None` and `()`, its
+  parameters' annotations, functions and the template's defaults
+  ([test](../../tests/programs/classes/template_subclass_super.py),
+  [test](../../tests/programs/classes/template_subclass_explicit_init.py)).
+- A subclass whose own `__init__` is a class template too calls its base's `__init__` so, and is
+  a class template: each of its specializations derives from the one that this call makes for
+  the types of its own arguments, as its parameters' types give them. `Dog("rex", True)` makes an
+  object of the class that derives from the class of `Animal("rex")`, and `Dog(7, "x")` one of a
+  class that derives from that of `Animal(7)`
+  ([test](../../tests/programs/classes/template_subclass_template_init_dispatch.py),
+  [test](../../tests/programs/classes/template_subclass_template_field.py)). These
+  specializations are made before any code is compiled, as the others are: one that code makes
+  first is made in turn, and the program is compiled again from the start. Its arguments may be
+  of the types the declarations know, a module's functions too
+  ([test](../../tests/programs/classes/template_subclass_template_init_function.py)), but not
+  objects of a class template's specialization, lambdas, nested functions or bound methods
+  ([error test](../../tests/errors/classes/template_subclass_template_init_object.py)).
 - `class IntBox(Box[int])` derives from the specialization that `Box[int]` names, for a generic
   class whose `__init__` binds its type variables
   ([test](../../tests/programs/classes/template_subclass_generic.py)).
 
 A subclass's specializations are made with the template's, and the specialization that a
 subclass with an `__init__` derives from is made where the classes are declared, before any
-code is compiled; its fields are typed there, so one that holds an object of another class
-template, which only compiled code makes, is an error
-([error test](../../tests/errors/classes/template_subclass_declared_field.py)).
+code is compiled; its fields are typed there, one that holds an object of another class
+template too, of the specialization its arguments' types make
+([test](../../tests/programs/classes/template_subclass_declared_field.py)).
 A variable, field or list typed by a specialization therefore holds objects
 of every class that derives from it, and a call through it selects the object's override, also
 inside the template's methods
@@ -1306,15 +1320,17 @@ its specializations or of a class that derives from one
 ([test](../../tests/programs/classes/template_subclass_isinstance.py)). These classes are
 still not values: `issubclass()` and `type[C]` reject them.
 
-The compiler rejects, with a message that names the limit: a subclass whose own `__init__` is
-a class template; a subclass with a secondary base or a decorator; an `__init__` that calls
-`super().__init__(...)` other than once at its top level, or with arguments whose types only
-compiled code tells; a template with a base of its own; a template whose `__init__` makes an
-object of its subclass without an `__init__`; and `class C(Box[T])`, which passes a type
-variable on. An imported module's subclass of a class template is compiled where the program
-uses it, as an imported subclass of a fixed-layout class is, and left out otherwise
+The compiler rejects, with a message that names the limit: a subclass with a secondary base or a
+decorator; an `__init__` that calls `super().__init__(...)` other than once at its top level, or
+with arguments whose types only compiled code tells
+([error test](../../tests/errors/classes/template_subclass_template_init_args.py)); a template
+with a base of its own, such as `logging`'s `Logger`, whose base `Filterer` is an ordinary class
+([error test](../../tests/errors/classes/template_fixed_base.py)); a template whose `__init__`
+makes an object of its subclass without an `__init__`; and `class C(Box[T])`, which passes a
+type variable on. An imported module's subclass of a class template is compiled where the
+program uses it, as an imported subclass of a fixed-layout class is, and left out otherwise
 ([test](../../tests/programs/classes/template_subclass_imported.py),
-[error test](../../tests/errors/classes/template_subclass_imported_bad.py)).
+[test](../../tests/programs/classes/template_subclass_imported_template_init.py)).
 
 ### Explicit generic classes
 

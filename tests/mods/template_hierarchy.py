@@ -26,6 +26,6 @@ class Tick(Event):
 
 
 class Loose(Event):
-    # (its own __init__ is a class template: not supported, an error where the program uses it)
+    # (its own __init__ is a class template: each specialization derives from the one it makes)
     def __init__(self, payload):
         super().__init__("loose", payload)
