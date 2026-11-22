@@ -170,6 +170,45 @@ file and class/method name. Keep CPython qualification failures, JIT rejections,
 runtime differences and promoting-integer matches separate. Promote selected
 methods to the recorded corpus for AOT and GC verification.
 
+For a release comparison, run the same extractor under the same reference interpreter for
+both compiler builds. Keep each compiler's shipped library with its own binary. The
+historical 5,905-method selection used the extractor at `b2182a4f`, the source manifest
+above, and **CPython 3.13.18** to qualify the generated programs. The
+[qualification file](https://github.com/den-run-ai/pystachy/blob/4ad35048a1fb0fb228067e06bf4135025fa81155/research/speed-vs-surface-2026-11-12/raw/qualified.json)
+identifies the methods separately from their runtime outputs. Its SHA-256 is
+`4181efaf26a347ef08cf677e154a3c130e48316710e706b0af7420c061c94f62`.
+
+```sh
+python3 tools/compare_cpython_methods.py build/baseline-triage.json build/candidate-triage.json \
+    --qualification qualified.json >build/method-changes.json
+```
+
+The comparison reports matches, promoting-integer matches, rejects, differences and
+timeouts. It names each method that started or stopped matching. Both reports must
+qualify every method selected by the file. Without `--qualification`, the two reports
+must qualify exactly the same method identities.
+
+### v0.6.0-alpha.2 to v0.7.0-alpha.1
+
+The checksum-verified Linux x86_64 release binaries at `e2b97bb4` and `41dffd36`
+used LLVM 18.1.3. The pinned extractor reproduced all 9,855 identities. All 5,905
+previously qualified programs still passed the CPython 3.13.18 oracle.
+
+| JIT outcome on the same 5,905 methods | v0.6.0-alpha.2 | v0.7.0-alpha.1 |
+| --- | ---: | ---: |
+| Matching, including promoting integers | 641 | 683 |
+| Matching only with promoting integers | 7 | 7 |
+| Compile rejection | 5,240 | 5,196 |
+| Runtime difference | 24 | 26 |
+| Timeout | 0 | 0 |
+
+All 641 previous matches still matched. The 42 gains comprised 22 language and
+built-in methods and 20 library methods. Two previously rejected programs,
+`TestPatma.test_patma_198` and `TestPatma.test_patma_199`, compiled and then
+raised when their nested function fell through where CPython returned `None`.
+The most frequent first rejection in alpha.1 involved inferring the type of
+the class attribute `values` (513 methods).
+
 ### Delivered programs
 
 The corpus takes the passing methods of the 20 files that no earlier adaptation covers, one
