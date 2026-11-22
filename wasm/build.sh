@@ -125,7 +125,8 @@ program() ( # source|ir INPUT OUTPUT (a dash streams IR input or Wasm output)
   "${LLVM}clang" --target=$TARGET --sysroot="$SYS" "$t/prog.o" "$@" -o "$output" \
     -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
   if [ "$standard_command" = true ]; then
-    wasm-opt --enable-exception-handling --emit-exnref "$output" -o "$t/standard.wasm"
+    # (an exnref block type needs reference types, which LLVM 18's target features lack)
+    wasm-opt --enable-exception-handling --enable-reference-types --emit-exnref "$output" -o "$t/standard.wasm"
     output=$t/standard.wasm
     if [ "$destination" != - ]; then mv "$output" "$destination"; fi
   fi

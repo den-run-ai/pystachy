@@ -73,8 +73,9 @@ been verified on Node 22.23.0 and 24.22.3.
 Set `WASM_EH=standard` to emit standard `try_table` handlers for engines such as
 Wasmtime (enable its exceptions proposal). Both the source and module-text frontends
 emit these instructions directly. When LLVM 18/19 produces a WASI command with
-exception handlers, the build runs Binaryen's `wasm-opt --emit-exnref` after linking
-(tested with Binaryen 132). Commands without handlers need no conversion.
+exception handlers, the build runs Binaryen's `wasm-opt --emit-exnref` after linking,
+with reference types enabled for its `exnref` blocks. CI runs it with Binaryen 132 from npm.
+Commands without handlers need no conversion.
 The default, `WASM_EH=legacy`, also supports early Node 22 releases whose engines
 reject `try_table`. Both encodings use the same runtime and Python exception tag.
 
