@@ -11,11 +11,13 @@ calls through the interface use (iface_finish): an implementation needs only wha
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import where
 from src.pystachy_compiler.ir import Data, Ins, Val
-from src.pystachy_compiler.names import OBJECT, short
+from src.pystachy_compiler.lexer import Lexer
+from src.pystachy_compiler.names import MAPVIEW, OBJECT, SEQVIEW, SETVIEW, VIEWSHOW, short
+from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, EMPTYFS, OBJECTC, SPECSHOW
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.utils import clone, elem, gelem, is_callable, is_clsval, is_dict, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_union, is_vtuple, lt, targs, typestr, umembers, unopt
+from src.pystachy_compiler.utils import clone, elem, gelem, is_callable, is_clsval, is_dict, is_fset, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_union, is_vtuple, lt, selem, targs, tname, typestr, umembers, unopt
 
 # the intrinsic that an interface method's body calls: its table entry (iface_call)
 IFACE_CALL = "__pystachy_iface__"
@@ -43,6 +45,11 @@ ITERABLE = "typing$Iterable"
 # an interface (iface_classes), and those a test narrows such a value to, as the type it is then
 # (iface_narrow: an int may be a bool, which keeps its own repr and truth)
 BUILTIN_TESTS = ["int", "float", "bool", "str", "bytes", "list", "dict", "tuple", "set", "frozenset", "type"]
+
+# the read-only view (names.py's VIEWSHOW) that a test of each builtin container type narrows a
+# value of object to (iface_narrow): its items are values of object, read through the view's
+# table, whose entries read the container the value holds, of whatever type (view_defs)
+VIEW_OF = {"list": SEQVIEW, "tuple": SEQVIEW, "set": SETVIEW, "frozenset": SETVIEW, "dict": MAPVIEW}
 
 # operations whose adapter uses the builtin form that CPython's own operation is, so that a
 # builtin type (a list, a generator, a file) can implement them: next(o), iter(o), len(o), ...
@@ -229,13 +236,16 @@ def gen_iface_of(self, c: str, ts: list[str]) -> str:
     if key in self.ifmade:
         return self.ifmade[key]
     if key not in self.ifspecs:
-        self.ifspecs[key] = [c if c == OBJECT else f"{c}-i{len(self.ifspecs) + 1}", c] + ts
+        self.ifspecs[key] = [c if c == OBJECT or c in VIEWSHOW else f"{c}-i{len(self.ifspecs) + 1}", c] + ts
     name = self.ifspecs[key][0]
     self.ifmade[key] = name
     line = self.line
     if c == OBJECT:
         # object: no operation of its own (OBJECT)
         node = mk("class", name, line, [mk("block", "", line, [])])
+    elif c in VIEWSHOW:
+        # a view of a container that a value of object holds: the operations that read it
+        node = mk("class", name, line, [mk("block", "", line, view_defs(self, c, line))])
     elif c == ITERATOR:
         # Iterator[T]: __next__ gives T, __iter__ an Iterator[T] (of the same object, usually)
         node = mk("class", name, line, [mk("block", "", line, [op_def("__next__", [], ts[0], line), op_def("__iter__", [], name, line)])])
@@ -258,7 +268,7 @@ def gen_iface_of(self, c: str, ts: list[str]) -> str:
     for m in IMPLICIT:
         if len([d for d in node.kids[0].kids if d.kind == "def" and d.s == m]) == 0:
             node.kids[0].kids.append(implicit_def(m, node.line))
-    SPECSHOW[name] = "object" if c == OBJECT else f"{short(c)}[{', '.join([typestr(t) for t in ts])}]"
+    SPECSHOW[name] = "object" if c == OBJECT else VIEWSHOW[c] if c in VIEWSHOW else f"{short(c)}[{', '.join([typestr(t) for t in ts])}]"
     self.iface_make(name, c, node)
     self.line = line
     return name
@@ -315,7 +325,7 @@ def gen_iface_respec(self) -> None:
     # order before any code is compiled: a join hint of this pass may name one
     for key in [k for k in self.ifspecs]:
         spec = self.ifspecs[key]
-        if spec[1] == ITERATOR or spec[1] == ITERABLE or spec[1] == OBJECT or spec[1] in self.ifgeneric:
+        if spec[1] == ITERATOR or spec[1] == ITERABLE or spec[1] == OBJECT or spec[1] in VIEWSHOW or spec[1] in self.ifgeneric:
             self.iface_of(spec[1], spec[2:])
 
 
@@ -326,7 +336,11 @@ def gen_object_iface(self) -> str:
 
 
 def gen_iface_use(self, f: FnInfo) -> None:
-    # a call of method f of an interface: its table slot is used (iface_finish compiles it)
+    # a call of method f of an interface: its table slot is used (iface_finish compiles it); a
+    # view's, object's (view_slot)
+    if self.is_view(f.cls):
+        self.ifaces[OBJECT].used[view_slot(self, f)] = True
+        return
     face = self.ifaces[f.cls]
     if f.name in face.ops:
         face.used[face.ops.index(f.name)] = True
@@ -422,11 +436,14 @@ def gen_object_note(self, ts: list[str]) -> str:
     # what an error of an operation that its operands' types ts do not take adds where one is
     # object's (OBJECT), whose value takes only the operations of every value: "" otherwise
     for t in ts:
+        if self.is_view(t):
+            ops = "x[i], index(), count()" if t == SEQVIEW else "x[key], get(), keys(), values(), items()" if t == MAPVIEW else ""
+            return f" ({typestr(t)} is a read-only view of {view_kind(t)} that a value of object holds, which isinstance() narrowed it to: it takes len(), iteration, in, {ops + ', ' if ops != '' else ''}str(), repr(), ==, != and is, which give its items as values of object, and changes nothing; change the container through a variable of its own type)"
         if t == OBJECT and self.int_policy(self.line):
             # (iface_narrow: an int there is a promoting int, which a bool that passes the test is not)
-            return " (narrow a value of object with isinstance() to float, bool, str, bytes, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)"
+            return " (narrow a value of object with isinstance() to float, bool, str, bytes, list, tuple, dict, set, frozenset, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)"
         if t == OBJECT:
-            return " (narrow a value of object with isinstance() to int, float, bool, str, bytes, type or a class of the program first: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)"
+            return " (narrow a value of object with isinstance() to int, float, bool, str, bytes, list, tuple, dict, set, frozenset, type or a class of the program first: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)"
     return ""
 
 
@@ -444,9 +461,12 @@ def gen_iface_call(self, args: list[Node]) -> Val:
     f = self.curfn
     if f.cls not in self.ifaces:
         self.err(f"name '{IFACE_CALL}' is not defined")
-    k = self.ifaces[f.cls].ops.index(f.name)
+    # (a view's box is a value of object's, whose table has the view's operations: view_slot)
+    k = view_slot(self, f) if self.is_view(f.cls) else self.ifaces[f.cls].ops.index(f.name)
     o = self.expr(args[0], "")
     vals = [self.expr(a, "") for a in args[1:]]
+    if (f.cls == MAPVIEW or f.cls == SETVIEW) and (f.name == "__getitem__" or f.name == "get" or f.name == "__contains__"):
+        view_hash(self, vals[0])
     tab = self.mload('%ptr', o.v)
     obj = self.mload('env', self.maddr('%ptr', o.v, '1', True))  # (its object: a closure's env's word, as icall takes it)
     code = self.mload('%ptr', self.maddr('%ptr', tab, str(k), True))
@@ -499,6 +519,8 @@ def gen_object_impl(self, t: str) -> str:
         return f"a function or Callable value as a value of object is not supported yet: call it, or store a {typestr(t)} where one is expected"
     if t == "exc" or t == "exctype" or u == "exc" or u == "exctype" or (u in self.classes and self.classes[u].exc != ""):
         return "an exception (or its class) as a value of object is not supported yet"
+    if self.is_view(u):
+        return ""  # (a view of a value of object's container: that value, view_slot)
     if self.is_iface(u):
         return f"a value of {typestr(u)} as a value of object is not supported: convert the object itself"
     if is_union(u):
@@ -516,7 +538,12 @@ def gen_to_object(self, v: Val) -> Val:
     # v as a value of object (OBJECT): None as None (null), a number as a box of the table of
     # its T | None and that T | None's own box, an optional value as None or what it holds, a
     # union's as the member its tag selects, a builtin class named as its class object, any
-    # other value as a box of the table of its type and the value itself
+    # other value as a box of the table of its type and the value itself (a value of object, or a
+    # view of one's container, as itself: a cast of its box, view_slot)
+    if self.is_object(v.t):
+        return v
+    if self.is_view(v.t):
+        return self.cast(v, OBJECT, "view")
     why = self.object_impl(v.t)
     if why != "":
         self.err(f"expected object, got {typestr(v.t)}: {why}")
@@ -617,6 +644,8 @@ def gen_to_iface(self, v: Val, t: str) -> Val:
     # value of a class that is None stays None (null)
     if t == OBJECT:
         return self.to_object(v)  # (any value: its own rules)
+    if self.is_view(t):
+        return to_view(self, v, t)
     why = self.iface_impl(v.t)
     if why != "":
         self.err(f"expected {typestr(t)}, got {typestr(v.t)}: {why}")
@@ -754,6 +783,12 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
     elif derived and parts[0] == "is" and parts[1] != OBJECT:
         e = o
         body = object_is_body(tab.impl, parts[1], line)  # (x is a number: object_is_num)
+    elif derived and parts[0] == "view":
+        e = o
+        body = view_body(self, parts[1], parts[2], tab.impl, line)  # (a view's operation on the container: view_slot)
+    elif derived and op == "hash?()":
+        e = o
+        body = [with_line(s, line) for s in Parser(Lexer("def _hash():\n" + hashed_source(self, tab.impl), 1).file()).module().kids[0].kids[2].kids]
     elif derived and (parts[0] == "==" or parts[0] == "!=") and (self.unequal_types(parts[2], tab.impl) or (tab.iface == OBJECT and never_equal(self, parts[2], tab.impl))):
         # (a number or str and an object of a class that defines no __eq__ or __ne__: CPython
         # compares them by identity, never the same, as unions' members are compared; and, held
@@ -851,7 +886,10 @@ def with_line(n: Node, line: int) -> Node:
 def gen_iface_cmp(self, op: str, a: Val, b: Val) -> Val:
     # a comparison of which an operand is a value of an interface: is and is not compare the
     # objects the boxes hold (None's null), as their identity is the objects'; == and != compare
-    # the objects as Python does (iface_eq); an ordering is not supported yet
+    # the objects as Python does (iface_eq); an ordering is not supported yet. A view is compared
+    # as the value of object it is (view_slot)
+    a = self.to_object(a) if self.is_view(a.t) else a
+    b = self.to_object(b) if self.is_view(b.t) else b
     if (op == "is" or op == "is not") and (self.is_object(a.t) or self.is_object(b.t)):
         r = self.object_is(a, b) if self.is_object(a.t) else self.object_is(b, a)
         return r if op == "is" else Val(self.scalar('xor', [Val(r.v, 'bool'), Val('true', 'bool')]), "bool")
@@ -1029,6 +1067,8 @@ def gen_iface_op(self, v: Val, key: str, args: list[str], ret: str, e: Node, sho
     # dropped, and asks for no operation
     if self.drying > 0:
         return Val("undef", ret)
+    if self.is_view(v.t):
+        v = self.to_object(v)  # (a view's box is its value of object's: view_slot)
     face = self.ifaces[v.t]
     if key not in face.dargs:
         face.ops.append(key)
@@ -1096,7 +1136,9 @@ def gen_iface_eq(self, op: str, a: Val, b: Val) -> Val:
     # compiles that comparison for the object's class (a value of an interface for the other
     # operand is its object, compared by its own table's entry in turn: the innermost comparison
     # is of two classes, with their __eq__ or __ne__, reflected methods and identity), and None's
-    # where the value is None
+    # where the value is None. A view is compared as the value of object it is (view_slot)
+    a = self.to_object(a) if self.is_view(a.t) else a
+    b = self.to_object(b) if self.is_view(b.t) else b
     left = self.is_iface(a.t)
     x = a if left else b
     other = b if left else a
@@ -1183,14 +1225,17 @@ def gen_iface_isinst(self, v: Val, c: Node) -> Val:
     return r
 
 
-def gen_iface_narrow(self, c: Node) -> str:
-    # the type that a value of an interface holds where isinstance(x, c) is true, which its reads
+def gen_iface_narrow(self, c: Node, t: str) -> str:
+    # the type that a value of interface t holds where isinstance(x, c) is true, which its reads
     # take (iface_narrowed): c's, where it names one class that has one layout (not a class
     # template's, whose objects' types its specializations are), bool, float, str or bytes; int
     # | bool for int, whose test a bool passes (keeping its own repr and truth), but in a module
     # that opts in to promoting ints, whose union would hold 64-bit ints; any class's class
-    # object for type; "" otherwise (a container's item types are not known)
+    # object for type; for a value of object, the read-only view of the list or tuple, the set or
+    # frozenset, or the dict that c names (VIEW_OF: of one of them); "" otherwise
     cs = self.iface_classes(c)
+    if self.is_object(t) and len(cs) > 0 and cs[0] in VIEW_OF and len([k for k in cs if k in VIEW_OF and VIEW_OF[k] == VIEW_OF[cs[0]]]) == len(cs):
+        return self.iface_of(VIEW_OF[cs[0]], [])
     if len(cs) != 1 or cs[0] == "!" or cs[0] == "object" or cs[0] in self.tmpl:
         return ""
     k = cs[0]
@@ -1203,11 +1248,222 @@ def gen_iface_narrow(self, c: Node) -> str:
     return "type[object]" if k == "type" else ""
 
 
+def gen_is_view(self, t: str) -> bool:
+    # is t a view of a container that a value of object holds (VIEW_OF), whose box is that value's
+    return t in VIEWSHOW
+
+
+def view_defs(self, c: str, line: int) -> list[Node]:
+    # the operations of view c, which read the container that a value of object holds, its items
+    # values of object: len(), iteration and in; for a list or a tuple its items by index, index()
+    # and count(); for a dict its values by key, get(), keys(), values() and items()
+    obj = self.object_iface()
+    defs = [op_def("__len__", [], "int", line), op_def("__iter__", [], self.iface_of(ITERATOR, [obj]), line), op_def("__contains__", [obj], "bool", line)]
+    if c == SEQVIEW:
+        defs = defs + [op_def("__getitem__", ["int"], obj, line), op_def("index", [obj], "int", line), op_def("count", [obj], "int", line)]
+    if c == MAPVIEW:
+        get = op_def("get", [obj, obj], obj, line)
+        get.kids[0].kids[2].kids[1] = mk("None", "", line, [])  # (get(key) is get(key, None))
+        items = self.ctype("list", [self.ctype("tuple", [obj, obj])])
+        defs = defs + [op_def("__getitem__", [obj], obj, line), get, op_def("keys", [], self.ctype("list", [obj]), line), op_def("values", [], self.ctype("list", [obj]), line), op_def("items", [], items, line)]
+    return defs
+
+
+def view_slot(self, f: FnInfo) -> int:
+    # the slot of object's table whose entry runs operation f of a view (a method of view_defs, or
+    # an IMPLICIT one): an IMPLICIT one's own slot of object's, any other a derived operation of
+    # object's, which each implementation's entry runs on the container it holds (view_body). A
+    # view's box is the value of object's own (iface_narrowed), so that its object is one, and
+    # the view becomes a value of object again as it is (to_object)
+    face = self.ifaces[OBJECT]
+    if f.name in IMPLICIT:
+        return face.ops.index(f.name)
+    key = f"view|{f.cls}|{f.name}"
+    if key not in face.dargs:
+        face.ops.append(key)
+        face.dargs[key] = f.ptypes[1:]
+        face.dret[key] = f.ret
+        face.dexpr[key] = mk("name", "_o", f.node.line, [])
+        face.dshow[key] = f"{VIEWSHOW[f.cls]}.{f.name}()"
+    return face.ops.index(key)
+
+
+def gen_view_join(self, a: str, b: str) -> str:
+    # the type of a value that is an a or a b where either is a view (an arm of x if c else y, an
+    # operand of or): a value of object, which holds both, where they are not one view (or it and
+    # None) and both can be one; "" otherwise
+    if (not self.is_view(a) and not self.is_view(b)) or a == b or a == "None" or b == "None":
+        return ""
+    return OBJECT if self.object_impl(a) == "" and self.object_impl(b) == "" else ""
+
+
+def view_takes(t: str, view: str) -> bool:
+    # is a value of type t a container that view reads: a list or a tuple, a set or a frozenset,
+    # a dict
+    if view == SEQVIEW:
+        return is_list(t) or is_tuple(t) or is_vtuple(t)
+    if view == SETVIEW:
+        return is_set(t) or t == EMPTYFS
+    return is_dict(t)
+
+
+def view_kind(view: str) -> str:
+    # what view reads, as an error names it
+    return "a list or a tuple" if view == SEQVIEW else "a set or a frozenset" if view == SETVIEW else "a dict"
+
+
+def to_view(self, v: Val, t: str) -> Val:
+    # v as a value of view t: a container that t reads, as the value of object that holds it,
+    # whose box the view's is (view_slot); None as None
+    if v.t == "None":
+        return Val("null", t)
+    if not view_takes(unopt(v.t), t) and self.join_hint(t, v.t):
+        return Val("undef", t)  # (a store a join drops: the next pass compiles it, a value of object's)
+    if not view_takes(unopt(v.t), t):
+        self.err(f"expected {typestr(t)}, got {typestr(v.t)}: a value of {typestr(t)} is {view_kind(t)} that a value of object holds, narrowed by isinstance()")
+    return self.cast(self.to_object(v), t, "view")
+
+
+def view_source(view: str, op: str, impl: str) -> str:
+    # the body of operation op of view on a container of type impl (its object _o, arguments _a0
+    # and _a1), as Python source, whose __OBJ annotates object and __DYN Any (view_body): CPython's
+    # operations, which find an item that is the value or equal to it (a key equal to the given
+    # one whatever its type: 1.0 finds 1, as CPython's hash and equality do; the caller hashed it,
+    # view_hash); a str in a container of strs directly; keys(), values() and items() a new
+    # list, as a dict's are (compatibility.md's snapshots)
+    if impl == EMPTYFS:
+        # (frozenset() that nothing typed, which is empty)
+        return "    return 0\n" if op == "__len__" else "    _r: list[__OBJ] = []\n    return iter(_r)\n" if op == "__iter__" else "    return False\n"
+    if op == "__len__":
+        return "    return len(_o)\n"
+    if impl == "dyn":
+        return dyn_view_source(view, op)
+    if is_tuple(impl):
+        return tuple_view_source(op, len(targs(impl)))
+    k = "" if impl == EMPTYFS else selem(impl) if is_set(impl) else targs(impl)[0]
+    hashed = ""
+    fast =f"    if isinstance(_a0, str):\n        return {'_a0 in _o' if op == '__contains__' else '_o[_a0]'}\n" if k == "str" else ""
+    scan = "    for _i in _o:\n        if _i is _a0 or _i == _a0:\n"
+    if op == "__iter__":
+        return "    _r: list[__OBJ] = []\n    return iter(_r)\n" if impl == EMPTYFS else "    return iter(_o)\n"
+    if op == "__contains__":
+        return hashed + ("    return False\n" if impl == EMPTYFS else fast + scan + "            return True\n    return False\n")
+    if op == "__getitem__" and view == SEQVIEW:
+        return "    return _o[_a0]\n"
+    if op == "__getitem__":
+        return hashed + fast + scan + "            return _o[_i]\n    raise KeyError(_a0)\n"
+    if op == "get":
+        fast = "    if isinstance(_a0, str):\n        if _a0 in _o:\n            return _o[_a0]\n        return _a1\n" if k == "str" else ""
+        return hashed + fast + scan + "            return _o[_i]\n    return _a1\n"
+    if op == "index":
+        missing = "repr(_a0) + ' is not in list'" if is_list(impl) else "'tuple.index(x): x not in tuple'"
+        return "    _n = 0\n" + scan + "            return _n\n        _n += 1\n    raise ValueError(" + missing + ")\n"
+    if op == "count":
+        return "    _n = 0\n" + scan + "            _n += 1\n    return _n\n"
+    if op == "keys":
+        return "    _r: list[__OBJ] = []\n    for _i in _o:\n        _r.append(_i)\n    return _r\n"
+    if op == "values":
+        return "    _r: list[__OBJ] = []\n    for _i in _o:\n        _r.append(_o[_i])\n    return _r\n"
+    return "    _r: list[tuple[__OBJ, __OBJ]] = []\n    for _i in _o:\n        _t: tuple[__OBJ, __OBJ] = (_i, _o[_i])\n        _r.append(_t)\n    return _r\n"
+
+
+def tuple_view_source(op: str, n: int) -> str:
+    # view_source's body of a Sequence[object]'s operation op on a tuple of n items of their own
+    # types, read one by one by constant indexes
+    if op == "__iter__":
+        return "    _r: list[__OBJ] = [" + ", ".join([f"_o[{j}]" for j in range(n)]) + "]\n    return iter(_r)\n"
+    if op == "__getitem__":
+        out = f"    _i = _a0\n    if _i < 0:\n        _i += {n}\n"
+        for j in range(n):
+            out += f"    if _i == {j}:\n        return _o[{j}]\n"
+        return out + "    raise IndexError('tuple index out of range')\n"
+    found = {"__contains__": "return True", "index": "return _j", "count": "_n += 1"}[op]
+    out = "    _n = 0\n"
+    for j in range(n):
+        out += f"    if _o[{j}] is _a0 or _o[{j}] == _a0:\n        {found.replace('_j', str(j))}\n"
+    if op == "__contains__":
+        return out + "    return False\n"
+    return out + ("    return _n\n" if op == "count" else "    raise ValueError('tuple.index(x): x not in tuple')\n")
+
+
+def dyn_view_source(view: str, op: str) -> str:
+    # view_source's body of view's operation op on an Any value (a list, a tuple or a dict, which
+    # an Any value's own operations read: dynamic.py), its iteration by the Any container's own
+    if op == "__iter__":
+        if view == MAPVIEW:
+            return "    _d: dict[__DYN, __DYN] = _o\n    return iter(_d)\n"
+        return "    if isinstance(_o, tuple):\n        _t: tuple[__DYN, ...] = _o\n        return iter(_t)\n    _l: list[__DYN] = _o\n    return iter(_l)\n"
+    if op == "__contains__":
+        return "    return _a0 in _o\n"
+    if op == "__getitem__":
+        return "    return _o[_a0]\n"
+    if op == "get":
+        return "    if _a0 in _o:\n        return _o[_a0]\n    return _a1\n"
+    scan = "    for _i in _o:\n        if _i is _a0 or _i == _a0:\n"
+    if op == "index":
+        return "    _n = 0\n" + scan + "            return _n\n        _n += 1\n    if isinstance(_o, tuple):\n        raise ValueError('tuple.index(x): x not in tuple')\n    raise ValueError(repr(_a0) + ' is not in list')\n"
+    if op == "count":
+        return "    _n = 0\n" + scan + "            _n += 1\n    return _n\n"
+    if op == "keys":
+        return "    _r: list[__OBJ] = []\n    for _i in _o:\n        _r.append(_i)\n    return _r\n"
+    if op == "values":
+        return "    _r: list[__OBJ] = []\n    for _i in _o:\n        _r.append(_o[_i])\n    return _r\n"
+    return "    _r: list[tuple[__OBJ, __OBJ]] = []\n    for _i in _o:\n        _t: tuple[__OBJ, __OBJ] = (_i, _o[_i])\n        _r.append(_t)\n    return _r\n"
+
+
+def view_body(self, view: str, op: str, impl: str, line: int) -> list[Node]:
+    # the body of the entry of implementation impl of object for operation op of view (view_slot):
+    # view_source's, at line; never reached where impl is no container that view reads, as the
+    # test that narrowed the value to view failed for it
+    if impl != "dyn" and not view_takes(impl, view):
+        msg = mk("str", f"a value of object narrowed by isinstance() to {VIEWSHOW[view]} holds a {typestr(impl)}", line, [])
+        return [mk("raise", "", line, [mk("call", "", line, [mk("name", "SystemError", line, []), msg])])]
+    body = Parser(Lexer("def _view():\n" + view_source(view, op, impl), 1).file()).module().kids[0].kids[2].kids
+    return [with_line(bound_names(bound_names(s, "__OBJ", OBJECT), "__DYN", "dyn"), line) for s in body]
+
+
+def view_hash(self, v: Val) -> None:
+    # hash value v of object, a key that a view of a dict or a set looks for, as CPython hashes it
+    # first: TypeError for an unhashable one, by the entry of its implementation (hashed_source);
+    # None is hashable
+    e = mk("name", "_o", self.line, [])
+    self.iface_apply(v, "hash?()", [], "bool", e, "hash()", [], "hash?", v, v)
+
+
+def hashed_source(self, impl: str) -> str:
+    # the body of the entry of implementation impl of object that hashes its object as a key
+    # (view_hash): hash() of it, which raises CPython's TypeError for a list, a dict, a set or an
+    # object of an unhashable class; for a tuple that hash() does not take, CPython's TypeError for
+    # an item that is a list, a dict or a set; nothing for a value that Pystachy's hash() does not
+    # take but CPython's does (a function, a generator, a frozenset of objects, ...), which a
+    # view's look-up finds only by identity or equality
+    if impl == "dyn" or self.hashable(impl) or is_list(impl) or is_dict(impl) or (is_set(impl) and not is_fset(impl)) or impl in self.nts or (is_tuple(impl) and self.iface_held(impl)):
+        return "    hash(_o)\n    return True\n"
+    if is_tuple(impl) or is_vtuple(impl):
+        for x in targs(impl):
+            u = unopt(x)
+            if is_list(u) or is_dict(u) or (is_set(u) and not is_fset(u)):
+                raise_ = f"raise TypeError(\"unhashable type: '{tname(u)}'\")"
+                return f"    if len(_o) > 0:\n        {raise_}\n    return True\n" if is_vtuple(impl) else f"    {raise_}\n"
+    return "    return True\n"
+
+
+def bound_names(n: Node, name: str, t: str) -> Node:
+    # n with each name name the bound type t, which an annotation reads as t (gen_ann's boundtype)
+    if n.kind == "name" and n.s == name:
+        return mk("boundtype", t, n.line, [])
+    n.kids = [bound_names(k, name, t) for k in n.kids]
+    return n
+
+
 def gen_iface_narrowed(self, v: Val, nt: str) -> Val:
     # v, a value of an interface that isinstance() proved holds a value of type nt (not None):
     # an object of a class of the program is held as itself; a number, a str or a class object
-    # by its own table's entry, which knows how its type holds it (a number in its T | None's box)
-    if nt in self.classes and not self.is_iface(nt) and not self.is_object(v.t):
+    # by its own table's entry, which knows how its type holds it (a number in its T | None's box);
+    # a container, as the view of it that nt is, by the value of object's own box (view_slot)
+    if self.is_view(nt):
+        return self.cast(v, nt, "view")
+    if nt in self.classes and not self.is_iface(nt) and not self.is_object(v.t) and not self.is_view(v.t):
         return Val(self.mload(nt, self.maddr('%ptr', v.v, '1', True)), nt)
     # (a value of object's object, by its entry, which returns it at its own class or a base of
     # it: what the call declares, as a proof of the read sees it)

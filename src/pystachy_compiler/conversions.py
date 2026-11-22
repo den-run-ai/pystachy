@@ -217,8 +217,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return Val("undef", t)
     if v.t == t:
         return v
-    if t == "dyn" and self.is_object(v.t):
-        return self.object_dyn(v)  # (its object as an Any value: interfaces.py)
+    if t == "dyn" and (self.is_object(v.t) or self.is_view(v.t)):
+        return self.object_dyn(self.to_object(v))  # (its object as an Any value: interfaces.py)
     if t == "dyn":
         # Any has its own integer representation. Preserve the promoting value
         # before the checked conversions into fixed-width storage below.
@@ -359,6 +359,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
     if self.is_object(v.t):
         # (where ints promote, isinstance(x, int) narrows nothing: object_note says so)
         hint = self.object_note([v.t]) if self.int_policy(self.line) else " (narrow a value of object with isinstance() first, as `if isinstance(x, int):` narrows x to an int)"
+    if self.is_view(v.t):
+        hint = self.object_note([v.t])
     self.err(f"expected {typestr(t)}, got {typestr(v.t)}{hint}")
     return v
 

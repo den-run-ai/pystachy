@@ -297,6 +297,8 @@ from src.pystachy_compiler.interfaces import (
     gen_iface_narrowed as interfaces_iface_narrowed,
     gen_object_iface as interfaces_object_iface,
     gen_is_object as interfaces_is_object,
+    gen_is_view as interfaces_is_view,
+    gen_view_join as interfaces_view_join,
     gen_object_impl as interfaces_object_impl,
     gen_to_object as interfaces_to_object,
     gen_union_object as interfaces_union_object,
@@ -3800,8 +3802,8 @@ class Gen:
     def iface_isinst(self, v: Val, c: Node) -> Val:
         return interfaces_iface_isinst(self, v, c)
 
-    def iface_narrow(self, c: Node) -> str:
-        return interfaces_iface_narrow(self, c)
+    def iface_narrow(self, c: Node, t: str) -> str:
+        return interfaces_iface_narrow(self, c, t)
 
     def iface_narrowed(self, v: Val, nt: str) -> Val:
         return interfaces_iface_narrowed(self, v, nt)
@@ -3811,6 +3813,12 @@ class Gen:
 
     def is_object(self, t: str) -> bool:
         return interfaces_is_object(self, t)
+
+    def is_view(self, t: str) -> bool:
+        return interfaces_is_view(self, t)
+
+    def view_join(self, a: str, b: str) -> str:
+        return interfaces_view_join(self, a, b)
 
     def object_impl(self, t: str) -> str:
         return interfaces_object_impl(self, t)

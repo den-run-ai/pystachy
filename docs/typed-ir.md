@@ -456,6 +456,7 @@ one, whatever block defines it.
 | `object` | a %ptr as a closed union of classes: the object that a box of the union holds (Gen.cmp_object's phi), which only a ptr.cmp, a mach.load of its class word (an int or a %ptr) and member casts read |
 | `member` | an object cast's value as one of its union's classes or a class derived from one: Gen.cmp_alts makes one for each class it tells apart, beside the object cast, and only code that a test of the object's class leads to reads it |
 | `opaque` | a reference as a str, and back, in lib/_pystachy_copy.py, whose deep-copy memo keeps any reference as a str |
+| `view` | a value of object as a view of the container it holds (Sequence[object], AbstractSet[object], Mapping[object, object]: Gen.iface_narrowed), and a view as that value of object: one box, whose table's entry for each operation of a view raises SystemError where the box holds no such container |
 
 <!-- typed-ir-ops: end -->
 
@@ -507,8 +508,12 @@ value. An `object` cast reads the object that a box of a closed union of classes
 word and `member` casts may read that value. `Gen.cmp_alts` makes the `member` casts beside it,
 one for each class it tells the object apart as; each reads the object as one of the union's
 classes, and only the code that a test of the object's class tag leads to reads it. An `opaque`
-cast reads a reference as a `str` and back in the deep-copy memo of `lib/_pystachy_copy.py`.
-Like the views that narrow, a cast takes the
+cast reads a reference as a `str` and back in the deep-copy memo of `lib/_pystachy_copy.py`. A
+`view` cast reads the box of a value of `object` as a view of the container it holds, which a
+test of the container's type narrows it to, and a view as that value of `object` again; it needs
+no proof of its own, as each entry of the box's table for a view's operation raises
+`SystemError` where the box holds no such container
+([views](language/typing.md#object)). Like the views that narrow, a cast takes the
 frontend's word for what it reads; unlike them it is an op, which the verifier checks and the
 passes see. The frontend makes them where an operand used to read another op's machine word as a
 typed value: a closure's cells, numeric identity boxes' addresses, dynamic identity words, a

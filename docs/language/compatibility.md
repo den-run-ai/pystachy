@@ -209,6 +209,11 @@ applies. Bytes case methods remain ASCII-only.
   does. CPython agrees for a number stored from another value, small ints, bools and a module's
   equal constants; equal numbers it computes apart are two objects there
   ([deviation](../../tests/deviations/object_number_identity.py)).
+- **Views of containers stored as `object`:** a [view's](typing.md#object) look-up finds a
+  dict's key, or a set's element, equal to the one looked for after hashing it as CPython does,
+  by comparing them one by one: a key of a class whose `__hash__` disagrees with its `__eq__` can
+  be found where CPython's hash table misses it. Its `keys()`, `values()` and `items()` are new
+  lists, as a dict's are.
 
 ### Errors and control flow
 

@@ -156,7 +156,7 @@ def gen_narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
             if nt != "":
                 out[nm] = nt
         elif truth and self.is_iface(t):
-            nt = self.iface_narrow(n.kids[2])  # (its object, which the test proved of that class: interfaces.py)
+            nt = self.iface_narrow(n.kids[2], t)  # (its object, which the test proved of that class: interfaces.py)
             if nt != "":
                 out[nm] = nt
         elif truth and t in self.classes and self.classes[t].tag > 0 and n.kids[2].kind == "name" and n.kids[2].s in self.classes and (self.derives(n.kids[2].s, t) or n.kids[2].s in self.classes[t].overlaps):
@@ -4066,6 +4066,8 @@ def boolop_type(self, op: str, at: str, bt: str, want: str = "") -> str:
         rt = "dyn"  # (either operand, the other boxed where it reaches the join: dynamic.py)
     if not self.term and at != bt and self.join(at, bt) == BIG:
         rt = BIG  # (an int and a promoting int: either one, as a promoting int)
+    if not self.term and self.view_join(at, bt) != "":
+        rt = self.view_join(at, bt)  # (a view and another value: a value of object, interfaces.py)
     return rt
 
 
@@ -4151,6 +4153,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
         t = self.class_join(a.t, b.t, want)  # (objects of two classes of one hierarchy: of their base)
     if e1 != "" and e2 != "" and a.t != b.t and want == "" and self.is_iface(self.iter_join(a.t, b.t)):
         t = self.iter_join(a.t, b.t)  # (distinct iterators: each boxed in its arm as their Iterator[T], interfaces.py)
+    if e1 != "" and e2 != "" and self.view_join(a.t, b.t) != "":
+        t = self.view_join(a.t, b.t)  # (a view and another value: a value of object, each made in its arm)
     ph = Ins("phi", t, "")
     if e1 != "":
         a = self.convert_at(a, t, e1)  # (an int as an int | None: its box, made there)

@@ -1,7 +1,7 @@
 """Diagnostics component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import sys
-from src.pystachy_compiler.names import OBJECT, RENAMED, unspec
+from src.pystachy_compiler.names import OBJECT, RENAMED, VIEWSHOW, unspec
 
 
 SRC = "<input>"
@@ -122,7 +122,10 @@ def shown(s: str) -> str:
     # specializations its class's (Box-2 is Box)
     if len(RENAMED) > 0 and unspec(s) in RENAMED:
         s = unspec(s)[: unspec(s).rfind("$") + 1] + RENAMED[unspec(s)]
-    s = unspec(s.replace("__main__$", "").replace(OBJECT, "object"))  # (object's stored type: specs.py)
+    s = s.replace("__main__$", "").replace(OBJECT, "object")  # (object's stored type and its views: names.py)
+    for view in VIEWSHOW:
+        s = s.replace(view, VIEWSHOW[view])
+    s = unspec(s)
     out: list[str] = []
     for i in range(len(s)):
         c = s[i]

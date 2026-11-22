@@ -2628,6 +2628,20 @@ def protocol_iterates(body: Node) -> bool:
     return False
 
 
+def container_tests(n: Node) -> bool:
+    # does code n call isinstance() with list, tuple, dict, set or frozenset in its second argument
+    # (also in a tuple there): one may narrow a value of object to a view of the container it
+    # holds, whose loops call iter() of that container in its table (interfaces.py's view_slot)
+    if n.kind == "call" and len(n.kids) == 3 and n.kids[0].kind == "name" and n.kids[0].s == "isinstance":
+        for c in n.kids[2].kids if n.kids[2].kind == "tuple" else [n.kids[2]]:
+            if c.kind == "name" and c.s in ["list", "tuple", "dict", "set", "frozenset"]:
+                return True
+    for k in n.kids:
+        if container_tests(k):
+            return True
+    return False
+
+
 def protocol_named(b: Node) -> bool:
     # does base b name Protocol, also subscripted (Protocol[T], typing.Protocol)
     if b.kind == "index":
@@ -2857,11 +2871,12 @@ class Loader:
             self.order = [self.order[-1]] + self.order[:-1]
             for x in users:
                 x.deps[COMPLEXS] = True
-        users = [x for x in self.order if module_reads(x.body, "iter") or protocol_iterates(x.body)] if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods else []
+        users = [x for x in self.order if module_reads(x.body, "iter") or protocol_iterates(x.body) or container_tests(x.body)] if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods else []
         if len(users) > 0:
             # iter() makes iterator objects of builtin containers: of lib's classes, whose module
             # nothing imports (it imports nothing either, so it comes first). A Protocol that
-            # iterates calls it in its tables (interfaces.py)
+            # iterates calls it in its tables, and so does a view of a container that a value of
+            # object holds (interfaces.py)
             self.load(ITERS, self.dirs[-1] + "/" + ITERS + ".py", "")
             self.order = [self.order[-1]] + self.order[:-1]
             for x in users:

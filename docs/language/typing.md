@@ -1122,13 +1122,28 @@ value's type ([tests](../../tests/programs/classes/object_storage_values.py)):
   `not isinstance(x, bool)` narrows that to `int`, or `int(x)` converts it
   ([test](../../tests/programs/classes/object_storage_int.py)).
 
+A test of a container type narrows `x` to a read-only view of the container it holds, whose
+items' types are not known: `list` or `tuple` (or both) to `Sequence[object]`, `set` or
+`frozenset` to `AbstractSet[object]`, and `dict` to `Mapping[object, object]`
+([test](../../tests/programs/classes/object_views.py),
+[`Any` containers](../../tests/programs/classes/object_views_dynamic.py)). A view takes the
+operations of `object` and `len()`, iteration (`list(x)` too) and `in`; a sequence's `x[i]`,
+`index()` and `count()`; a mapping's `x[key]`, `get()`, `keys()`, `values()` and `items()`. Each
+item is a value of `object`, and the errors are CPython's (`IndexError`, `ValueError`,
+`KeyError`, and `TypeError` for an unhashable key). A look-up finds the item that is the value
+looked for or equal to it, whatever its type: `1.0` and `True` find a dict's key `1`. The view
+is the container itself, whose changes through its own name it shows, and a value of `object`
+again where one is expected; a change through the view (`append()`, `x[k] = v`, `del x[i]`) is
+a compilation error ([error test](../../tests/errors/classes/object_view_append.py)), as are
+slices and sorts.
+
 Any other operation of a value that `isinstance()` has not narrowed is a compilation error that
 says so: arithmetic, attributes and methods, calls, indexing, iteration, `len()` and the other
 builtins, orderings, `%d` and the other numeric conversions, `type(x)` as a value and `id()`
-([error tests](../../tests/errors/classes/object_storage_arith.py)). A test of a container type
-narrows nothing, as its items' types are not known. Values of `object` are not dict keys or set
-elements, and the runtime's searches and sorts of their lists and tuples (`in`, `count()`,
-`index()`, `sort()`, `min()`, `max()`) and comparisons of such containers are compilation errors.
+([error tests](../../tests/errors/classes/object_storage_arith.py)). Values of `object` are not
+dict keys or set elements, and the runtime's searches and sorts of their lists and tuples (`in`,
+`count()`, `index()`, `sort()`, `min()`, `max()`) and comparisons of such containers are
+compilation errors.
 
 A promoting int of a module that opts in to [promoting ints](../python-int.md) is held as it is
 ([test](../../tests/programs/numbers/python_int_object_storage.py)). There, `isinstance(x, int)`
@@ -1144,7 +1159,11 @@ stores as `object` must be able to become one: a `bytes` value or a dict of type
 `object` is then a compilation error.
 
 A value of `object` is a protocol value's box: a number in it is held by the immutable box of its
-`T | None`, which a conversion allocates where the number has none, and `None` is a null box.
+`T | None`, which a conversion allocates where the number has none, and `None` is a null box. A
+view is the same box, read through entries of its table that each type stored as `object` has
+for the view's operations (one that holds no such container raises `SystemError`, which its
+type test keeps unreached); a dict's look-up through a view compares keys one by one, but a
+`str` key of a `dict[str, V]`.
 
 ## Function and method templates
 

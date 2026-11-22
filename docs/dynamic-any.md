@@ -282,7 +282,8 @@ in either direction yet: the box of a protocol value is not its object, and the 
 table is chosen from the static type it converts from. Typed protocol storage remains
 separate from dynamic `Any` storage. [Values of `object`](language/typing.md#object) cross both
 ways: the value one holds becomes an `Any` value as a value of its type does (`None` the `None`
-box), and an `Any` value becomes one that holds its box, whose operations are `Any`'s
+box), as does a view of the container one holds, and an `Any` value becomes one that holds its
+box, whose operations are `Any`'s (a view of an `Any` container reads it by them too)
 (`tests/programs/classes/object_storage_from_dynamic.py`,
 `tests/programs/classes/object_storage_to_dynamic.py`). A list or dict display of distinct
 iterators keeps `Any` items, as other mixed displays do; the other locations where they meet hold

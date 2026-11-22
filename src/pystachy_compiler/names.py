@@ -11,6 +11,12 @@ def owner(name: str) -> str:
 # the stored type that an object annotation names where no template takes it: a value of the builtin
 # interface that every type implements (interfaces.py), shown as object (diagnostics.shown)
 OBJECT = "_pystachy_iface$object"
+# the read-only views of the list or tuple, set or frozenset and dict that isinstance() narrows a
+# value of object to, their items values of object (interfaces.py's views), and how they are shown
+SEQVIEW = "_pystachy_iface$Sequence"
+SETVIEW = "_pystachy_iface$AbstractSet"
+MAPVIEW = "_pystachy_iface$Mapping"
+VIEWSHOW = {SEQVIEW: "Sequence[object]", SETVIEW: "AbstractSet[object]", MAPVIEW: "Mapping[object, object]"}
 
 
 # the classes named otherwise than the name their statement binds, by their qualified names: those

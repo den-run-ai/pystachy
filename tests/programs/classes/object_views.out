@@ -1,0 +1,58 @@
+list 3 [1, 2, 3] True
+  item 1
+  item 2
+  item 3
+  first 1 last 3
+  in True False True False
+list 2 ['a', 'b'] True
+  item a
+  item b
+  first a last b
+  in False True False False
+tuple 3 (1, 'x', 2.5)
+  item 1
+  item x
+  item 2.5
+  second x 1 1 1
+tuple 0 ()
+dict 2 {'a': 1, 'b': 2}
+  key a 1
+  key b 2
+  get 1 0 none
+  pair a 1
+  pair b 2
+  value 1
+  value 2
+  k a
+  k b
+dict 1 {1: 'one'}
+  key 1 one
+  get None 0 one
+  pair 1 one
+  value one
+  k 1
+set 2 True False True
+  element 1
+  element 2
+set 1 False True False
+  element a
+set 0 False False False
+other 7
+found one found one found one KeyError 3 KeyError '1'
+TypeError unhashable type: 'list' found 1 KeyError 'b' KeyError 1 not a dict
+at 1, 2 times at 1, 1 times at 1, 1 times ValueError 9 is not in list ValueError tuple.index(x): x not in tuple not a sequence
+2 1 IndexError list index out of range x IndexError tuple index out of range IndexError tuple index out of range
+0 [1] empty None
+True 4 4 [1, 2, 3, 4]
+live 1
+live 2
+live 3
+live 4
+live 5
+True [[1, 2, 3, 4, 5]]
+key a
+RuntimeError dictionary changed size during iteration
+dict {'a': 1, 'b': 2} {'a': 1, 'b': 2} False True
+TypeError unhashable type: 'list'
+inner 2 2 [2, 3]
+[exit 0]
