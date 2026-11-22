@@ -540,6 +540,33 @@ def runtime_py(pys):
     return ir, ops
 
 
+def promoted(rpy_ir, tmp):
+    # runtime.py's IR at -O1, whose SSA form leaves few locals, as clang's of runtime.c for params()
+    src = os.path.join(tmp, "rtpy-o1-in.ll")
+    with open(src, "w", encoding="latin-1") as f:
+        f.write(rpy_ir)
+    out = subprocess.run([TOOL + "opt", "-O1", "-S", src, "-o", "-"], capture_output=True, text=True, encoding="latin-1")
+    if out.returncode != 0:
+        sys.exit(f"check_runtime: opt -O1 of runtime.py's IR:\n{out.stderr}")
+    return out.stdout
+
+
+def record_errors(ll, records):
+    # each record of RTRECORDS against runtime.c's struct of its name (clang's layout of it): a
+    # word is an i64 and an address a ptr, in order; a struct may end in a flexible array
+    bad = []
+    for name, fields in records.items():
+        m = re.search(r"^%struct\." + name + r" = type \{ (.*) \}$", ll, re.M)
+        if m is None:
+            bad.append(f"RTRECORDS: runtime.c has no struct {name}")
+            continue
+        have = [t for t in split_top(m.group(1)) if not t.startswith("[0 x ")]
+        want = ["ptr" if f.endswith("*") else "i64" for f in fields.split()]
+        if have != want:
+            bad.append(f"RTRECORDS: {name} is {{{', '.join(want)}}} to the compiler, {{{', '.join(have)}}} in runtime.c")
+    return bad
+
+
 def linked(rpy_ir, tmp):
     # runtime.py's IR linked with runtime.c's and optimized, as the driver builds the cached
     # runtime: (name -> its function (as functions gives it), name -> the messages of the raises in
@@ -673,9 +700,15 @@ def main():
     # from the ops, through the functions they call, to a fixpoint
     with tempfile.TemporaryDirectory() as tmp:
         lfns, lmsgs, nounwind, c23 = linked(rpy_ir, tmp)
+        rpy_o1 = promoted(rpy_ir, tmp)
+    from src.pystachy_compiler.specs import RTRECORDS
+    bad.extend(record_errors(ll, RTRECORDS))
     for sym in c23:
         bad.append(f"the runtime calls {sym}, which glibc before 2.38 lacks: read numbers with runtime.c's decnum and hexnum, not strtol, atoi or sscanf")
     letters = {}  # runtime.py's function -> the effect letters derived (R A U I)
+    # (a function of runtime.py that an operation lowers to, such as pys_list_get, whose raises are
+    # all the subset's implicit checks: its R is its own, not that of runtime.py's code that indexes a list)
+    soft = {f for f in rpy_ops if all(x != "?" and (x.startswith(BUG_ONLY) or x.startswith("MemoryError")) for x in raises(lfns, lmsgs, f))}
     writes = {}
     used = state(ll)
     pure = set(PURE_C)
@@ -719,8 +752,9 @@ def main():
             for op, x, _ in ops:
                 g = pys.rtsym(x) if op == "rt" else x[1:] if op == "call" else ""
                 for h in via.get(g, set()) | {g}:
-                    if h in letters and h != f and (not letters[h] <= letters[f] or writes[h] and not writes[f]):
-                        letters[f] |= letters[h]
+                    got = letters[h] - ({"R"} if op == "rt" and h in soft else set()) if h in letters else set()
+                    if h in letters and h != f and (not got <= letters[f] or writes[h] and not writes[f]):
+                        letters[f] |= got
                         writes[f] = writes[f] or writes[h]
                         more = True
     # runtime.c calls some of them (hsh calls pys_hash_str): to the analysis of runtime.c below,
@@ -739,7 +773,8 @@ def main():
             PURE_C.add(f)
         if not writes[f]:
             READS_ONLY.add(f)
-    eff = params(llvm_ir(os.path.join(ROOT, "runtime.c"), "runtime.c", "-O1"))
+    # (runtime.py's definitions beside runtime.c's: each reads and writes what its own body shows)
+    eff = params(llvm_ir(os.path.join(ROOT, "runtime.c"), "runtime.c", "-O1") + "\n" + rpy_o1)
     with tempfile.TemporaryDirectory() as tmp:
         libc = [pys.rtsym(k) for k in rt if not pys.rtsym(k).startswith(("pys_", "llvm."))]
         probe = os.path.join(tmp, "probe.c")
@@ -862,8 +897,13 @@ def main():
             continue
         e = rt[k]
         have = e[e.find("|") + 1 : e.rfind("|")].split()
-        for x in sorted(letters[sym]):
-            if x not in have and not (x == "U" and "U?" in have):
+        memory = []
+        for i, p in enumerate(pys.rtsig(k)[1:]):
+            o = OWNER.get(k[: k.find(".") + 1], "") if p == "S" or p == "U" else "L" if p.startswith("list[") else "D" if p.startswith("dict[") or p.startswith("set[") else "F" if p == "file" else ""
+            if o and sym in eff and i < len(eff[sym]) and eff[sym][i] is not None:
+                memory.extend((["r" + o] if eff[sym][i][0] else []) + (["w" + o] if eff[sym][i][1] else []))
+        for x in sorted(letters[sym]) + memory:
+            if x not in have and "U" not in have and not (x == "U" and "U?" in have):
                 bad.append(f"{k}: runtime.py's {sym} has effect {x}, which RUNTIME leaves out")
         if "N" in have:
             bad.append(f"{k}: RUNTIME says N, but runtime.py's {sym} returns")

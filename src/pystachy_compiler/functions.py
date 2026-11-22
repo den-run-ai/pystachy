@@ -7,7 +7,7 @@ from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.optimizations import recursion_unsnapshot
-from src.pystachy_compiler.specs import BIG, CTYPES, NONEVAR, RTSYM
+from src.pystachy_compiler.specs import BIG, CTYPES, NONEVAR, RTPTR, RTSYM
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     RtFn,
@@ -562,7 +562,7 @@ def gen_untold(self, f: FnInfo, ts: list[str], how: str) -> None:
     # passes those alone
     if f.ll[1:] not in RTSYM:
         for t in ts:
-            if t not in ("int", "float", "str", "None"):
-                self.err(f"{f.name}() is {how} with {typestr(t)}, which RUNTIME has no entry to check: a function of runtime mode that the compiler does not call takes and returns int, float, str or None")
+            if t not in ("int", "float", "str", "None", RTPTR):
+                self.err(f"{f.name}() is {how} with {typestr(t)}, which RUNTIME has no entry to check: a function of runtime mode that the compiler does not call takes and returns int, float, str, _rt.Ptr or None")
 
 # ---- lowering: an IFn as LLVM text

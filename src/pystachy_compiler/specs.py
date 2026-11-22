@@ -188,17 +188,46 @@ CALLS: dict[str, str] = {
 RTL: dict[str, str] = {
     "byte": "str,int:int", "str_new": "int:str", "str_put": "str,int,int:None", "str_done": "str:str",
     "copy": "str,int,str,int,int:None", "wrap_add": "int,int:int", "wrap_sub": "int,int:int",
-    "wrap_mul": "int,int:int", "shl": "int,int:int", "lshr": "int,int:int", "ashr": "int,int:int", "null": "str:bool",
+    "wrap_mul": "int,int:int", "shl": "int,int:int", "lshr": "int,int:int", "ashr": "int,int:int", "null": "ref:bool",
     "same": "str,int,str,int,int:bool", "find_byte": "str,int,int,int:int", "udiv": "int,int:int",
     "urem": "int,int:int", "mul_ovf": "int,int:bool", "find_sub": "str,str,int,int:int", "fail": "str,str:None",
     "sdiv": "int,int:int", "srem": "int,int:int", "ctlz": "int:int", "ctpop": "int:int",
     "mul_hi": "int,int:int", "udiv_wide": "int,int,int:int", "urem_wide": "int,int,int:int", "float_bits": "float:int", "bits_float": "int:float",
     "fma": "float,float,float:float", "sqrt": "float:float", "fdiv": "float,float:float",
+    # a float's whole parts as libm rounds them, its sign, its truncation to an int (defined only
+    # where the result fits: the caller tests that) and unsigned order
+    "ftrunc": "float:float", "ffloor": "float:float", "fceil": "float:float", "frint": "float:float",
+    "copysign": "float,float:float", "f2i": "float:int", "ult": "int,int:bool", "ule": "int,int:bool",
+    # machine memory, unchecked as C's (docs/runtime-in-subset.md#machine-memory). ref: any reference
+    # (a str, a list, an _rt.Ptr); a field is a record's, "List.len" (RTRECORDS), given as a literal
+    "nil": ":rtptr", "ptr": "int:rtptr", "addr": "ref:int", "ref": "ref:rtptr", "as_str": "ref:str",
+    "word": "ref,int:int", "put": "ref,int,int:None", "byte_at": "ref,int:int", "put_byte": "ref,int,int:None",
+    "i32_at": "ref,int:int", "put_i32": "ref,int,int:None", "at": "ref,int:rtptr", "offset": "ref,int:rtptr",
+    "get": "ref,str:int", "set": "ref,str,int:None", "getp": "ref,str:rtptr", "setp": "ref,str,ref:None",
+    "field": "ref,str:rtptr", "sizeof": "str:int",
+    "move": "ref,ref,int:None", "cpy": "ref,ref,int:None", "fill": "ref,int,int:None", "cmp": "ref,ref,int:int",
+}
+RTPTR = "rtptr"  # runtime mode's raw address (_rt.Ptr): a native reference that names no layout
+# runtime.c's records that runtime.py reads and writes by field (_rt.get, _rt.set, ...): each
+# field in order, a 64-bit word or (*) a pointer. Lowering addresses a field through the record's
+# LLVM type, so that the target's layout places it (wasm32's pointers are four bytes);
+# tools/check_runtime.py compares each record with runtime.c's struct of its name
+RTRECORDS: dict[str, str] = {
+    "Str": "len dict_hash chars1",
+    "List": "len cap a* ids*",
+    "VTuple": "len ids*",
+    "Dict": "len kind n size keys* vals* hs* idx* cut vatomic vb* kb*",
+    "Set": "len kind fill mask finger keys* hs* kb*",
 }
 STR_HEADER_SIZE = 24  # offsetof(Str, s), checked against runtime.c and both CPython glues by rt-abi
 TBAA_LEN = 3
 TBAA_BYTES = 4
 STRLEN_RANGE = 5  # !range of a str's length in runtime mode: 0 to 2**63 - 18 (_rt.str_new's limit)
+# runtime mode's machine memory (_rt.word, _rt.get, ...): the access tags of an item array's word, a
+# record's word field and a record's address field, which never alias one another (runtime.c
+# reads items through a struct of their own for the same reason), and their type nodes after them
+RT_TBAA: dict[str, int] = {"rt.word": 13, "rt.int": 14, "rt.ptr": 15}
+RT_TBAA_TYPES = 16
 # Program-only metadata, below the object-field tags. The recursion scalar types
 # share the object-field root so LLVM can distinguish their storage from fields.
 TBAA_DEPTH = 6
@@ -841,6 +870,7 @@ CAST_KINDS: dict[str, str] = {
     "object": "a %ptr as a closed union of classes: the object that a box of the union holds (Gen.cmp_object's phi), which only a ptr.cmp, a mach.load of its class word (an int or a %ptr) and member casts read",
     "member": "an object cast's value as one of its union's classes or a class derived from one: Gen.cmp_alts makes one for each class it tells apart, beside the object cast, and only code that a test of the object's class leads to reads it",
     "opaque": "a reference as a str, and back, in lib/_pystachy_copy.py, whose deep-copy memo keeps any reference as a str",
+    "raw": "a reference as runtime mode's raw address (an rtptr, runtime.py's _rt.Ptr), and back: the runtime reads its own layouts through it",
 }
 
 # How an operand may read its value at a type other than the one the value's definition gives it
@@ -1287,6 +1317,8 @@ RUNTIME: dict[str, str] = {
     "ceil": "int:float|R|", "int.str": "int:str,int|R A|", "float.str": "float:str|R A|", "float.hex": "str:float|A|",
     "float.is_integer": "bool:float||", "int.bit_length": "int:int||", "int.bit_count": "int:int||", "fabs": "float:float||fabs",
     "fma": "float:float,float,float||llvm.fma.f64", "sqrt": "float:float||llvm.sqrt.f64",
+    "ftrunc": "float:float||llvm.trunc.f64", "ffloor": "float:float||llvm.floor.f64", "fceil": "float:float||llvm.ceil.f64",
+    "frint": "float:float||llvm.nearbyint.f64", "copysign": "float:float,float||llvm.copysign.f64",
     "ctlz": "int:int,%i1||llvm.ctlz.i64", "ctpop": "int:int||llvm.ctpop.i64",
     "ovf.sadd": "%ovf:int,int||llvm.sadd.with.overflow.i64", "ovf.ssub": "%ovf:int,int||llvm.ssub.with.overflow.i64",
     "ovf.smul": "%ovf:int,int||llvm.smul.with.overflow.i64",
@@ -1394,6 +1426,7 @@ RUNTIME: dict[str, str] = {
     "tool_call": "str:str,str|R A I|",
     "alloc_atomic": "%ptr:int|A|", "init_lib": "None:%ptr,int|A I|", "cstr": "opt[str]:%ptr,int|R A|", "c_check": "int:int,int|R I|", "c_str": "None:str|R|", "c_at": "%ptr:%ptr,int|R|", "string_at": "str:int,int|R A|", "bytes_at": "bytes:int,int|R A|", "load_library": "int:str|R A I|", "track": "int:%ptr,int,int|A I|", "gc_collect": "None:|A I|", "c_bind": "None:%ptr,%ptr,%ptr|R A I|", "untrack": "None:int|I|", "collected": "int:|I|", "memchr": "%ptr:%ptr,%i32,int||memchr", "memcmp": "%i32:%ptr,%ptr,int||memcmp",
     "memmem": "%ptr:%ptr,int,%ptr,int||memmem", "memmove": "None:%ptr,%ptr,int,%i1||llvm.memmove.p0.p0.i64",
+    "memcpy": "None:%ptr,%ptr,int,%i1||llvm.memcpy.p0.p0.i64", "memset": "None:%ptr,%byte,int,%i1||llvm.memset.p0.i64",
 }
 # LLVM symbol -> RUNTIME key (spelt out here as rtsym does: module code calls no function before
 # the last def has run, which spares the compiled functions a check that each callee is defined)

@@ -986,6 +986,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.appending = True  # (len() of a str that str_append owns keeps it owned: it loads the length alone)
         vals = [self.read(args[0])]
         self.appending = False
+    elif self.rtmode and name in ("_rt.get", "_rt.set", "_rt.getp", "_rt.setp", "_rt.field", "_rt.sizeof"):
+        # (a record or its field, named by a literal that only the compiler reads: no constant is made)
+        vals = [Val("@rec." + a.s, "str") if a.kind == "str" else self.expr(a, "") for a in args if a.kind != "kw"]
     else:
         vals = [self.expr(a, w, resultsoft=resultsoft) for a in args if a.kind != "kw"]
         kvals = [self.expr(a.kids[0], "") for a in kws]

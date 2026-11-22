@@ -4,8 +4,8 @@ from src.pystachy_compiler.diagnostics import fail, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, slot_register, tmpname, one_num
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.lower_module import const_slot, struct_types
-from src.pystachy_compiler.specs import CHECKED, CLASSREC_LL, COMPLEXC, DYNTYPE_LL, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
-from src.pystachy_compiler.utils import atomic_dict, atomic_list, gelem, generator_identity, generator_slots, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
+from src.pystachy_compiler.specs import CHECKED, CLASSREC_LL, COMPLEXC, DYNTYPE_LL, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, RTRECORDS, RT_TBAA, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
+from src.pystachy_compiler.utils import atomic_dict, atomic_list, gelem, generator_identity, generator_slots, identity_abi, numeric_identity, is_dict, is_tuple, lt, rt_record_ll, selem, takes_self, targs, tslots
 
 
 def gen_lower(self, fn: IFn) -> None:
@@ -32,7 +32,7 @@ def gen_lower(self, fn: IFn) -> None:
     # closed recursion (Gen.recursionscope): the body is @r.<its symbol>, whose last argument is
     # the depth its caller was at (%rd), and its own symbol is a wrapper below
     rd = f.ll in self.rdpass
-    cold = " cold noinline" if raises_only(fn) else ""
+    cold = " cold noinline" if raises_only(fn) or (self.rtmode and f.cold) else ""  # (or runtime mode's @_rt.cold)
     name = "@v." + f.ll[1:] if n > 0 else "@r." + f.ll[1:] if rd else f.ll
     scope = self.source_lines.function(f.name, name, f.node.line)
     debug = " !dbg " + scope if scope != "" else ""
@@ -313,7 +313,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         self.lower_scalar(i)
 
     elif op == "mach.load" or op == "mach.store":
-        metadata = f", !tbaa !{TBAA_LEN}" if i.s == "length" or i.s == "length.range" else f", !tbaa !{TBAA_BYTES}" if i.s == "bytes" else ""
+        metadata = f", !tbaa !{TBAA_LEN}" if i.s == "length" or i.s == "length.range" else f", !tbaa !{TBAA_BYTES}" if i.s == "bytes" else f", !tbaa !{RT_TBAA[i.s]}" if i.s in RT_TBAA else ""
         if i.s == "length.range":
             metadata += f", !range !{STRLEN_RANGE}"
         if op == "mach.load":
@@ -326,6 +326,10 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         if i.s == "dyntype" or i.s == "classrec":
             element = DYNTYPE_LL if i.s == "dyntype" else CLASSREC_LL
             index = f"i32 0, i32 {i.a[1].v}"
+        elif i.s.startswith("rec."):
+            # (runtime mode: a field of one of runtime.c's records, or the address past it)
+            element = rt_record_ll(i.s[4:])
+            index = f"i32 0, i32 {i.a[1].v}" if int(i.a[1].v) < len(RTRECORDS[i.s[4:]].split()) else "i64 1"
         else:
             element = lt(i.s)
             index = f"i64 {i.a[1].v}"

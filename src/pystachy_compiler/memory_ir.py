@@ -5,6 +5,7 @@ operations also cover closure environments, runtime headers and byte buffers.
 """
 from __future__ import annotations
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, tmpname
+from src.pystachy_compiler.specs import RTRECORDS, RT_TBAA
 from src.pystachy_compiler.utils import RT_VARS
 
 
@@ -34,10 +35,14 @@ def gen_verify_memory(self, fn: IFn, b: Blk, i: Ins, slots: bool) -> None:
     # (machine_ir.py), where a load may give the opaque %slot of a payload it reads. A word may
     # hold a packed slot *T of a native T, and a store may write one as %slot
     if i.op == "mach.addr":
-        if len(i.a) != 2 or i.t != "%ptr" or i.s not in ["int", "%ptr", "%byte", "dyntype", "classrec"] or i.x != "" or i.k not in [0, 1] or len(i.b) != 0:
+        record = i.s[4:] if i.s.startswith("rec.") else ""
+        if len(i.a) != 2 or i.t != "%ptr" or (i.s not in ["int", "%ptr", "%byte", "%i32", "dyntype", "classrec"] and record not in RTRECORDS) or i.x != "" or i.k not in [0, 1] or len(i.b) != 0:
             self.bad_ir(fn, b, "mach.addr needs a machine element type and inbounds flag")
         if i.a[0].t != "%ptr" or i.a[1].t != "int":
             self.bad_ir(fn, b, "mach.addr needs a machine pointer and int index")
+        if record != "" and (not self.rtmode or i.a[1].v not in [str(j) for j in range(len(RTRECORDS[record].split()) + 1)]):
+            # (a field of one of runtime.c's records, or one past the last: the record's size)
+            self.bad_ir(fn, b, "mach.addr needs a field of the runtime record, in runtime mode")
         if i.s == "dyntype" and i.a[1].v not in ["2", "3", "5"]:
             self.bad_ir(fn, b, "mach.addr needs a DynType name, class or flags field")
         if i.s == "classrec" and i.a[1].v != "3":
@@ -51,5 +56,7 @@ def gen_verify_memory(self, fn: IFn, b: Blk, i: Ins, slots: bool) -> None:
     t = i.t if load else i.a[1].t
     if t == "" or t == "None" or (t.startswith("%") and t not in ["%ptr", "%byte", "%i32"] and not (t == "%slot" and (slots or not load))) or (t.startswith("*") and (t == "*" or t[1:2] in ["%", "*", "&", "#"])) or t.startswith("&") or t == "#" or (t in RT_VARS and t not in self.classes):
         self.bad_ir(fn, b, f"{i.op} needs a machine storage value type")
-    if (not load and i.t != "") or i.s not in ["", "length", "length.range", "bytes"] or (i.s == "length.range" and not load) or (i.s.startswith("length") and t != "int") or (i.s == "bytes" and t != "%byte"):
+    if (not load and i.t != "") or (i.s not in ["", "length", "length.range", "bytes"] and not (self.rtmode and i.s in RT_TBAA)) or (i.s == "length.range" and not load) or (i.s.startswith("length") and t != "int") or (i.s == "bytes" and t != "%byte"):
         self.bad_ir(fn, b, f"{i.op} has invalid value or memory metadata")
+    if (i.s == "rt.word" or i.s == "rt.int") and t != "int" or (i.s == "rt.ptr" and t != "%ptr"):
+        self.bad_ir(fn, b, f"{i.op} has a runtime memory tag of another type")

@@ -12,6 +12,31 @@ from fractions import Fraction
 M64 = (1 << 64) - 1
 
 
+class Ptr:
+    """A raw address (runtime.py's annotations name it). CPython runs none of the code that
+    reads or writes machine memory: the functions below that would raise here."""
+
+
+def unchecked(f):
+    # (CPython's ints do not wrap: a function that relies on wrapping says so with wrap_add)
+    return f
+
+
+def cold(f):
+    return f
+
+
+def _machine(name):
+    def primitive(*args):
+        raise NotImplementedError(f"_rt.{name}: runtime.py's machine memory runs only when compiled")
+    return primitive
+
+
+for _name in ("nil", "ptr", "addr", "ref", "as_str", "word", "put", "byte_at", "put_byte", "i32_at", "put_i32", "at",
+              "offset", "get", "set", "getp", "setp", "field", "sizeof", "move", "cpy", "fill", "cmp"):
+    globals()[_name] = _machine(_name)
+
+
 def i64(x):
     x &= M64
     return x - (1 << 64) if x >> 63 else x
@@ -228,3 +253,36 @@ def fail(kind, msg):
         raise UnicodeEncodeError(msg)
     import builtins
     raise getattr(builtins, kind)(msg)
+
+
+def ftrunc(x):
+    return float(math.trunc(x)) if math.isfinite(x) else x
+
+
+def ffloor(x):
+    return float(math.floor(x)) if math.isfinite(x) else x
+
+
+def fceil(x):
+    return float(math.ceil(x)) if math.isfinite(x) else x
+
+
+def frint(x):
+    # nearbyint in the default rounding mode: half to even
+    return float(round(x)) if math.isfinite(x) else x
+
+
+def copysign(x, y):
+    return math.copysign(x, y)
+
+
+def f2i(x):
+    return int(x)
+
+
+def ult(a, b):
+    return (a & M64) < (b & M64)
+
+
+def ule(a, b):
+    return (a & M64) <= (b & M64)

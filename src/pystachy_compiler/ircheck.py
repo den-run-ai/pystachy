@@ -6,7 +6,7 @@ from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, merged_blocks, ope
 from src.pystachy_compiler.scalar_ir import SCALAR_INTS
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.union_proof import UnionProof, private_optional_reads, simple_union_proof
-from src.pystachy_compiler.specs import BIG, CAST_KINDS, EMPTYFS, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME, TYPE_CLASSES
+from src.pystachy_compiler.specs import BIG, CAST_KINDS, EMPTYFS, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RTPTR, RUNTIME, TYPE_CLASSES
 from src.pystachy_compiler.specs import OPS, OP_ENTRY, OP_FIELDS, OP_INVOKE, OP_K, OP_LABELS, OP_MAX, OP_MIN, OP_OPERAND_TYPES, OP_PER_OPERAND, OP_RESULT_TYPE, OP_S, OP_T, OP_TEMPS, OP_X, RESULT_NUMBERS
 from src.pystachy_compiler.utils import RT_VARS, gelem, generator_identity, is_dict, is_gen, is_list, is_opt, is_set, is_tuple, is_union, list_read_error, list_receiver_error, list_write_error, lt, packed_item, rt_generic, rt_instance_error, same_kind, targs, tslots, umembers, unopt
 
@@ -552,7 +552,7 @@ def cast_error(self, fn: IFn, i: Ins, objects: dict[str, bool], types: dict[str,
         return f"cast {i.s or 'of no kind'}, where a cast is of a kind of specs.CAST_KINDS"
     if lt(a) != lt(t) or a == t:
         return f"cast {i.s} of a {a} to a {t}, where a cast reads its operand at another type of its LLVM type"
-    if i.s != "opaque" and v in types and types[v] != a:
+    if i.s != "opaque" and i.s != "raw" and v in types and types[v] != a:
         return f"cast {i.s} of {v}, a {types[v]} read as a {a}, where a cast of kind {i.s} reads {CAST_KINDS[i.s]}"
     ok = False
     if i.s == "bits":
@@ -561,6 +561,8 @@ def cast_error(self, fn: IFn, i: Ins, objects: dict[str, bool], types: dict[str,
         ok = a == "%ptr" and class_union(self, t)
     elif i.s == "member":
         ok = i.a[0].v in objects and t in self.classes and len([m for m in umembers(a) if t == m or self.derives(t, m)]) > 0
+    elif i.s == "raw":
+        ok = self.rtmode and ref_type(a) and ref_type(t) and (a == RTPTR or t == RTPTR)
     else:
         ok = fn.f.mod == "_pystachy_copy" and ref_type(a) and ref_type(t) and (a == "str" or t == "str")
     return "" if ok else f"cast {i.s} of a {a} to a {t}, where a cast of kind {i.s} reads {CAST_KINDS[i.s]}"

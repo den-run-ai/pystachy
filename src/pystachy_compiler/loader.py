@@ -3939,6 +3939,8 @@ class Loader:
         p = self.bpath(e) if k == "attr" else ""
         if p.startswith("ffi.") and (p[4:] in CTYPES or p[4:] in ("c_buf", "c_float")):
             return False  # (the same C type as a from-ffi import, including module aliases)
+        if self.rtmode and p == "_rt.Ptr":
+            return False  # (runtime mode's raw address type)
         if p != "" and not p.startswith("typing.") and p != "os.PathLike" and p != "collections.abc" and not (p.startswith("collections.abc.") and p[16:] in ABCS) and p != "dataclasses.KW_ONLY":
             return True  # (a builtin module may lack the attribute)
         return k not in ANNKINDS or (self.kind_of(b) == "v" and not (top and k == "name") and not (k == "name" and self.typevar(e))) or (k == "index" and self.kind_of(b) == "" and b.s in PYBUILTINS and b.kind == "name" and b.s not in GENERICS)

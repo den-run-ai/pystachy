@@ -3420,38 +3420,17 @@ static int atomic_items(const I *a) {  /* is the item array a atomic? its kind, 
   if (a == empty_atomic) return 1;
   return w - gc_lo < gc_hi - gc_lo && (m = pmap[w >> 30]) && (s = m[w >> 12 & 0x3ffff]) && (s->k & 1);
 }
-static void empty(List *l) {           /* detach an empty list's historical storage without allocating */
-  if (l->cap) {                        /* cap 0 during sort: preserve its mutation marker */
-    if (l->a == inline_items(l)) l->a = empty_inline;   /* (whoever removed its items cleared their slots) */
-    else l->a = atomic_items(l->a) ? empty_atomic : empty_list;
-    l->cap = 0;
-    if (l->ids && opt_in()) l->ids = empty_identity(l->ids[0]);
-  }
-}
+void pys_list_empty(List *l);              /* detach an empty list's historical storage without allocating: runtime.py's */
+static inline void empty(List *l) { pys_list_empty(l); }
 static I *item_array(I n, int atomic) { return atomic ? pys_alloc_atomic(n * 8) : pys_alloc(n * 8); }
-static List *list_new(I cap, int atomic) {
-  if (!atomic && cap <= INLINE_CAP) {  /* 64 bytes: the slack byte falls in the 72-byte class's last 8 */
-    List *l = pys_alloc(sizeof(List) + INLINE_CAP * sizeof(I));
-    l->cap = INLINE_CAP; l->a = inline_items(l); return l;
-  }
-  /* The allocator adds one slack byte. Request the full 32-byte header without
-     promoting it to the next size class; the former 24-byte header used 32 too. */
-  List *l = pys_alloc(sizeof(List) - 1);
-  l->cap = cap > INLINE_CAP ? cap : INLINE_CAP;
-  l->a = item_array(l->cap, atomic); return l;
-}
-List *pys_list_new(I cap) { return list_new(cap, 0); }
-List *pys_list_new_atomic(I cap) { return list_new(cap, 1); }   /* a list[int], list[float] or list[bool] */
+List *pys_list_make(I cap, I atomic);      /* runtime.py's: a new list, its items inline or in an array of that kind */
+static inline List *list_new(I cap, int atomic) { return pys_list_make(cap, atomic); }
+List *pys_list_new(I cap);
+List *pys_list_new_atomic(I cap);              /* a list[int], list[float] or list[bool] */
 /* Large scalar literals emit one copy operation plus immutable pointer-free slots, never
    a live list's storage or an identity companion. LLVM may inline this helper and expand
    memcpy as appropriate; the header and atomic item array are freshly allocated each time. */
-List *pys_list_from_const(const I *values, I n) {
-  if ((uint64_t)n > INT64_MAX / sizeof(I)) oom();
-  List *l = list_new(n, 1);
-  if (n) memcpy(l->a, values, n * sizeof(I));
-  l->len = n;
-  return l;
-}
+List *pys_list_from_const(const I *values, I n);
 /* Only dynamic program graphs request this companion. The numeric array remains raw and
    atomic, preserving its C ABI. A raw in-place store clears its companion without allocating;
    a later observation or sharing operation materializes that new object. Pure moves carry
@@ -3519,6 +3498,19 @@ static void identity_pair(List *a, List *b) {   /* before list a takes list b's 
     pys_list_identity(a, kind); pys_list_identity(b, kind);
   }
 }
+/* What runtime.py's list code takes from here (docs/runtime-in-subset.md): the sentinels' addresses,
+   an item array's kind from the page map, the opt-in test, and the companions' boxes. Each is
+   a call that the runtime's -O2 inlines, so that the code there is what it was here. */
+I *pys_rt_empty_list(void) { return empty_list; }
+I *pys_rt_empty_atomic(void) { return empty_atomic; }
+I *pys_rt_empty_inline(void) { return empty_inline; }
+I *pys_rt_empty_identity(I kind) { return empty_identity(kind); }
+I pys_rt_atomic_items(const I *a) { return atomic_items(a); }
+I pys_rt_opt_in(void) { return opt_in(); }
+I pys_rt_list_box(I value, I kind) { return list_box(value, kind); }
+I pys_rt_big_list(List *l) { return big_list(l); }
+void pys_rt_identity_pair(List *a, List *b) { identity_pair(a, b); }
+_Noreturn void pys_rt_oom(void) { oom(); }
 void pys_list_forget_identity(List *l) {
   /* The CPython FFI twin copies every native array element back after a call. Even an
      unchanged numeric payload becomes a fresh Python value there. */
@@ -3551,40 +3543,13 @@ List *pys_vtuple_list(VTuple *t) {
   }
   return l;
 }
-static void reserve(List *l, I n) {
-  if (n <= l->cap) return;
-  I c = l->cap * 2 > n ? l->cap * 2 : n, *a;
-  if (c < INLINE_CAP) c = INLINE_CAP;
-  if (l->a == empty_inline && c == INLINE_CAP) a = inline_items(l);   /* (emptied, and its items fit inline again) */
-  else {
-    a = item_array(c, atomic_items(l->a));
-    memcpy(a, l->a, l->len * 8);
-    if (l->a == inline_items(l)) memset(l->a, 0, INLINE_CAP * sizeof(I));   /* (moved: the header keeps none of them) */
-  }
-  l->a = a;
-  if (l->ids && opt_in()) {
-    if (c > INT64_MAX / (I)sizeof(I) - 1) oom();
-    I *ids = pys_alloc((c + 1) * sizeof(I));
-    memcpy(ids, l->ids, (l->len + 1) * sizeof(I)); l->ids = ids;
-  }
-  l->cap = c;
-}
+void pys_list_reserve(List *l, I n);        /* runtime.py's: room for n items */
+static inline void reserve(List *l, I n) { pys_list_reserve(l, n); }
 /* element access through a distinct struct type: TBAA then knows a store to an element
    never changes l->len or l->a, so LLVM hoists those loads out of loops */
 typedef struct { I v; } Slot;
 #define AT(l, i) (((Slot *)(l)->a)[i].v)
-static __attribute__((noinline)) void list_append_boxed(List *l, I v) {
-  I id = list_box(v, l->ids[0]);
-  if (l->len == l->cap) reserve(l, l->len + 1);
-  l->ids[l->len + 1] = id; AT(l, l->len++) = v;
-}
-void pys_list_append(List *l, I v) {
-  /* Leave the ordinary append small enough for LLVM to inline, including in an
-     opt-in program. The companion path retains allocation order and GC roots. */
-  if (l->ids && opt_in()) { list_append_boxed(l, v); return; }
-  if (l->len == l->cap) reserve(l, l->len + 1);
-  AT(l, l->len++) = v;
-}
+void pys_list_append(List *l, I v);          /* these, with the companion's part of each, are runtime.py's */
 void pys_list_append_identity(List *l, I v, Dyn *id, I kind) {
   pys_list_identity(l, kind);
   if (l->len == l->cap) reserve(l, l->len + 1);
@@ -3594,45 +3559,23 @@ Dyn *pys_list_get_identity(List *l, I i, I kind) {
   i = idx(i, l->len, "IndexError: list index out of range");
   pys_list_identity(l, kind); return (Dyn *)l->ids[i + 1];
 }
-I pys_list_get(List *l, I i) { return AT(l, idx(i, l->len, "IndexError: list index out of range")); }
-void pys_list_set(List *l, I i, I v) {
-  i = idx(i, l->len, "IndexError: list assignment index out of range");
-  if (l->ids && opt_in()) { l->ids[i + 1] = 0; if (!big_list(l)) l->ids[0] |= 4; }   /* pending fresh identity; no allocation (an int that fits: BIGIDS) */
-  AT(l, i) = v;
-}
+I pys_list_get(List *l, I i);
+void pys_list_set(List *l, I i, I v);
 void pys_list_set_identity(List *l, I i, I v, Dyn *id, I kind) {
   i = idx(i, l->len, "IndexError: list assignment index out of range");
   pys_list_identity(l, kind); l->ids[i + 1] = (I)id; AT(l, i) = v;
 }
 /* a slot a list no longer uses is zeroed: the collector scans the whole array, so a stale
    pointer there would keep the removed item alive (and a removed file open) */
-I pys_list_pop(List *l, I i) {
-  if (!l->len) pys_fail("IndexError: pop from empty list");
-  i = idx(i, l->len, "IndexError: pop index out of range");
-  I v = l->a[i];
-  if (l->ids && opt_in()) { memmove(l->ids + i + 1, l->ids + i + 2, (l->len - i - 1) * 8); l->ids[l->len] = 0; }
-  memmove(l->a + i, l->a + i + 1, (l->len - i - 1) * 8); l->a[--l->len] = 0;
-  if (!l->len) empty(l);
-  return v;
-}
+I pys_list_pop(List *l, I i);
 Dyn *pys_list_pop_identity(List *l, I i, I kind) {
   if (!l->len) pys_fail("IndexError: pop from empty list");
   i = idx(i, l->len, "IndexError: pop index out of range");
   pys_list_identity(l, kind); Dyn *id = (Dyn *)l->ids[i + 1];
   pys_list_pop(l, i); return id;
 }
-void pys_list_del(List *l, I i) {
-  i = idx(i, l->len, "IndexError: list assignment index out of range");
-  pys_list_pop(l, i);
-}
-void pys_list_insert(List *l, I i, I v) {
-  if (i < 0 && (i += l->len) < 0) i = 0;
-  if (i > l->len) i = l->len;
-  I id = l->ids && opt_in() ? list_box(v, l->ids[0]) : 0;
-  reserve(l, l->len + 1);
-  if (l->ids && opt_in()) { memmove(l->ids + i + 2, l->ids + i + 1, (l->len - i) * 8); l->ids[i + 1] = id; }
-  memmove(l->a + i + 1, l->a + i, (l->len - i) * 8); l->a[i] = v; l->len++;
-}
+void pys_list_del(List *l, I i);
+void pys_list_insert(List *l, I i, I v);
 void pys_list_insert_identity(List *l, I i, I v, Dyn *id, I kind) {
   if (i < 0 && (i += l->len) < 0) i = 0;
   if (i > l->len) i = l->len;
@@ -3678,18 +3621,8 @@ Big pys_list_big_pop(List *l, I i) {   /* l.pop(i) of a list of ints, as a promo
   Big r = litem(l, i);
   pys_list_pop(l, i); return r;
 }
-void pys_list_extend(List *l, List *m) {
-  identity_pair(l, m); I n = m->len; reserve(l, l->len + n);
-  if (l->ids && opt_in()) { if (m->ids) memcpy(l->ids + l->len + 1, m->ids + 1, n * 8); else memset(l->ids + l->len + 1, 0, n * 8); }   /* (m's ints fit) */
-  memcpy(l->a + l->len, m->a, n * 8); l->len += n;
-}
-List *pys_list_slice(List *l, I lo, I hi) {
-  span(&lo, &hi, l->len);
-  if (l->ids && opt_in()) pys_list_identity(l, l->ids[0]);
-  List *r = list_new(hi - lo, atomic_items(l->a));
-  if (l->ids && opt_in()) { pys_list_identity(r, l->ids[0]); memcpy(r->ids + 1, l->ids + lo + 1, (hi - lo) * 8); }
-  memcpy(r->a, l->a + lo, (hi - lo) * 8); r->len = hi - lo; return r;
-}
+void pys_list_extend(List *l, List *m);
+List *pys_list_slice(List *l, I lo, I hi);
 Str *pys_str_join_slice(Str *sep, List *l, I lo, I hi) {
   span(&lo, &hi, l->len);
   /* join only reads this view and calls no user code. Its interior pointer keeps the
@@ -3697,19 +3630,9 @@ Str *pys_str_join_slice(Str *sep, List *l, I lo, I hi) {
   List view = {.len = hi - lo, .cap = hi - lo, .a = lo < hi ? l->a + lo : NULL};
   return pys_str_join(sep, &view);
 }
-List *pys_list_copy(List *l) { return pys_list_slice(l, NONE, NONE); }
-void pys_list_clear(List *l) { memset(l->a, 0, l->len * 8); if (l->ids && opt_in()) memset(l->ids + 1, 0, l->len * 8); l->len = 0; empty(l); }
-List *pys_list_slice_step(List *l, I lo, I hi, I st) {
-  I n = sspan(&lo, hi, &st, l->len);
-  if (l->ids && opt_in()) pys_list_identity(l, l->ids[0]);
-  List *r = list_new(n, atomic_items(l->a));
-  if (l->ids && opt_in()) pys_list_identity(r, l->ids[0]);
-  for (I i = 0; i < n; i++) {
-    r->a[i] = l->a[lo + i * st];
-    if (l->ids && opt_in()) r->ids[i + 1] = l->ids[lo + i * st + 1];
-  }
-  r->len = n; return r;
-}
+List *pys_list_copy(List *l);
+void pys_list_clear(List *l);
+List *pys_list_slice_step(List *l, I lo, I hi, I st);
 /* l[lo:hi:st] = v and del l[lo:hi:st], as CPython's list_ass_subscript: with a step of 1, any
    number of v's items replace the slice's (v == l is copied first); another step needs one of
    v's for each item. Slots left unused are zeroed, and an emptied list detaches its storage
@@ -3906,7 +3829,7 @@ void pys_list_remove_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind) {
   if (i < l->len) pys_list_del(l, i);
 }
 static void rev(I *a, I n) { for (I i = 0, j = n - 1; i < j; i++, j--) { I t = a[i]; a[i] = a[j]; a[j] = t; } }
-void pys_list_reverse(List *l) { rev(l->a, l->len); if (l->ids && opt_in()) rev(l->ids + 1, l->len); }
+void pys_list_reverse(List *l);                /* runtime.py's */
 /* Portions derived from CPython's Objects/listobject.c: Copyright (c) 2001-2024 Python Software
    Foundation; All Rights Reserved; used under the PSF License Agreement (see THIRD_PARTY_NOTICES). */
 /* list.sort is CPython 3.13's timsort (Objects/listobject.c, designed in listsort.txt), ported
