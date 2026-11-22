@@ -220,6 +220,10 @@ covers a 2,000-container round trip and catching `RecursionError` on deeper inpu
   reflection read the name, class id and flags at their target-specific offsets in `DynType`
   and the flags in a class reflection record.
   A boxed class record pointer occupies an eight-byte payload slot on both targets.
+  `vars()` reads an object's reference fields at the target's pointer width beside its 8-byte
+  ints and floats. A frame keeps its locals above its frame address on wasm32, `@main`'s too,
+  so the runtime finds a `*args` tuple that a caller made anywhere on the linear-memory stack
+  above the callee and copies it before the callee keeps it.
 
 ## Files
 
