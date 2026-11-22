@@ -667,14 +667,14 @@ L1:
                                     capture_output=True, text=True, check=False)
             self.assertEqual(result.returncode, 1)
             self.assertIn("@f: unexpected error in block entry", result.stderr)
-            for fixture in (self.INVALID, self.CLASSES, self.FIELDS):
+            for fixture in (self.INVALID, self.CLASSES, self.FIELDS, self.STRUCTURE):
                 result = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "verify", str(fixture)],
                                         capture_output=True, text=True, check=False)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("functions verify as expected", result.stdout)
 
     def test_annotated_fixtures_are_in_the_printed_form_but_for_their_comments(self):
-        for fixture in (self.INVALID, self.CLASSES, self.FIELDS, self.OPTIONAL):
+        for fixture in (self.INVALID, self.CLASSES, self.FIELDS, self.OPTIONAL, self.STRUCTURE):
             with self.subTest(fixture=fixture.name):
                 bare = "\n".join(line for line in fixture.read_text().split("\n") if not line.lstrip().startswith(";"))
                 bare = re.sub(r"\n{3,}", "\n\n", bare).lstrip("\n")
@@ -683,6 +683,41 @@ L1:
     CLASSES = FIXTURES / "classes.tir"
     FIELDS = FIXTURES / "fields.tir"
     OPTIONAL = FIXTURES / "optional.tir"
+    STRUCTURE = FIXTURES / "structure.tir"
+
+    def test_control_flow_is_structured_and_loop_records_name_its_loops(self):
+        from src.pystachy_compiler.structure import Structure
+        source = self.STRUCTURE.read_text()
+        self.assertEqual(text.verify_errors(source), [])
+        expected = text.expectations(source)
+        records = text.parse_functions(source)
+        admitted = [r for r, e in zip(records, expected, strict=True) if not e]
+        self.assertEqual((len(admitted), len(records) - len(admitted)), (3, 4))
+        # (without their loop records, the functions whose records were wrong verify; the cycle
+        # with two entries does not)
+        bare = "\n".join(line for line in source.split("\n") if not line.startswith("loop "))
+        unreported = sorted(p.split(":")[0] for p in text.verify_errors(bare) if "was not reported" in p)
+        self.assertEqual(unreported, ["@a_loop_record_that_names_no_block", "@a_loop_record_whose_body_is_out_of_its_loop",
+                                      "@a_loop_record_whose_exit_is_in_its_loop"])
+        # (a structured backend finds each accepted loop at its record's head, in nesting order;
+        # a body that always leaves closes no cycle, and a test before a loop may skip it)
+        for record in admitted:
+            fn = text.to_ifn(record)
+            flow = Structure(fn)
+            at = {b.label: j for j, b in enumerate(fn.blocks)}
+            self.assertEqual(flow.irreducible(), [])
+            for lp in fn.loops:
+                with self.subTest(function=record["symbol"], head=lp.head):
+                    blocks = flow.loop(at[lp.head])
+                    self.assertEqual(at[lp.body] in blocks, record["symbol"] != "@a_loop_whose_body_always_leaves")
+                    self.assertNotIn(at[lp.exit], blocks)
+        nested = text.to_ifn(next(r for r in admitted if r["symbol"] == "@nested_loops"))
+        flow = Structure(nested)
+        self.assertEqual(sorted(nested.blocks[j].label for j in flow.loop(1)), ["L1", "L3", "L5"])
+        self.assertEqual(sorted(nested.blocks[j].label for j in flow.loop(2)), ["L3", "L5"])
+        skipped = text.to_ifn(next(r for r in admitted if r["symbol"] == "@a_loop_entered_after_a_test_that_may_skip_it"))
+        flow = Structure(skipped)
+        self.assertTrue(flow.dominates(0, 3) and not flow.dominates(1, 3))
 
     def test_an_optional_read_at_its_type_needs_a_test_that_it_is_not_none(self):
         source = self.OPTIONAL.read_text()
