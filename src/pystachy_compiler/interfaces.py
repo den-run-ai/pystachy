@@ -799,7 +799,12 @@ def gen_iface_isinst(self, v: Val, c: Node) -> Val:
     line = self.line
     e = mk("call", "", line, [mk("name", "isinstance", line, []), mk("name", "_o", line, []), clone(c)])
     key = "isinstance()|" + ",".join(cs)
-    return self.iface_apply(v, key, [], "bool", e, "isinstance()", [], "isinstance", v, v)
+    pcall = self.pcall
+    r = self.iface_apply(v, key, [], "bool", e, "isinstance()", [], "isinstance", v, v)
+    # (its entries test the object's class and run no code of the program, so an attribute that
+    # the test read keeps its fact, which narrows it: unions.py's narrows_path)
+    self.pcall = pcall
+    return r
 
 
 def gen_iface_narrow(self, c: Node) -> str:

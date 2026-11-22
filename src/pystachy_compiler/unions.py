@@ -967,6 +967,8 @@ def gen_narrows_path(self, n: Node, test: str, c: Node, truth: bool, out: dict[s
         nt = self.isinst_narrow(t, c, truth)
     elif truth and t in self.classes and self.classes[t].tag > 0 and c.kind == "name" and c.s in self.classes and (self.derives(c.s, t) or c.s in self.classes[t].overlaps):
         nt = c.s  # (the class its runtime class test proved: narrows)
+    elif truth and self.is_iface(t):
+        nt = self.iface_narrow(c)  # (an interface's object, of the class its test proved: interfaces.py)
     elif self.isinst(t, c) == (-2 if truth else -3):
         nt = unopt(t)
     if nt != "" and nt != t:

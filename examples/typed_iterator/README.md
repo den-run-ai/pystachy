@@ -58,9 +58,9 @@ iterator of `int` items.
 Every annotation in the protocol's methods is a contract that each implementation must
 meet when the program calls that method through the protocol. A class whose `__next__`
 returned `str` would be rejected at the conversion; a class that lacks a method the
-program never calls through the protocol is accepted, as in CPython. Comparisons,
-hashing and `type()` of protocol values are rejected, because only the run time knows
-the object's class; compare with `is`.
+program never calls through the protocol is accepted, as in CPython. `==`, `!=`,
+`hash()`, formatting and `isinstance()` of a protocol value run on its object, as its class
+defines them; orderings and `type()` are rejected.
 
 ## 3. Retain an iterable without consuming it
 
@@ -289,10 +289,10 @@ construction, compilation and code growth separately.
 
 ## Limits when choosing an interface
 
-A protocol value has the object's identity and state, but only the protocol's
-operations: `==`, ordering, hashing, dictionary keys, `type()`, `isinstance()` and other
-reflection are rejected, and so are conversions between protocols and to or from
-dynamic `Any`. Protocol methods need annotated parameters and results; attribute
+A protocol value has the object's identity and state, and `==`, `!=`, `hash()`,
+`format()` and `isinstance()` run on the object; orderings, dictionary keys, set elements,
+`type()` and other reflection are rejected, and so are conversions between protocols and
+to or from dynamic `Any`. Protocol methods need annotated parameters and results; attribute
 members, protocol inheritance and naming a protocol as a base are not supported. See
 [typing](../../docs/language/typing.md#protocols-and-stored-interfaces).
 

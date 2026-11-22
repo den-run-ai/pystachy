@@ -1031,8 +1031,8 @@ operation for its implementation.
 - `hash()` is the object's, also inside a tuple, with CPython's `TypeError` for an
   unhashable class;
 - `isinstance(x, C)` with classes of the program (or a tuple of them) tests the object's class,
-  and narrows a local or parameter to `C` where it holds, as an `if` or an early `return`
-  narrows a union ([test](../../tests/programs/classes/protocol_isinstance.py)).
+  and narrows a local, a parameter or an attribute to `C` where it holds, as an `if` or an early
+  `return` narrows a union ([test](../../tests/programs/classes/protocol_narrowing.py)).
 
 A value that is `None` stays `None`, and each operation then is `None`'s. Since any two
 implementations may meet at run time, a comparison that Pystachy rejects between two of their
