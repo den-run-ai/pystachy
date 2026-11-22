@@ -25,6 +25,7 @@ from src.pystachy_compiler.specs import (
     FINAL_FIELD,
     FLEXIBLE_ALIAS,
     FROZENERR,
+    FLOATINFO,
     GLUE,
     IOPS,
     ITERS,
@@ -2842,16 +2843,19 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
                 ets = ets + ["dict[int," + e.s + "]", "int", "int", "int", "str"]
             return self.specialize(tc, ets, {}, False, {})
     p = self.imported_ref(e) if k == "name" or k == "attr" else ""
-    if p in MODFUNCS:
-        # a builtin module's function (math.sqrt, or sqrt from-imported), unless a local of the
-        # method has the name it is read through
+    if p in MODFUNCS or p in FLOATINFO:
+        # A builtin function or a numeric sys.float_info field read through an import.
+        # A binding in the enclosing scope can shadow the imported name.
         root = e
         while root.kind == "attr":
             root = root.kids[0]
         asg = {}
         local_names(guess_scope(f), asg)
         if root.s not in asg:
-            return f"fn[b:{p}]"
+            if p in MODFUNCS:
+                return f"fn[b:{p}]"
+            if root.s not in f.params:
+                return self.modattr(p).t  # (a literal float or int, with no emitted operation)
     if k == "name" and e.s in self.globvalues and e.s not in f.params and e.s not in self.guessing:
         # a module global that one assignment binds (a constant: analysis.module_values), or one
         # in each branch that binds it, unless a local of the function has its name: the type of

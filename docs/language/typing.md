@@ -1512,7 +1512,9 @@ classes and `dataclasses.replace()`. Explicit method calls such as `obj.__init__
 A class-body default is a class attribute, read by instances until they assign their own
 value. Later changes to the class attribute affect those instances. Unannotated class-body
 assignments infer their type, except in dataclasses and NamedTuples, where annotations are
-required. Supported subclasses also inherit their base's fields and class attributes.
+required. For example, `EPS = sys.float_info.epsilon` infers `float` and
+`BITS = sys.float_info.mant_dig` infers `int`. Supported subclasses also inherit their
+base's fields and class attributes.
 In a module-level class without decorators or a `NamedTuple` base, a later class-body value
 or method default may read a name the body binds once to a constant (`op_str = {ADD: "+"}`),
 as CPython reads the class namespace; lambdas and comprehensions past their first iterable
