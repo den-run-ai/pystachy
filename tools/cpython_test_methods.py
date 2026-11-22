@@ -4,6 +4,7 @@ usage: python3 tools/cpython_test_methods.py extract TESTFILE OUTDIR
        python3 tools/cpython_test_methods.py combine TESTFILE OUT.py CLASS.METHOD...
        python3 tools/cpython_test_methods.py pytest TESTFILE OUTDIR CLASS.METHOD...
        python3 tools/cpython_test_methods.py triage [--compiler CMD] [-j N] OUT.json WORKDIR TESTFILE...
+       python3 tools/cpython_test_methods.py triage [--compiler CMD] [-j N] --selection FILE OUT.json WORKDIR
 
 Native execution of CPython's Lib/test files needs unittest and test.support before any
 library gap matters, so the corpus grows through adapted methods (tests/upstream/core-sweep.md).
@@ -660,9 +661,14 @@ def pytest_suite(path, outdir, selection, *, selected_methods_only=False):
     return manifest
 
 
-def extract(path, outdir, setup_init=True):
+def extract(path, outdir, setup_init=True, *, selected=None):
     tf = TestFile(path, setup_init)
     tests, left = tf.tests()
+    if selected is not None:
+        missing = selected.difference(tests)
+        if missing:
+            raise ValueError("not extracted from this file: " + ", ".join(".".join(key) for key in sorted(missing)))
+        tests = [key for key in tests if key in selected]
     os.makedirs(outdir, exist_ok=True)
     for cname, name in tests:
         Path(outdir, f"{cname}__{name}.py").write_text(tf.program([(cname, name)]))
@@ -716,7 +722,25 @@ def triage_one(compiler, prog, env, test):
     return r
 
 
-def triage(compiler, jobs, out, workdir, files):
+def read_selection(path):
+    files = {}
+    for line_number, line in enumerate(path.read_text().splitlines(), 1):
+        row = line.strip().rsplit(None, 1)
+        parts = row[-1].split(".") if row else []
+        if len(row) != 2 or len(parts) != 2 or not all(part.isidentifier() for part in parts):
+            raise ValueError(f"{path}:{line_number}: expected TESTFILE CLASS.METHOD")
+        file, method = row
+        methods = files.setdefault(file, set())
+        key = tuple(parts)
+        if key in methods:
+            raise ValueError(f"{path}:{line_number}: duplicate method {file} {method}")
+        methods.add(key)
+    if not files:
+        raise ValueError(f"empty method selection: {path}")
+    return files
+
+
+def triage(compiler, jobs, out, workdir, files, *, selected=None):
     env = {k: v for k, v in os.environ.items() if not k.startswith("PYSTACHY_")}
     for k in ("PYSTACHY_CACHE", "PYSTACHY_LLVM", "PYSTACHY_HOME"):
         if k in os.environ:
@@ -724,12 +748,16 @@ def triage(compiler, jobs, out, workdir, files):
     work = []
     left_out = {}
     errors = {}
-    for f in files:
+    inputs = ((f, None) for f in files) if selected is None else selected.items()
+    for index, (f, methods) in enumerate(inputs):
         name = Path(f).stem if f.endswith(".py") else Path(f).name
         d = os.path.join(os.path.abspath(workdir), Path(f).parent.name + "." + name if Path(f).parent.name != "test" else name)
+        if methods is not None:
+            # Two selected files may share the same test module name.
+            d = os.path.join(d, str(index))
         try:
-            tests, left = extract(f, d)
-        except (OSError, SyntaxError, UnicodeDecodeError, RecursionError) as e:
+            tests, left = extract(f, d, selected=methods)
+        except (OSError, SyntaxError, ValueError, RecursionError) as e:
             # (a file that cannot be read or parsed is reported, not silently left out)
             errors[f] = f"{type(e).__name__}: {e}"
             print(f"{f}: not extracted: {errors[f]}", file=sys.stderr)
@@ -773,7 +801,8 @@ def main(argv=None):
     t.add_argument("-j", type=int, default=2)
     t.add_argument("out")
     t.add_argument("workdir")
-    t.add_argument("testfiles", nargs="+")
+    t.add_argument("testfiles", nargs="*")
+    t.add_argument("--selection", type=Path, help="run the TESTFILE CLASS.METHOD pairs in this file; paths are relative to the current directory")
     args = parser.parse_args(argv)
     if args.command == "extract":
         tests, left = extract(args.testfile, args.outdir, not args.no_setup_init)
@@ -792,7 +821,13 @@ def main(argv=None):
         except (Unsupported, FileExistsError) as error:
             parser.error(str(error))
     else:
-        triage(shlex.split(args.compiler), args.j, args.out, args.workdir, args.testfiles)
+        if bool(args.testfiles) == bool(args.selection):
+            parser.error("triage requires either testfiles or --selection")
+        try:
+            selected = read_selection(args.selection) if args.selection else None
+        except (OSError, ValueError) as error:
+            parser.error(str(error))
+        triage(shlex.split(args.compiler), args.j, args.out, args.workdir, args.testfiles, selected=selected)
 
 
 if __name__ == "__main__":
