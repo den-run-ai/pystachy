@@ -466,6 +466,38 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/inference/union_tuple_member.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/union_tuple_member.py:11: error: tuple[int,str] of promoting ints in a closed union is not supported (a union's box holds 64-bit ints)",
+      "reason": "A closed union's box holds 64-bit ints, so a tuple of promoting ints is no member of it; the program is rejected where the union would hold the tuple.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/union_tuple_member.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/union_tuple_member.py:11: error: tuple[int,str] of promoting ints in a closed union is not supported (a union's box holds 64-bit ints)",
+      "reason": "A closed union's box holds 64-bit ints, so a tuple of promoting ints is no member of it; the program is rejected where the union would hold the tuple.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/union_tuple_member_any.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/union_tuple_member_any.py:7: error: tuple[int,str] of promoting ints in a closed union is not supported (a union's box holds 64-bit ints)",
+      "reason": "A closed union's box holds 64-bit ints, so a tuple of promoting ints is no member of it; the program is rejected where the union would hold the tuple.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/union_tuple_member_any.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/union_tuple_member_any.py:7: error: tuple[int,str] of promoting ints in a closed union is not supported (a union's box holds 64-bit ints)",
+      "reason": "A closed union's box holds 64-bit ints, so a tuple of promoting ints is no member of it; the program is rejected where the union would hold the tuple.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/language/flow_locals.py",
       "mode": "jit",
       "category": "unsupported-storage",
@@ -559,6 +591,22 @@
       "category": "unsupported-storage",
       "diagnostic": "tests/programs/numbers/float_var_int.py:69: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float (note: what is annotated float and was given an int at tests/programs/numbers/float_var_int.py:7 holds an int | float; a float there, as in 1.0 or float(x), keeps it a float)",
       "reason": "A location annotated float that is given an int holds a closed int | float union, whose int payload stays fixed-width; arithmetic on it that can yield a promoting int is rejected, as for inferred numeric unions.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/reflection/reflect_asdict_tuple_union.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/reflection/reflect_asdict_tuple_union.py:14: error: asdict() of Item: str and tuple[int,int] have no common type (tuple[int,int] of promoting ints in a closed union is not supported (a union's box holds 64-bit ints))",
+      "reason": "A closed union's box holds 64-bit ints, so a tuple of promoting ints is no member of it; the program is rejected where the union would hold the tuple.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/reflection/reflect_asdict_tuple_union.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/reflection/reflect_asdict_tuple_union.py:14: error: asdict() of Item: str and tuple[int,int] have no common type (tuple[int,int] of promoting ints in a closed union is not supported (a union's box holds 64-bit ints))",
+      "reason": "A closed union's box holds 64-bit ints, so a tuple of promoting ints is no member of it; the program is rejected where the union would hold the tuple.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {

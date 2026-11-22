@@ -877,6 +877,28 @@ needs the narrowed value. A truth test takes any member, and a function is true.
 `==` need narrowing first. `callable()` cannot tell two `Callable` types apart, so a union
 holds one, and none beside classes or files.
 
+A union may hold one tuple type beside scalars, lists and dictionaries, for a result that is
+a value or a pair of it and a log:
+
+```python
+def repair(text: str, logging: bool = False) -> str | tuple[str, list[str]]:
+    if logging:
+        return text, []
+    return text
+
+result = repair("x", True)
+if isinstance(result, tuple):
+    value, log = result
+```
+
+The tuple is fixed (`tuple[A, B]`) or of any length (`tuple[T, ...]`), and a tuple display
+where the union is expected takes that type, so an empty list among its items needs no
+annotation. `isinstance(x, tuple)` narrows to it; an index, unpacking, a loop, arithmetic, an
+ordering and a method call need the narrowed value. Truth, `len()`, `str()`, `repr()`,
+printing, `==` and `!=` take any member ([cases](../../tests/programs/inference/union_tuple_member.py)).
+`isinstance()` cannot tell two tuple types apart, so a union holds one, and none beside
+classes or files. A tuple of promoting ints is no member.
+
 ## Native reference unions
 
 Explicit unions can also hold up to four native class or `TextIO` types. This lets an

@@ -727,8 +727,9 @@ list comprehension that reads each field's `.name`. `asdict()` and `astuple()` a
 class: they copy recursively into nested dataclasses (also of a hierarchy, by the object's
 class), lists, dicts and tuples, as CPython's `_asdict_inner` does, and keep `None`, numbers,
 strings and `bytes` (immutable: `copy.deepcopy()` returns them themselves);
-`asdict()`'s values of different types join in a union, so a dataclass holding a tuple and
-another type, or objects and scalars, is rejected. `is_dataclass()` is decided by the static
+`asdict()`'s values of different types join in a union, so a dataclass holding two tuple
+types, or objects and scalars, is rejected; one tuple type beside scalars, lists and
+dictionaries is a [member of that union](typing.md#operations-on-closed-unions). `is_dataclass()` is decided by the static
 type. `dict_factory=` and `tuple_factory=` are not supported.
 
 `string.Formatter().format()` of a constant template whose fields read attributes (`"{0.x}"`)
