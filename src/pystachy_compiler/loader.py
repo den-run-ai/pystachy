@@ -2628,10 +2628,45 @@ def protocol_iterates(body: Node) -> bool:
     return False
 
 
+def stores_object(n: Node) -> bool:
+    # does code n annotate a location that holds values of object (interfaces.py's OBJECT): a
+    # variable's, a field's or a result's annotation that names object, or a parameter's that
+    # names it within another type (list[object]) or of *args or **kwargs; not a parameter's
+    # object alone, which makes its function a template of each argument's own type
+    if n.kind == "annassign" and len(n.kids) > 1 and object_ann(n.kids[1]):
+        return True
+    if n.kind == "def" and len(n.kids) == 3:
+        if n.kids[1].kind != "noann" and object_ann(n.kids[1]):
+            return True
+        for p in n.kids[0].kids:
+            a = p.kids[0] if len(p.kids) > 0 else None
+            if a is not None and a.kind != "noann" and object_ann(a) and not (p.kind == "param" and a.kind == "name" and a.s == "object"):
+                return True
+    for k in n.kids:
+        if stores_object(k):
+            return True
+    return False
+
+
+def object_ann(a: Node) -> bool:
+    # does annotation a name object, a string annotation's text too
+    if a.kind != "str":
+        return mentions(a, ["object"])
+    at = a.s.find("object")
+    while at >= 0:
+        before = a.s[at - 1] if at > 0 else " "
+        after = a.s[at + 6] if at + 6 < len(a.s) else " "
+        if not (before.isalnum() or before == "_") and not (after.isalnum() or after == "_"):
+            return True
+        at = a.s.find("object", at + 1)
+    return False
+
+
 def container_tests(n: Node) -> bool:
     # does code n call isinstance() with list, tuple, dict, set or frozenset in its second argument
     # (also in a tuple there): one may narrow a value of object to a view of the container it
-    # holds, whose loops call iter() of that container in its table (interfaces.py's view_slot)
+    # holds, whose loops call iter() of that container in its table (interfaces.py's view_slot),
+    # where a module of the program stores values of object (stores_object)
     if n.kind == "call" and len(n.kids) == 3 and n.kids[0].kind == "name" and n.kids[0].s == "isinstance":
         for c in n.kids[2].kids if n.kids[2].kind == "tuple" else [n.kids[2]]:
             if c.kind == "name" and c.s in ["list", "tuple", "dict", "set", "frozenset"]:
@@ -2871,7 +2906,8 @@ class Loader:
             self.order = [self.order[-1]] + self.order[:-1]
             for x in users:
                 x.deps[COMPLEXS] = True
-        users = [x for x in self.order if module_reads(x.body, "iter") or protocol_iterates(x.body) or container_tests(x.body)] if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods else []
+        objects = not self.rtmode and ITERS not in self.mods and len([x for x in self.order if stores_object(x.body)]) > 0
+        users = [x for x in self.order if module_reads(x.body, "iter") or protocol_iterates(x.body) or (objects and container_tests(x.body))] if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods else []
         if len(users) > 0:
             # iter() makes iterator objects of builtin containers: of lib's classes, whose module
             # nothing imports (it imports nothing either, so it comes first). A Protocol that
