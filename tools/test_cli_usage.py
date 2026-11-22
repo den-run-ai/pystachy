@@ -24,10 +24,10 @@ class CommandLine(unittest.TestCase):
         self.source = self.root / "g.py"
         self.source.write_text("import sys\nprint(sys.argv[1:])\n")
 
-    def pystachy(self, *args, llvm=None, path=None):
+    def pystachy(self, *args, llvm=None, path=None, cache=None):
         command = [COMPILER] if COMPILER else [sys.executable, "-B", str(ROOT / "pystachy.py")]
         env = {k: v for k, v in os.environ.items() if not k.startswith("PYSTACHY_")}
-        env["PYSTACHY_CACHE"] = str(self.root / "cache")
+        env["PYSTACHY_CACHE"] = str(self.root / "cache") if cache is None else cache
         if path is not None:
             env["PATH"] = path
         if llvm is not None:
@@ -70,6 +70,27 @@ class CommandLine(unittest.TestCase):
         self.assertIn("lli: unavailable", result.stdout)
         self.assertIn("opt: 20.1.8\n  expected LLVM major 18", result.stdout)
         self.assertFalse((self.root / "cache").exists())
+
+    def test_doctor_names_a_relative_cache_from_the_root(self):
+        here = os.path.realpath(self.root)
+        missing = str(self.root / "no LLVM")
+        for spelled, expected in (("rel", "rel"), ("./rel/x", "rel/x"), ("././rel", "rel")):
+            with self.subTest(cache=spelled):
+                result = self.pystachy("doctor", llvm=missing, cache=spelled)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn(f"Runtime cache: {here}/{expected}", result.stdout.splitlines())
+                self.assertFalse((self.root / "rel").exists())
+        # A checkout's compiler run by a relative path, with no PYSTACHY_CACHE: its build directory.
+        compiler = Path(COMPILER) if COMPILER else ROOT / "pystachy.py"
+        if not (compiler.parent / "runtime.c").is_file():
+            self.skipTest("the compiler is not beside its runtime")
+        command = ["./" + compiler.name] if COMPILER else [sys.executable, "-B", "./pystachy.py"]
+        env = {k: v for k, v in os.environ.items() if not k.startswith("PYSTACHY_")}
+        env["PYSTACHY_LLVM"] = missing
+        result = subprocess.run(command + ["doctor"], cwd=compiler.parent, env=env, capture_output=True,
+                                text=True, timeout=600)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(f"Runtime cache: {os.path.realpath(compiler.parent)}/build", result.stdout.splitlines())
 
     def test_a_file_named_like_help_is_still_compiled(self):
         (self.root / "--help").write_text("print(1)\n")

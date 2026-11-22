@@ -807,6 +807,13 @@ def doctor() -> int:
     home = compiler_home()
     directory = llvm_dir()
     cache = cached_run.runtime_cache_dir(home)
+    if not cache.startswith("/"):
+        # (a relative PYSTACHY_CACHE, or the home of a compiler run as ./pystachy: the same
+        # directory, named from the root so that the report means the same wherever it is read,
+        # with no file system access: the cache need not exist)
+        while cache.startswith("./"):
+            cache = cache[2:]
+        cache = os.getcwd().rstrip("/") + "/" + cache
     print(compiler_version(home))
     print(f"Runtime cache: {cache}")
     print("LLVM search: " + (directory or "PATH"))
