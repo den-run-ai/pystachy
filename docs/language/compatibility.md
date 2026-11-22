@@ -215,7 +215,10 @@ applies. Bytes case methods remain ASCII-only.
   dict's key, or a set's element, equal to the one looked for after hashing it as CPython does,
   by comparing them one by one: a key of a class whose `__hash__` disagrees with its `__eq__` can
   be found where CPython's hash table misses it. Its `keys()`, `values()` and `items()` are new
-  lists, as a dict's are.
+  lists, as a dict's are. A NamedTuple's object that an `Any` value holds passes a tuple test,
+  but its view is no sequence, as the [`Any` value](../dynamic-any.md#deviations) is not: `len()`,
+  indexing and iteration raise `TypeError`
+  ([deviation](../../tests/deviations/object_view_dynamic_namedtuple.py)).
 - **Exceptions stored as `object`:** an exception object of a class of the program, and the
   `BaseException` that an `except` clause of a builtin exception class binds when it is raised,
   are two values here: a value of `object` that holds the one is neither `is` nor `==` one that

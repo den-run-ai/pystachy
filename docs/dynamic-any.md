@@ -1141,7 +1141,9 @@ can still need an explicit `list[Any]` destination.
   (`tests/programs/inference/dynany_namedtuple.py`), and `isinstance(x, tuple)` is true for it
   (`tests/programs/inference/dynany_isinstance_namedtuple.py`), but it is no sequence there: `len()`,
   indexing and iteration raise `TypeError`, and an object of another NamedTuple class compares
-  with it by identity (an ordering raises `TypeError`), where CPython compares their fields.
+  with it by identity (an ordering raises `TypeError`), where CPython compares their fields. A
+  value of `object` that holds such an `Any` value is no sequence either, also where a tuple test
+  narrowed it to a view (`tests/deviations/object_view_dynamic_namedtuple.py`).
 
 - A static or class method read through an object held in `Any` without a call raises `AttributeError`
   (typed code rejects a static method as a value at compile time), and so does a call of a
