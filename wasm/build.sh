@@ -15,7 +15,7 @@
 #        wasm/build.sh tir FILE.py OUT.wasm    same, with LLVM fallback on an emitter refusal
 #                                              WASM_TIR_LOG records emitted or refused per file
 #        wasm/build.sh gc-mark-probe OUT.wasm  build the explicit-root wasm32 collector test
-#        wasm/build.sh gc-globals-probe       build a reactor that checks roots after guest init
+#        wasm/build.sh gc-globals-probe       build a reactor for forced-collection root probes
 # Environment: PYSTACHY, the compiler (default ./pystachy; "python3 pystachy.py" works too);
 # PYSTACHY_LLVM, LLVM's bin directory (clang, llvm-link, opt, and wasm-ld there or on PATH);
 # WASI_SYSROOT, a wasi-libc sysroot (default: Ubuntu's wasi-libc package, whose headers and
