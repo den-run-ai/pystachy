@@ -301,6 +301,7 @@ from src.pystachy_compiler.interfaces import (
     gen_to_object as interfaces_to_object,
     gen_union_object as interfaces_union_object,
     gen_object_note as interfaces_object_note,
+    gen_object_box as interfaces_object_box,
     gen_dyn_object as interfaces_dyn_object,
     gen_object_dyn as interfaces_object_dyn,
     gen_object_type_attr as interfaces_object_type_attr,
@@ -3822,6 +3823,9 @@ class Gen:
 
     def object_note(self, ts: list[str]) -> str:
         return interfaces_object_note(self, ts)
+
+    def object_box(self, held: str, obj: str) -> Val:
+        return interfaces_object_box(self, held, obj)
 
     def dyn_object(self, v: Val) -> Val:
         return interfaces_dyn_object(self, v)
