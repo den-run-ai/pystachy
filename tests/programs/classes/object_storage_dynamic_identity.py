@@ -2,6 +2,7 @@
 # a value of object that holds an Any value is the object that the Any value holds: `is` and
 # `is not` with that object, of a class, a list or a str, from either side, also as a list's
 # item, a field and a function's result, where the Any value's box is not the object
+# (object_storage_dynamic_identity_typed.py: a list or a dict of typed items)
 from typing import Any
 
 
