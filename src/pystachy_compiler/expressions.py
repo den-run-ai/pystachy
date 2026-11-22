@@ -1965,8 +1965,10 @@ def gen_percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
         if self.nt_wide(v):
             return self.percent_opt(fmt, v)  # (None, or its fields as they are: nt_wide)
         v = self.ntup(v)  # (a NamedTuple is a tuple: its fields are the arguments)
-        if is_tuple(unopt(v.t)) and is_opt(v.t):
+        if (is_tuple(unopt(v.t)) or is_vtuple(unopt(v.t))) and is_opt(v.t):
             return self.percent_opt(fmt, v)
+        if is_vtuple(v.t):
+            return self.pformat(fmt, [], False, [], v)  # (its items, as many as it has: pformat)
         if is_tuple(v.t):
             for i in range(len(targs(v.t))):
                 items.append(self.tget(v, i))
@@ -2032,9 +2034,9 @@ def gen_percent_opt(self, fmt: str, v: Val) -> Val:
     self.place(l2)
     tv = self.ntup(v, True) if v.t in self.nts else Val(v.v, unopt(v.t))
     items: list[Val] = []
-    for i in range(len(targs(tv.t))):
+    for i in range(len(targs(tv.t)) if not is_vtuple(tv.t) else 0):
         items.append(self.tget(tv, i))
-    b = self.pformat(fmt, items, False, [])
+    b = self.pformat(fmt, items, False, [], tv if is_vtuple(tv.t) else None)
     if not self.term:
         self.incoming(ph, b.v, self.cur)
     self.br(l3)
@@ -2044,13 +2046,16 @@ def gen_percent_opt(self, fmt: str, v: Val) -> Val:
         return Val(self.sconst(""), "str")
     return Val(self.phi(ph), "str")
 
-def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]) -> Val:
+def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node], vt: Val | None = None) -> Val:
     # fmt % items; rtnone: a None among them that a conversion cannot take raises when it runs
     # (it is a tuple's place, see percent_opt), as CPython's error; lazy: the items' expressions
-    # instead, each evaluated as its conversion comes (an f-string's order: percent)
+    # instead, each evaluated as its conversion comes (an f-string's order: percent); vt: a tuple
+    # of any length (tuple[T, ...]) instead, whose items are the arguments: as CPython checks a
+    # tuple's, each conversion checks that one is left when it comes, and the end that none is
     parts: list[Val] = []
     lit: list[str] = []
     count = len(lazy) if len(lazy) > 0 else len(items)
+    vn = Val(self.mload('int', vt.v), "int") if vt is not None else Val("0", "int")
     used = 0
     i = 0
     while i < len(fmt):
@@ -2088,9 +2093,13 @@ def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]
             self.err("% formatting with a * width or precision is not supported")
         if t not in "sradiuxXoeEfFgGc":
             self.err(f"unsupported format character '{t}' ({ord(t):#x}) at index {i - 1}")
-        if used >= count:
+        if vt is not None:
+            self.guard(self.scalar_cmp("sle", vn, Val(str(used), "int")), "TypeError: not enough arguments for format string")
+            v = self.vtuple_item(vt, Val(str(used), "int"))
+        elif used >= count:
             return self.fmt_error("not enough arguments for format string")
-        v = self.expr(lazy[used], "") if len(lazy) > 0 else items[used]
+        else:
+            v = self.expr(lazy[used], "") if len(lazy) > 0 else items[used]
         used += 1
         if len(lit) > 0:
             parts.append(Val(self.sconst("".join(lit)), "str"))
@@ -2100,7 +2109,9 @@ def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]
         if is_sopt(v.t) and t not in "sra":
             v = self.unwrap(v, "TypeError: " + self.nonefmt(t))
         parts.append(self.conversion(v, flags, width, prec, t))
-    if used < count:
+    if vt is not None:
+        self.guard(self.scalar_cmp("sgt", vn, Val(str(used), "int")), "TypeError: not all arguments converted during string formatting")
+    elif used < count:
         return self.fmt_error("not all arguments converted during string formatting")
     if len(lit) > 0:
         parts.append(Val(self.sconst("".join(lit)), "str"))

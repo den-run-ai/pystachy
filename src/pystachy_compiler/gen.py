@@ -5105,8 +5105,8 @@ class Gen:
     def percent_opt(self, fmt: str, v: Val) -> Val:
         return expressions_percent_opt(self, fmt, v)
 
-    def pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]) -> Val:
-        return expressions_pformat(self, fmt, items, rtnone, lazy)
+    def pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node], vt: Val | None = None) -> Val:
+        return expressions_pformat(self, fmt, items, rtnone, lazy, vt)
 
     def nonefmt(self, t: str) -> str:
         return expressions_nonefmt(self, t)
