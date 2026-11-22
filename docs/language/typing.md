@@ -1292,7 +1292,10 @@ template is a class of its own and the root of a hierarchy of its own:
 
 A subclass's specializations are made with the template's, and the specialization that a
 subclass with an `__init__` derives from is made where the classes are declared, before any
-code is compiled. A variable, field or list typed by a specialization therefore holds objects
+code is compiled; its fields are typed there, so one that holds an object of another class
+template, which only compiled code makes, is an error
+([error test](../../tests/errors/classes/template_subclass_declared_field.py)).
+A variable, field or list typed by a specialization therefore holds objects
 of every class that derives from it, and a call through it selects the object's override, also
 inside the template's methods
 ([test](../../tests/programs/classes/template_subclass_override.py)). Objects of two

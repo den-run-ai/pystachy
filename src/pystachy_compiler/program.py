@@ -1315,26 +1315,36 @@ def gen_template_bases(self) -> None:
         root = b
         while not self.declares(root, "__init__"):
             root = self.classes[root].base
-        if ci.name in self.genargs and b in self.genargs[ci.name] and b in self.tparams:
-            given: dict[str, str] = {}
+        given: dict[str, str] = {}
+        ts: list[str] = []
+        named = ci.name in self.genargs and b in self.genargs[ci.name] and b in self.tparams
+        if named:
             tvs = self.tparams[b]
             for i in range(len(tvs)):
                 given[tvs[i]] = self.genargs[ci.name][b][i]
-            ci.base = self.specialize(b, [], given, True, {})
-            continue
-        if "__init__" not in ci.methods or ci.methods["__init__"].cls != ci.name:
-            self.err(f"class {short(ci.name)} derives from class template {shown(root)} without an __init__ of its own and without being a template: not supported")
-        init = ci.methods["__init__"]
-        why = self.super_init_problem(ci.name, init.node, root)
-        if why != "":
-            self.err(why)
-        calls: list[Node] = []
-        super_inits(init.node.kids[2], calls)
-        ts = self.super_arg_types(self.classes[root].methods["__init__"], calls[0].kids[1:], init)
-        if "!" in ts:
-            self.line = calls[0].line
-            self.err(f"the types of the arguments of super().__init__(...) in {short(ci.name)}.__init__ must be known where class {short(ci.name)} is declared (literals, its parameters' annotations, functions, the defaults of {short(root)}.__init__): they decide which specialization of class template {short(root)} its objects begin as")
-        ci.base = self.specialize(b, ts, {}, False, {})
+        else:
+            if "__init__" not in ci.methods or ci.methods["__init__"].cls != ci.name:
+                self.err(f"class {short(ci.name)} derives from class template {shown(root)} without an __init__ of its own and without being a template: not supported")
+            init = ci.methods["__init__"]
+            why = self.super_init_problem(ci.name, init.node, root)
+            if why != "":
+                self.err(why)
+            calls: list[Node] = []
+            super_inits(init.node.kids[2], calls)
+            ts = self.super_arg_types(self.classes[root].methods["__init__"], calls[0].kids[1:], init)
+            if "!" in ts:
+                self.line = calls[0].line
+                self.err(f"the types of the arguments of super().__init__(...) in {short(ci.name)}.__init__ must be known where class {short(ci.name)} is declared (literals, its parameters' annotations, functions, the defaults of {short(root)}.__init__): they decide which specialization of class template {short(root)} its objects begin as")
+        # (its fields are typed there too, as guess types them before code is compiled: one that
+        # holds an object of a class template, which only compiled code makes, is not; an error in
+        # it says so, after the specialization's own note)
+        depth = len(self.making)
+        self.making.append(f"making the specialization of class template {shown(root)} that {short(ci.name)} derives from, where it is declared, before any code is compiled")
+        try:
+            ci.base = self.specialize(b, ts, given, named, {})
+        finally:
+            while len(self.making) > depth:
+                self.making.pop()
 
 def super_arg_type(self, e: Node, f: FnInfo) -> str:
     # (super_arg_types) the type of argument e of a call in function f, as guess infers it; None's
