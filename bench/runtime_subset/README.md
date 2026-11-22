@@ -306,34 +306,34 @@ taskset -c "$BENCH_CPU" python3.13 bench/runtime_subset/compare.py \
   --json /tmp/integer-helpers.json
 ```
 
-On a Linux x86-64 Intel Xeon Platinum 8573C, the benchmark compared the C
-helpers at `b34c6def` with the subset helpers at `88acad77`. Both clean trees
-used CPython 3.13.16 and LLVM 18.1.3. Each value is the median of seven paired
-ratios, candidate time divided by baseline time, pinned to CPU 8. Each workload
-produced the CPython checksum in both modes.
+On an idle Linux x86-64 host (four Intel Xeon cores, load average 0.5), the benchmark
+compared the C helpers at `b34c6def` with the subset helpers at `8749496b`, whose compiler
+and runtime sources are those of `88acad77`. Both clean trees used CPython 3.13.16 and LLVM
+18.1.3. Each value is the median of seven paired ratios, candidate time divided by baseline
+time, pinned to CPU 2. Each workload produced the CPython checksum in both modes.
 
-| Workload | Wall time, AOT | Wall time, JIT | Process CPU time, AOT | Process CPU time, JIT |
-|---|---:|---:|---:|---:|
-| Integer floor division | 1.431 | 1.008 | 1.028 | 0.992 |
-| Integer remainder | 1.089 | 0.907 | 0.991 | 0.992 |
-| Left shift | 0.777 | 0.910 | 0.781 | 0.821 |
-| Right shift | 0.784 | 1.201 | 1.019 | 1.011 |
-| Bit length | 0.931 | 0.818 | 0.971 | 0.919 |
-| Bit count | 1.017 | 1.103 | 1.037 | 0.983 |
-| True division, small operands | 0.731 | 0.827 | 0.813 | 0.959 |
-| True division, large operands | 0.534 | 0.522 | 0.540 | 0.546 |
+| Workload | AOT after / C | JIT after / C | AOT ns per iteration, C to after |
+|---|---:|---:|---:|
+| Integer floor division | 0.992 | 0.999 | 2.64 to 2.62 |
+| Integer remainder | 0.988 | 1.003 | 2.64 to 2.61 |
+| Left shift | 0.846 | 0.867 | 1.71 to 1.44 |
+| Right shift | 0.999 | 0.998 | 1.05 to 1.05 |
+| Bit length | 0.987 | 0.975 | 0.70 to 0.69 |
+| Bit count | 1.001 | 1.107 | 1.28 to 1.28 |
+| True division, small operands | 0.800 | 1.002 | 1.31 to 1.05 |
+| True division, large operands | 0.535 | 0.602 | 8.88 to 4.74 |
 
-The machine was shared. The [wall-clock recording](integers-wall.json) and
-[process CPU recording](integers-cpu.json) preserve all pairs. For AOT floor
-division, the middle half of the seven ratios spanned 1.16–1.51 on the wall clock
-and 0.90–1.13 on the CPU clock. For large integer true division, both clocks put
-the candidate near half the baseline time.
+Single pairs range from 0.532 to 1.133; the [recording](integers-wall.json) preserves
+them all. Floor division, remainder and right shift take the time they took in C. Left
+shift and true division are faster, large operands by almost half: one 128-bit division
+and a multiplication replace a division and a remainder.
 
-For the CPU-time run, copy `compare.py` and `integers.py` to the same temporary
-directory. In that copy of `integers.py`, replace `from time import perf_counter`
-with `from time import process_time as perf_counter`. Run the copied `compare.py`
-with the command above, using a separate output file. The timed loops, inputs
-and checksum checks are identical.
+`bit_count` under the JIT is 10% slower here, although the helper's machine code is the same
+in both runtimes. Moving the benchmark's kernel function to the front of its source changes
+the ratio to 0.92, so the difference is where the program's code lands, not the helper.
+
+An earlier recording, made on a shared host at a load average of 10, put AOT floor
+division at 1.43 and JIT right shift at 1.20. Neither reproduces on an idle host.
 
 The [full Lean run for the measured compiler](https://github.com/den-run-ai/pystachy/blob/52e2f31aec23695d5db646b6917bbf6cff791561/tools/lean_boundary/REPORT.md)
 covers all 3,169 programs in that checkout. Its 3,020 unproved obligations and

@@ -1,0 +1,170 @@
+0 True   4
+||0| <>[]
+1 True a a 7
+|a|0|aa <>[a]
+1 True é é 7
+|é|0|éé <>[é]
+2 True 日本 日本 10
+|日本|0|日本日本 <>[日本]
+40 True xxx xx 124
+|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|0|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx <>[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+4 True ra aw 16
+|raw|0|rawraw <>[raw]
+1 True 🙂 🙂 7
+|🙂|0|🙂🙂 <>[🙂]
+1 True a aa 7
+a||1|aaa <a>[]
+2 True aa aa 10
+a|a|1|aaaaa <a>[a]
+2 False aé éa 10
+a|é|1|aéaéa <a>[é]
+3 False a日本 本a 13
+a|日本|1|a日本a日本a <a>[日本]
+41 False axx xa 127
+a|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|1|axxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxa <a>[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+5 False ar wa 19
+a|raw|1|arawarawa <a>[raw]
+2 False a🙂 🙂a 10
+a|🙂|1|a🙂a🙂a <a>[🙂]
+1 True é éé 7
+é||1|ééé <é>[]
+2 False éa aé 10
+é|a|1|éaéaé <é>[a]
+2 True éé éé 10
+é|é|1|ééééé <é>[é]
+3 False é日本 本é 13
+é|日本|1|é日本é日本é <é>[日本]
+41 False éxx xé 127
+é|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|1|éxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxé <é>[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+5 False ér wé 19
+é|raw|1|érawérawé <é>[raw]
+2 False é🙂 🙂é 10
+é|🙂|1|é🙂é🙂é <é>[🙂]
+2 True 日本 日本 10
+日本||2|日本日本日本 <日本>[]
+3 False 日本a 日本 13
+日本|a|2|日本a日本a日本 <日本>[a]
+3 False 日本é 日本 13
+日本|é|2|日本é日本é日本 <日本>[é]
+4 True 日本日 日本 16
+日本|日本|2|日本日本日本日本日本 <日本>[日本]
+42 False 日本x 日本 130
+日本|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|2|日本xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx日本xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx日本 <日本>[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+6 False 日本 日本 22
+日本|raw|2|日本raw日本raw日本 <日本>[raw]
+3 False 日本🙂 日本 13
+日本|🙂|2|日本🙂日本🙂日本 <日本>[🙂]
+40 True xxx xx 124
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx||40|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx <xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>[]
+41 False xxx xx 127
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|a|40|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx <xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>[a]
+41 False xxx xx 127
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|é|40|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx <xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>[é]
+42 False xxx xx 130
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|日本|40|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx日本xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx日本xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx <xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>[日本]
+80 True xxx xx 244
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|40|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx <xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+44 False xxx xx 136
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|raw|40|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxrawxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxrawxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx <xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>[raw]
+41 False xxx xx 127
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|🙂|40|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx🙂xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx🙂xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx <xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>[🙂]
+4 True ra aw 16
+raw||4|rawrawraw <raw>[]
+5 False ra aw 19
+raw|a|4|rawarawaraw <raw>[a]
+5 False ra aw 19
+raw|é|4|rawérawéraw <raw>[é]
+6 False ra aw 22
+raw|日本|4|raw日本raw日本raw <raw>[日本]
+44 False ra aw 136
+raw|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|4|rawxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxrawxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxraw <raw>[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+8 True ra aw 28
+raw|raw|4|rawrawrawrawraw <raw>[raw]
+5 False ra aw 19
+raw|🙂|4|raw🙂raw🙂raw <raw>[🙂]
+1 True 🙂 🙂🙂 7
+🙂||1|🙂🙂🙂 <🙂>[]
+2 False 🙂a a🙂 10
+🙂|a|1|🙂a🙂a🙂 <🙂>[a]
+2 False 🙂é é🙂 10
+🙂|é|1|🙂é🙂é🙂 <🙂>[é]
+3 False 🙂日本 本🙂 13
+🙂|日本|1|🙂日本🙂日本🙂 <🙂>[日本]
+41 False 🙂xx x🙂 127
+🙂|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|1|🙂xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx🙂xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx🙂 <🙂>[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+5 False 🙂r w🙂 19
+🙂|raw|1|🙂raw🙂raw🙂 <🙂>[raw]
+2 True 🙂🙂 🙂🙂 10
+🙂|🙂|1|🙂🙂🙂🙂🙂 <🙂>[🙂]
+0   True -1
+0   True -1
+0   True -1
+0   True -1
+0   True -1
+0   True -1
+0   True -1
+0   True 0
+0   True 0
+1 a a True 1
+2 aa aa True 2
+3 aaa aaa True 3
+7 aaaaaa aaa True 7
+65 aaaaaa aaa True 65
+0   True 0
+0   True 0
+1 é é True 1
+2 éé éé True 2
+3 ééé ééé True 3
+7 éééééé ééé True 7
+65 éééééé ééé True 65
+0   True 0
+0   True 0
+2 日本 日本 True 1
+4 日本日本 本日本 True 2
+6 日本日本日本 本日本 True 3
+14 日本日本日本 本日本 True 7
+130 日本日本日本 本日本 True 65
+0   True 0
+0   True 0
+40 xxxxxx xxx True 1
+80 xxxxxx xxx True 2
+120 xxxxxx xxx True 3
+280 xxxxxx xxx True 7
+2600 xxxxxx xxx True 65
+0   True 0
+0   True 0
+4 raw raw True 1
+8 rawr raw True 2
+12 rawr raw True 3
+28 rawr raw True 7
+260 rawr raw True 65
+0   True 0
+0   True 0
+1 🙂 🙂 True 1
+2 🙂🙂 🙂🙂 True 2
+3 🙂🙂🙂 🙂🙂🙂 True 3
+7 🙂🙂🙂🙂🙂🙂 🙂🙂🙂 True 7
+65 🙂🙂🙂🙂🙂🙂 🙂🙂🙂 True 65
+b'ab\x00c' b'ab\x00cab\x00cab\x00c' b'' b'zzzz' 300
+OverflowError: repeated string is too long
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 100, 200] [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] True [] [1.5, 2.5] ['a', 'b', 'c']
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] [] [] [0, 0, 0, 0, 0] [7, 7, 7] ['s', 's', 's'] [[1], [1]] [1.5, 2.5, 1.5, 2.5]
+[1, 2, 3, 1, 2, 3, 1, 2, 3]
+[]
+['p', 'q', 'p', 'q', 'p', 'q', 'p', 'q'] 8
+[0, 1, 20, 30, 5, 6, 7, 8, 9]
+[0, 7, 8, 9, 1, 20, 30, 5, 6, 7, 8, 9]
+[0, 7, 0, 9, 0, 20, 0, 5, 0, 7, 0, 9]
+[0, 7, 0, 9, 0, 20, 0, 5, 0]
+[0, 0, 7, 0, 9, 0, 20, 0, 5, 0, 9, 0, 20, 0, 5, 0]
+[0, 7, 7, 6, 9, 5, 20, 4, 5, 3, 9, 2, 20, 1, 5, 0]
+ValueError: attempt to assign sequence of size 1 to extended slice of size 6
+ValueError: slice step cannot be zero
+[0, 7, 9, 5, 20, 4, 5, 3, 9, 2, 20, 1, 5, 0]
+[7, 9, 20, 4, 3, 9, 20, 1, 0]
+[9, 4, 9, 1]
+[] 0
+['0', 'x', 'y', '5', '6']
+[[0, 5], [9, 9], [3]] [[0, 5], [9, 9], [3], [0, 5], [9, 9], [3]] True
+138 97847 [1, 2, 3, 4, 1000, 1001, 1003, 1004] [196, 197, 198, 199]
+[exit 0]

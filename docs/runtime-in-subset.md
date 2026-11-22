@@ -9,13 +9,13 @@ used by `runtime.py`. Ordinary programs cannot use that interface.
 
 - [Responsibilities](#responsibilities) and [writing runtime code](#writing-runtime-code).
 - [Runtime ABI](#runtime-mode-and-abi), [private primitives](#private-primitives), [machine memory](#machine-memory) and [container storage](#list-and-dict-storage).
-- [Build and cache](#build-and-cache), then [verification](#verification).
+- [Build and cache](#build-and-cache), [verification](#verification) and [what remains in `runtime.c`](#what-remains-in-runtimec).
 
 ## Responsibilities
 
 | Part | Responsibilities |
 |---|---|
-| `runtime.py` | String methods and ASCII escaping, `os.path`'s string functions, `str(int)` and `int(str, base)`, scalar and integer `math`, `math.hypot`/`dist`/`fma`, `any`/`all`, `sum`/`fsum`/`prod`, fixed-width integer division, remainder, shifts and bit counts, checked integer power and `pow(a, b, m)`, `round(int, n)`, range arithmetic, dict hashing, format-spec parsing and the list header and item array. |
+| `runtime.py` | String methods and ASCII escaping, `os.path`'s string functions, `str(int)` and `int(str, base)`, scalar and integer `math`, `math.hypot`/`dist`/`fma`, `any`/`all`, `sum`/`fsum`/`prod`, fixed-width integer division, remainder, shifts and bit counts, checked integer power and `pow(a, b, m)`, `round(int, n)`, range arithmetic, float-to-int conversion and rounding, the order of an int and a float, dict hashing, format-spec parsing, `str` concatenation and repetition, and the list header and item array with the operations that only move items. |
 | `runtime.c` | Collector, allocator, I/O, signals, exception unwinding, native library calls, float conversion and the container code not yet moved ([what remains](#what-remains-in-runtimec)). |
 | [The compiler](../src/README.md) | Runtime compilation, checked primitives, runtime signatures and linking. |
 
@@ -57,6 +57,11 @@ wrapping arithmetic. `round(x, n)` of an int needs 64 bits alone: `10**19` is pa
 them, so a comparison decides that case. The int `sum` adds with the checked
 arithmetic; where a program's lists may hold ints past 64 bits, the compiler narrows
 the list before the call, as for `math.prod` (`NARROWED`).
+
+`int(x)`, `round(x)`, `math.floor`, `math.ceil` and `math.trunc` of a float convert with one
+instruction where the float is within 64 bits, and call libm's rounding only beyond that,
+out of line. `x / y` checks its divisor. The order of an int and a float compares floats
+where the int is at most `2**53` in magnitude, and whole parts otherwise.
 
 Fixed-width integer operators keep their existing ABI. Floor division and remainder
 adjust truncation toward zero to Python's floor convention. Left shift checks for
@@ -289,10 +294,17 @@ collector's stress modes, the sanitizer builds and the list and dict probes.
 ## List and dict storage
 
 The list header and its item array are `runtime.py`'s: new lists, growth, `append`,
-indexed reads and writes, `pop`, `del`, `insert`, `extend`, slices, `copy`, `clear` and
-`reverse`. The rules below are what that code implements. The identity and promoting-int
-companions' own operations, searches, `+`, `*`, slice assignment and sorting remain in
-`runtime.c` and call it.
+indexed reads and writes, `pop`, `del`, `insert`, `extend`, slices and their assignment
+and deletion, `copy`, `clear`, `reverse`, `+` and `*`. The rules below are what that code
+implements. It follows `runtime.c`'s statements, including where a field is read again
+after a call: a value held in a local across a rarely made call costs the common path a
+saved register, which the JIT's runtime shows since nothing is inlined into a program
+there. The companions' own entry points, searches and sorting remain in `runtime.c` and
+call it.
+
+`str` concatenation, the joined parts of an f-string and repetition allocate their result
+with the collector's unzeroed allocation and write every byte, as they did in C. Owned
+appends (`s += t` into a buffer with room) stay with the collector's segment sizes.
 
 List headers remain scanned so their backing arrays stay reachable. The backing of a
 `list[int]`, `list[float]` or `list[bool]` is pointer-free (allocated atomic, never scanned):
@@ -403,3 +415,33 @@ make verify
 
 See [testing](testing.md) for the full workflow and
 [sanitizer settings](internals.md#environment-variables) for configuration.
+
+## What remains in `runtime.c`
+
+The aim is a `runtime.c` that holds the collector, the allocator and the services only C
+can reach: system calls, libc's float text conversion, signals and the unwinder. Python
+semantics belong in `runtime.py`. [Machine memory](#machine-memory) is what lets the
+container code move; the table gives the state and the order.
+
+| Section of `runtime.c` | Lines | Plan |
+|---|---:|---|
+| Collector and page heap | 860 | Stays. |
+| Exception unwinding | 490 | Stays: the Itanium ABI's tables and personality. |
+| I/O, processes, time, `select`, `errno`, temporary directories | 2,340 | Stays: system calls and libc streams. Buffering policy and text decoding can move later. |
+| Unicode and other constant tables | 1,390 | Stay as data; `runtime.py` reads them through pure helpers. |
+| Lists | 820 | Next: the companions' entry points, searches, `min`/`max`, then the sort. |
+| Strings | 620 | Slices, indexed text access and its hints, `chr`/`ord`, float text. Float formatting and parsing stay with libc. |
+| Sets and hashing | 120 | After lists: hashing by descriptor, then the table. |
+| Dicts | 690 | After sets: the compact ordered table, views and iteration. |
+| Generic `repr`, equality and ordering | 760 | With dicts: walks of a value by its type descriptor. |
+| Dynamic values | 1,550 | After the walks: boxes, dispatch and the `Any` operators. |
+| Promoting ints and `math` | 930 | Last: needs `mpz/` beside it. libm wrappers keep their LLVM-specific guards. |
+
+Each step adds the records it needs to `RTRECORDS` and removes the accessors that
+`runtime.c` then no longer has to export. Three things would make the remaining steps
+cheaper:
+
+- Named integer constants at module level in runtime mode, in place of repeated literals.
+- A heap model for `tools/rt_cpython/_rt.py`, so that `tools/rtcheck.py` can fuzz container
+  code against CPython's own lists and dicts.
+- Read access to the runtime's static data, which today goes through accessor functions.

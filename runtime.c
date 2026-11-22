@@ -817,6 +817,7 @@ static void *gc_raw(I n) {
   PROFILE_ALLOC(n);
   return gc_slow(n, 3);
 }   /* (an allocator: check_runtime's ALLOC) */
+void *pys_rt_raw(I n) { return gc_raw(n); }   /* for runtime.py's strs: nothing is zeroed, so it writes every byte */
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
 /* Compiled code's own objects and fixed tuples (alloc.fixed) that hold no reference, only ints,
@@ -1347,11 +1348,7 @@ static I text_cat_count(I chars1, I len, Str *b) {
      Otherwise cached counts add, including Unicode and the common ASCII append. */
   return chars1 && b->chars1 && (b->s[0] & 0xC0) != 0x80 ? chars1 + b->chars1 - 1 : 0;
 }
-Str *pys_str_add(Str *a, Str *b) {
-  Str *s = gc_raw(sizeof(Str) + a->len + b->len + 1);
-  s->len = a->len + b->len; s->dict_hash = 0; s->chars1 = text_cat_count(a->chars1, a->len, b);
-  memcpy(s->s, a->s, a->len); memcpy(s->s + a->len, b->s, b->len); s->s[s->len] = 0; return s;
-}
+Str *pys_str_add(Str *a, Str *b);   /* runtime.py's, as pys_str_cat and pys_str_mul: one allocation, every byte written */
 /* s += t of a str local (Gen.str_append). owned: an append made s and nothing else holds it (nor
    hashed it: dict_hash is 0), so t goes into s's own memory while it has room (gc_seg). Else a new
    str of the size needed, which a small object's slot rounds up. Each copy of an owned str then
@@ -1384,32 +1381,10 @@ Str *pys_str_iadd(Str *s, Str *t, I owned) {
 }
 /* the first n (3 to 8) of a..h as one str, each copied once: the pieces of an f-string or a % format.
    The loops run eight times, so they unroll where LLVM inlines a call (n is a constant there) */
-Str *pys_str_cat(I n, Str *a, Str *b, Str *c, Str *d, Str *e, Str *f, Str *g, Str *h) {
-  Str *p[8] = {a, b, c, d, e, f, g, h};
-  I len = 0, chars1 = 1;
-  for (int i = 0; i < 8; i++) if (i < n) { chars1 = text_cat_count(chars1, len, p[i]); len += p[i]->len; }
-  Str *s = gc_raw(sizeof(Str) + len + 1); s->len = len; s->dict_hash = 0; s->chars1 = chars1;
-  char *w = s->s;
-  for (int i = 0; i < 8; i++) if (i < n) { memcpy(w, p[i]->s, p[i]->len); w += p[i]->len; }
-  *w = 0; return s;
-}
-Str *pys_str_mul(Str *a, I n) {       /* as CPython's _PyBytes_Repeat: one byte is a memset, else the copied
-                                         prefix doubles, log2(n) memcpys rather than n */
-  if (n < 0 || !a->len) n = 0;
-  if (n && a->len > INT64_MAX / n) pys_fail("OverflowError: repeated string is too long");
-  if (a->len * n > INT64_MAX - 64) pys_fail("MemoryError");
-  I m = a->len * n, k = a->len, c;
-  Str *s = gc_raw(sizeof(Str) + m + 1); s->len = m; s->dict_hash = 0; s->s[m] = 0;
-  s->chars1 = !n ? 1 : a->chars1 && (n == 1 || (a->s[0] & 0xC0) != 0x80) ? (a->chars1 - 1) * n + 1 : 0;
-  if (k == 1) memset(s->s, a->s[0], m);
-  else if (m) {
-    memcpy(s->s, a->s, k);
-    for (; k < m; k += c) { c = k < m - k ? k : m - k; memcpy(s->s + k, s->s, c); }
-  }
-  return s;
-}
-Str *pys_bytes_add(Str *a, Str *b) { return pys_str_add(a, b); }
-Str *pys_bytes_mul(Str *a, I n) { return pys_str_mul(a, n); }
+Str *pys_str_cat(I n, Str *a, Str *b, Str *c, Str *d, Str *e, Str *f, Str *g, Str *h);
+Str *pys_str_mul(Str *a, I n);
+Str *pys_bytes_add(Str *a, Str *b);
+Str *pys_bytes_mul(Str *a, I n);
 I pys_str_eq(Str *a, Str *b) { return a == b || (a->len == b->len && !memcmp(a->s, b->s, a->len)); }
 I pys_str_cmp(Str *a, Str *b) {
   int c = memcmp(a->s, b->s, a->len < b->len ? a->len : b->len);
@@ -3371,14 +3346,13 @@ static I *empty_identity(I kind) {
 }
 static I empty_atomic[1];              /* the same, for a list whose array was atomic */
 static I empty_inline[1];              /* and for one whose items were inline (scanned) */
-static I *inline_items(List *l) { return (I *)(l + 1); }
+__attribute__((unused)) static I *inline_items(List *l) { return (I *)(l + 1); }   /* (runtime.py's list_inline; tools/listprobe.c checks them) */
 static int atomic_items(const I *a) {  /* is the item array a atomic? its kind, from the page map */
   uintptr_t w = (uintptr_t)a; Seg **m, *s;
   if (a == empty_atomic) return 1;
   return w - gc_lo < gc_hi - gc_lo && (m = pmap[w >> 30]) && (s = m[w >> 12 & 0x3ffff]) && (s->k & 1);
 }
 void pys_list_empty(List *l);              /* detach an empty list's historical storage without allocating: runtime.py's */
-static inline void empty(List *l) { pys_list_empty(l); }
 static I *item_array(I n, int atomic) { return atomic ? pys_alloc_atomic(n * 8) : pys_alloc(n * 8); }
 List *pys_list_make(I cap, I atomic);      /* runtime.py's: a new list, its items inline or in an array of that kind */
 static inline List *list_new(I cap, int atomic) { return pys_list_make(cap, atomic); }
@@ -3594,81 +3568,11 @@ List *pys_list_slice_step(List *l, I lo, I hi, I st);
    number of v's items replace the slice's (v == l is copied first); another step needs one of
    v's for each item. Slots left unused are zeroed, and an emptied list detaches its storage
    (see pys_list_pop) */
-void pys_list_set_slice(List *l, I lo, I hi, I st, List *v) {
-  I n = l->len, k = sspan(&lo, hi, &st, n), m = v->len;
-  if (v == l) v = pys_list_copy(l);
-  identity_pair(l, v);
-  if (st != 1) {
-    if (m != k) failf("ValueError: attempt to assign sequence of size %lld to extended slice of size %lld", (long long)m, (long long)k);
-    for (I i = 0; i < k; i++) {
-      l->a[lo + i * st] = v->a[i];
-      if (l->ids && opt_in()) l->ids[lo + i * st + 1] = v->ids ? v->ids[i + 1] : 0;   /* (v's ints fit) */
-    }
-    return;
-  }
-  if (n + m - k == 0) { pys_list_clear(l); return; }
-  if (m > k) reserve(l, n + m - k);
-  if (l->ids && opt_in()) {
-    memmove(l->ids + lo + m + 1, l->ids + lo + k + 1, (n - lo - k) * 8);
-    if (m < k) memset(l->ids + n + m - k + 1, 0, (k - m) * 8);
-    if (v->ids) memcpy(l->ids + lo + 1, v->ids + 1, m * 8); else memset(l->ids + lo + 1, 0, m * 8);
-  }
-  memmove(l->a + lo + m, l->a + lo + k, (n - lo - k) * 8);
-  if (m < k) memset(l->a + n + m - k, 0, (k - m) * 8);
-  memcpy(l->a + lo, v->a, m * 8);
-  l->len = n + m - k;
-}
-void pys_list_del_slice(List *l, I lo, I hi, I st) {
-  I n = l->len, k = sspan(&lo, hi, &st, n), w = n - k;
-  if (st == 1) {
-    memmove(l->a + lo, l->a + lo + k, (n - lo - k) * 8);
-    if (l->ids && opt_in()) memmove(l->ids + lo + 1, l->ids + lo + k + 1, (n - lo - k) * 8);
-  }
-  else if (k) {
-    if (st < 0) { lo += st * (k - 1); st = -st; }   /* the same items, first to last */
-    w = lo;
-    for (I i = lo, j = 0; i < n; i++)
-      if (j < k && i == lo + j * st) j++;
-      else { l->a[w] = l->a[i]; if (l->ids && opt_in()) l->ids[w + 1] = l->ids[i + 1]; w++; }
-  }
-  memset(l->a + w, 0, k * 8);
-  if (l->ids && opt_in()) memset(l->ids + w + 1, 0, k * 8);
-  if (!(l->len = w)) empty(l);
-}
-List *pys_list_add(List *a, List *b) {
-  if ((a->ids && !big_list(a)) || (b->ids && !big_list(b))) identity_pair(a, b);   /* (identities: the extends carry promoting ints') */
-  List *r = list_new(a->len + b->len, atomic_items(a->a) && atomic_items(b->a));
-  pys_list_extend(r, a); pys_list_extend(r, b); return r;
-}
-static void repeat_items(I *a, I k, I m) {     /* a[0, k) repeated through a[k, m): the copied prefix
-                                                   doubles, log2(m / k) memcpys rather than m / k, as
-                                                   pys_str_mul copies (#649) */
-  for (I c; k < m; k += c) { c = k < m - k ? k : m - k; memcpy(a + k, a, c * 8); }
-}
-void pys_list_imul(List *l, I n) {               /* xs *= n, in place */
-  I m = l->len;
-  if (n <= 0 || !m) { pys_list_clear(l); return; }
-  if (m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
-  if (l->ids && opt_in()) pys_list_identity(l, l->ids[0]);
-  reserve(l, m * n);
-  repeat_items(l->a, m, m * n);
-  if (l->ids && opt_in()) repeat_items(l->ids + 1, m, m * n);
-  l->len = m * n;
-}
-List *pys_list_mul(List *a, I n) {               /* xs * n. A new list's items are zero, so one item of
-                                                    zero bits (0, 0.0, False, None) is not copied */
-  I m = a->len;
-  if (!m) n = 0;
-  if (n > 0 && m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
-  if (a->ids && opt_in()) pys_list_identity(a, a->ids[0]);
-  List *r = list_new(n > 0 ? m * n : 0, atomic_items(a->a));
-  if (n > 0 && (m > 1 || a->a[0])) { memcpy(r->a, a->a, m * 8); repeat_items(r->a, m, m * n); }
-  if (a->ids && opt_in()) {
-    pys_list_identity(r, a->ids[0]);
-    if (n > 0) { memcpy(r->ids + 1, a->ids + 1, m * 8); repeat_items(r->ids + 1, m, m * n); }
-  }
-  r->len = n > 0 ? m * n : 0; return r;
-}
+void pys_list_set_slice(List *l, I lo, I hi, I st, List *v);   /* runtime.py's, as the next four */
+void pys_list_del_slice(List *l, I lo, I hi, I st);
+List *pys_list_add(List *a, List *b);
+void pys_list_imul(List *l, I n);               /* xs *= n, in place */
+List *pys_list_mul(List *a, I n);               /* xs * n */
 /* Searches of a list of ints or bools that has no companion (so no item past 64 bits and no
    identity boxes: lbig is null for each), and of a list of strs, compare slots as eqitem does
    for the descriptors "i", "b" and "s", without its descriptor walk for each item: 1 where the

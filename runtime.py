@@ -3927,21 +3927,30 @@ def pys_list_clear(l: _rt.Ptr) -> None:
 
 
 @_rt.unchecked
-def pys_list_slice_step(l: _rt.Ptr, lo: int, hi: int, st: int) -> _rt.Ptr:
-    # l[lo:hi:st]: the bounds as CPython's PySlice_AdjustIndices places them (-2**63: omitted)
-    m = _rt.get(l, "List.len")
+def slice_step(st: int) -> int:
+    # a slice's step, as CPython's PySlice_AdjustIndices takes it; slice_lo and slice_count then
+    # give the first index and the number of items of [lo:hi:st] in a sequence of m (-2**63: omitted)
     if st == 0:
         raise ValueError("slice step cannot be zero")
-    if st < -9223372036854775807:
-        st = -9223372036854775807
+    return -9223372036854775807 if st < -9223372036854775807 else st
+
+
+@_rt.unchecked
+def slice_lo(lo: int, st: int, m: int) -> int:
     if lo == -9223372036854775807 - 1:
-        lo = m - 1 if st < 0 else 0
-    elif lo < 0:
+        return m - 1 if st < 0 else 0
+    if lo < 0:
         lo += m
         if lo < 0:
-            lo = -1 if st < 0 else 0
-    elif lo >= m:
-        lo = m - 1 if st < 0 else m
+            return -1 if st < 0 else 0
+        return lo
+    if lo >= m:
+        return m - 1 if st < 0 else m
+    return lo
+
+
+@_rt.unchecked
+def slice_count(lo: int, hi: int, st: int, m: int) -> int:
     if hi == -9223372036854775807 - 1:
         hi = -1 if st < 0 else m
     elif hi < 0:
@@ -3950,25 +3959,168 @@ def pys_list_slice_step(l: _rt.Ptr, lo: int, hi: int, st: int) -> _rt.Ptr:
             hi = -1 if st < 0 else 0
     elif hi >= m:
         hi = m - 1 if st < 0 else m
-    n = 0
     if st < 0:
-        if hi < lo:
-            n = _rt.udiv(lo - hi - 1, -st) + 1
-    elif lo < hi:
-        n = _rt.udiv(hi - lo - 1, st) + 1
+        return _rt.udiv(lo - hi - 1, -st) + 1 if hi < lo else 0
+    return _rt.udiv(hi - lo - 1, st) + 1 if lo < hi else 0
+
+
+@_rt.unchecked
+def pys_list_slice_step(l: _rt.Ptr, lo: int, hi: int, st: int) -> _rt.Ptr:
+    st = slice_step(st)
+    lo = slice_lo(lo, st, _rt.get(l, "List.len"))
+    n = slice_count(lo, hi, st, _rt.get(l, "List.len"))
     if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
         pys_list_identity(l, _rt.word(_rt.getp(l, "List.ids"), 0))
     r = pys_list_make(n, pys_rt_atomic_items(_rt.getp(l, "List.a")))
-    ids = not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0
-    if ids:
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
         pys_list_identity(r, _rt.word(_rt.getp(l, "List.ids"), 0))
-    src = _rt.getp(l, "List.a")
-    dst = _rt.getp(r, "List.a")
     for i in range(n):
-        _rt.put(dst, i, _rt.word(src, lo + i * st))
-        if ids:
+        _rt.put(_rt.getp(r, "List.a"), i, _rt.word(_rt.getp(l, "List.a"), lo + i * st))
+        if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
             _rt.put(_rt.getp(r, "List.ids"), i + 1, _rt.word(_rt.getp(l, "List.ids"), lo + i * st + 1))
     _rt.set(r, "List.len", n)
+    return r
+
+
+@_rt.unchecked
+def pys_list_set_slice(l: _rt.Ptr, lo: int, hi: int, st: int, v: _rt.Ptr) -> None:
+    # l[lo:hi:st] = v: a stepped slice takes as many items as it has; a plain one moves the
+    # items after it by the difference, and zeroes the slots that the list no longer uses
+    n = _rt.get(l, "List.len")
+    st = slice_step(st)
+    lo = slice_lo(lo, st, n)
+    k = slice_count(lo, hi, st, n)
+    m = _rt.get(v, "List.len")
+    if v is l:
+        v = pys_list_copy(l)
+    pys_rt_identity_pair(l, v)
+    if st != 1:
+        if m != k:
+            raise ValueError("attempt to assign sequence of size " + str(m) + " to extended slice of size " + str(k))
+        for i in range(k):
+            _rt.put(_rt.getp(l, "List.a"), lo + i * st, _rt.word(_rt.getp(v, "List.a"), i))
+            if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
+                # (v's ints fit where it has no companion)
+                box = 0 if _rt.null(_rt.getp(v, "List.ids")) else _rt.word(_rt.getp(v, "List.ids"), i + 1)
+                _rt.put(_rt.getp(l, "List.ids"), lo + i * st + 1, box)
+        return
+    if n + m - k == 0:
+        pys_list_clear(l)
+        return
+    if m > k:
+        pys_list_reserve(l, n + m - k)
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
+        ids = _rt.getp(l, "List.ids")
+        _rt.move(_rt.at(ids, lo + m + 1), _rt.at(ids, lo + k + 1), (n - lo - k) * 8)
+        if m < k:
+            _rt.fill(_rt.at(ids, n + m - k + 1), 0, (k - m) * 8)
+        if _rt.null(_rt.getp(v, "List.ids")):
+            _rt.fill(_rt.at(ids, lo + 1), 0, m * 8)
+        else:
+            _rt.cpy(_rt.at(ids, lo + 1), _rt.at(_rt.getp(v, "List.ids"), 1), m * 8)
+    a = _rt.getp(l, "List.a")
+    _rt.move(_rt.at(a, lo + m), _rt.at(a, lo + k), (n - lo - k) * 8)
+    if m < k:
+        _rt.fill(_rt.at(a, n + m - k), 0, (k - m) * 8)
+    _rt.cpy(_rt.at(a, lo), _rt.getp(v, "List.a"), m * 8)
+    _rt.set(l, "List.len", n + m - k)
+
+
+@_rt.unchecked
+def pys_list_del_slice(l: _rt.Ptr, lo: int, hi: int, st: int) -> None:
+    n = _rt.get(l, "List.len")
+    st = slice_step(st)
+    lo = slice_lo(lo, st, n)
+    k = slice_count(lo, hi, st, n)
+    w = n - k
+    a = _rt.getp(l, "List.a")
+    if st == 1:
+        _rt.move(_rt.at(a, lo), _rt.at(a, lo + k), (n - lo - k) * 8)
+        if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
+            _rt.move(_rt.at(_rt.getp(l, "List.ids"), lo + 1), _rt.at(_rt.getp(l, "List.ids"), lo + k + 1), (n - lo - k) * 8)
+    elif k != 0:
+        if st < 0:
+            lo += st * (k - 1)  # (the same items, first to last)
+            st = -st
+        w = lo
+        j = 0
+        i = lo
+        while i < n:
+            if j < k and i == lo + j * st:
+                j += 1
+            else:
+                _rt.put(a, w, _rt.word(a, i))
+                if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
+                    _rt.put(_rt.getp(l, "List.ids"), w + 1, _rt.word(_rt.getp(l, "List.ids"), i + 1))
+                w += 1
+            i += 1
+    _rt.fill(_rt.at(a, w), 0, k * 8)
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
+        _rt.fill(_rt.at(_rt.getp(l, "List.ids"), w + 1), 0, k * 8)
+    _rt.set(l, "List.len", w)
+    if w == 0:
+        pys_list_empty(l)
+
+
+@_rt.unchecked
+def pys_list_add(a: _rt.Ptr, b: _rt.Ptr) -> _rt.Ptr:
+    # a + b: a new list, of atomic items where both lists' are (identities: the extends carry promoting ints')
+    if (not _rt.null(_rt.getp(a, "List.ids")) and pys_rt_big_list(a) == 0) or (not _rt.null(_rt.getp(b, "List.ids")) and pys_rt_big_list(b) == 0):
+        pys_rt_identity_pair(a, b)
+    atomic = 1 if pys_rt_atomic_items(_rt.getp(a, "List.a")) != 0 and pys_rt_atomic_items(_rt.getp(b, "List.a")) != 0 else 0
+    r = pys_list_make(_rt.get(a, "List.len") + _rt.get(b, "List.len"), atomic)
+    pys_list_extend(r, a)
+    pys_list_extend(r, b)
+    return r
+
+
+@_rt.unchecked
+def repeat_words(a: _rt.Ptr, k: int, m: int) -> None:
+    # a[0:k] repeated through a[k:m]: the copied prefix doubles, log2(m / k) copies rather than m / k
+    while k < m:
+        c = k if k < m - k else m - k
+        _rt.cpy(_rt.at(a, k), a, c * 8)
+        k += c
+
+
+@_rt.unchecked
+def pys_list_imul(l: _rt.Ptr, n: int) -> None:
+    # xs *= n, in place
+    m = _rt.get(l, "List.len")
+    if n <= 0 or m == 0:
+        pys_list_clear(l)
+        return
+    if m > _rt.sdiv(576460752303423487, n):
+        raise MemoryError
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
+        pys_list_identity(l, _rt.word(_rt.getp(l, "List.ids"), 0))
+    pys_list_reserve(l, m * n)
+    repeat_words(_rt.getp(l, "List.a"), m, m * n)
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
+        repeat_words(_rt.at(_rt.getp(l, "List.ids"), 1), m, m * n)
+    _rt.set(l, "List.len", m * n)
+
+
+@_rt.unchecked
+def pys_list_mul(a: _rt.Ptr, n: int) -> _rt.Ptr:
+    # xs * n. A new list's items are zero, so one item of zero bits (0, 0.0, False, None) is not copied
+    m = _rt.get(a, "List.len")
+    if m == 0:
+        n = 0
+    if n > 0 and m > _rt.sdiv(576460752303423487, n):
+        raise MemoryError
+    if not _rt.null(_rt.getp(a, "List.ids")) and pys_rt_opt_in() != 0:
+        pys_list_identity(a, _rt.word(_rt.getp(a, "List.ids"), 0))
+    r = pys_list_make(m * n if n > 0 else 0, pys_rt_atomic_items(_rt.getp(a, "List.a")))
+    if n > 0 and (m > 1 or _rt.word(_rt.getp(a, "List.a"), 0) != 0):
+        _rt.cpy(_rt.getp(r, "List.a"), _rt.getp(a, "List.a"), m * 8)
+        repeat_words(_rt.getp(r, "List.a"), m, m * n)
+    if not _rt.null(_rt.getp(a, "List.ids")) and pys_rt_opt_in() != 0:
+        pys_list_identity(r, _rt.word(_rt.getp(a, "List.ids"), 0))
+        if n > 0:
+            _rt.cpy(_rt.at(_rt.getp(r, "List.ids"), 1), _rt.at(_rt.getp(a, "List.ids"), 1), m * 8)
+            repeat_words(_rt.at(_rt.getp(r, "List.ids"), 1), m, m * n)
+    _rt.set(r, "List.len", m * n if n > 0 else 0)
     return r
 
 
@@ -4111,3 +4263,147 @@ def pys_m_isnan(x: float) -> int:
 
 def pys_m_copysign(x: float, y: float) -> float:
     return _rt.copysign(x, y)
+
+
+# ---------- strs: concatenation and repetition (runtime.c's Str) ----------
+# A str is its header (length, cached dict hash, cached code-point count + 1 or 0) and its
+# bytes with a NUL after them. A new one comes from pys_rt_raw, the collector's allocation that
+# zeroes nothing: every byte of it is written here.
+
+
+def pys_rt_raw(n: int) -> _rt.Ptr: ...
+
+
+@_rt.unchecked
+def str_bytes(s: str) -> _rt.Ptr:
+    return _rt.offset(s, _rt.sizeof("Str"))
+
+
+@_rt.unchecked
+def text_cat_count(chars1: int, n: int, b: str) -> int:
+    # the cached count of a str of n bytes and count chars1, followed by b, or 0 (unset). Cached
+    # counts add, Unicode's too, as in the common ASCII append; but a leading continuation byte
+    # can complete an invalid raw sequence at the seam
+    if n == 0:
+        return _rt.get(b, "Str.chars1") if len(b) != 0 else 1
+    if len(b) == 0:
+        return chars1
+    if chars1 != 0 and _rt.get(b, "Str.chars1") != 0 and _rt.byte_at(str_bytes(b), 0) & 192 != 128:
+        return chars1 + _rt.get(b, "Str.chars1") - 1
+    return 0
+
+
+@_rt.unchecked
+def pys_str_add(a: str, b: str) -> str:
+    s = pys_rt_raw(_rt.sizeof("Str") + len(a) + len(b) + 1)
+    _rt.set(s, "Str.len", len(a) + len(b))
+    _rt.set(s, "Str.dict_hash", 0)
+    _rt.set(s, "Str.chars1", text_cat_count(_rt.get(a, "Str.chars1"), len(a), b))
+    d = str_bytes(_rt.as_str(s))
+    _rt.cpy(d, str_bytes(a), len(a))
+    _rt.cpy(_rt.offset(d, len(a)), str_bytes(b), len(b))
+    _rt.put_byte(d, len(a) + len(b), 0)
+    return _rt.as_str(s)
+
+
+def pys_bytes_add(a: str, b: str) -> str:
+    return pys_str_add(a, b)
+
+
+@_rt.unchecked
+def cat_put(w: _rt.Ptr, s: str) -> _rt.Ptr:
+    # s's bytes at w, and the address after them
+    _rt.cpy(w, str_bytes(s), len(s))
+    return _rt.offset(w, len(s))
+
+
+@_rt.unchecked
+def pys_str_cat(n: int, a: str, b: str, c: str, d: str, e: str, f: str, g: str, h: str) -> str:
+    # the first n of its eight strs, joined: one allocation for an f-string's or a chained +'s parts
+    total = 0
+    chars1 = 1
+    if n > 0:
+        chars1 = text_cat_count(chars1, total, a)
+        total += len(a)
+    if n > 1:
+        chars1 = text_cat_count(chars1, total, b)
+        total += len(b)
+    if n > 2:
+        chars1 = text_cat_count(chars1, total, c)
+        total += len(c)
+    if n > 3:
+        chars1 = text_cat_count(chars1, total, d)
+        total += len(d)
+    if n > 4:
+        chars1 = text_cat_count(chars1, total, e)
+        total += len(e)
+    if n > 5:
+        chars1 = text_cat_count(chars1, total, f)
+        total += len(f)
+    if n > 6:
+        chars1 = text_cat_count(chars1, total, g)
+        total += len(g)
+    if n > 7:
+        chars1 = text_cat_count(chars1, total, h)
+        total += len(h)
+    s = pys_rt_raw(_rt.sizeof("Str") + total + 1)
+    _rt.set(s, "Str.len", total)
+    _rt.set(s, "Str.dict_hash", 0)
+    _rt.set(s, "Str.chars1", chars1)
+    w = str_bytes(_rt.as_str(s))
+    if n > 0:
+        w = cat_put(w, a)
+    if n > 1:
+        w = cat_put(w, b)
+    if n > 2:
+        w = cat_put(w, c)
+    if n > 3:
+        w = cat_put(w, d)
+    if n > 4:
+        w = cat_put(w, e)
+    if n > 5:
+        w = cat_put(w, f)
+    if n > 6:
+        w = cat_put(w, g)
+    if n > 7:
+        w = cat_put(w, h)
+    _rt.put_byte(w, 0, 0)
+    return _rt.as_str(s)
+
+
+@_rt.unchecked
+def pys_str_mul(a: str, n: int) -> str:
+    # a * n, as CPython's _PyBytes_Repeat: one byte is a fill, else the copied prefix doubles,
+    # log2(n) copies rather than n
+    if n < 0 or len(a) == 0:
+        n = 0
+    if n != 0 and len(a) > _rt.sdiv(9223372036854775807, n):
+        raise OverflowError("repeated string is too long")
+    if len(a) * n > 9223372036854775743:
+        raise MemoryError
+    m = len(a) * n
+    k = len(a)
+    s = pys_rt_raw(_rt.sizeof("Str") + m + 1)
+    _rt.set(s, "Str.len", m)
+    _rt.set(s, "Str.dict_hash", 0)
+    d = str_bytes(_rt.as_str(s))
+    _rt.put_byte(d, m, 0)
+    chars1 = 0
+    if n == 0:
+        chars1 = 1
+    elif _rt.get(a, "Str.chars1") != 0 and (n == 1 or _rt.byte_at(str_bytes(a), 0) & 192 != 128):
+        chars1 = (_rt.get(a, "Str.chars1") - 1) * n + 1
+    _rt.set(s, "Str.chars1", chars1)
+    if k == 1:
+        _rt.fill(d, _rt.byte_at(str_bytes(a), 0), m)
+    elif m != 0:
+        _rt.cpy(d, str_bytes(a), k)
+        while k < m:
+            c = k if k < m - k else m - k
+            _rt.cpy(_rt.offset(d, k), d, c)
+            k += c
+    return _rt.as_str(s)
+
+
+def pys_bytes_mul(a: str, n: int) -> str:
+    return pys_str_mul(a, n)

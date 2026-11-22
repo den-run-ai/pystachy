@@ -1,4 +1,4 @@
-"""List operations whose runtime functions moved to runtime.py. The lists are built before timing where a case only reads them."""
+"""List and str operations whose runtime functions moved to runtime.py. A case that only reads its inputs builds them before timing."""
 import sys
 from time import perf_counter
 
@@ -118,6 +118,63 @@ def indexed(n: int, xs: list[int]) -> int:
     return total
 
 
+def concat_lists(n: int, xs: list[int], ws: list[str]) -> int:
+    total = 0
+    for i in range(n):
+        ys = xs + xs
+        zs = ws + ws
+        total += ys[i & 255] + len(zs)
+    return total
+
+
+def repeat_lists(n: int, xs: list[int]) -> int:
+    total = 0
+    for i in range(n):
+        ys = xs * 3
+        zs = [0] * 16
+        zs *= 2
+        total += ys[i & 255] + len(zs)
+    return total
+
+
+def assign_slices(n: int, xs: list[int]) -> int:
+    # replace four items by two, then by six: the tail moves both ways
+    total = 0
+    ys = xs.copy()
+    for i in range(n):
+        lo = i & 63
+        ys[lo : lo + 4] = xs[:2]
+        ys[lo : lo + 2] = xs[:6]
+        del ys[lo : lo + 2]
+        total += ys[lo] + len(ys)
+    return total
+
+
+def add_strs(n: int, words: list[str]) -> int:
+    total = 0
+    for i in range(n):
+        s = words[i & 255] + words[(i + 1) & 255]
+        total += len(s)
+    return total
+
+
+def cat_strs(n: int, words: list[str]) -> int:
+    # an f-string of four parts: one allocation for them all
+    total = 0
+    for i in range(n):
+        s = f"{words[i & 255]}:{words[(i + 7) & 255]}/{words[(i + 13) & 255]}"
+        total += len(s)
+    return total
+
+
+def repeat_strs(n: int, words: list[str]) -> int:
+    total = 0
+    for i in range(n):
+        s = words[i & 255] * 7 + "-" * (i & 15)
+        total += len(s)
+    return total
+
+
 kind = sys.argv[1]
 n = int(sys.argv[2])
 words = ["w" + str(i) for i in range(256)]
@@ -145,6 +202,18 @@ elif kind == "list-reverse":
     result = reverse_copy(n, nums)
 elif kind == "list-index":
     result = indexed(n, nums)
+elif kind == "list-add":
+    result = concat_lists(n, nums, words)
+elif kind == "list-mul":
+    result = repeat_lists(n, nums)
+elif kind == "list-set-slice":
+    result = assign_slices(n, nums)
+elif kind == "str-add":
+    result = add_strs(n, words)
+elif kind == "str-cat":
+    result = cat_strs(n, words)
+elif kind == "str-mul":
+    result = repeat_strs(n, words)
 else:
     raise ValueError("unknown workload")
 elapsed = perf_counter() - start
