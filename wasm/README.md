@@ -221,11 +221,26 @@ covers a 2,000-container round trip and catching `RecursionError` on deeper inpu
   and the flags in a class reflection record.
   A boxed class record pointer occupies an eight-byte payload slot on both targets.
 
+## Checking the whole corpus
+
+`known_differences.txt` lists each corpus program whose output in the Wasm modes differs
+from CPython's recording, with its reason: one of the differences above, or the pull request
+that fixes it. `check_corpus.py` runs `tests/run.sh` in both modes and fails on any other
+difference, so a new one is a regression or needs a reason. It names entries that now match;
+remove them once their fix lands. The whole corpus takes about half an hour on four cores.
+
+```sh
+python3 wasm/check_corpus.py                       # every program, both modes
+python3 wasm/check_corpus.py --modes wasm tests/programs/io/*.py
+python3 wasm/check_corpus.py --log report.txt      # a tests/run.sh report of the same run
+```
+
 ## Files
 
 | File | Purpose |
 |---|---|
 | `build.sh` | Runtime, `runtime.wasm`, emitter and program builds |
+| `check_corpus.py`, `known_differences.txt` | The corpus in the Wasm modes against its known, explained differences |
 | `run.mjs`, `run_wasmtime.py` | Node and Python/Wasmtime runners for commands and direct modules |
 | `codemode.mjs`, `tools.mjs` | String-source host and synchronous tool imports |
 | `../tools/wasm_from_source.py` | Source to Wasm from finalized compiler records |
