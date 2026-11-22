@@ -33,6 +33,8 @@ COUNTS = {"scalar": 120000000, "range": 60000000, "power": 60000000,
           "list-pop-front": 100000000, "list-insert": 60000000, "list-slice": 30000000, "list-slice-step": 30000000,
           "list-extend": 20000000, "list-reverse": 10000000, "list-index": 150000000,
           "list-add": 6000000, "list-mul": 8000000, "list-set-slice": 15000000,
+          "list-in": 10000000, "list-in-str": 4000000, "list-find": 5000000, "list-remove": 8000000,
+          "list-range": 10000000, "list-bytes": 8000000,
           "str-add": 60000000, "str-cat": 30000000, "str-mul": 20000000}
 # The cases of a later migration have a source of their own, so that workload.py keeps the hash
 # that the first recorded report names.
@@ -42,6 +44,7 @@ NUMERIC_CASES = ("hypot", "hypot-3", "dist-3", "dist-64", "fma", "powmod", "powm
 INTEGER_CASES = ("floordiv", "modulo", "lshift", "rshift", "bit-length", "bit-count", "idiv-small", "idiv-wide")
 LIST_CASES = ("list-append", "list-append-str", "list-short", "list-stack", "list-pop-front", "list-insert", "list-slice",
               "list-slice-step", "list-extend", "list-reverse", "list-index", "list-add", "list-mul", "list-set-slice",
+              "list-in", "list-in-str", "list-find", "list-remove", "list-range", "list-bytes",
               "str-add", "str-cat", "str-mul")
 SOURCES = dict.fromkeys(COUNTS, SOURCE)
 for source, workload_cases in ((INT_TEXT, INT_TEXT_CASES), (REDUCTIONS, REDUCTION_CASES),

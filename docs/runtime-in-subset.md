@@ -15,7 +15,7 @@ used by `runtime.py`. Ordinary programs cannot use that interface.
 
 | Part | Responsibilities |
 |---|---|
-| `runtime.py` | String methods and ASCII escaping, `os.path`'s string functions, `str(int)` and `int(str, base)`, scalar and integer `math`, `math.hypot`/`dist`/`fma`, `any`/`all`, `sum`/`fsum`/`prod`, fixed-width integer division, remainder, shifts and bit counts, checked integer power and `pow(a, b, m)`, `round(int, n)`, range arithmetic, float-to-int conversion and rounding, the order of an int and a float, dict hashing, format-spec parsing, `str` concatenation and repetition, and the list header and item array with the operations that only move items. |
+| `runtime.py` | String methods and ASCII escaping, `os.path`'s string functions, `str(int)` and `int(str, base)`, scalar and integer `math`, `math.hypot`/`dist`/`fma`, `any`/`all`, `sum`/`fsum`/`prod`, fixed-width integer division, remainder, shifts and bit counts, checked integer power and `pow(a, b, m)`, `round(int, n)`, range arithmetic, float-to-int conversion and rounding, the order of an int and a float, dict hashing, format-spec parsing, `str` concatenation and repetition, and the list header and item array with the operations that move or search items. |
 | `runtime.c` | Collector, allocator, I/O, signals, exception unwinding, native library calls, float conversion and the container code not yet moved ([what remains](#what-remains-in-runtimec)). |
 | [The compiler](../src/README.md) | Runtime compilation, checked primitives, runtime signatures and linking. |
 
@@ -276,20 +276,22 @@ and item pointer in registers while a loop stores items. So:
 
 `cpy`, `move`, `fill` and `cmp` carry no tag and may touch anything.
 
-Two decorators mark low-level functions. `@_rt.unchecked` makes `+`, `-` and `*` wrap and
-makes `<<` and `>>` shift by their count modulo 64, as C's arithmetic on sizes and
-addresses does. Without it those operators raise `OverflowError`, which a function whose
-entry has no `R` may not do. On CPython the decorator changes nothing, so code that relies
-on wrapping still says so with `wrap_add`. `@_rt.cold` keeps a slow path out of line.
+Two decorators mark low-level functions. `@_rt.unchecked` gives `+`, `-` and `*` C's
+signed arithmetic on sizes and indexes: no overflow check, and a result past 64 bits is
+undefined, which lets LLVM reason about a size as it does in C. `<<` and `>>` shift by
+their count modulo 64. Without the decorator those operators raise `OverflowError`, which
+a function whose entry has no `R` may not do. Arithmetic that is meant to wrap says so
+with `wrap_add`, `wrap_sub` and `wrap_mul`. `@_rt.cold` keeps a slow path out of line.
 
 `runtime.c` keeps what only it can provide: `pys_alloc` and `pys_alloc_atomic`, the page
 map's answer to whether an array is scanned, the addresses of its static sentinels and the
 opt-in test. `runtime.py` declares each as an external function. The runtime's `-O2`
 inlines them, since both parts are one module by then.
 
-CPython cannot run this code: `tools/rt_cpython/_rt.py` defines the names and raises
-where a primitive would touch memory. The compiled tests cover it instead, with the
-collector's stress modes, the sanitizer builds and the list and dict probes.
+CPython runs this code on a model of the heap that checks every access, the alias rules
+above and the unchecked arithmetic: see [verification](#checks-and-test-boundaries). The
+compiled tests cover it too, with the collector's stress modes, the sanitizer builds and
+the list and dict probes.
 
 ## List and dict storage
 
@@ -299,8 +301,11 @@ and deletion, `copy`, `clear`, `reverse`, `+` and `*`. The rules below are what 
 implements. It follows `runtime.c`'s statements, including where a field is read again
 after a call: a value held in a local across a rarely made call costs the common path a
 saved register, which the JIT's runtime shows since nothing is inlined into a program
-there. The companions' own entry points, searches and sorting remain in `runtime.c` and
-call it.
+there. So are the searches (`in`, `index`, `count`, `remove`), which compare the slots of
+ints, bools and strs themselves and ask `runtime.c` only where an item's `__eq__` may
+run; `list(range(...))` and `list(bytes)`; and the promoting ints' companion with its
+stores. The identity companion's entry points, `min`, `max` and sorting remain in
+`runtime.c` and call it.
 
 `str` concatenation, the joined parts of an f-string and repetition allocate their result
 with the collector's unzeroed allocation and write every byte, as they did in C. Owned
@@ -452,7 +457,7 @@ container code move; the table gives the state and the order.
 | Exception unwinding | 490 | Stays: the Itanium ABI's tables and personality. |
 | I/O, processes, time, `select`, `errno`, temporary directories | 2,340 | Stays: system calls and libc streams. Buffering policy and text decoding can move later. |
 | Unicode and other constant tables | 1,390 | Stay as data; `runtime.py` reads them through pure helpers. |
-| Lists | 820 | Next: the companions' entry points, searches, `min`/`max`, then the sort. |
+| Lists | 720 | Next: the identity companion's entry points, `min`/`max`, then the sort. |
 | Strings | 620 | Slices, indexed text access and its hints, `chr`/`ord`, float text. Float formatting and parsing stay with libc. |
 | Sets and hashing | 120 | After lists: hashing by descriptor, then the table. |
 | Dicts | 690 | After sets: the compact ordered table, views and iteration. |

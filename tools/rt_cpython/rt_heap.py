@@ -172,12 +172,13 @@ class Heap:
         if tag is not None and not MIN <= value <= MAX:
             raise Fault(f"a store of {value}, which does not fit in 64 bits")
         b = self.block(addr, n, "a write")
-        if b.kind == "static" and b.name.startswith("empty"):
-            raise Fault(f"a write to the sentinel {b.name}")
         o = addr - b.base
+        data = (value & ((1 << 8 * n) - 1)).to_bytes(n, "little")
+        if b.kind == "static" and b.name.startswith("empty") and b.data[o : o + n] != data:
+            raise Fault(f"a write that changes the sentinel {b.name}")  # (runtime.c stores its kind's own bits again)
         if tag is not None and o & 7:
             raise Fault(f"a typed write at offset {o}, which no word starts at")
-        b.data[o : o + n] = (value & ((1 << 8 * n) - 1)).to_bytes(n, "little")
+        b.data[o : o + n] = data
         b.known[o : o + n] = b"\x01" * n
         for s in range(o >> 3, (o + n + 7) >> 3):
             if s < len(b.tags):
@@ -217,11 +218,11 @@ class Heap:
             raise Fault(f"_rt.cpy of {n} bytes between overlapping ranges ({dst:#x}, {src:#x}): _rt.move copies those")
         s = self.block(src, n, "a read")
         d = self.block(dst, n, "a write")
-        if d.kind == "static" and d.name.startswith("empty"):
-            raise Fault(f"a write to the sentinel {d.name}")
         so = src - s.base
         do = dst - d.base
         data = bytes(s.data[so : so + n])
+        if d.kind == "static" and d.name.startswith("empty") and d.data[do : do + n] != data:
+            raise Fault(f"a write that changes the sentinel {d.name}")
         known = bytes(s.known[so : so + n])
         d.data[do : do + n] = data
         d.known[do : do + n] = known  # (bytes that nothing wrote may be copied: reading them is the fault)
@@ -459,6 +460,7 @@ class CSide:
         self.empty_inline = h.static([0], "empty_inline")
         self.empty_ids = {k: h.static([k], "empty_identity") for k in (1, 2, 3, 9, 10)}
         self.boxes = {}
+        self.on_eq = None
 
     # ---- raw words
     def w(self, addr):
@@ -561,28 +563,42 @@ class CSide:
     def pys_list_identity(self, l, kind):
         self.list_identity(self.heap.of(l), kind)
 
-    def pys_rt_identity_pair(self, a, b):
-        a = self.heap.of(a)
-        b = self.heap.of(b)
-        ai = self.w(a + self.IDS)
-        bi = self.w(b + self.IDS)
-        if (ai or bi) and self.opt:
-            kind = self.w(ai) if ai else self.w(bi)
-            if (ai and self.w(ai) & 11 == 1) or (bi and self.w(bi) & 11 == 1):
-                kind = 1
-            if kind & 3 == 3:
-                if bi:
-                    self.list_identity(a, kind)
-                return
-            self.list_identity(a, kind)
-            self.list_identity(b, kind)
+    # ---- what the searches and the promoting ints' companions call
+    def text(self, addr):
+        return self.heap.read(addr + 24, self.w(addr)).decode("latin-1")
+
+    def pys_str_eq(self, a, b):
+        return int(self.text(self.heap.of(a)) == self.text(self.heap.of(b)))
+
+    def pys_rt_list_item_eq(self, l, i, v, d):
+        # runtime.c's !lbig(l, i) && eqitem(l->a[i], v, d->s), for items that are words: on_eq,
+        # where a test sets it, is the program's __eq__, which may change the list
+        a = self.heap.of(l)
+        item = self.w(self.w(a + self.A) + 8 * i)
+        big = self.rt.pys_rt_lbig(l, i)
+        if self.on_eq is not None:
+            self.on_eq()
+        return int(big.addr == 0 and item == v)
+
+    def pys_rt_not_in_list(self, x, d):
+        d = self.text(self.heap.of(d))
+        raise ValueError(("None" if d == "s" and x == 0 else repr(self.text(x)) if d == "s" else str(x)) + " is not in list")
+
+    def pys_dyn_big(self, lo, hi):
+        hi = self.heap.of(hi)
+        return self.heap.P(self.box(("big", hi) if hi else lo))
+
+    def pys_dyn_big_ptr(self, x):
+        v = self.boxes[self.heap.of(x)]
+        return self.heap.P(v[1] if isinstance(v, tuple) else 0)
 
     NAMES = ("pys_alloc pys_alloc_atomic pys_rt_raw pys_rt_oom pys_rt_opt_in pys_rt_empty_list pys_rt_empty_atomic "
              "pys_rt_empty_inline pys_rt_empty_identity pys_rt_atomic_items pys_rt_list_box pys_rt_big_list "
-             "pys_rt_identity_pair pys_list_identity").split()
+             "pys_list_identity pys_str_eq pys_rt_list_item_eq pys_rt_not_in_list pys_dyn_big pys_dyn_big_ptr").split()
 
     def install(self, module):
         # give module (runtime.py, loaded) these in place of its declarations
+        self.rt = module
         for name in self.NAMES:
             if not hasattr(module, name):
                 raise Fault(f"runtime.py declares no {name}")

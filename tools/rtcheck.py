@@ -239,7 +239,7 @@ def fuzz_lists():
                     return list(items) if keep else fresh(items)
                 # (with a companion, more of what makes one and of what leaves an entry pending)
                 op = R.choice(("append get set pop del insert extend slice copy clear slice_step set_slice del_slice add imul mul reverse "
-                               "reserve from_const" + (" observe observe observe plant plant plant set set" if mode != "plain" else "")).split())
+                               "reserve from_const" + (" observe observe observe plant plant plant set set forget" if mode != "plain" else "")).split())
                 if op == "append":
                     got, want = outcome(rt.pys_list_append, l.ptr, x.value), outcome(l.ref.append, x)
                 elif op == "get":
@@ -305,21 +305,32 @@ def fuzz_lists():
                     if mode != "identity":
                         continue
                     got, want = outcome(C.pys_list_identity, l.ptr, 1), ("ok", None)
-                else:
-                    # an int past 64 bits stored as runtime.c's pys_list_set_big does: the companion
-                    # of its kind, the Mpz's address there and -2**63 in the slot
-                    if mode != "big" or not l.ref:
+                elif op == "plant":
+                    # an int past 64 bits (its Mpz's address here): stored, appended or inserted
+                    if mode != "big":
                         continue
-                    a = HEAP.of(l.ptr)
-                    j = R.randrange(len(l.ref))
-                    if C.w(a + 24) == 0:
-                        ids = HEAP.new((C.w(a + 8) + 1) * 8, "scan", "ids")
-                        C.put(ids, 3)
-                        C.put(a + 24, ids)
-                    l.ref[j] = Item(none, HEAP.new(16, "atomic", "mpz"))
-                    C.put(C.w(a + 24) + 8 * (j + 1), l.ref[j].big)
-                    C.put(C.w(a + 16) + 8 * j, none)
-                    got = want = ("ok", None)
+                    x = Item(none, HEAP.new(16, "atomic", "mpz"))
+                    how = R.randrange(4)
+                    if how == 0:
+                        def store_big():
+                            l.ref[i] = x
+                        got, want = outcome(rt.pys_list_set_big, l.ptr, i, HEAP.P(x.big)), outcome(store_big)
+                    elif how == 1:
+                        got, want = outcome(rt.pys_list_append_big, l.ptr, HEAP.P(x.big)), outcome(l.ref.append, x)
+                    elif how == 2:
+                        got, want = outcome(rt.pys_list_insert_big, l.ptr, i, HEAP.P(x.big)), outcome(l.ref.insert, i, x)
+                    else:
+                        j = R.randrange(-len(l.ref), len(l.ref)) if l.ref else 0
+                        if not l.ref:
+                            continue
+                        got, want = outcome(lambda: rt.pys_list_big_at(l.ptr, j).addr), outcome(lambda: l.ref[j].big)
+                else:
+                    # the CPython FFI twin's copy back: every item of a list with identities is a new object
+                    if mode != "identity":
+                        continue
+                    got, want = outcome(rt.pys_list_forget_identity, l.ptr), ("ok", None)
+                    if C.w(HEAP.of(l.ptr) + 24) != 0:
+                        l.ref[:] = fresh(l.ref)
                 if made is not None:
                     lists.append(made)
                 if got == want:
@@ -331,6 +342,102 @@ def fuzz_lists():
                     break
                 if len(lists) > 6:
                     del lists[R.randrange(len(lists))]
+
+
+def fuzz_list_search():
+    # x in l, l.index, l.count and l.remove against CPython's, and list(range(...)) and list(b):
+    # ints and bools by their slots, strs by pys_str_eq, and other items through the comparison
+    # that may run an __eq__, which here removes the list's last item at a time of its choosing
+    none = -(1 << 63)
+    for _ in range(N):
+        HEAP.reset()
+        C.setup()
+        how = R.choice(["i", "b", "s", "x", "companion"])
+        C.opt = int(how == "companion")
+        d = HEAP.as_str(HEAP.new_str({"companion": b"i", "x": b"?i"}.get(how, how.encode()), 2))
+        if how == "s":
+            pool = [None, "", "a", "b", "ab", "abc"]
+            values = [R.choice(pool) for _ in range(R.randrange(9))]
+            x = R.choice(pool)
+            words = [0 if v is None else HEAP.new_str(v.encode(), 0) for v in values]
+            xw = 0 if x is None else HEAP.new_str(x.encode(), 0)
+            l = rt.pys_list_new(len(words))
+        else:
+            values = [R.randrange(2) if how == "b" else R.choice([0, 1, 2, 3, -1, none, MAXI]) for _ in range(R.randrange(9))]
+            x = xw = R.choice([0, 1, 2, 3, -1, none, MAXI, 9])
+            words = values
+            l = rt.pys_list_new_atomic(len(words))
+        for w in words:
+            rt.pys_list_append(l, w)
+        if how == "companion":
+            C.pys_list_identity(l, 1)
+        ref = list(values)
+        st, en = R.choice([0, 0, 1, -1, -3, 5, -9, MAXI]), R.choice([MAXI, MAXI, 0, 2, -1, -4, 9])
+        # the comparison that removes the last item, in both lists: the k-th one made
+        # (often the one that finds x: the index it gives is then past the end)
+        first = values.index(x) + 1 if x in values else 0
+        count = [0, R.choice([0, 0, 1, 2, 3, first, first])]
+        heap_count = [0]
+
+        class E:
+            def __init__(self, v):
+                self.v = v
+
+            def __eq__(self, o):
+                count[0] += 1
+                if count[0] == count[1] and ref:
+                    ref.pop()
+                return self.v == o.v
+
+        def on_eq():
+            heap_count[0] += 1
+            if heap_count[0] == count[1] and C.w(HEAP.of(l)):
+                rt.pys_list_pop(l, -1)
+
+        generic = how in ("x", "companion")
+        if generic:
+            ref[:] = [E(v) for v in values]
+            C.on_eq = on_eq
+        q = E(x) if generic else x
+        op = R.choice(["find", "index", "count", "remove", "index_as"])
+        if op == "find":
+            got, want = outcome(rt.pys_list_find, l, xw, d), outcome(lambda: next((i for i in range(len(values)) if i < len(ref) and ref[i] == q), -1))
+        elif op == "index":
+            got, want = outcome(rt.pys_list_index, l, xw, d, st, en), outcome(ref.index, q, st, en)
+        elif op == "index_as":
+            ok = R.randrange(2)
+            got, want = outcome(rt.pys_list_index_as, l, xw, d, st, en, ok, xw, d), outcome(ref.index, q, st, en) if ok else ("ValueError", "")
+        elif op == "count":
+            got, want = outcome(rt.pys_list_count, l, xw, d), outcome(ref.count, q)
+        else:
+            got, want = outcome(rt.pys_list_remove, l, xw, d), outcome(ref.remove, q)
+        if got[0] == want[0] == "ValueError" and op != "remove":
+            want = got  # (the text of x in the message is repr's, which is runtime.c's still)
+        if got == want:
+            a = HEAP.of(l)
+            have = HEAP.words(C.w(a + 16), C.w(a))
+            left = [w.v if generic else w for w in ref]
+            if how == "s":
+                have = [None if w == 0 else C.text(w) for w in have]
+            if have != left:
+                got = ("storage", f"items {have}, CPython's {left}")
+        same(f"list-{op}-{how}", got, want, (values, x, st, en, count[1]))
+        # list(range(a, b, s)) and list(b)
+        a, b, step = R.choice([0, 1, -3, 7, MAXI - 2, none]), R.choice([0, 5, -9, 12, MAXI, none + 3]), R.choice([1, 1, 2, -1, -3, 0, MAXI, none])
+        want = outcome(lambda: list(range(a, b, step)) if len(range(a, b, step)) < 1000 else 1 / 0)
+        if want[0] != "ZeroDivisionError":
+            got = outcome(rt.pys_range_list, a, b, step)
+            if got[0] == "ok":
+                p = HEAP.of(got[1])
+                block = HEAP.block_of(C.w(p + 16))
+                got = ("ok", HEAP.words(C.w(p + 16), C.w(p))) if C.w(p + 8) == 0 or block.kind == "atomic" else ("storage", "a scanned array")
+            same("range-list", got, want, (a, b, step))
+        data = bytes(R.randrange(256) for _ in range(R.randrange(40)))
+        got = outcome(rt.pys_bytes_list, HEAP.as_str(HEAP.new_str(data, 0)))
+        if got[0] == "ok":
+            p = HEAP.of(got[1])
+            got = ("ok", HEAP.words(C.w(p + 16), C.w(p)))
+        same("bytes-list", got, ("ok", list(data)), (data,))
 
 
 def u8count(data):
@@ -415,7 +522,7 @@ def check_model():
         ("overlapping copy", lambda: m["cpy"](m["offset"](arr, 4), arr, 8)),
         ("a copy of a size below zero", lambda: m["cpy"](arr, l, -8)),
         ("a store that does not fit", lambda: m["put"](arr, 0, 1 << 63)),
-        ("a write to a sentinel", lambda: m["put"](c.pys_rt_empty_list(), 0, 1)),
+        ("a write that changes a sentinel", lambda: m["put"](c.pys_rt_empty_list(), 0, 1)),
         ("unchecked overflow", unchecked_sum),
     ]:
         same("model: " + name, outcome(f)[0], "Fault", ())
@@ -427,6 +534,7 @@ def check_model():
         ("a byte of a word", lambda: m["byte_at"](arr, 0)),
         ("a field after a fill", lambda: (m["fill"](l, 0, 32), m["word"](l, 0))),
         ("the slack byte", lambda: m["byte_at"](arr, 16)),
+        ("a sentinel's own bits stored again", lambda: m["put"](c.pys_rt_empty_identity(1), 0, 1)),
     ]:
         same("model: " + name, outcome(f)[0], "ok", ())
 
@@ -1217,6 +1325,7 @@ def fuzz_int_text():
 
 
 fuzz_lists()
+fuzz_list_search()
 fuzz_str_memory()
 check_model()
 if ONLY == "memory":

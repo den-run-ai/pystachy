@@ -616,15 +616,17 @@ def linked(rpy_ir, tmp):
     return functions(ll), msgs, nounwind, sorted(set(re.findall(r"@(__isoc23_\w+)", ll)))
 
 
-def raises(fns, msgs, f):
+def raises(fns, msgs, f, skip=frozenset()):
     # the messages of the raises f reaches in the linked runtime, the allocator's aside (gc_slow);
-    # the raising functions' own bodies too, as their callers' messages say what they raise
+    # the raising functions' own bodies too, as their callers' messages say what they raise. skip:
+    # functions it does not go through (the depth guards of the descriptor walks, R?, and a
+    # dynamic value's walks, which are the op's own boundary)
     seen = set()
     todo = [f]
     out = set()
     while todo:
         g = todo.pop()
-        if g in seen or g in ("gc_slow", "pys_fail", "failf", "pys_raise"):
+        if g in seen or g in ("gc_slow", "pys_fail", "failf", "pys_raise") or g in skip:
             continue
         seen.add(g)
         out |= msgs.get(g, set())
@@ -713,8 +715,12 @@ def main():
     via = {}  # a function of runtime.c that runtime.py declares -> runtime.py's functions it calls
     for f, ops in rpy_ops.items():
         m = set()
-        if any(x != "?" and not x.startswith(BUG_ONLY) and not x.startswith("MemoryError") or x == "?" for x in raises(lfns, lmsgs, f)):
+        # (as for a function of runtime.c, below: a walk's depth guard is R?, and the allocation
+        # of an exception on its way out is the raise's)
+        if any(x != "?" and not x.startswith(BUG_ONLY) and not x.startswith("MemoryError") or x == "?" for x in raises(lfns, lmsgs, f, DEEP | DYN_WALKS)):
             m.add("R")
+        elif reaches(lfns, f, DEEP, DYN_WALKS):
+            m.add("R?")
         for op, x, d in ops:
             if op == "raise":
                 m.add("R")  # (an explicit raise statement, whatever its message)
@@ -730,13 +736,14 @@ def main():
                 if x[1:] in pys.RTSYM:
                     e = rt[pys.RTSYM[x[1:]]]
                     m.update(y for y in e[e.find("|") + 1 : e.rfind("|")].split() if y in ("A", "U", "I"))
-                if reaches(fns, x[1:], {"gc_slow"}, DYN_WALKS - {x[1:]}):
+                if reaches(fns, x[1:], {"gc_slow"}, EXC_MAKERS | RAISES | (DYN_WALKS - {x[1:]})):
                     m.add("A")
                 if reaches(fns, x[1:], USER | (DYN_WALKS - {x[1:]}), set()):
                     m.add("U")
                 if uses_state(fns, used, x[1:], DYN_WALKS - {x[1:]}):
                     m.add("I")
-                via[x[1:]] = {g for g in rpy_ops if reaches(fns, x[1:], {g}, set())}
+                # (not through a dynamic value's walks: their effects are the op's boundary's)
+                via[x[1:]] = {g for g in rpy_ops if reaches(fns, x[1:], {g}, DYN_WALKS - {x[1:]})}
         letters[f] = m
         # (whether it may write memory it did not allocate: an rt op that writes lists, dicts,
         # objects, globals or files, or a function of runtime.c it declares)
@@ -746,14 +753,22 @@ def main():
     while more:
         more = False
         for f, ops in rpy_ops.items():
-            for op, x, _ in ops:
+            for op, x, d in ops:
                 g = pys.rtsym(x) if op == "rt" else x[1:] if op == "call" else ""
+                # (an operation whose entry says U? runs user code where its descriptor holds a
+                # class, as one that lowers to a function of runtime.c: Gen.opfx. R? is each
+                # function's own, from the linked runtime)
+                maybe = {"R?"}
+                if op == "rt":
+                    ls = rt[x][rt[x].find("|") + 1 : rt[x].rfind("|")].split()
+                    if "U?" in ls and "O" not in d:
+                        maybe.add("U")
                 for h in via.get(g, set()) | {g}:
                     # (an operation that lowers to a function of runtime.py, as x[i] to pys_list_get and
                     # x / y to pys_fdiv: whether its check can fire where f makes it is what the linked
                     # runtime shows, above, as for one that lowers to a function of runtime.c. opt folds
                     # the division by a constant, and an index check's message is a bug's alone)
-                    got = letters[h] - ({"R"} if op == "rt" else set()) if h in letters else set()
+                    got = letters[h] - ({"R"} if op == "rt" else set()) - (maybe if h == g else set()) if h in letters else set()
                     if h in letters and h != f and (not got <= letters[f] or writes[h] and not writes[f]):
                         letters[f] |= got
                         writes[f] = writes[f] or writes[h]
@@ -904,7 +919,7 @@ def main():
             if o and sym in eff and i < len(eff[sym]) and eff[sym][i] is not None:
                 memory.extend((["r" + o] if eff[sym][i][0] else []) + (["w" + o] if eff[sym][i][1] else []))
         for x in sorted(letters[sym]) + memory:
-            if x not in have and "U" not in have and not (x == "U" and "U?" in have):
+            if x not in have and "U" not in have and not (x == "U" and "U?" in have) and not (x == "R?" and "R" in have):
                 bad.append(f"{k}: runtime.py's {sym} has effect {x}, which RUNTIME leaves out")
         if "N" in have:
             bad.append(f"{k}: RUNTIME says N, but runtime.py's {sym} returns")

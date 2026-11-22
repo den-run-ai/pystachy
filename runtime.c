@@ -1841,11 +1841,8 @@ enum { BIGIDS = 3 };
 static int big_list(List *l) { return l->ids && (l->ids[0] & 3) == BIGIDS && opt_in(); }   /* may l hold an item past 64 bits */
 /* A numeric identity companion holds Dyn boxes, including a wide integer's box. A
    BIGIDS companion is still only Mpzs until an observer asks for identities. */
-static Mpz *lbig(List *l, I i) {
-  if (l->a[i] != INT64_MIN || !l->ids) return NULL;
-  if (big_list(l)) return (Mpz *)l->ids[i + 1];
-  return (l->ids[0] & 3) == 1 && l->ids[i + 1] && opt_in() ? pys_dyn_big_ptr((Dyn *)l->ids[i + 1]) : NULL;
-}
+Mpz *pys_rt_lbig(List *l, I i);   /* runtime.py's: item i's Mpz where its slot holds -2**63 and a companion has one */
+static inline Mpz *lbig(List *l, I i) { return pys_rt_lbig(l, i); }
 static Big litem(List *l, I i) { Mpz *m = lbig(l, i); Big r = {m ? 0 : l->a[i], m}; return r; }   /* l[i] as a promoting int */
 /* A promoting int in a descriptor walk (descriptor J) is a pointer to two words, its slot and its
    Mpz: the value and null where it fits, else -2**63 and the Mpz, as the box of an int | None of a
@@ -3418,17 +3415,6 @@ void pys_list_identity(List *l, I kind) {
      precompiled JIT runtime as well as AOT. Only missing/dirty storage calls out. */
   if (!l->ids || (l->ids[0] & 4) || ((kind & 3) == 1 && big_list(l))) list_identity_slow(l, kind);
 }
-static void identity_pair(List *a, List *b) {   /* before list a takes list b's items */
-  if ((a->ids || b->ids) && opt_in()) {
-    I kind = a->ids ? a->ids[0] : b->ids[0];
-    if ((a->ids && (a->ids[0] & 11) == 1) || (b->ids && (b->ids[0] & 11) == 1)) kind = 1;
-    if ((kind & 3) == BIGIDS) {   /* (promoting ints: a needs a companion where b has one) */
-      if (b->ids) pys_list_identity(a, kind);
-      return;
-    }
-    pys_list_identity(a, kind); pys_list_identity(b, kind);
-  }
-}
 /* What runtime.py's list code takes from here (docs/runtime-in-subset.md): the sentinels' addresses,
    an item array's kind from the page map, the opt-in test, and the companions' boxes. Each is
    a call that the runtime's -O2 inlines, so that the code there is what it was here. */
@@ -3440,16 +3426,8 @@ I pys_rt_atomic_items(const I *a) { return atomic_items(a); }
 I pys_rt_opt_in(void) { return opt_in(); }
 I pys_rt_list_box(I value, I kind) { return list_box(value, kind); }
 I pys_rt_big_list(List *l) { return big_list(l); }
-void pys_rt_identity_pair(List *a, List *b) { identity_pair(a, b); }
 _Noreturn void pys_rt_oom(void) { oom(); }
-void pys_list_forget_identity(List *l) {
-  /* The CPython FFI twin copies every native array element back after a call. Even an
-     unchanged numeric payload becomes a fresh Python value there. */
-  if (l->ids && !big_list(l)) {
-    for (I i = 0; i < l->len; i++) l->ids[i + 1] = list_box(l->a[i], l->ids[0]);
-    l->ids[0] &= 11;
-  }
-}
+void pys_list_forget_identity(List *l);   /* runtime.py's: fresh identities after the CPython FFI twin's copy back */
 
 List *pys_m_ufloats(List *l, Str *d) {   /* math.fsum()'s floats of a list of a union's numbers (d the union's) */
   List *r = pys_list_new_atomic(l->len);
@@ -3517,35 +3495,10 @@ void pys_list_insert_identity(List *l, I i, I v, Dyn *id, I kind) {
 /* An item past 64 bits of a list of ints (BIGIDS, above): its slot holds -2**63, and its entry
    in the companion, which the first such item makes, its Mpz. Compiled code stores an int that
    fits as before (the stores above clear its entry), and reads the Mpz where it reads -2**63 */
-static void big_companion(List *l) {
-  if (!l->ids) {
-    if (l->cap > INT64_MAX / (I)sizeof(I) - 1) oom();
-    I *ids = pys_alloc((l->cap + 1) * sizeof(I));
-    ids[0] = BIGIDS; l->ids = ids;
-  }
-}
-static I big_companion_item(List *l, Mpz *m) { return big_list(l) ? (I)m : (I)pys_dyn_big(0, m); }
-void pys_list_set_big(List *l, I i, Mpz *m) {
-  i = idx(i, l->len, "IndexError: list assignment index out of range");
-  big_companion(l); I box = big_companion_item(l, m); l->ids[i + 1] = box; AT(l, i) = INT64_MIN;
-}
-void pys_list_append_big(List *l, Mpz *m) {
-  big_companion(l);
-  I box = big_companion_item(l, m);
-  if (l->len == l->cap) reserve(l, l->len + 1);
-  l->ids[l->len + 1] = box; AT(l, l->len++) = INT64_MIN;
-}
-void pys_list_insert_big(List *l, I i, Mpz *m) {
-  if (i < 0 && (i += l->len) < 0) i = 0;
-  if (i > l->len) i = l->len;
-  big_companion(l); I box = big_companion_item(l, m); reserve(l, l->len + 1);
-  memmove(l->ids + i + 2, l->ids + i + 1, (l->len - i) * 8); l->ids[i + 1] = box;
-  memmove(l->a + i + 1, l->a + i, (l->len - i) * 8); l->a[i] = INT64_MIN; l->len++;
-}
-Mpz *pys_list_big_at(List *l, I i) {   /* the Mpz of the item at index i (as pys_list_get takes it) whose slot holds -2**63, or NULL */
-  if (i < 0) i += l->len;
-  return lbig(l, i);
-}
+void pys_list_set_big(List *l, I i, Mpz *m);      /* runtime.py's, with the companion that the first such item makes */
+void pys_list_append_big(List *l, Mpz *m);
+void pys_list_insert_big(List *l, I i, Mpz *m);
+Mpz *pys_list_big_at(List *l, I i);   /* the Mpz of the item at index i (as pys_list_get takes it) whose slot holds -2**63, or NULL */
 Big pys_list_big_pop(List *l, I i) {   /* l.pop(i) of a list of ints, as a promoting int */
   if (!l->len) pys_fail("IndexError: pop from empty list");
   i = idx(i, l->len, "IndexError: pop index out of range");
@@ -3573,63 +3526,23 @@ void pys_list_del_slice(List *l, I lo, I hi, I st);
 List *pys_list_add(List *a, List *b);
 void pys_list_imul(List *l, I n);               /* xs *= n, in place */
 List *pys_list_mul(List *a, I n);               /* xs * n */
-/* Searches of a list of ints or bools that has no companion (so no item past 64 bits and no
-   identity boxes: lbig is null for each), and of a list of strs, compare slots as eqitem does
-   for the descriptors "i", "b" and "s", without its descriptor walk for each item: 1 where the
-   slots' values decide, 2 where pys_str_eq does (a null slot, None, equals only None). No
-   program code runs in these comparisons, so the list cannot change under the search */
-static inline int scalar_items(const List *l, const char *d) {
-  if (d[1] || l->ids) return 0;
-  return d[0] == 'i' || d[0] == 'b' ? 1 : d[0] == 's' ? 2 : 0;
-}
-static inline int str_item_eq(I a, I b) { return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b; }
-I pys_list_find(List *l, I v, Str *d) {
-  int k = scalar_items(l, d->s);
-  if (k == 1) { for (I i = 0, n = l->len, *a = l->a; i < n; i++) if (a[i] == v) return i; return -1; }
-  if (k == 2) { for (I i = 0, n = l->len, *a = l->a; i < n; i++) if (str_item_eq(a[i], v)) return i; return -1; }
-  for (I i = 0; i < l->len; i++) if (!lbig(l, i) && eqitem(l->a[i], v, d->s)) return i;
-  return -1;
-}
+/* The searches of a list are runtime.py's: slots compared as they are where the items are ints,
+   bools or strs and the list has no companion, else through pys_rt_list_item_eq, item by item
+   (an __eq__ may change the list) */
+I pys_list_find(List *l, I v, Str *d);
+I pys_rt_list_item_eq(List *l, I i, I v, Str *d) { return !lbig(l, i) && eqitem(l->a[i], v, d->s); }
 I pys_list_find_pair(List *l, I v, Str *d, Str *vd) {
   for (I i = 0; i < l->len; i++) { Mpz *m = lbig(l, i); if (m ? big_eq(m, v, vd->s) : eqpair(l->a[i], v, d->s, vd->s)) return i; }
-  return -1;
-}
-static I index_in(List *l, I v, const char *d, I st, I en) {   /* the first i in [st, en) where l[i] == v, or -1 */
-  if (st < 0 && (st += l->len) < 0) st = 0;
-  if (en < 0 && (en += l->len) < 0) en = 0;
-  int k = scalar_items(l, d);
-  I e = en < l->len ? en : l->len;   /* (the list keeps its length while slots are compared: scalar_items) */
-  if (k == 1) { for (I j = st, *a = l->a; j < e; j++) if (a[j] == v) return j; return -1; }
-  if (k == 2) { for (I j = st, *a = l->a; j < e; j++) if (str_item_eq(a[j], v)) return j; return -1; }
-  for (I j = st; j < en && j < l->len; j++) if (!lbig(l, j) && eqitem(l->a[j], v, d)) return j;
   return -1;
 }
 static _Noreturn void not_in_list(I x, const char *xd) {
   Buf b = {0}; put(&b, "ValueError: ", 12); repr(&b, x, xd); put(&b, " is not in list", 16); pys_fail(b.p);
 }
-I pys_list_index(List *l, I v, Str *d, I st, I en) {   /* list.index(v, start, stop) */
-  I i = index_in(l, v, d->s, st, en);
-  if (i < 0) not_in_list(v, d->s);
-  return i;
-}
-I pys_list_index_as(List *l, I v, Str *d, I st, I en, I ok, I x, Str *xd) {  /* list.index(x, start, stop) of a number x
-                                     of another type than the items: v is the item equal to x, if there is one (ok) */
-  I i = ok ? index_in(l, v, d->s, st, en) : -1;
-  if (i < 0) not_in_list(x, xd->s);
-  return i;
-}
-I pys_list_count(List *l, I v, Str *d) {
-  I c = 0; int k = scalar_items(l, d->s);
-  if (k == 1) { for (I i = 0, n = l->len, *a = l->a; i < n; i++) c += a[i] == v; return c; }
-  if (k == 2) { for (I i = 0, n = l->len, *a = l->a; i < n; i++) c += str_item_eq(a[i], v); return c; }
-  for (I i = 0; i < l->len; i++) c += !lbig(l, i) && eqitem(l->a[i], v, d->s);
-  return c;
-}
-void pys_list_remove(List *l, I v, Str *d) {
-  I i = pys_list_find(l, v, d);
-  if (i < 0) pys_fail("ValueError: list.remove(x): x not in list");
-  if (i < l->len) pys_list_del(l, i);              /* an __eq__ that shrank the list past i: CPython deletes nothing */
-}
+_Noreturn void pys_rt_not_in_list(I x, Str *xd) { not_in_list(x, xd->s); }
+I pys_list_index(List *l, I v, Str *d, I st, I en);   /* list.index(v, start, stop) */
+I pys_list_index_as(List *l, I v, Str *d, I st, I en, I ok, I x, Str *xd);
+I pys_list_count(List *l, I v, Str *d);
+void pys_list_remove(List *l, I v, Str *d);
 /* x in l (op 0: x's first index, or -1), l.count(x) (1), l.index(x, st, en) (2) and l.remove(x) (3)
    of a list of ints l in a program that opts in to promoting ints, where x is a promoting int
    ({lo, hi}) or, where isf, a float (of bits lo), which an int past 64 bits may equal: exactly */
@@ -4116,16 +4029,7 @@ double pys_sum_float_int(List *l, I s);
 double pys_sum_int_float(List *l, double s);
 I pys_range_len(I a, I b, I s);
 I pys_range_has(I x, I a, I b, I s);
-List *pys_range_list(I a, I b, I s) {   /* list(range(a, b, s)): allocated once at its length, as CPython does */
-  uint64_t n = (uint64_t)pys_range_len(a, b, s);
-  if (n > INT64_MAX) pys_fail("OverflowError: Python int too large to convert to C ssize_t");
-  if (n > INT64_MAX >> 4) pys_fail("MemoryError");
-  /* Compiler contract: this result stays list[int]. Reboxing to optional/union
-     items requires a fresh scanned array; it must never retype this backing in place. */
-  List *l = list_new((I)n, 1);   /* range items are always unboxed ints; the header still holds a pointer */
-  for (uint64_t i = 0; i < n; i++) l->a[i] = (I)((uint64_t)a + i * (uint64_t)s);   /* wraps to the item */
-  l->len = (I)n; return l;
-}
+List *pys_range_list(I a, I b, I s);   /* runtime.py's: list(range(a, b, s)), allocated once at its length */
 List *pys_str_list(Str *s) { List *l = pys_list_new(s->len); for (I i = 0; i < s->len; i++) pys_list_append(l, (I)pys_chr((unsigned char)s->s[i])); return l; }
 List *pys_text_list(Str *s) {
   List *l = pys_list_new(pys_text_len(s));
@@ -4136,14 +4040,7 @@ List *pys_text_list(Str *s) {
   }
   return l;
 }
-List *pys_bytes_list(Str *s) {   /* list(b): a list[int], whose array is atomic as the compiler makes them */
-  I n = s->len;
-  List *l = pys_list_new_atomic(n);
-  I *a = l->a;                   /* (locals, so that the stores need not be assumed to change n, a or */
-  const unsigned char *b = (const unsigned char *)s->s;   /* s's bytes: the loop vectorizes) */
-  for (I i = 0; i < n; i++) a[i] = b[i];
-  l->len = n; return l;
-}
+List *pys_bytes_list(Str *s);   /* runtime.py's: list(b), a list[int] */
 
 /* ---------- dicts: CPython's compact ordered layout ---------- */
 /* Entries (keys, vals, hs) are kept in insertion order. A deleted entry stays in place as a

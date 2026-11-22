@@ -175,6 +175,62 @@ def repeat_strs(n: int, words: list[str]) -> int:
     return total
 
 
+def contains_ints(n: int, xs: list[int]) -> int:
+    # x in xs of 128 ints: every other query is there, at its own depth
+    total = 0
+    for i in range(n):
+        q = xs[i & 127] if i & 1 == 0 else -1 - i
+        if q in xs:
+            total += 1
+    return total
+
+
+def contains_strs(n: int, words: list[str]) -> int:
+    # x in a list of 32 strs: half of the queries are there
+    ws = words[:32]
+    total = 0
+    for i in range(n):
+        if words[i & 63] in ws:
+            total += 1
+    return total
+
+
+def index_count(n: int, xs: list[int]) -> int:
+    total = 0
+    for i in range(n):
+        q = xs[(i * 7) & 127]
+        total += xs.index(q) + xs.count(q)
+    return total
+
+
+def remove_items(n: int, xs: list[int]) -> int:
+    # remove an item of the first 64 and append it again
+    ys = xs[:]
+    total = 0
+    for i in range(n):
+        q = ys[(i * 5) & 63]
+        ys.remove(q)
+        ys.append(q)
+        total += ys[0]
+    return total
+
+
+def range_lists(n: int) -> int:
+    total = 0
+    for i in range(n):
+        xs = list(range(i & 63, (i & 63) + 40, 3))
+        total += xs[len(xs) - 1]
+    return total
+
+
+def bytes_lists(n: int, data: bytes) -> int:
+    total = 0
+    for i in range(n):
+        xs = list(data)
+        total += xs[i & 63]
+    return total
+
+
 kind = sys.argv[1]
 n = int(sys.argv[2])
 words = ["w" + str(i) for i in range(256)]
@@ -208,6 +264,18 @@ elif kind == "list-mul":
     result = repeat_lists(n, nums)
 elif kind == "list-set-slice":
     result = assign_slices(n, nums)
+elif kind == "list-in":
+    result = contains_ints(n, nums)
+elif kind == "list-in-str":
+    result = contains_strs(n, words)
+elif kind == "list-find":
+    result = index_count(n, nums)
+elif kind == "list-remove":
+    result = remove_items(n, nums)
+elif kind == "list-range":
+    result = range_lists(n)
+elif kind == "list-bytes":
+    result = bytes_lists(n, b"0123456789abcdef" * 6)
 elif kind == "str-add":
     result = add_strs(n, words)
 elif kind == "str-cat":

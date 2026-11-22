@@ -3659,7 +3659,6 @@ def pys_rt_empty_identity(kind: int) -> _rt.Ptr: ...
 def pys_rt_atomic_items(a: _rt.Ptr) -> int: ...
 def pys_rt_list_box(value: int, kind: int) -> int: ...
 def pys_rt_big_list(l: _rt.Ptr) -> int: ...
-def pys_rt_identity_pair(a: _rt.Ptr, b: _rt.Ptr) -> None: ...
 def pys_list_identity(l: _rt.Ptr, kind: int) -> None: ...
 
 
@@ -3865,7 +3864,7 @@ def pys_list_insert(l: _rt.Ptr, i: int, v: int) -> None:
 
 @_rt.unchecked
 def pys_list_extend(l: _rt.Ptr, m: _rt.Ptr) -> None:
-    pys_rt_identity_pair(l, m)
+    identity_pair(l, m)
     n = _rt.get(m, "List.len")
     pys_list_reserve(l, _rt.get(l, "List.len") + n)
     if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
@@ -3999,7 +3998,7 @@ def pys_list_set_slice(l: _rt.Ptr, lo: int, hi: int, st: int, v: _rt.Ptr) -> Non
     m = _rt.get(v, "List.len")
     if v is l:
         v = pys_list_copy(l)
-    pys_rt_identity_pair(l, v)
+    identity_pair(l, v)
     if st != 1:
         if m != k:
             raise ValueError("attempt to assign sequence of size " + str(m) + " to extended slice of size " + str(k))
@@ -4072,7 +4071,7 @@ def pys_list_del_slice(l: _rt.Ptr, lo: int, hi: int, st: int) -> None:
 def pys_list_add(a: _rt.Ptr, b: _rt.Ptr) -> _rt.Ptr:
     # a + b: a new list, of atomic items where both lists' are (identities: the extends carry promoting ints')
     if (not _rt.null(_rt.getp(a, "List.ids")) and pys_rt_big_list(a) == 0) or (not _rt.null(_rt.getp(b, "List.ids")) and pys_rt_big_list(b) == 0):
-        pys_rt_identity_pair(a, b)
+        identity_pair(a, b)
     atomic = 1 if pys_rt_atomic_items(_rt.getp(a, "List.a")) != 0 and pys_rt_atomic_items(_rt.getp(b, "List.a")) != 0 else 0
     r = pys_list_make(_rt.get(a, "List.len") + _rt.get(b, "List.len"), atomic)
     pys_list_extend(r, a)
@@ -4148,6 +4147,301 @@ def pys_list_reverse(l: _rt.Ptr) -> None:
     rev_words(_rt.getp(l, "List.a"), n)
     if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
         rev_words(_rt.at(_rt.getp(l, "List.ids"), 1), n)
+
+
+# ---- companions: pairing two lists, and the Mpzs of ints past 64 bits (runtime.c: BIGIDS)
+
+
+def pys_rt_list_item_eq(l: _rt.Ptr, i: int, v: int, d: str) -> int: ...
+def pys_rt_not_in_list(x: int, d: str) -> None: ...
+def pys_dyn_big(lo: int, hi: _rt.Ptr) -> _rt.Ptr: ...
+def pys_dyn_big_ptr(x: _rt.Ptr) -> _rt.Ptr: ...
+def pys_str_eq(a: str, b: str) -> int: ...
+
+
+@_rt.unchecked
+def identity_pair(a: _rt.Ptr, b: _rt.Ptr) -> None:
+    # before list a takes list b's items: both have their identities then, or, of promoting ints,
+    # a has a companion where b has one
+    if (not _rt.null(_rt.getp(a, "List.ids")) or not _rt.null(_rt.getp(b, "List.ids"))) and pys_rt_opt_in() != 0:
+        kind = _rt.word(_rt.getp(a, "List.ids"), 0) if not _rt.null(_rt.getp(a, "List.ids")) else _rt.word(_rt.getp(b, "List.ids"), 0)
+        if (not _rt.null(_rt.getp(a, "List.ids")) and _rt.word(_rt.getp(a, "List.ids"), 0) & 11 == 1) or (not _rt.null(_rt.getp(b, "List.ids")) and _rt.word(_rt.getp(b, "List.ids"), 0) & 11 == 1):
+            kind = 1
+        if kind & 3 == 3:
+            if not _rt.null(_rt.getp(b, "List.ids")):
+                pys_list_identity(a, kind)
+            return
+        pys_list_identity(a, kind)
+        pys_list_identity(b, kind)
+
+
+@_rt.unchecked
+def pys_list_forget_identity(l: _rt.Ptr) -> None:
+    # the CPython FFI twin copies every native array element back after a call: even an
+    # unchanged number is a fresh Python value there
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_big_list(l) == 0:
+        i = 0
+        while i < _rt.get(l, "List.len"):
+            box = pys_rt_list_box(_rt.word(_rt.getp(l, "List.a"), i), _rt.word(_rt.getp(l, "List.ids"), 0))
+            _rt.put(_rt.getp(l, "List.ids"), i + 1, box)
+            i += 1
+        _rt.put(_rt.getp(l, "List.ids"), 0, _rt.word(_rt.getp(l, "List.ids"), 0) & 11)
+
+
+@_rt.unchecked
+def pys_rt_lbig(l: _rt.Ptr, i: int) -> _rt.Ptr:
+    # the Mpz of item i where it is an int past 64 bits (its slot holds -2**63), else null: in
+    # the companion of promoting ints, or in the box that an identity companion holds
+    if _rt.word(_rt.getp(l, "List.a"), i) != -9223372036854775807 - 1 or _rt.null(_rt.getp(l, "List.ids")):
+        return _rt.nil()
+    if pys_rt_big_list(l) != 0:
+        return _rt.ptr(_rt.word(_rt.getp(l, "List.ids"), i + 1))
+    if _rt.word(_rt.getp(l, "List.ids"), 0) & 3 == 1 and _rt.word(_rt.getp(l, "List.ids"), i + 1) != 0 and pys_rt_opt_in() != 0:
+        return pys_dyn_big_ptr(_rt.ptr(_rt.word(_rt.getp(l, "List.ids"), i + 1)))
+    return _rt.nil()
+
+
+@_rt.unchecked
+def big_companion(l: _rt.Ptr) -> None:
+    # the companion that the first int past 64 bits makes
+    if _rt.null(_rt.getp(l, "List.ids")):
+        if _rt.get(l, "List.cap") > 1152921504606846974:
+            pys_rt_oom()
+        ids = pys_alloc((_rt.get(l, "List.cap") + 1) * 8)
+        _rt.put(ids, 0, 3)
+        _rt.setp(l, "List.ids", ids)
+
+
+@_rt.unchecked
+def big_companion_item(l: _rt.Ptr, m: _rt.Ptr) -> int:
+    # what the companion holds for Mpz m: the Mpz, or its box where the companion holds identities
+    return _rt.addr(m) if pys_rt_big_list(l) != 0 else _rt.addr(pys_dyn_big(0, m))
+
+
+@_rt.unchecked
+def pys_list_set_big(l: _rt.Ptr, i: int, m: _rt.Ptr) -> None:
+    n = _rt.get(l, "List.len")
+    if i < 0:
+        i += n
+    if i < 0 or i >= n:
+        raise IndexError("list assignment index out of range")
+    big_companion(l)
+    box = big_companion_item(l, m)
+    _rt.put(_rt.getp(l, "List.ids"), i + 1, box)
+    _rt.put(_rt.getp(l, "List.a"), i, -9223372036854775807 - 1)
+
+
+@_rt.unchecked
+def pys_list_append_big(l: _rt.Ptr, m: _rt.Ptr) -> None:
+    big_companion(l)
+    box = big_companion_item(l, m)
+    if _rt.get(l, "List.len") == _rt.get(l, "List.cap"):
+        pys_list_reserve(l, _rt.get(l, "List.len") + 1)
+    n = _rt.get(l, "List.len")
+    _rt.put(_rt.getp(l, "List.ids"), n + 1, box)
+    _rt.set(l, "List.len", n + 1)
+    _rt.put(_rt.getp(l, "List.a"), n, -9223372036854775807 - 1)
+
+
+@_rt.unchecked
+def pys_list_insert_big(l: _rt.Ptr, i: int, m: _rt.Ptr) -> None:
+    if i < 0:
+        i += _rt.get(l, "List.len")
+        if i < 0:
+            i = 0
+    if i > _rt.get(l, "List.len"):
+        i = _rt.get(l, "List.len")
+    big_companion(l)
+    box = big_companion_item(l, m)
+    pys_list_reserve(l, _rt.get(l, "List.len") + 1)
+    ids = _rt.getp(l, "List.ids")
+    _rt.move(_rt.at(ids, i + 2), _rt.at(ids, i + 1), (_rt.get(l, "List.len") - i) * 8)
+    _rt.put(ids, i + 1, box)
+    a = _rt.getp(l, "List.a")
+    _rt.move(_rt.at(a, i + 1), _rt.at(a, i), (_rt.get(l, "List.len") - i) * 8)
+    _rt.put(a, i, -9223372036854775807 - 1)
+    _rt.set(l, "List.len", _rt.get(l, "List.len") + 1)
+
+
+@_rt.unchecked
+def pys_list_big_at(l: _rt.Ptr, i: int) -> _rt.Ptr:
+    # the Mpz of the item at index i (as pys_list_get takes it) whose slot holds -2**63, or null
+    if i < 0:
+        i += _rt.get(l, "List.len")
+    return pys_rt_lbig(l, i)
+
+
+# ---- searches. A list of ints or bools that has no companion (so no item past 64 bits and no
+# identity boxes), and a list of strs, compare slots as runtime.c's eqitem does for the
+# descriptors "i", "b" and "s", without its walk of the descriptor for each item: 1 where the
+# slots' values decide, 2 where pys_str_eq does (a null slot, None, equals only None). No code of
+# the program's runs in these comparisons, so the list cannot change under the search. Any other
+# list compares through pys_rt_list_item_eq, which may run an __eq__: the length is read again
+# for each item.
+
+
+@_rt.unchecked
+def scalar_items(l: _rt.Ptr, d: str) -> int:
+    if _rt.byte_at(str_bytes(d), 1) != 0 or not _rt.null(_rt.getp(l, "List.ids")):
+        return 0
+    c = _rt.byte_at(str_bytes(d), 0)
+    return 1 if c == 105 or c == 98 else 2 if c == 115 else 0
+
+
+@_rt.unchecked
+def str_item_eq(a: int, b: int) -> bool:
+    if a != 0 and b != 0:
+        return pys_str_eq(_rt.as_str(_rt.ptr(a)), _rt.as_str(_rt.ptr(b))) != 0
+    return a == b
+
+
+@_rt.unchecked
+def index_in(l: _rt.Ptr, v: int, d: str, st: int, en: int) -> int:
+    # the first i in [st, en) where l[i] == v, or -1
+    if st < 0:
+        st += _rt.get(l, "List.len")
+        if st < 0:
+            st = 0
+    if en < 0:
+        en += _rt.get(l, "List.len")
+        if en < 0:
+            en = 0
+    k = scalar_items(l, d)
+    if k != 0:
+        e = en if en < _rt.get(l, "List.len") else _rt.get(l, "List.len")
+        a = _rt.getp(l, "List.a")
+        j = st
+        if k == 1:
+            while j < e:
+                if _rt.word(a, j) == v:
+                    return j
+                j += 1
+            return -1
+        while j < e:
+            if str_item_eq(_rt.word(a, j), v):
+                return j
+            j += 1
+        return -1
+    j = st
+    while j < en and j < _rt.get(l, "List.len"):
+        if pys_rt_list_item_eq(l, j, v, d) != 0:
+            return j
+        j += 1
+    return -1
+
+
+@_rt.unchecked
+def pys_list_find(l: _rt.Ptr, v: int, d: str) -> int:
+    # x in l: x's first index, or -1
+    k = scalar_items(l, d)
+    if k != 0:
+        n = _rt.get(l, "List.len")
+        a = _rt.getp(l, "List.a")
+        i = 0
+        if k == 1:
+            while i < n:
+                if _rt.word(a, i) == v:
+                    return i
+                i += 1
+            return -1
+        while i < n:
+            if str_item_eq(_rt.word(a, i), v):
+                return i
+            i += 1
+        return -1
+    i = 0
+    while i < _rt.get(l, "List.len"):
+        if pys_rt_list_item_eq(l, i, v, d) != 0:
+            return i
+        i += 1
+    return -1
+
+
+def pys_list_index(l: _rt.Ptr, v: int, d: str, st: int, en: int) -> int:
+    # list.index(v, start, stop)
+    i = index_in(l, v, d, st, en)
+    if i < 0:
+        pys_rt_not_in_list(v, d)
+    return i
+
+
+def pys_list_index_as(l: _rt.Ptr, v: int, d: str, st: int, en: int, ok: int, x: int, xd: str) -> int:
+    # list.index(x, start, stop) of a number x of another type than the items: v is the item
+    # equal to x, if there is one (ok)
+    i = index_in(l, v, d, st, en) if ok != 0 else -1
+    if i < 0:
+        pys_rt_not_in_list(x, xd)
+    return i
+
+
+@_rt.unchecked
+def pys_list_count(l: _rt.Ptr, v: int, d: str) -> int:
+    c = 0
+    k = scalar_items(l, d)
+    if k != 0:
+        n = _rt.get(l, "List.len")
+        a = _rt.getp(l, "List.a")
+        i = 0
+        if k == 1:
+            while i < n:
+                c += 1 if _rt.word(a, i) == v else 0
+                i += 1
+            return c
+        while i < n:
+            c += 1 if str_item_eq(_rt.word(a, i), v) else 0
+            i += 1
+        return c
+    i = 0
+    while i < _rt.get(l, "List.len"):
+        c += pys_rt_list_item_eq(l, i, v, d)
+        i += 1
+    return c
+
+
+@_rt.unchecked
+def pys_list_remove(l: _rt.Ptr, v: int, d: str) -> None:
+    i = pys_list_find(l, v, d)
+    if i < 0:
+        raise ValueError("list.remove(x): x not in list")
+    if i < _rt.get(l, "List.len"):  # (an __eq__ that shrank the list past i: CPython deletes nothing)
+        pys_list_del(l, i)
+
+
+# ---- lists made of a range and of a bytes
+
+
+@_rt.unchecked
+def pys_range_list(a: int, b: int, s: int) -> _rt.Ptr:
+    # list(range(a, b, s)): allocated once at its length, as CPython does. The result stays a
+    # list[int] to the compiler: its array is atomic, and nothing retypes it in place
+    n = pys_range_len(a, b, s)
+    if n < 0:
+        raise OverflowError("Python int too large to convert to C ssize_t")
+    if n > 576460752303423487:
+        raise MemoryError
+    l = pys_list_make(n, 1)
+    items = _rt.getp(l, "List.a")
+    i = 0
+    while i < n:
+        _rt.put(items, i, _rt.wrap_add(a, _rt.wrap_mul(i, s)))  # (wraps to the item)
+        i += 1
+    _rt.set(l, "List.len", n)
+    return l
+
+
+@_rt.unchecked
+def pys_bytes_list(s: str) -> _rt.Ptr:
+    # list(b): a list[int], whose array is atomic as the compiler makes them
+    n = len(s)
+    l = pys_list_make(n, 1)
+    items = _rt.getp(l, "List.a")
+    b = str_bytes(s)
+    i = 0
+    while i < n:
+        _rt.put(items, i, _rt.byte_at(b, i))
+        i += 1
+    _rt.set(l, "List.len", n)
+    return l
 
 
 # ---------- floats and ints: division, conversion, rounding, comparison ----------
