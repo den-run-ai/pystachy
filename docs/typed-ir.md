@@ -341,12 +341,15 @@ An op that makes a packed slot gives it its type: `slot.pack`, a list read, a tu
 type: a box's payload bits, a raw identity word, a word that a runtime call returns as an
 `int`, which `slot.unpack` then reads through `%slot`. A value whose definition gives only a
 machine type, a runtime type variable or a placeholder is read at related types by every
-operand that names its own. Of the views that narrow, `opt[U]` read as `U` needs a proof: with
-`PYSTACHY_IRCHECK=1` the closed-union proof must show the value not `None` where it is read (see
-[reads of optional values](#reads-of-optional-values)). The others (`bits` of a runtime call's
-word, a derived class, other union members) take the frontend's word for a test before them:
-they are the casts that MLIR would write as ops, and the fourth table's kinds of `cast` write
-some of them so.
+operand that names its own. Of the views that narrow, three need a proof where a value is read
+with `PYSTACHY_IRCHECK=1`: `opt[U]` read as `U`, which the closed-union proof must show not
+`None` (see [reads of optional values](#reads-of-optional-values)); an object read at a class
+that its value's class need not derive from, which the class proof must show to be of that
+class, as must a member cast's value wherever it is read; and a closed union read as a union
+without some of its members (see [reads at narrower classes](#reads-at-narrower-classes)).
+`bits` of a runtime call's word still takes the runtime's declared signature at its word: it
+is the cast that MLIR would write as an op, and the fourth table's `cast bits` writes another
+op's word so.
 
 Some result numbers only name an intermediate LLVM value of their operation's lowering:
 `ovf`'s `{i64, i1}` pair, the three addresses of `list.load`, the address of a `tuple.load`.
@@ -673,7 +676,24 @@ short-circuit Boolean phis when the incoming branch decides their value. Escaped
 field and global reads, and control flow it cannot certify go through the general solver.
 
 [`optional.tir`](../tools/fixtures/typed_ir/optional.tir) holds the cases the proof admits and
-those it rejects. A runtime function's signature says `opt[T]` where it takes or returns
+those it rejects.
+
+<a id="reads-at-narrower-classes"></a>
+An operand that reads an object at a class that its value's class need not derive from (the
+`class` view that narrows, to a derived class or a class that may share an object with it;
+`ircheck.class_reads`), and any operand that reads a member cast's value, needs a proof that
+the object's class derives from it ([`class_proof.py`](../src/pystachy_compiler/class_proof.py)).
+Its facts are domains of classes: an object's starts as the classes that may have objects and
+derive from its static class, and `None`, which any class's operand may read. A tagged class's
+objects begin with their tag (`ClassInfo.tag`), and an exception's with its descriptor
+`@x.<class>`. A test of that word against a tag or a descriptor, a `switch` on it, a test
+against `None` and the word a constructor stores narrow the domain. Private slots carry facts,
+and so does an object's field of a class, keyed by the slot the object was loaded from or its
+SSA value. A store to the field or any call forgets the field facts it may change. A `ptr.cmp`
+reads no class, so it needs none. A closed union read as a union without some of its members
+(`ircheck.union_reads`) needs the closed-union proof to show its box holds none of those.
+[`class_reads.tir`](../tools/fixtures/typed_ir/class_reads.tir) holds the cases each proof admits
+and those it rejects. A runtime function's signature says `opt[T]` where it takes or returns
 `None` (`bopen`'s encoding, `exc.setcause`'s cause, `exc.cause`'s result), and `getenv`'s
 result is the call's `R`: a `str` where the default is one, else `opt[str]`.
 
@@ -1443,9 +1463,9 @@ compiler's LLVM. It does not hold yet an extension module's entry points (`Gen.f
 clearer separation of frontend elaboration from machine contracts. Operands still read values
 through the views of
 `TYPE_VIEWS`: precise result types for empty containers and for runtime calls that return
-untyped memory (`alloc`), and casts for the views that still narrow unproved (a runtime
-call's word read through `bits`, a derived class) would leave each value one type, as MLIR's
-are; `opt[U]` read as `U` already needs a proof (see
+untyped memory (`alloc`), and a cast for the view that still narrows unproved (a runtime
+call's word read through `bits`) would leave each value one type, as MLIR's are; `opt[U]` read
+as `U`, a narrower class and a narrower union already need a proof (see
 [reads of optional values](#reads-of-optional-values)). WebAssembly GC, more general check elimination and a
 Python-object representation backend are design possibilities, not supported modes.
 

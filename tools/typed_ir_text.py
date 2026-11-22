@@ -1183,6 +1183,7 @@ def class_infos(module):
         info.roles = list(c["roles"])
         info.overlaps = list(c["overlaps"])
         info.tag = c["tag"]
+        info.exc = c["exception"]
         class_struct(name, c, info)
         infos[name] = info
     return infos

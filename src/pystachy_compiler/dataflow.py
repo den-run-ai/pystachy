@@ -10,7 +10,7 @@ and what it reports once the facts are stable (transfer, checking).
 """
 from __future__ import annotations
 
-from src.pystachy_compiler.ir import Blk, IFn
+from src.pystachy_compiler.ir import Blk, IFn, tmpname
 from src.pystachy_compiler.union_state import UnionState, union_join
 
 
@@ -33,48 +33,54 @@ def live_values(fn: IFn, blocks: dict[str, int]) -> dict[str, dict[str, bool]]:
     # the values (%tN, parameters, slot addresses) that some path may still read from each
     # block's first op that is no phi, by label: blocks gives each label's position in
     # fn.blocks. A block's phis have their values by then, so a phi that is read counts there
-    # as any value does; on an edge into the block it is that edge's operand that is read
+    # as any value does; on an edge into the block it is that edge's operand that is read.
+    # Each block's values start as those it reads before it defines them and only grow, so the
+    # iteration reaches the least solution without copying a block's values on every pass
     live_at: dict[str, dict[str, bool]] = {}
-    uses: dict[str, dict[str, bool]] = {}
     defined: dict[str, dict[str, bool]] = {}
+    targets: list[list[str]] = []
     for b in fn.blocks:
-        uses[b.label] = {}
-        defined[b.label] = {}
-        live_at[b.label] = {}
+        uses: dict[str, bool] = {}
+        here: dict[str, bool] = {}
         for i in b.code:
             if i.op == "phi":
                 continue
             for a in i.a:
-                if a.v.startswith("%") and a.v not in defined[b.label]:
-                    uses[b.label][a.v] = True
+                if a.v.startswith("%") and a.v not in here:
+                    uses[a.v] = True
             for n in i.r:
-                defined[b.label]["%t" + str(n)] = True
+                here[tmpname(n)] = True
+        live_at[b.label] = uses
+        defined[b.label] = here
+        targets.append([t for t in flow_targets(fn, b) if t in blocks])
     changed = True
     while changed:
         changed = False
         for bn in range(len(fn.blocks) - 1, -1, -1):
             b = fn.blocks[bn]
-            live = dict(uses[b.label])
-            for target in flow_targets(fn, b):
-                if target not in blocks:
-                    continue
-                incoming = dict(live_at[target])
-                for i in fn.blocks[blocks[target]].code:
-                    if i.op != "phi":
-                        break
-                    r = "%t" + str(i.r[0])
-                    if r in incoming:
-                        del incoming[r]
-                        if b.label in i.b:
-                            v = i.a[i.b.index(b.label)].v
-                            if v.startswith("%"):
-                                incoming[v] = True
+            live = live_at[b.label]
+            here = defined[b.label]
+            for target in targets[bn]:
+                code = fn.blocks[blocks[target]].code
+                incoming = live_at[target]
+                if len(code) > 0 and code[0].op == "phi":
+                    incoming = dict(incoming)
+                    for i in code:
+                        if i.op != "phi":
+                            break
+                        r = tmpname(i.r[0])
+                        if r in incoming:
+                            del incoming[r]
+                            if b.label in i.b:
+                                v = i.a[i.b.index(b.label)].v
+                                if v.startswith("%"):
+                                    incoming[v] = True
+                # (a block that loops to itself without phis reads its own values here, all of
+                # which it already has, so nothing is added to the values being read)
                 for v in incoming:
-                    if v not in defined[b.label]:
+                    if v not in here and v not in live:
                         live[v] = True
-            if live != live_at[b.label]:
-                live_at[b.label] = live
-                changed = True
+                        changed = True
     return live_at
 
 
@@ -84,9 +90,10 @@ def forward_fixpoint(self) -> dict[str, UnionState]:
     # are UnionStates over self.base and self.full. For each block taken from the worklist,
     # self.flow(block, facts, targets, edges) changes a copy of the block's starting facts as
     # its ops do and appends each edge that leaves it: a target label and the facts on that
-    # edge. An edge whose facts are dead (not live), or whose target is no block, is dropped;
-    # self.edge(facts, source, target) gives the others' facts at the target's start, which
-    # join what other edges brought there. A block whose starting facts changed is queued
+    # edge, which are the edge's own (the last edge's may be that copy itself), so that
+    # self.edge(facts, source, target) may change them in place. An edge whose facts are dead
+    # (not live), or whose target is no block, is dropped; edge gives the others' facts at the
+    # target's start, which join what other edges brought there. A block whose starting facts changed is queued
     # again, once. Blocks are taken first in, first out, so the visits and their order depend
     # on the function alone. Only then does self.transfer(facts, op, label, True) see each
     # reached block's ops with its final facts: reporting on a first visit would miss a later

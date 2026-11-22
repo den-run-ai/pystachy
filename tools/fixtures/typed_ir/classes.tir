@@ -1,18 +1,20 @@
 ; A module's class declarations give the verifier its classes, which the class view of an
 ; operand's type relates (specs.TYPE_VIEWS): an operand may read an object of a class as a class
 ; derived from it, as one of its bases, as object, or as a class derived from a base that has a
-; common derived class with it (its overlaps), and as no other class. A function list declares no
-; class, so without the module each reading below is an error. Check with
+; common derived class with it (its overlaps), and as no other class. A reading of a class that
+; the object's need not derive from needs a test of its class word (class_proof.py), which each
+; below has. A function list declares no class, so without the module each reading below is an
+; error. Check with
 ;   python3 tools/typed_ir_text.py verify tools/fixtures/typed_ir/classes.tir
 
 module version=1 {
-  class Base tag=1
-  class Both base=Storage roles=[Reader] tag=2
-  class Derived base=Base tag=3
+  class Base tag=1 fields=[" class":int]
+  class Both base=Storage roles=[Reader] tag=2 fields=[" class":int]
+  class Derived base=Base tag=3 fields=[" class":int]
   class Failure base=ValueError
   class Other
-  class Reader overlaps=[Storage] tag=4
-  class Storage overlaps=[Reader] tag=5
+  class Reader overlaps=[Storage] tag=4 fields=[" class":int]
+  class Storage overlaps=[Reader] tag=5 fields=[" class":int]
 }
 
 ; ---- readings the class view admits
@@ -24,7 +26,13 @@ entry:
 
 function @a_base_read_as_a_class_derived_from_it(b: Base) -> Derived {
 entry:
+  %t1 = mach.load(%ptr %a0) : int
+  %t2 = num.cmp == (int %t1, int 3) : bool
+  cbr(bool %t2) -> L3, L4
+L3:
   ret(Derived %a0)
+L4:
+  ret(Derived null)
 }
 
 function @a_class_read_as_its_secondary_base(b: Both) -> Reader {
@@ -34,7 +42,13 @@ entry:
 
 function @a_class_read_as_one_it_overlaps(s: Storage) -> Reader {
 entry:
+  %t1 = mach.load(%ptr %a0) : int
+  %t2 = num.cmp == (int %t1, int 2) : bool
+  cbr(bool %t2) -> L3, L4
+L3:
   ret(Reader %a0)
+L4:
+  ret(Reader null)
 }
 
 function @a_class_read_as_object(d: Derived) -> object {
