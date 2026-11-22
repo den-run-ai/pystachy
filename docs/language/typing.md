@@ -1137,9 +1137,16 @@ again where one is expected; a change through the view (`append()`, `x[k] = v`, 
 a compilation error ([error test](../../tests/errors/classes/object_view_append.py)), as are
 slices and sorts.
 
-Any other operation of a value that `isinstance()` has not narrowed is a compilation error that
-says so: arithmetic, attributes and methods, calls, indexing, iteration, `len()` and the other
-builtins, orderings, `%d` and the other numeric conversions, `type(x)` as a value and `id()`
+One rule decides what a value that `isinstance()` has not narrowed takes besides: an operation
+whose result has one type whatever the value holds is answered by the type it holds, with
+CPython's `TypeError` where that type lacks it (as for `None`): `len()`, `int()`, `float()`, and
+`%d`, `%x`, `%f`, `%c` and the other numeric conversions of `%` formatting, where a tuple held is
+the arguments and a dict the mapping, as CPython takes them when it runs
+([tests](../../tests/programs/classes/object_conversions.py),
+[`%` arguments](../../tests/programs/classes/object_percent_args.py)). An operation whose result's
+type depends on what is held needs `isinstance()` first (or an `Any` value): arithmetic,
+attributes and methods, calls, indexing, iteration, orderings, the other builtins, `type(x)` as a
+value and `id()` are compilation errors that say so
 ([error tests](../../tests/errors/classes/object_storage_arith.py)). Values of `object` are not
 dict keys or set elements, and the runtime's searches and sorts of their lists and tuples (`in`,
 `count()`, `index()`, `sort()`, `min()`, `max()`) and comparisons of such containers are

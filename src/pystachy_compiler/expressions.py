@@ -9,7 +9,7 @@ from src.pystachy_compiler.dynamic import boxed_list_items, comparison_builtin, 
 from src.pystachy_compiler.frames import FmtArgs, IterArg
 from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname, one_num
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
-from src.pystachy_compiler.names import ENUMCLASSES, NESTED, own_name, short
+from src.pystachy_compiler.names import ENUMCLASSES, MAPVIEW, NESTED, SEQVIEW, own_name, short
 from src.pystachy_compiler.patterns import pattern_expr, pattern_static
 from src.pystachy_compiler.reflection import VARS_USES, has_hook, hook_missing, hook_of, hook_read, hook_reads, refl_annotated, refl_body, refl_fold, refl_reflective
 from src.pystachy_compiler.specs import (
@@ -1962,6 +1962,8 @@ def gen_percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
             items.append(self.expr(x, ""))
     else:
         v = self.expr(rhs, "")
+        if self.is_object(v.t) or self.is_view(v.t):
+            return self.percent_object(fmt, v)  # (a tuple's items, a dict or the value, as it holds)
         if self.nt_wide(v):
             return self.percent_opt(fmt, v)  # (None, or its fields as they are: nt_wide)
         v = self.ntup(v)  # (a NamedTuple is a tuple: its fields are the arguments)
@@ -2046,6 +2048,53 @@ def gen_percent_opt(self, fmt: str, v: Val) -> Val:
         return Val(self.sconst(""), "str")
     return Val(self.phi(ph), "str")
 
+def gen_percent_object(self, fmt: str, v: Val) -> Val:
+    # "format" % x, x a value of object (or a view), as CPython takes x when it runs: the items of
+    # a tuple it holds are the arguments (read through its view), a dict it holds is the mapping
+    # of a format whose conversions name keys or that has none, and any other value is the one
+    # argument. A format that names keys raises CPython's TypeError for a value but a dict, a list
+    # or bytes, which CPython reads as mappings too (with str keys, which they do not take), and
+    # one that has no conversion gives itself for them
+    o = self.to_object(v)
+    keyed = "%(" in fmt.replace("%%", "")
+    bare = "%" not in fmt.replace("%%", "")
+    line = self.line
+    end = self.label()
+    ph = Ins("phi", "str", "")
+    for c in ["tuple", "dict", "list", "bytes"]:
+        if (c == "list" or c == "bytes") and not keyed and not bare:
+            continue
+        yes = self.label()
+        no = self.label()
+        self.cbr(self.iface_isinst(o, mk("name", c, line, [])).v, yes, no)
+        self.place(yes)
+        if c == "tuple" and keyed:
+            r = self.fmt_error("format requires a mapping")
+        elif c == "tuple":
+            r = self.pformat(fmt, [], False, [], self.cast(o, self.iface_of(SEQVIEW, []), "view"))
+        elif c == "dict" and (keyed or bare):
+            r = self.percent_map(fmt, self.cast(o, self.iface_of(MAPVIEW, []), "view"))
+        elif c == "dict":
+            r = self.pformat(fmt, [o], False, [])  # (a mapping that no conversion names is an argument)
+        elif keyed:
+            r = self.fmt_error(f"{'list' if c == 'list' else 'byte'} indices must be integers or slices, not str")
+        else:
+            r = Val(self.sconst(fmt.replace("%%", "%")), "str")
+        if not self.term:
+            self.incoming(ph, r.v, self.cur)
+            self.br(end)
+        self.place(no)
+    r = self.fmt_error("format requires a mapping") if keyed else self.pformat(fmt, [o], False, [])
+    if not self.term:
+        self.incoming(ph, r.v, self.cur)
+        self.br(end)
+    self.place(end)
+    if len(ph.a) == 0:
+        self.unreachable()
+        return Val(self.sconst(""), "str")
+    return Val(self.phi(ph), "str")
+
+
 def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node], vt: Val | None = None) -> Val:
     # fmt % items; rtnone: a None among them that a conversion cannot take raises when it runs
     # (it is a tuple's place, see percent_opt), as CPython's error; lazy: the items' expressions
@@ -2055,7 +2104,10 @@ def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]
     parts: list[Val] = []
     lit: list[str] = []
     count = len(lazy) if len(lazy) > 0 else len(items)
-    vn = Val(self.mload('int', vt.v), "int") if vt is not None else Val("0", "int")
+    # (vt may be a view of the tuple that a value of object holds: its len() and items, which
+    # are values of object, percent_object)
+    seq = vt is not None and self.is_view(vt.t)
+    vn = (self.builtin("len", [self.vnode(vt)], "") if seq else Val(self.mload('int', vt.v), "int")) if vt is not None else Val("0", "int")
     used = 0
     i = 0
     while i < len(fmt):
@@ -2095,7 +2147,7 @@ def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]
             self.err(f"unsupported format character '{t}' ({ord(t):#x}) at index {i - 1}")
         if vt is not None:
             self.guard(self.scalar_cmp("sle", vn, Val(str(used), "int")), "TypeError: not enough arguments for format string")
-            v = self.vtuple_item(vt, Val(str(used), "int"))
+            v = self.expr(mk("index", "", self.line, [self.vnode(vt), mk("int", str(used), self.line, [])]), "") if seq else self.vtuple_item(vt, Val(str(used), "int"))
         elif used >= count:
             return self.fmt_error("not enough arguments for format string")
         else:
@@ -2508,6 +2560,8 @@ def gen_conversion(self, v: Val, flags: str, width: str, prec: str, t: str) -> V
         if width == "" and prec == "":
             return sv
         return self.format_(sv, mk("str", ("<" if "-" in flags else ">") + width + prec, self.line, []))
+    if self.is_object(v.t) or self.is_view(v.t):
+        v = self.object_convert(v, "%" + t)  # (the number, or %c's character, of the type it holds: interfaces.py)
     if v.t in self.classes and t != "c":
         # A number's conversion asks an object for it: %d for its __int__(), else its
         # __index__(); %x, %X and %o for its __index__(); %e, %f and %g for its __float__(), else

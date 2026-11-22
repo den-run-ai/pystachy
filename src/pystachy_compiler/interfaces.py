@@ -441,9 +441,9 @@ def gen_object_note(self, ts: list[str]) -> str:
             return f" ({typestr(t)} is a read-only view of {view_kind(t)} that a value of object holds, which isinstance() narrowed it to: it takes len(), iteration, in, {ops + ', ' if ops != '' else ''}str(), repr(), ==, != and is, which give its items as values of object, and changes nothing; change the container through a variable of its own type)"
         if t == OBJECT and self.int_policy(self.line):
             # (iface_narrow: an int there is a promoting int, which a bool that passes the test is not)
-            return " (narrow a value of object with isinstance() to float, bool, str, bytes, list, tuple, dict, set, frozenset, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)"
+            return " (narrow a value of object with isinstance() to float, bool, str, bytes, list, tuple, dict, set, frozenset, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), len(), int(), float(), % formatting, ==, !=, is, isinstance() and a truth test otherwise)"
         if t == OBJECT:
-            return " (narrow a value of object with isinstance() to int, float, bool, str, bytes, list, tuple, dict, set, frozenset, type or a class of the program first: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)"
+            return " (narrow a value of object with isinstance() to int, float, bool, str, bytes, list, tuple, dict, set, frozenset, type or a class of the program first: it takes only str(), repr(), format(), hash(), len(), int(), float(), % formatting, ==, !=, is, isinstance() and a truth test otherwise)"
     return ""
 
 
@@ -789,6 +789,9 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
     elif derived and op == "hash?()":
         e = o
         body = [with_line(s, line) for s in Parser(Lexer("def _hash():\n" + hashed_source(self, tab.impl), 1).file()).module().kids[0].kids[2].kids]
+    elif derived and parts[0] == "conv":
+        e = o
+        body = [with_line(s, line) for s in Parser(Lexer("def _conv():\n" + conversion_source(self, parts[1], tab.impl), 1).file()).module().kids[0].kids[2].kids]
     elif derived and (parts[0] == "==" or parts[0] == "!=") and (self.unequal_types(parts[2], tab.impl) or (tab.iface == OBJECT and never_equal(self, parts[2], tab.impl))):
         # (a number or str and an object of a class that defines no __eq__ or __ne__: CPython
         # compares them by identity, never the same, as unions' members are compared; and, held
@@ -1127,6 +1130,9 @@ def gen_iface_none(self, none: str, a: Val, b: Val) -> Val:
         return Val(self.rtdata("pys_dyn_none_box"), "dyn")  # (None as an Any value: object_dyn)
     if none.startswith("type()."):
         return Val(self.sconst("builtins" if none == "type().__module__" else "NoneType"), "str")  # (object_type_attr)
+    if none.startswith("raise:"):
+        self.raise_("TypeError", self.sconst(none[6:]))  # (object_convert: None has no such conversion)
+        return Val("undef", "int")
     return Val("false", "bool")
 
 
@@ -1172,6 +1178,83 @@ def gen_iface_format(self, v: Val, sv: Val) -> Val:
     line = self.line
     e = mk("call", "", line, [mk("name", "format", line, []), mk("name", "_o", line, []), mk("name", "_a0", line, [])])
     return self.iface_apply(v, "format()", ["str"], "str", e, "format()", [sv], "format", sv, sv)
+
+
+def gen_object_convert(self, v: Val, kind: str) -> Val:
+    # conversion kind of v, a value of object (or a view): len(), int(), float(), or a numeric
+    # conversion of % formatting ("%d", "%x", "%f", "%c", ...), whose result has one type whatever
+    # v holds: an int (a promoting int's for int(), %d and %x in a module that opts in), a float, or
+    # %c's str of one character. The entry of the type it holds converts it as CPython does, or
+    # raises CPython's TypeError where that type has no such conversion, as for None
+    # (conversion_source)
+    v = self.to_object(v)
+    c = kind[1:] if kind.startswith("%") else ""
+    big = (kind == "int" or (c != "" and c in "diuxXo")) and self.int_policy(self.line)
+    ret = BIG if big else "int" if kind == "len" or kind == "int" or (c != "" and c in "diuxXo") else "str" if c == "c" else "float"
+    none = "object of type 'NoneType' has no len()" if kind == "len" else NONEARG_OBJECT[kind] if kind in NONEARG_OBJECT else self.nonefmt(c)
+    show = f"{kind}()" if c == "" else f"{kind} formatting"
+    e = mk("name", "_o", self.line, [])
+    return self.iface_apply(v, f"conv|{kind}|{ret}", [], ret, e, show, [], "raise:" + none, v, v)
+
+
+# the TypeError of int() and float() of None (as of another type that has no such conversion)
+NONEARG_OBJECT = {"int": "int() argument must be a string, a bytes-like object or a real number, not 'NoneType'", "float": "float() argument must be a string or a real number, not 'NoneType'"}
+
+
+def conversion_source(self, kind: str, impl: str) -> str:
+    # the body of the entry of implementation impl of object for conversion kind (object_convert),
+    # as Python source: the conversion of a value of impl's type, as CPython's (bytes by its ASCII
+    # text, where it is one), or the TypeError CPython raises for a value of that type, which
+    # names it as None's names NoneType
+    held = unopt(impl) if is_sopt(impl) else impl
+    pre = "    if _o is None:\n        raise SystemError('a value of object holds no None')\n" if is_sopt(impl) else ""
+    name = "int" if held == BIG else "_io.TextIOWrapper" if held == "file" else tname(held)
+    methods = self.classes[held].methods if held in self.classes else {}
+    real = held == "int" or held == "bool" or held == "float" or held == BIG
+    c = kind[1:] if kind.startswith("%") else ""
+    if kind == "len":
+        if held == EMPTYFS:
+            return "    return 0\n"
+        if held == "str" or held == "bytes" or held == "dyn" or is_list(held) or is_dict(held) or is_set(held) or is_tuple(held) or is_vtuple(held) or "__len__" in methods or held in self.nts or self.bkind(held) != "":
+            return "    return len(_o)\n"
+        return f"    raise TypeError(\"object of type '{name}' has no len()\")\n"
+    if kind == "int" or kind == "float":
+        if real or held == "str" or held == "dyn" or "__index__" in methods or ("__int__" in methods if kind == "int" else "__float__" in methods):
+            return pre + f"    return {kind}(_o)\n"
+        what = "invalid literal for int() with base 10: " if kind == "int" else "could not convert string to float: "
+        if held == "bytes":
+            bad = f"        raise ValueError('{what}' + repr(_o))\n"
+            return "    try:\n        _s = _o.decode('ascii')\n    except UnicodeDecodeError:\n" + bad + f"    try:\n        return {kind}(_s)\n    except ValueError:\n" + bad
+        return f"    raise TypeError(\"{NONEARG_OBJECT[kind].replace('NoneType', name)}\")\n"
+    if c in "diu":
+        if real:
+            return pre + "    return int(_o)\n"  # (a float truncated, as int() does)
+        if "__int__" in methods or "__index__" in methods:
+            return f"    return _o.{'__int__' if '__int__' in methods else '__index__'}()\n"
+        if held == "dyn":
+            return f"    if isinstance(_o, (int, float)):\n        return int(_o)\n    raise TypeError('%{c} format: a real number is required, not ' + type(_o).__name__)\n"
+        return f"    raise TypeError('%{c} format: a real number is required, not {name}')\n"
+    if c in "xXo":
+        if real and held != "float":
+            return pre + "    return int(_o)\n"
+        if "__index__" in methods:
+            return "    return _o.__index__()\n"
+        if held == "dyn":
+            return f"    if isinstance(_o, int):\n        return int(_o)\n    raise TypeError('%{c} format: an integer is required, not ' + type(_o).__name__)\n"
+        return f"    raise TypeError('%{c} format: an integer is required, not {name}')\n"
+    if c == "c":
+        if (real and held != "float") or held == "str" or "__index__" in methods:
+            return pre + "    return '%c' % _o\n"
+        if held == "dyn":
+            return "    if isinstance(_o, str):\n        _t: str = _o\n        return '%c' % _t\n    if isinstance(_o, int):\n        _n: int = _o\n        return '%c' % _n\n    raise TypeError('%c requires int or char')\n"
+        return "    raise TypeError('%c requires int or char')\n"
+    if real:
+        return pre + "    return float(_o)\n"
+    if "__float__" in methods or "__index__" in methods:
+        return "    return _o.__float__()\n" if "__float__" in methods else "    return float(_o.__index__())\n"
+    if held == "dyn":
+        return "    if isinstance(_o, (int, float)):\n        return float(_o)\n    raise TypeError('must be real number, not ' + type(_o).__name__)\n"
+    return f"    raise TypeError('must be real number, not {name}')\n"
 
 
 def gen_iface_held(self, t: str) -> bool:
@@ -1297,14 +1380,16 @@ def gen_view_join(self, a: str, b: str) -> str:
     return OBJECT if self.object_impl(a) == "" and self.object_impl(b) == "" else ""
 
 
-def view_takes(t: str, view: str) -> bool:
-    # is a value of type t a container that view reads: a list or a tuple, a set or a frozenset,
-    # a dict
+def view_takes(self, t: str, view: str) -> bool:
+    # is a value of type t a container that view reads, one that the type test of view's
+    # container types passes (isinst): a list or a tuple (a NamedTuple's object too, and one of a
+    # class that derives from list), a set or a frozenset, a dict (also one of a class that
+    # derives from it, and of lib/collections' mappings)
     if view == SEQVIEW:
-        return is_list(t) or is_tuple(t) or is_vtuple(t)
+        return is_list(t) or is_tuple(t) or is_vtuple(t) or t in self.nts or self.bkind(t) == "list"
     if view == SETVIEW:
         return is_set(t) or t == EMPTYFS
-    return is_dict(t)
+    return is_dict(t) or self.bkind(t) == "dict" or self.dict_class(t)
 
 
 def view_kind(view: str) -> str:
@@ -1317,14 +1402,14 @@ def to_view(self, v: Val, t: str) -> Val:
     # whose box the view's is (view_slot); None as None
     if v.t == "None":
         return Val("null", t)
-    if not view_takes(unopt(v.t), t) and self.join_hint(t, v.t):
+    if not view_takes(self, unopt(v.t), t) and self.join_hint(t, v.t):
         return Val("undef", t)  # (a store a join drops: the next pass compiles it, a value of object's)
-    if not view_takes(unopt(v.t), t):
+    if not view_takes(self, unopt(v.t), t):
         self.err(f"expected {typestr(t)}, got {typestr(v.t)}: a value of {typestr(t)} is {view_kind(t)} that a value of object holds, narrowed by isinstance()")
     return self.cast(self.to_object(v), t, "view")
 
 
-def view_source(view: str, op: str, impl: str) -> str:
+def view_source(self, view: str, op: str, impl: str) -> str:
     # the body of operation op of view on a container of type impl (its object _o, arguments _a0
     # and _a1), as Python source, whose __OBJ annotates object and __DYN Any (view_body): CPython's
     # operations, which find an item that is the value or equal to it (a key equal to the given
@@ -1338,25 +1423,24 @@ def view_source(view: str, op: str, impl: str) -> str:
         return "    return len(_o)\n"
     if impl == "dyn":
         return dyn_view_source(view, op)
-    if is_tuple(impl):
-        return tuple_view_source(op, len(targs(impl)))
-    k = "" if impl == EMPTYFS else selem(impl) if is_set(impl) else targs(impl)[0]
-    hashed = ""
-    fast =f"    if isinstance(_a0, str):\n        return {'_a0 in _o' if op == '__contains__' else '_o[_a0]'}\n" if k == "str" else ""
+    if is_tuple(impl) or impl in self.nts:
+        return tuple_view_source(op, len(self.classes[impl].fields) if impl in self.nts else len(targs(impl)))
+    k = "" if impl in self.classes else selem(impl) if is_set(impl) else targs(impl)[0]
+    fast = f"    if isinstance(_a0, str):\n        return {'_a0 in _o' if op == '__contains__' else '_o[_a0]'}\n" if k == "str" else ""
     scan = "    for _i in _o:\n        if _i is _a0 or _i == _a0:\n"
     if op == "__iter__":
-        return "    _r: list[__OBJ] = []\n    return iter(_r)\n" if impl == EMPTYFS else "    return iter(_o)\n"
+        return "    return iter(_o)\n"
     if op == "__contains__":
-        return hashed + ("    return False\n" if impl == EMPTYFS else fast + scan + "            return True\n    return False\n")
+        return fast + scan + "            return True\n    return False\n"
     if op == "__getitem__" and view == SEQVIEW:
         return "    return _o[_a0]\n"
     if op == "__getitem__":
-        return hashed + fast + scan + "            return _o[_i]\n    raise KeyError(_a0)\n"
+        return fast + scan + "            return _o[_i]\n    raise KeyError(_a0)\n"
     if op == "get":
         fast = "    if isinstance(_a0, str):\n        if _a0 in _o:\n            return _o[_a0]\n        return _a1\n" if k == "str" else ""
-        return hashed + fast + scan + "            return _o[_i]\n    return _a1\n"
+        return fast + scan + "            return _o[_i]\n    return _a1\n"
     if op == "index":
-        missing = "repr(_a0) + ' is not in list'" if is_list(impl) else "'tuple.index(x): x not in tuple'"
+        missing = "repr(_a0) + ' is not in list'" if is_list(impl) or self.bkind(impl) == "list" else "'tuple.index(x): x not in tuple'"
         return "    _n = 0\n" + scan + "            return _n\n        _n += 1\n    raise ValueError(" + missing + ")\n"
     if op == "count":
         return "    _n = 0\n" + scan + "            _n += 1\n    return _n\n"
@@ -1415,10 +1499,10 @@ def view_body(self, view: str, op: str, impl: str, line: int) -> list[Node]:
     # the body of the entry of implementation impl of object for operation op of view (view_slot):
     # view_source's, at line; never reached where impl is no container that view reads, as the
     # test that narrowed the value to view failed for it
-    if impl != "dyn" and not view_takes(impl, view):
+    if impl != "dyn" and not view_takes(self, impl, view):
         msg = mk("str", f"a value of object narrowed by isinstance() to {VIEWSHOW[view]} holds a {typestr(impl)}", line, [])
         return [mk("raise", "", line, [mk("call", "", line, [mk("name", "SystemError", line, []), msg])])]
-    body = Parser(Lexer("def _view():\n" + view_source(view, op, impl), 1).file()).module().kids[0].kids[2].kids
+    body = Parser(Lexer("def _view():\n" + view_source(self, view, op, impl), 1).file()).module().kids[0].kids[2].kids
     return [with_line(bound_names(bound_names(s, "__OBJ", OBJECT), "__DYN", "dyn"), line) for s in body]
 
 

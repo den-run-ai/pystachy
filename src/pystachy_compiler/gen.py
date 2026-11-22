@@ -299,6 +299,7 @@ from src.pystachy_compiler.interfaces import (
     gen_is_object as interfaces_is_object,
     gen_is_view as interfaces_is_view,
     gen_view_join as interfaces_view_join,
+    gen_object_convert as interfaces_object_convert,
     gen_object_impl as interfaces_object_impl,
     gen_to_object as interfaces_to_object,
     gen_union_object as interfaces_union_object,
@@ -1089,6 +1090,7 @@ from src.pystachy_compiler.expressions import (
     gen_percent as expressions_percent,
     gen_percent_map as expressions_percent_map,
     gen_percent_opt as expressions_percent_opt,
+    gen_percent_object as expressions_percent_object,
     gen_pformat as expressions_pformat,
     gen_str_field as expressions_str_field,
     gen_str_fields as expressions_str_fields,
@@ -3820,6 +3822,9 @@ class Gen:
     def view_join(self, a: str, b: str) -> str:
         return interfaces_view_join(self, a, b)
 
+    def object_convert(self, v: Val, kind: str) -> Val:
+        return interfaces_object_convert(self, v, kind)
+
     def object_impl(self, t: str) -> str:
         return interfaces_object_impl(self, t)
 
@@ -5164,6 +5169,9 @@ class Gen:
 
     def percent_opt(self, fmt: str, v: Val) -> Val:
         return expressions_percent_opt(self, fmt, v)
+
+    def percent_object(self, fmt: str, v: Val) -> Val:
+        return expressions_percent_object(self, fmt, v)
 
     def pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node], vt: Val | None = None) -> Val:
         return expressions_pformat(self, fmt, items, rtnone, lazy, vt)

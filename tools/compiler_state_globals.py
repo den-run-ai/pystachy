@@ -27,7 +27,7 @@ driver.COMPILER_SOURCES driver.CPUID driver.LLJIT_LLVM driver.RTPARTS
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
 dynamic.BINDUNDERS dynamic.BUILTIN dynamic_proof.BUILTIN_KINDS dynamic_proof.BUILTIN_PAYLOADS
 dynamic_proof.BOX_TAGS expressions.ORDERS expressions.CMPDUNDERS
-interfaces.IMPLICIT interfaces.PROTOCOLS interfaces.BUILTIN_FORMS interfaces.BINOPS interfaces.CMPOPS interfaces.BUILTIN_TESTS interfaces.VIEW_OF
+interfaces.IMPLICIT interfaces.PROTOCOLS interfaces.BUILTIN_FORMS interfaces.BINOPS interfaces.CMPOPS interfaces.BUILTIN_TESTS interfaces.VIEW_OF interfaces.NONEARG_OBJECT
 names.VIEWSHOW
 ir.NONUMS ir.NOVALS ir.NOLABELS ir.OPERAND_KINDS
 lexer.KEYWORDS lexer.OPS lexer.ESCAPES lexer.PREFIXES lexer.NONPRINT lexer.NOTID

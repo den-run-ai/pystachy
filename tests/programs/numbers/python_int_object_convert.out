@@ -1,0 +1,15 @@
+1180591620717411303424 1180591620717411303424 400000000000000000
+TypeError object of type 'int' has no len()
+5 5 5
+TypeError object of type 'int' has no len()
+1 1 1
+TypeError object of type 'bool' has no len()
+TypeError %x format: an integer is required, not float
+TypeError object of type 'float' has no len()
+TypeError %d format: a real number is required, not str
+1.2345678901234568e+29 30
+TypeError int() argument must be a string, a bytes-like object or a real number, not 'NoneType'
+TypeError float() argument must be a string or a real number, not 'NoneType'
+TypeError int() argument must be a string, a bytes-like object or a real number, not 'list'
+TypeError float() argument must be a string or a real number, not 'list'
+[exit 0]

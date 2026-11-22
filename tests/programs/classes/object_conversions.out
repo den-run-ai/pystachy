@@ -1,0 +1,141 @@
+0 TypeError object of type 'int' has no len()
+0 int 3
+0 float 3.0
+0 %d 3|    3|3   |+3
+0 %x 3 3 3 0x3
+0 %f 3.00 3.000000e+00 3
+0 %c []
+1 TypeError object of type 'bool' has no len()
+1 int 1
+1 float 1.0
+1 %d 1|    1|1   |+1
+1 %x 1 1 1 0x1
+1 %f 1.00 1.000000e+00 1
+1 %c []
+2 TypeError object of type 'float' has no len()
+2 int 2
+2 float 2.5
+2 %d 2|    2|2   |+2
+2 TypeError %x format: an integer is required, not float
+2 %f 2.50 2.500000e+00 2.5
+2 TypeError %c requires int or char
+3 len 2
+3 int 12
+3 float 12.0
+3 TypeError %d format: a real number is required, not str
+3 TypeError %x format: an integer is required, not str
+3 TypeError must be real number, not str
+3 TypeError %c requires int or char
+4 len 1
+4 ValueError invalid literal for int() with base 10: 'x'
+4 ValueError could not convert string to float: 'x'
+4 TypeError %d format: a real number is required, not str
+4 TypeError %x format: an integer is required, not str
+4 TypeError must be real number, not str
+4 %c [x]
+5 len 2
+5 int 34
+5 float 34.0
+5 TypeError %d format: a real number is required, not bytes
+5 TypeError %x format: an integer is required, not bytes
+5 TypeError must be real number, not bytes
+5 TypeError %c requires int or char
+6 len 1
+6 ValueError invalid literal for int() with base 10: b'\xff'
+6 ValueError could not convert string to float: b'\xff'
+6 TypeError %d format: a real number is required, not bytes
+6 TypeError %x format: an integer is required, not bytes
+6 TypeError must be real number, not bytes
+6 TypeError %c requires int or char
+7 len 2
+7 TypeError int() argument must be a string, a bytes-like object or a real number, not 'list'
+7 TypeError float() argument must be a string or a real number, not 'list'
+7 TypeError %d format: a real number is required, not list
+7 TypeError %x format: an integer is required, not list
+7 TypeError must be real number, not list
+7 TypeError %c requires int or char
+8 len 1
+8 TypeError int() argument must be a string, a bytes-like object or a real number, not 'dict'
+8 TypeError float() argument must be a string or a real number, not 'dict'
+8 TypeError %d format: a real number is required, not dict
+8 TypeError %x format: an integer is required, not dict
+8 TypeError must be real number, not dict
+8 TypeError %c requires int or char
+9 len 1
+9 TypeError int() argument must be a string, a bytes-like object or a real number, not 'tuple'
+9 TypeError float() argument must be a string or a real number, not 'tuple'
+9 TypeError %d format: a real number is required, not tuple
+9 TypeError %x format: an integer is required, not tuple
+9 TypeError must be real number, not tuple
+9 %c []
+10 len 1
+10 TypeError int() argument must be a string, a bytes-like object or a real number, not 'set'
+10 TypeError float() argument must be a string or a real number, not 'set'
+10 TypeError %d format: a real number is required, not set
+10 TypeError %x format: an integer is required, not set
+10 TypeError must be real number, not set
+10 TypeError %c requires int or char
+11 TypeError object of type 'NoneType' has no len()
+11 TypeError int() argument must be a string, a bytes-like object or a real number, not 'NoneType'
+11 TypeError float() argument must be a string or a real number, not 'NoneType'
+11 TypeError %d format: a real number is required, not NoneType
+11 TypeError %x format: an integer is required, not NoneType
+11 TypeError must be real number, not NoneType
+11 TypeError %c requires int or char
+12 len 3
+12 TypeError int() argument must be a string, a bytes-like object or a real number, not 'Sized'
+12 TypeError float() argument must be a string or a real number, not 'Sized'
+12 TypeError %d format: a real number is required, not Sized
+12 TypeError %x format: an integer is required, not Sized
+12 TypeError must be real number, not Sized
+12 TypeError %c requires int or char
+13 TypeError object of type 'Num' has no len()
+13 int 7
+13 float 7.5
+13 %d 7|    7|7   |+7
+13 %x 8 8 10 0x8
+13 %f 7.50 7.500000e+00 7.5
+13 %c []
+14 TypeError object of type 'Plain' has no len()
+14 TypeError int() argument must be a string, a bytes-like object or a real number, not 'Plain'
+14 TypeError float() argument must be a string or a real number, not 'Plain'
+14 TypeError %d format: a real number is required, not Plain
+14 TypeError %x format: an integer is required, not Plain
+14 TypeError must be real number, not Plain
+14 TypeError %c requires int or char
+15 TypeError object of type 'float' has no len()
+15 OverflowError cannot convert float infinity to integer
+15 float inf
+15 OverflowError cannot convert float infinity to integer
+15 TypeError %x format: an integer is required, not float
+15 %f inf inf inf
+15 TypeError %c requires int or char
+16 TypeError object of type 'int' has no len()
+16 int 65
+16 float 65.0
+16 %d 65|   65|65  |+65
+16 %x 41 41 101 0x41
+16 %f 65.00 6.500000e+01 65
+16 %c [A]
+17 len 1
+17 ValueError invalid literal for int() with base 10: 'A'
+17 ValueError could not convert string to float: 'A'
+17 TypeError %d format: a real number is required, not str
+17 TypeError %x format: an integer is required, not str
+17 TypeError must be real number, not str
+17 %c [A]
+18 len 0
+18 ValueError invalid literal for int() with base 10: ''
+18 ValueError could not convert string to float: ''
+18 TypeError %d format: a real number is required, not str
+18 TypeError %x format: an integer is required, not str
+18 TypeError must be real number, not str
+18 TypeError %c requires int or char
+19 len 0
+19 TypeError int() argument must be a string, a bytes-like object or a real number, not 'frozenset'
+19 TypeError float() argument must be a string or a real number, not 'frozenset'
+19 TypeError %d format: a real number is required, not frozenset
+19 TypeError %x format: an integer is required, not frozenset
+19 TypeError must be real number, not frozenset
+19 TypeError %c requires int or char
+[exit 0]

@@ -1,0 +1,11 @@
+seq 2 2 p True 1 [2, 'p'] Point(x=2, y='p')
+  item 2
+  item p
+tuple 2/p
+seq 2 1 2 True 1 [1, 2] [1, 2]
+  item 1
+  item 2
+[1, 2]
+map 1 5 None True [('a', 5)] {'a': 5}
+{'a': 5}
+[exit 0]

@@ -1012,6 +1012,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         vals[0] = self.class_value_builtin(vals[0])  # (a builtin class named: its class object)
     if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id", "abs"]:
         return self.dyn_builtin(name, vals[0])  # (by its box's type: dynamic.py)
+    if len(vals) == 1 and len(kws) == 0 and (self.is_object(vals[0].t) or (self.is_view(vals[0].t) and name != "len")) and name in ["len", "int", "float"]:
+        return self.object_convert(vals[0], name)  # (by the type it holds, whatever it is: interfaces.py)
     if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):
         # A boxed accumulator accepts a wide start without narrowing it to int64.
         return self.dyn_sum(vals[0] if vals[0].t == "dyn" else self.as_list(vals[0], name), vals[1] if len(vals) == 2 else Val("0", "int"))
