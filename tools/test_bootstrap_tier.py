@@ -16,6 +16,7 @@ import unittest
 from unittest.mock import patch
 
 import check_bootstrap_tier
+from verify_doubles import MAKE_SCRIPTS, STAGE, copy_scripts
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.pystachy_compiler import driver
@@ -138,14 +139,12 @@ class MakeBootstrapControls(unittest.TestCase):
             root = Path(temporary)
             source = (ROOT / "Makefile").read_text().split("\n# FILES:", 1)[0]
             (root / "Makefile").write_text(source)
-            (root / "tools").mkdir()
-            (root / "tools/self_compile_once.sh").write_bytes((ROOT / "tools/self_compile_once.sh").read_bytes())
-            (root / "tools/self_compile_once.sh").chmod(0o755)
+            copy_scripts(root, MAKE_SCRIPTS)
             (root / "lib").mkdir()
             (root / "lib/_pystachy_cache.py").touch()
             (root / "runtime.c").touch()
             (root / "runtime.py").touch()
-            fake = f"#!{sys.executable}\n" + '''import json
+            fake = f"#!{sys.executable}\n" + STAGE + '''import json
 import os
 from pathlib import Path
 import sys
@@ -154,16 +153,11 @@ output = Path(args[args.index("-o") + 1])
 with open("commands.jsonl", "a") as log:
     log.write(json.dumps([sys.argv[0], args[0], os.getenv("PYSTACHY_AOT_OPT")]) + "\\n")
 if args[0] == "build":
-    output.write_bytes(Path(__file__).read_bytes())
-    output.chmod(0o755)
     Path(args[args.index("--emit-ir") + 1]).write_text("compiler witness\\n")
-else:
-    if args[0] == "ir" and os.getenv("PYSTACHY_TIMING") == "1":
-        sys.stderr.write("pystachy-timing\\tprogram.attempt\\t0.5\\n" * int(os.environ["BOOTSTRAP_TEST_ATTEMPTS"]))
-    text = "compiler witness\\n" if args[0] == "ir" else "runtime witness\\n"
-    if os.getenv("BOOTSTRAP_TEST_MISMATCH") == output.name:
-        text = "wrong witness\\n"
-    output.write_text(text)
+text = "compiler witness\\n" if args[0] == "ir" else "runtime witness\\n"
+if os.getenv("BOOTSTRAP_TEST_MISMATCH") == output.name:
+    text = "wrong witness\\n"
+stage(args, attempts=int(os.environ["BOOTSTRAP_TEST_ATTEMPTS"]), text=text)
 '''
             (root / "pystachy.py").write_text(fake)
             env = environment(root) | {"PYSTACHY_AOT_OPT": "0", "BOOTSTRAP_TEST_MISMATCH": mismatch,
