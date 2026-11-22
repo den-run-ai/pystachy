@@ -1214,7 +1214,8 @@ class UnionProof:
             self.killmem(s, "", self.written.get(op + "|" + i.s + "|" + i.x, -1))
 
     def edge(self, s: UnionState, frm: str, to: str) -> UnionState:
-        z = s.clone()
+        # (s is this edge's own facts, which become the target's: dataflow.forward_fixpoint)
+        z = s
         dests: list[str] = []
         srcs: list[str] = []
         bools: list[str] = []
@@ -1271,8 +1272,9 @@ class UnionProof:
         return z
 
     def flow(self, b: Blk, s: UnionState, dests: list[str], edges: list[UnionState]) -> None:
-        # one block for the worklist (dataflow.forward_fixpoint): s becomes its facts at its
-        # end, and each edge that leaves it joins dests and edges
+        # one block for the worklist (dataflow.forward_fixpoint): s, the facts at the block's
+        # start, goes through its ops, and each edge that leaves it joins dests and edges with
+        # facts of its own, the last of them s itself
         label = b.label
         for i in b.code:
             if i.op == "phi":
@@ -1289,14 +1291,18 @@ class UnionProof:
         if last.op == "cbr":
             dests.extend(last.b)
             edges.append(s.conditional(last.a[0].v, True))
-            edges.append(s.conditional(last.a[0].v, False))
+            s.cond(last.a[0].v, False)
+            edges.append(s)
         elif last.op == "check":
             dests.append(last.b[0])
-            edges.append(s.conditional(last.a[0].v, False))
             ck = last.x if last.x != "" else last.s
             if ck in self.fn.cold:
+                edges.append(s.conditional(last.a[0].v, False))
                 dests.append(self.fn.cold[ck])
-                edges.append(s.conditional(last.a[0].v, True))
+                s.cond(last.a[0].v, True)
+            else:
+                s.cond(last.a[0].v, False)
+            edges.append(s)
         elif last.op == "switch" and last.a[0].v in self.tagvals:
             key = self.tag(s, last.a[0].v)
             default = s.clone()
@@ -1314,9 +1320,9 @@ class UnionProof:
                     default.narrow(key, [t for t in default.dom(key) if t != member])
                 edges.append(arm)
         else:
-            for l in last.b:
-                dests.append(l)
-                edges.append(s.clone())
+            for j in range(len(last.b)):
+                dests.append(last.b[j])
+                edges.append(s if j == len(last.b) - 1 else s.clone())
 
     def run(self) -> None:
         starts = forward_fixpoint(self)
