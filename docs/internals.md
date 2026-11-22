@@ -927,6 +927,13 @@ The bootstrap checks that all three emit identical LLVM IR for the compiler and 
 This fixed point catches disagreements that affect self-compilation; differential tests
 provide the broader behavior check. See [testing](testing.md) for the commands.
 
+Stage 2's own `ir` of the compiler must also infer its types in one attempt
+(`tools/self_compile_once.sh` counts its `program.attempt` records). A restart compiles the whole
+program again, so a variable, field or return that holds two types in the compiler's source can
+double every self-compilation. `python3 tools/inference_restarts.py [PROGRAM.py]` runs the hosted
+compiler and names each restart's kind, the error that raised it and the joins it found; rename or
+annotate what it names.
+
 `pystachy build FILE.py -o EXE --emit-ir RAW.ll` retains the same raw module that
 `pystachy ir FILE.py` emits, without another frontend invocation. It excludes the
 AOT-only `pys_plain` marker and subsequent LLVM optimization. The IR file is replaced

@@ -80,7 +80,7 @@ class GCVerificationTests(unittest.TestCase):
         for name in ("tests", "tests/programs", "tests/programs/x", "tests/deviations", "tests/errors",
                      "tests/errors/x", "src", "lib", "ryu", "mpz", "bin", "tools"):
             (self.root / name).mkdir()
-        for name in ("tests/verify.sh", "tests/corpus.sh", "tools/irsame.sh"):
+        for name in ("tests/verify.sh", "tests/corpus.sh", "tools/irsame.sh", "tools/self_compile_once.sh"):
             shutil.copy(ROOT / name, self.root / name)
         for name in ("pystachy.py", "runtime.py", "runtime.c", "tests/programs/x/example.py",
                      "tests/programs/x/syntax_example.py", "tests/deviations/example.py", *FILLERS):
@@ -146,6 +146,8 @@ if args[0] == "build":
     shutil.copy(__file__, output)
     output.chmod(0o755)
 else:
+    if args[0] == "ir" and os.environ.get("PYSTACHY_TIMING") == "1":
+        print("pystachy-timing\\tprogram.attempt\\t0.5", file=sys.stderr)
     text = "fixed point\\n"
     if stress:
         assert stress == "7000", stress

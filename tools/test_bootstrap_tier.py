@@ -133,11 +133,14 @@ class MakeBootstrapControls(unittest.TestCase):
                 check_bootstrap_tier.make_bootstrap(root, environment(root), log)
             self.assertEqual((root / "pystachy").read_text(), "rebuilt\n")
 
-    def run_make(self, tier=None, mismatch=""):
+    def run_make(self, tier=None, mismatch="", attempts=1):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             source = (ROOT / "Makefile").read_text().split("\n# FILES:", 1)[0]
             (root / "Makefile").write_text(source)
+            (root / "tools").mkdir()
+            (root / "tools/self_compile_once.sh").write_bytes((ROOT / "tools/self_compile_once.sh").read_bytes())
+            (root / "tools/self_compile_once.sh").chmod(0o755)
             (root / "lib").mkdir()
             (root / "lib/_pystachy_cache.py").touch()
             (root / "runtime.c").touch()
@@ -155,13 +158,16 @@ if args[0] == "build":
     output.chmod(0o755)
     Path(args[args.index("--emit-ir") + 1]).write_text("compiler witness\\n")
 else:
+    if args[0] == "ir" and os.getenv("PYSTACHY_TIMING") == "1":
+        sys.stderr.write("pystachy-timing\\tprogram.attempt\\t0.5\\n" * int(os.environ["BOOTSTRAP_TEST_ATTEMPTS"]))
     text = "compiler witness\\n" if args[0] == "ir" else "runtime witness\\n"
     if os.getenv("BOOTSTRAP_TEST_MISMATCH") == output.name:
         text = "wrong witness\\n"
     output.write_text(text)
 '''
             (root / "pystachy.py").write_text(fake)
-            env = environment(root) | {"PYSTACHY_AOT_OPT": "0", "BOOTSTRAP_TEST_MISMATCH": mismatch}
+            env = environment(root) | {"PYSTACHY_AOT_OPT": "0", "BOOTSTRAP_TEST_MISMATCH": mismatch,
+                                       "BOOTSTRAP_TEST_ATTEMPTS": str(attempts)}
             command = ["make", "pystachy", f"PY={sys.executable}"]
             if tier is not None:
                 command.append("BOOTSTRAP_AOT_OPT=" + tier)
@@ -185,6 +191,14 @@ else:
                 result, _, installed = self.run_make("1", mismatch)
                 self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertFalse(installed)
+
+    def test_one_inference_attempt_is_required_before_installing_final_compiler(self):
+        # (stage 3 compiles the compiler's source again: a restart there repeats every frontend phase)
+        result, calls, installed = self.run_make(attempts=3)
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("took 3 type-inference attempts", result.stderr)
+        self.assertEqual([call[1] for call in calls], ["build", "build", "ir"])
+        self.assertFalse(installed)
 
 
 @unittest.skipUnless(os.environ.get("PYSTACHY_TEST_LLVM"), "set PYSTACHY_TEST_LLVM for real tier builds")
