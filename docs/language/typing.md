@@ -1138,7 +1138,10 @@ may hold a promoting int to `int` is a compilation error
 to [dynamic `Any`](../dynamic-any.md), `object` means the same, and its values become `Any`
 values and back where either is expected
 ([tests](../../tests/programs/classes/object_storage_from_dynamic.py),
-[the other way](../../tests/programs/classes/object_storage_to_dynamic.py)).
+[the other way](../../tests/programs/classes/object_storage_to_dynamic.py)). Once the program
+makes a value of `object` an `Any` value, or compares one with an `Any` value, each type it
+stores as `object` must be able to become one: a `bytes` value or a dict of typed items stored as
+`object` is then a compilation error.
 
 A value of `object` is a protocol value's box: a number in it is held by the immutable box of its
 `T | None`, which a conversion allocates where the number has none, and `None` is a null box.
