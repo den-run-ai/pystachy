@@ -202,8 +202,13 @@ applies. Bytes case methods remain ASCII-only.
   Python type/function objects. See [reflection](semantics.md#reflection).
 - **Protocol values of generators and files:** `repr()`, `str()` or `format()` (also an
   f-string) of a generator or file held by a [protocol](typing.md#protocols-and-stored-interfaces)
-  value raises `NotImplementedError`; CPython prints its address. Pystachy prints neither type
-  directly.
+  value, or by a value of [`object`](typing.md#object), raises `NotImplementedError`; CPython
+  prints its address. Pystachy prints neither type directly.
+- **Numbers stored as `object`:** `is` between a [value of `object`](typing.md#object) that
+  holds a number and another number compares their types and values (a float's bits), as PyPy
+  does. CPython agrees for a number stored from another value, small ints, bools and a module's
+  equal constants; equal numbers it computes apart are two objects there
+  ([deviation](../../tests/deviations/object_number_identity.py)).
 
 ### Errors and control flow
 
@@ -708,10 +713,20 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
 - **Protocols:** attribute members, `*args` or `**kwargs`, `__init__`, protocol
   inheritance, a protocol as a class's base, unannotated method parameters or results,
   `TypeVarTuple` parameters; orderings, dict keys, set elements, list searches and sorts,
-  `id()`, `type()` and reflection of protocol values, `isinstance()` of one with a builtin type,
-  and `==` or `!=` where two implementations' classes do not compare; conversions between
-  protocols and to or from dynamic `Any`; a closed union's, function's or `Callable`'s value
-  as an implementation. See [stored interfaces](typing.md#protocols-and-stored-interfaces).
+  `id()`, `type()` and reflection of protocol values, `isinstance()` of one with a type that is
+  neither a class of the program nor one of the builtin types `object` lists, and `==` or `!=`
+  where two implementations' classes do not compare; conversions between protocols and to or
+  from dynamic `Any`; a closed union's, function's or `Callable`'s value as an implementation.
+  See [stored interfaces](typing.md#protocols-and-stored-interfaces).
+- **`object` values:** any operation of a [value of `object`](typing.md#object) but `str()`,
+  `repr()`, `format()`, truth, `==`, `!=`, `is`, `hash()`, `type(x).__name__`, `callable()`
+  and `isinstance()` until `isinstance()` narrows it (the message says so), which a test of a
+  container type, and in a module that opts in to promoting ints a test of `int`, does not;
+  values of `object` as dict keys or set elements, or in a list or tuple that the runtime
+  searches, sorts or compares; functions, `Callable` values, exceptions, exception classes and
+  protocol values as values of `object`; and, in a module that does not opt in to promoting
+  ints, narrowing to `int` a value that may hold a promoting int
+  ([error tests](../../tests/errors/classes/object_storage_arith.py)).
 - **Dynamic `Any`:** typed mutable containers other than the supported native `list[int]`
   boundary becoming `Any`, unimplemented prototype operations,
   runtime `**` expansion of native dictionaries with non-str keys, or None-first storage

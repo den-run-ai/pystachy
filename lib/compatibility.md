@@ -2383,9 +2383,12 @@ others. A name the module lacks is a compile-time error
   other existing lists and dicts of typed items and `IntEnum` members, a kind among them, are
   compile-time errors ([error tests](../tests/errors/library/lib_inspect_default_bytes.py)). One
   variable that holds the marker and then a default of another type, as mypyc's
-  `default: object` does, needs a module that opts in, where it is an `Any` variable
-  ([test](../tests/programs/library/lib_inspect_any.py),
-  [error test](../tests/errors/library/lib_inspect_default_object.py)). A program whose module
+  `default: object` does, is a [value of `object`](../docs/language/typing.md#object) in a module
+  that does not opt in ([test](../tests/programs/library/lib_inspect_default_object.py)) and an
+  `Any` variable in one that does ([test](../tests/programs/library/lib_inspect_any.py)). The
+  module itself still opts in: its fields as values of `object` would reject a caller's
+  arithmetic, indexing or `len()` of a default, and a subclass of `Parameter`
+  ([measurement](../docs/dynamic-any-boundaries.md#library-modules)). A program whose module
   that does not opt in makes a `Parameter` is compiled with every module
   [tracking numeric identity](../docs/dynamic-any.md#identity-scope), as its objects cross
   into that module.

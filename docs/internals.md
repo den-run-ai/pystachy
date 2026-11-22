@@ -215,6 +215,16 @@ interfaces are interface classes made per binding. The driver keeps their names 
 compilation passes, so a later pass recreates one that a join hint names before compiling
 code. Protocol classes have no struct layout and are never instantiated.
 
+A stored [`object`](language/typing.md#object) is the builtin interface `_pystachy_iface$object`
+(`names.OBJECT`), which declares no method and which every type implements. Its box holds a
+reference as itself, a number as the immutable box of its `T | None` (so the second word is
+always a pointer the collector scans), and an `Any` value as its box. Narrowing by
+`isinstance()` reads the object through an entry (`as|T`) that returns it as the narrowed type,
+`is` with a number asks an entry that compares values (`is|T`), and conversion to `Any` asks
+one that boxes it. In a program with dynamic `Any`, an entry's object parameter takes no
+numeric-identity argument (`utils.id_param`), as `icall` passes the object as its environment
+whatever the implementation's type.
+
 Strings retain UTF-8 storage: their header holds the byte length, cached dictionary hash,
 and cached code-point count plus one (zero means unknown), followed by the bytes at offset
 24. ASCII literals start with the character count cached. `bytes` shares the storage layout

@@ -1032,7 +1032,9 @@ operation for its implementation.
   unhashable class;
 - `isinstance(x, C)` with classes of the program (or a tuple of them) tests the object's class,
   and narrows a local, a parameter or an attribute to `C` where it holds, as an `if` or an early
-  `return` narrows a union ([test](../../tests/programs/classes/protocol_narrowing.py)).
+  `return` narrows a union ([test](../../tests/programs/classes/protocol_narrowing.py)); the
+  builtin types that [`object`](#object) lists test the object's type too;
+- `callable(x)` is the object's class's answer (`__call__`), `False` for `None`.
 
 A value that is `None` stays `None`, and each operation then is `None`'s. Any two
 implementations may meet at run time, so `==` and `!=` are compiled for each pair of them, as
@@ -1046,7 +1048,7 @@ test it with `isinstance()`. So does an implementation of a library class or an 
 that has no method for another implementation.
 Orderings, dict keys and set elements, searches and sorts of containers of protocol values
 (`in` a list, `count()`, `index()`, `sort()`, `min()`, `max()`), `id()`, `type()` and other
-reflection, `isinstance()` with a builtin type and class patterns are compilation errors.
+reflection, `isinstance()` with another type and class patterns are compilation errors.
 Converting one protocol's value to another protocol, and to or from a dynamic `Any` value, is
 not supported. A union's value converts once narrowed to one class; functions and `Callable`
 values are not implementations (annotate a callback with `Callable[[A], R]` rather than a
@@ -1077,6 +1079,67 @@ so a conversion allocates one box. The program has one constant table for each p
 implementation type and protocol; a call loads the table's entry and calls it indirectly with
 the object. Entries are compiled only for operations that the program calls, the comparisons,
 hashes, formats and class tests above among them ([internals](../internals.md#interface-values)).
+
+### `object`
+
+`object` annotates a stored value of any type: a variable, a field, a module or class attribute,
+a container's items (`list[object]`, `dict[str, object]`, `tuple[object, ...]`, `*args: object`,
+`**kwargs: object`) and a result. A parameter annotated `object` still makes a
+[template](#function-and-method-templates), which each call specializes for its argument's type;
+`object | None`, `Optional[object]` and a union with `object` are `object`.
+
+```python
+def pick(i: int) -> object:
+    return [42, "text", None][i]
+
+values: list[object] = [1, 2.5, True, "s", b"b", [1], Point(0, 0), int, None]
+```
+
+It is the stored interface that every type implements, with no method of its own: a value of
+`object` holds the value it was given, not a copy, so a list stored as `object` and changed
+through its typed name shows the change. Numbers, strs, bytes, containers, objects of the
+program's classes, class objects, `None` and `Any` values can be values of `object`, both ways;
+functions and `Callable` values, exceptions and their classes, and values of a protocol (convert
+the object itself) cannot. Its operations are those of a protocol's value above, each by its
+value's type ([tests](../../tests/programs/classes/object_storage_values.py)):
+
+- `str()`, `repr()`, printing, f-strings, `format()`, `%s`, `%r` and `%a`, and truth tests;
+- `==` and `!=` with a value of any type: numbers by their values (`1 == 1.0`, `True == 1`),
+  values of builtin types of two kinds (a number and a str, a list and a tuple) unequal;
+- `hash()`, alike for equal numbers;
+- `is` and `is not`: `None` is only `None`; an object, a str, a container or a class object is
+  itself; a number is an equal number of its type, a float by its bits, as in PyPy, which is
+  CPython's answer for a number stored from another value, a small int, a bool and a module's
+  equal constants ([test](../../tests/programs/classes/object_storage_identity.py)), and not for
+  equal numbers computed apart ([deviation](../../tests/deviations/object_number_identity.py));
+- `type(x).__name__`, `__qualname__` and `__module__`, and `callable(x)`;
+- `isinstance(x, C)` with the program's classes and the builtin types `int`, `float`, `bool`,
+  `str`, `bytes`, `list`, `dict`, `tuple`, `set`, `frozenset` and `type` (or a tuple of them),
+  which narrows `x` as an `if`, an early `return`, a `continue` or a `while` narrows a union: to
+  the class, to `bool`, `float`, `str`, `bytes` or `type[object]`, and to `int | bool` for `int`,
+  whose test a bool passes, keeping its own `repr()`
+  ([test](../../tests/programs/classes/object_storage_narrow.py)).
+
+Any other operation of a value that `isinstance()` has not narrowed is a compilation error that
+says so: arithmetic, attributes and methods, calls, indexing, iteration, `len()` and the other
+builtins, orderings, `%d` and the other numeric conversions, `type(x)` as a value and `id()`
+([error tests](../../tests/errors/classes/object_storage_arith.py)). A test of a container type
+narrows nothing, as its items' types are not known. Values of `object` are not dict keys or set
+elements, and the runtime's searches and sorts of their lists and tuples (`in`, `count()`,
+`index()`, `sort()`, `min()`, `max()`) and comparisons of such containers are compilation errors.
+
+A promoting int of a module that opts in to [promoting ints](../python-int.md) is held as it is
+([test](../../tests/programs/numbers/python_int_object_storage.py)). There, `isinstance(x, int)`
+narrows nothing, as a bool passes it; in a module that does not opt in, narrowing a value that
+may hold a promoting int to `int` is a compilation error
+([error test](../../tests/errors/classes/object_storage_big_narrow.py)). In a module that opts in
+to [dynamic `Any`](../dynamic-any.md), `object` means the same, and its values become `Any`
+values and back where either is expected
+([tests](../../tests/programs/classes/object_storage_from_dynamic.py),
+[the other way](../../tests/programs/classes/object_storage_to_dynamic.py)).
+
+A value of `object` is a protocol value's box: a number in it is held by the immutable box of its
+`T | None`, which a conversion allocates where the number has none, and `None` is a null box.
 
 ## Function and method templates
 

@@ -280,8 +280,12 @@ records current failures and their owning issues. These remain compatibility gap
 Values of a [protocol](language/typing.md#protocols-and-stored-interfaces) do not cross
 in either direction yet: the box of a protocol value is not its object, and the protocol's
 table is chosen from the static type it converts from. Typed protocol storage remains
-separate from dynamic `Any` storage. A list or dict display of distinct iterators keeps
-`Any` items, as other mixed displays do; the other locations where they meet hold
+separate from dynamic `Any` storage. [Values of `object`](language/typing.md#object) cross both
+ways: the value one holds becomes an `Any` value as a value of its type does (`None` the `None`
+box), and an `Any` value becomes one that holds its box, whose operations are `Any`'s
+(`tests/programs/classes/object_storage_from_dynamic.py`,
+`tests/programs/classes/object_storage_to_dynamic.py`). A list or dict display of distinct
+iterators keeps `Any` items, as other mixed displays do; the other locations where they meet hold
 [`Iterator[T]`](language/typing.md#protocols-and-stored-interfaces) values
 (`tests/programs/generators/iterator_join_dynamic.py`).
 
