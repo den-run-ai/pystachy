@@ -614,11 +614,12 @@ class MinimalToolchainTests(unittest.TestCase):
             ({"glibc": toolchain.MINIMAL_GLIBC}, True),
             ({"distro": ubuntu_22, "glibc": (2, 35)}, True),
             ({"distro": OSError("no os-release")}, True),
-            ({"glibc": (2, 33)}, False),  # the runtime does not link there
+            ({"distro": {"ID": "almalinux", "VERSION_ID": "8.10"}, "glibc": (2, 28)}, True),
+            ({"glibc": (2, 27)}, False),  # the archive's tools do not start there
             ({"glibc": ()}, False),  # musl
             ({"llvm": True}, False),  # the host's LLVM keeps serving
             ({"machine": "aarch64"}, True),
-            ({"machine": "aarch64", "glibc": (2, 33)}, False),
+            ({"machine": "aarch64", "glibc": (2, 27)}, False),
             ({"machine": "riscv64"}, False),  # no archive is published
         )
         for host, selected in hosts:
@@ -666,11 +667,17 @@ class MinimalToolchainTests(unittest.TestCase):
                 key = f"minimal-{toolchain.MINIMAL_VERSION}-{toolchain.MINIMAL_REVISION}-{machine}"
                 self.assertEqual(toolchain.managed_toolchain(),
                                  (self.cache.resolve() / key, toolchain.MINIMAL_VERSION, machine))
-        for host in ({"llvm": True}, {"glibc": (2, 33)}, {"glibc": ()}, {"machine": "riscv64"}):
+        for host in ({"llvm": True}, {"glibc": (2, 27)}, {"glibc": ()}, {"machine": "riscv64"}):
             with self.subTest(host=host), ExitStack() as stack:
                 self.host(stack, **host)
                 self.assertIsNone(toolchain.managed_toolchain())
         self.assertFalse(self.cache.exists())  # asking installs nothing
+
+    def test_no_host_older_than_the_archives_are_built_for_downloads_one(self):
+        workflow = (Path(toolchain.__file__).parent / ".github/workflows/llvm-toolchain.yml").read_text()
+        built_for = re.findall(r"LLVM_TOOLCHAIN_GLIBC=([0-9]+)\.([0-9]+)", workflow)
+        self.assertEqual(len(built_for), 1)  # the newest glibc symbols its check lets the tools need
+        self.assertGreaterEqual(toolchain.MINIMAL_GLIBC, tuple(map(int, built_for[0])))
 
     def test_glibc_is_the_running_c_library_s_release(self):
         for answer, expected in (("glibc 2.39", (2, 39)), ("glibc 2.4", (2, 4)), ("glibc 2.41.9000", (2, 41, 9000)),

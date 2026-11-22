@@ -57,8 +57,8 @@ MINIMAL_SHA256 = {
     "x86_64": "aa7aeba224afd47728c7733cd13fe6a3bd32a38cee42d8fc30dca23f86e18d85",
     "aarch64": "bf002c93b86956543ccd4b69dff0e7959769c104772772c4d8e5195bdc6fd087",
 }
-# Before glibc 2.34 the runtime does not link without -pthread.
-MINIMAL_GLIBC = (2, 34)
+# The archives' tools are built for glibc 2.28, the oldest that source builds are checked on.
+MINIMAL_GLIBC = (2, 28)
 # Where the driver looks for LLVM before PATH: llvm_dir in src/pystachy_compiler/driver.py.
 HOST_LLVM = ("/usr/lib/llvm-18/bin", "/opt/homebrew/opt/llvm@20/bin", "/usr/local/opt/llvm@20/bin",
              "/home/linuxbrew/.linuxbrew/opt/llvm@18/bin")
