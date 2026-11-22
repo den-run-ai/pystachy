@@ -91,6 +91,7 @@ RETAINED = {
     "specs.GLUE": "loader public-name discoveries; currently retained across restarts",
     "specs.SPECSHOW": "specialization display names; currently retained across restarts",
     "specs.MODULES": "driver builtin-module configuration; runtime_ir restores its temporary _rt entry on every exit",
+    "source_lines.PROGRAM": "driver command configuration: main sets once, before compiling, whether the program's functions get line tables",
     # Interned IR fragments: each entry is a pure function of its index, so retaining them across
     # dry runs, retries and compilations changes no output. one_num's lists are shared and must not
     # be mutated; ircheck verifies them after lowering.
@@ -134,6 +135,7 @@ WRITERS = {
     "specs.GLUE": {"loader.Loader.load"},
     "specs.SPECSHOW": {"templates.gen_specialize"},
     "specs.MODULES": {"driver.runtime_ir", "driver.prefer_program_ffi"},
+    "source_lines.PROGRAM": {"driver.main"},
     "ir.TMPNAMES": {"ir.tmpname"},
     "ir.ONENUMS": {"ir.one_num"},
 }

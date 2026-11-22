@@ -986,6 +986,11 @@ void *pys_exc_id(Exc *e);
 static void unwind_push(void (*fn)(void *), void *arg);
 static void unwind_pop(void);
 static void traceback(Exc *e);
+/* the RecursionErrors of a function's entry check (pys_recursion_error), whose frame is that
+   function's innermost one, which CPython's traceback does not show (pys_fail: tb_entry) */
+#define RECURSION "RecursionError: maximum recursion depth exceeded"
+#define RECURSION_STACK RECURSION " (the native stack is nearly full)"
+static int tb_entry;
 static void ewrite(const char *s, I n) {   /* text to stderr, whose errors="backslashreplace" (CPython's
                                              sys.stderr) writes a surrogate, held in its three-byte form, as \udcff */
   I i = 0, j = 0;
@@ -1000,6 +1005,7 @@ static void ewrite(const char *s, I n) {   /* text to stderr, whose errors="back
 }
 _Noreturn NOMERGE void pys_fail(const char *m) {           /* m: "Kind: message", or "Kind" */
   if (io_intr) kbint_exit();
+  tb_entry = !strcmp(m, RECURSION) || !strcmp(m, RECURSION_STACK);
   if (xthrow) xthrow(exc_line(m));
   out_flush(); traceback(0); ewrite(m, strlen(m)); fputc('\n', stderr); pys_finish(); exit(1);
 }
@@ -8118,12 +8124,8 @@ I pys_thread_stack_valid(I size) {
 __attribute__((aligned(32))) I pys_recursion_state[3] = {1, 1000, 0};
 _Static_assert(sizeof(I) == 8 && sizeof(pys_recursion_state) == 24,
                "Recursion ABI: three i64 words, active depth, requested limit, then stack floor");
-static int tb_entry;                   /* (see tracebacks) */
-_Noreturn NOMERGE void pys_recursion_error(void) { tb_entry = 1; pys_fail("RecursionError: maximum recursion depth exceeded"); }
-_Noreturn NOMERGE void pys_recursion_stack_error(void) {
-  tb_entry = 1;
-  pys_fail("RecursionError: maximum recursion depth exceeded (the native stack is nearly full)");
-}
+_Noreturn NOMERGE void pys_recursion_error(void) { pys_fail(RECURSION); }
+_Noreturn NOMERGE void pys_recursion_stack_error(void) { pys_fail(RECURSION_STACK); }
 /* The native stack's floor (#1015), the state's third word: an entry that finds the stack pointer
    below it raises RecursionError as one past the limit does, however high sys.setrecursionlimit()
    is set, so that handlers and finally blocks run where the thread's stack would otherwise run out
@@ -8763,13 +8765,12 @@ Exc *pys_exc_begin(void *ue, I mark) { /* a landing starts: put right what the r
    passes (tb_frame), which the frames past the handler's continue when the same exception is
    raised again: the handler's own frame keeps the line where the exception reached it, as
    CPython's traceback does. */
+#if defined(__linux__) && defined(__LP64__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 enum { TBMAX = 4096 };                 /* the frames kept, the innermost (a RecursionError has about 1,000) */
 static uintptr_t tb_ip[TBMAX];         /* their return addresses, less one (in the call), innermost first */
 static int tb_n;
 static uintptr_t tb_top, tb_skip;      /* the outermost frame's CFA; frames at or below tb_skip are left out */
-static int tb_entry, tb_drop;          /* a RecursionError at a function's entry (pys_recursion_error), whose
-                                          check is that function's innermost frame, which CPython does not show:
-                                          the next one raised, the one whose frames these are */
+static int tb_drop;                    /* tb_entry, for the exception whose frames these are */
 static void tb_frame(struct _Unwind_Context *ctx) {   /* note ctx's frame, unless it is skipped */
   int before = 0;
   uintptr_t cfa = _Unwind_GetCFA(ctx), ip = _Unwind_GetIPInfo(ctx, &before);
@@ -8782,7 +8783,6 @@ static void tb_begin(Exc *e) {         /* e is raised: its frames start, or cont
   else tb_skip = tb_top;
 }
 static _Unwind_Reason_Code tb_walk(struct _Unwind_Context *ctx, void *arg) { (void)arg; tb_frame(ctx); return _URC_NO_REASON; }
-#if defined(__linux__) && defined(__LP64__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 typedef struct { const uint8_t *p, *e; } Rd;   /* a cursor in a section, which no read passes */
 static uint64_t rd_n(Rd *r, int n) {   /* an n-byte number */
   uint64_t v = 0;
@@ -9118,7 +9118,9 @@ static void traceback(Exc *e) {        /* "Traceback (most recent call last):" a
   if (have && !drop) tb_show(&shown, held.path, held.line, held.name);   /* (drop: a RecursionError's entry check) */
   tb_repeated(&shown);
 }
-#else
+#else                                  /* (elsewhere: the last line alone) */
+static void tb_frame(struct _Unwind_Context *ctx) { (void)ctx; }
+static void tb_begin(Exc *e) { (void)e; }
 static void traceback(Exc *e) { (void)e; }
 #endif
 static _Noreturn NOMERGE void exc_report(Exc *e, Str *m) {   /* "kind: m" ("kind" when m is empty), status 1 */

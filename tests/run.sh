@@ -129,7 +129,7 @@ program() { # tests/programs/AREA/NAME.py, its sidecars B.in, B.out... (B: the p
 # stdout and stderr together (the runtime flushes stdout before reporting an error). An
 # executable's traceback, which names this checkout's files, goes before the comparison: .out
 # holds an uncaught error's last line, as JIT code reports it.
-untraced() { awk '/^Traceback \(most recent call last\):$/ { tb = 1; next } tb && /^  / { next } { tb = 0; print }' "$1"; }
+untraced() { sed '/^Traceback (most recent call last):$/,/^[^ ]/{/^Traceback (most recent call last):$/d;/^  /d;}' "$1"; }
 deviation() { # tests/deviations/NAME.py
   n=${1##*/}; n=${n%.py}; exp="tests/deviations/$n.out"
   for mode in $MODES; do
