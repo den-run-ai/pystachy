@@ -725,7 +725,7 @@ L1:
         expected = text.expectations(source)
         records = text.parse_functions(source)
         admitted = [r["symbol"] for r, e in zip(records, expected, strict=True) if not e]
-        self.assertEqual((len(admitted), len(expected) - len(admitted)), (9, 6))
+        self.assertEqual((len(admitted), len(expected) - len(admitted)), (10, 7))
         for found in expected:
             for e in found:
                 self.assertRegex(e["message"], r"^(rt operand 0|phi operand from \w+) reads %\w+ as str without a proof that it is not None$")
