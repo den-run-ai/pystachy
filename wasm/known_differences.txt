@@ -12,7 +12,6 @@
 #   thread        no threads
 #   closed-stdio  a standard descriptor closed at the start is open in the guest
 #   gc            the collector is off: weak references stay alive and dropped files stay open
-#   stack         V8's own stack limit ends deep recursion first
 #   libm          wasi-libc's libm differs from glibc's in the last place of some results
 #   unexplained   a difference not yet diagnosed
 #   #N            a bug that pull request #N fixes
@@ -109,8 +108,6 @@ lib_weakref_transition gc
 rt_list_vacated gc
 upstream_weakref gc
 
-recursion_stack_floor stack
-
 float_power_rounding libm
 lib_random_distributions libm
 math_funcs libm
@@ -151,3 +148,5 @@ bfile_truncate_read #1705
 float_span #1708
 upstream_float_parse #1708
 upstream_math_fma #1708
+
+recursion_stack_floor #1721
