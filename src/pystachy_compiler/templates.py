@@ -238,9 +238,11 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         self.specdone[doing] = name
         if canonical != "":
             self.specdone[canonical] = name
-        for m in [x.name for x in self.classes.values() if x.base == c and self.tmpl_member(x)] if t.tag != 0 else []:
+        for m in [x.name for x in self.classes.values() if x.base == c and self.tmpl_member(x) and defs_declared(x)] if t.tag != 0 else []:
             # (a template hierarchy's: one specialization of each member with this one, made
-            # complete, whose objects a value of its type may be, member_spec)
+            # complete, whose objects a value of its type may be, member_spec; that of a member
+            # whose class statement the declarations have not reached yet, as for an annotation
+            # before it, is made once they have, template_bases)
             self.member_spec(name, m)
         return name
     finally:
@@ -280,6 +282,8 @@ def gen_member_spec(self, p: str, m: str) -> str:
     if not pc.flowed:
         # (p is being made: its __init__'s code, whose fields its objects' layout does not hold yet)
         self.err(f"the __init__ of {shown(pc.origin)} makes an object of {shown(m)}, which derives from it without an __init__ of its own: not supported")
+    if not defs_declared(t):
+        self.err(f"class {shown(m)}, which derives from class template {shown(pc.origin)}, is not supported where its specialization is needed before its class statement")
     self.inherit(t)
     self.declare_fields(t)
     t.nspec += 1
@@ -351,9 +355,19 @@ def gen_member_spec(self, p: str, m: str) -> str:
         self.selfcls = sel
         self.line = line
         self.lib = lib
-    for x in [y.name for y in self.classes.values() if y.base == m and self.tmpl_member(y)]:
+    for x in [y.name for y in self.classes.values() if y.base == m and self.tmpl_member(y) and defs_declared(y)]:
         self.member_spec(name, x)
     return name
+
+
+def defs_declared(ci: ClassInfo) -> bool:
+    # has the program's declaration pass (program.py) declared the methods that class ci's own
+    # body defines, which a specialization of it reads (inherit, declare_fields)
+    nodes = [f.node for f in ci.methods.values()]
+    for d in ci.node.kids[0].kids:
+        if d.kind == "def" and len([n for n in nodes if n is d]) == 0:
+            return False
+    return True
 
 
 def promoted(t: str) -> str:

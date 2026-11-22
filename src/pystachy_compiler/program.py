@@ -1345,6 +1345,12 @@ def gen_template_bases(self) -> None:
         finally:
             while len(self.making) > depth:
                 self.making.pop()
+    for s in list(self.classes.values()):
+        # (the members' specializations of those made before every class statement was declared,
+        # as an annotation makes Box[int] before a subclass's: specialize leaves them for now)
+        if s.origin in self.tmpl and s.tag != 0:
+            for m in [x.name for x in self.classes.values() if x.base == s.origin and self.tmpl_member(x)]:
+                self.member_spec(s.name, m)
 
 def super_arg_type(self, e: Node, f: FnInfo) -> str:
     # (super_arg_types) the type of argument e of a call in function f, as guess infers it; None's
