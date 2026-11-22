@@ -5523,8 +5523,8 @@ class Gen:
     def call_callable(self, o: Val, args: list[Node]) -> Val:
         return calls_call_callable(self, o, args)
 
-    def call_value(self, v: Val, args: list[Node], want: str, resultsoft: bool = False) -> Val:
-        return calls_call_value(self, v, args, want, resultsoft)
+    def call_value(self, v: Val, args: list[Node], want: str, resultsoft: bool = False, none_test: bool = False) -> Val:
+        return calls_call_value(self, v, args, want, resultsoft, none_test)
 
     def class_new(self, c: str, args: list[Node], want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
         return calls_class_new(self, c, args, want, resultsoft, typeargs)
@@ -5601,8 +5601,8 @@ class Gen:
     def scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
         return calls_scalar_call_types(self, f, args)
 
-    def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None, direct: bool=False, resultsoft: bool = False, typeargs: str = "", unbound: bool = False, got: list[FnInfo] | None = None) -> Val:
-        return calls_call_fn(self, f, pre, args, want, none, cache, direct, resultsoft, typeargs, unbound, got)
+    def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None, direct: bool=False, resultsoft: bool = False, typeargs: str = "", unbound: bool = False, got: list[FnInfo] | None = None, none_test: bool = False) -> Val:
+        return calls_call_fn(self, f, pre, args, want, none, cache, direct, resultsoft, typeargs, unbound, got, none_test)
 
     def virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False, got: list[FnInfo] | None = None) -> Val:
         return calls_virtual_call(self, f, pre, args, want, none, resultsoft, got)

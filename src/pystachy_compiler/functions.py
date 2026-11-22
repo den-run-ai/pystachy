@@ -254,6 +254,7 @@ def gen_receiver_fields(self, c: str, me: str, body: list[Node], names: dict[str
 def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
     # one compilation of f's code into a new IFn (gen_function)
     self.enter(f, body)
+    f.checked_fallthrough = False  # a local inference retry can change whether this exit is reachable
     sites = f.inert_sites
     if sites is not None:
         sites.clear()  # a replay must validate the body and operand types it actually emits
@@ -430,6 +431,13 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         e = self.landing(hm, slot, mark)
         self.mem_store(Val(f"{f.ll}.done", "&bool"), Val("false", "bool"))
         self.throw(e)
+    if not self.term and f.infer and f.clo >= 0 and self.closures[f.clo].observe_fallthrough and f.ll not in self.retseen:
+        # All callers share this instance. A recursive call that consumed the
+        # concrete ABI rules out widening. Numeric identity needs its existing
+        # result channel; ordinary scalars can use the usual optional box.
+        if f.ret in ["str", "bytes"] or (f.ret in ["int", "float", "bool"] and not identity_abi(f)):
+            self.reopt(self.optional(f.ret))
+            f.checked_fallthrough = True
     if not self.term and f.ret == "dyn":
         self.ret_(Val(self.rtdata("pys_dyn_none_box"), "dyn"))  # (None, as a dynamic value: dynamic.py)
     if not self.term:

@@ -450,6 +450,20 @@ def gen_closure(self, n: Node) -> Val:
     self.nn[env] = True
     return Val(env, c.t)
 
+def none_call_names(n: Node, names: dict[str, bool]) -> None:
+    # Record the enclosing scope's direct comparisons once for all its local
+    # functions. A nested scope's bindings belong to its own scan.
+    if n.kind in ["def", "lambda", "class", "subclass"]:
+        return
+    if n.kind == "cmp" and n.s in ["is", "is not"]:
+        a, b = n.kids[0], n.kids[1]
+        if a.kind == "None":
+            a, b = b, a
+        if b.kind == "None" and a.kind == "call" and a.kids[0].kind == "name":
+            names[a.kids[0].s] = True
+    for child in n.kids:
+        none_call_names(child, names)
+
 def gen_new_closure(self, n: Node, key: str) -> Closure:
     # the function that def or lambda n compiles to where this function defines it (closure)
     d = n if n.kind == "def" else lambda_def(n)
@@ -530,6 +544,13 @@ def gen_new_closure(self, n: Node, key: str) -> Closure:
         c.ctypes.append(t)
         if x in self.nlw:
             c.nlw[x] = True
+    if not self.modlevel and outer.node.kind == "def" and len(outer.node.kids) >= 3 and n.kind == "def" and n.kids[1].kind == "noann" and n.s not in c.caps and not f.gen:
+        tests = outer.none_calls
+        if tests is None:
+            tests = {}
+            none_call_names(outer.node.kids[2], tests)
+            outer.none_calls = tests
+        c.observe_fallthrough = n.s in tests
     # the defaults that are no constants: the env holds their values, after the cells
     for j in range(1, len(f.params)):
         if not is_const(f.defaults[j]) or (identity_default(f.defaults[j]) and self.idhere()):

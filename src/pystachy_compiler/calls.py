@@ -226,7 +226,11 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
     if f.kind == "name":
         # (a union's value that a test narrowed to its Callable member is that Callable here)
         self.not_callable(f.s, self.now_type(f.s) if is_union(unopt(self.ltype[f.s])) else self.ltype[f.s])
-    return self.obj_call(self.expr(f, ""), args, want, resultsoft)
+    callee = self.expr(f, "")
+    if n is self.cmpnode and callee.t.startswith("fn[c:"):
+        # A direct None identity test can observe an inferred fallthrough.
+        return self.call_value(callee, args, want, resultsoft, none_test=True)
+    return self.obj_call(callee, args, want, resultsoft)
 
 def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
     # f(a, *t, k=v): the items a star unpacks are positional arguments. CPython evaluates the
@@ -751,7 +755,7 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
         result.idversion = "0"
     return result
 
-def gen_call_value(self, v: Val, args: list[Node], want: str, resultsoft: bool = False) -> Val:
+def gen_call_value(self, v: Val, args: list[Node], want: str, resultsoft: bool = False, none_test: bool = False) -> Val:
     # a call through function value v (is_fn): the call of the function it is, as if called by
     # its name there (the function a module's own name binds: a builtin that the program binds
     # is still the builtin)
@@ -767,7 +771,7 @@ def gen_call_value(self, v: Val, args: list[Node], want: str, resultsoft: bool =
         return self.builtin(k[2:], args, want, resultsoft)
     if k.startswith("c:"):
         # a closure: its function takes its env first
-        return self.call_fn(self.closures[int(k[2 : k.find(":", 2)])].f, [Val(v.v, "env")], args, want, resultsoft=resultsoft)
+        return self.call_fn(self.closures[int(k[2 : k.find(":", 2)])].f, [Val(v.v, "env")], args, want, resultsoft=resultsoft, none_test=none_test)
     return self.call_fn(self.funcs[k[2:]], [], args, want, resultsoft=resultsoft)
 
 def gen_bound(self, s: str) -> bool:
@@ -1544,7 +1548,7 @@ def ann_param(self, f: FnInfo, j: int, t: str) -> bool:
     return f.cls == "" or not (f.name.startswith("__") and f.name.endswith("__")) or (f.name == "__init__" and f.node.kids[0].kind != "noann")
 
 
-def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "", unbound: bool = False, got: list[FnInfo] | None = None) -> Val:
+def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "", unbound: bool = False, got: list[FnInfo] | None = None, none_test: bool = False) -> Val:
     # f(pre + args); none: the error where pre[0], an object called (o(args)), is None; got: of
     # a comparison, which reads whether its method returned NotImplemented (concrete_cmp), and
     # takes the functions called. Any other call takes the result as it is, so that a method
@@ -1822,6 +1826,10 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
                     self.qused[g.ll] = v.t if old == v.t else "?"
         return v
     result = Val(tmpname(c.r[0]), f.ret)
+    if f.checked_fallthrough and not none_test:
+        # Other callers keep their inferred concrete type, including adapters
+        # for Callable and assignment to an annotated optional local.
+        return self.unwrap(result, f"RuntimeError: {short(f.name)}() ended without returning a value")
     if idresult != "" and numeric_identity(f.ret) and self.fn_identity(f):  # (code that does not track identity gives none)
         result.idexact = result.t == "int" or result.t == BIG or result.t == "float"
         result.idslot = idresult
