@@ -96,6 +96,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/specs.py',
     'src/pystachy_compiler/statements.py',
     'src/pystachy_compiler/structs.py',
+    'src/pystachy_compiler/structure.py',
     'src/pystachy_compiler/symbols.py',
     'src/pystachy_compiler/syntax.py',
     'src/pystachy_compiler/templates.py',

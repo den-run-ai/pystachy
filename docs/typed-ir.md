@@ -775,13 +775,29 @@ it never writes the high placeholder outside that frame. A consumer copies the
 companion into its private result slot before another resume. Isolated ordinary
 modules keep their raw layout; crossing checks prevent mixing representations.
 
-Each block ends with one terminator. Branch labels stay within the function, and phi
+### Control flow
+
+Each block has a label of its own, the first block's being `entry`, and ends with one
+terminator. Branch labels stay within the function, and phi
 predecessors must branch to their join. `switch` branches on an `int` to the label of the
 case it equals, else to its default: its cases are distinct `int` literals, and it reaches a
 block that starts with a phi by one edge at most, since a phi has one entry per block that
 branches there. Comparisons dispatch on class tags with it, which LLVM may lower to a jump
 table. Checked operations share cold error blocks per function, message and handler. The
 verifier checks these invariants and number bounds.
+
+Control flow is structured. Its edges are a block's terminator labels, the landing block of
+the try statement that covers it and its check's cold block (`dataflow.flow_targets`). An edge
+that closes a cycle goes to a block that dominates the edge's source, so the flow is
+reducible: each cycle has one entry, its head, and cycles nest as WebAssembly's `loop` and
+`block` constructs do, so a backend for a structured target needs no dispatch loop. A loop
+record (`IFn.loops`, a `loop` line of the [text](#text-form)), which loop passes and
+structured backends read, names blocks of its function. Where its head is the head of a loop
+of the flow, its body, step and tests are blocks of that loop and its exit is not. A loop
+whose body always leaves it closes no cycle, and a test before a loop may skip it to its exit.
+[`structure.py`](../src/pystachy_compiler/structure.py) computes the dominators, retreating
+edges and natural loops, and the verifier checks these rules after every pass;
+[`structure.tir`](../tools/fixtures/typed_ir/structure.tir) breaks each of them.
 
 <a id="37-effects"></a>
 <a id="45-effects"></a>
@@ -1150,8 +1166,8 @@ decides a fixed tuple's slots while its function is printed.
   differs from `OPS`.
 - `tools/typed_ir_text.py verify tools/fixtures/typed_ir/invalid.tir` holds the verifier to
   the error each function of the file expects, `classes.tir` holds the verifier's class view
-  to the classes its module declares, and `fields.tir` its `field.addr` rule to their structs
-  (see [text form](#text-form)).
+  to the classes its module declares, `fields.tir` its `field.addr` rule to their structs
+  (see [text form](#text-form)), and `structure.tir` its [control-flow](#control-flow) rules.
 - `tools/test_typed_ir_compile.py` (in `make check-fast`) prints a sample of programs' modules,
   compiles them from text and requires the compiler's LLVM byte for byte;
   `tools/typed_ir_text.py roundtrip` measures it for any programs.

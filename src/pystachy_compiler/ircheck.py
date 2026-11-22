@@ -4,6 +4,7 @@ from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_lists, 
 from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, merged_blocks, operand_kind, slot_register, tmpname, value_definitions
 from src.pystachy_compiler.scalar_ir import SCALAR_INTS
+from src.pystachy_compiler.structure import Structure
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.union_proof import UnionProof, private_optional_reads, simple_union_proof
 from src.pystachy_compiler.specs import BIG, CAST_KINDS, EMPTYFS, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME, TYPE_CLASSES
@@ -634,6 +635,32 @@ def value_types(self, fn: IFn, types: dict[str, str] | None = None, makers: dict
                             self.bad_ir(fn, b, f"{i.op} operand {j} reads {v} as {u}, where {first[v]} reads it as {read[v]}")
 
 
+def check_structure(self, fn: IFn, at: dict[str, int]) -> None:
+    # fn's control flow is structured (structure.py): reducible, so that each cycle has one entry,
+    # which dominates it. Each loop record names blocks of fn, and where its head is the head of a
+    # loop of the flow, its body, step and tests are blocks of that loop and its exit is not. (A
+    # record's head may be no loop's head, where every path through its body leaves the loop, and
+    # its exit may be reached around it, from a test before the loop: neither is an error.)
+    s = Structure(fn)
+    for e in s.irreducible():
+        head = fn.blocks[e[1]].label
+        self.bad_ir(fn, fn.blocks[e[0]], f"a branch to {head}, which closes a cycle that {head} does not dominate: control flow that is not structured")
+    for lp in fn.loops:
+        for l in [lp.head, lp.body, lp.step, lp.exit] + lp.tests:
+            if l != "" and l not in at:
+                self.bad_ir(fn, fn.blocks[0], f"the loop at {lp.head} names {l}, which is no block of it")
+        if lp.head == "" or not s.reached(at[lp.head]):
+            continue
+        blocks = s.loop(at[lp.head])
+        if len(blocks) == 0:
+            continue
+        for l in [lp.body, lp.step] + lp.tests:
+            if l != "" and s.reached(at[l]) and at[l] not in blocks:
+                self.bad_ir(fn, fn.blocks[at[lp.head]], f"the loop at {lp.head} names {l}, which is not one of its blocks")
+        if lp.exit != "" and at[lp.exit] in blocks:
+            self.bad_ir(fn, fn.blocks[at[lp.head]], f"the loop at {lp.head} exits to {lp.exit}, one of its own blocks")
+
+
 def verify_dynamic_raw(self, fn: IFn) -> None:
     # Raw dynamic payload bits are only an identity-comparison input: a bits cast reads them as
     # an int, which only a direct integer equality comparison reads. Collect all producers
@@ -663,7 +690,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
     # call and init ops call compiled
     # functions (or, in runtime mode, runtime.c's functions that runtime.py declares); every block
     # has a label of its own, the first block's being entry; every block ends with its one
-    # terminator; branches go to blocks of fn; a phi
+    # terminator; branches go to blocks of fn, and the flow is structured (check_structure); a phi
     # starts its block, and its predecessors branch there; each op holds exactly the numbers
     # its lowering prints (Ins.r), and no number or label is above IFn.n. Exceptions (once the
     # passes of eh_ir have run, eh): a landing op is alone in its block, which only the unwind
@@ -906,6 +933,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 for l in i.b:
                     if l not in at or b.label not in succ[at[l]]:
                         self.bad_ir(fn, b, f"a phi from {l}, which does not branch there")
+    check_structure(self, fn, at)
     if dynamic_raw:
         verify_dynamic_raw(self, fn)
     if dynamic_proofs:
