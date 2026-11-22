@@ -337,6 +337,27 @@ class Active(unittest.TestCase):
         self.assertEqual(report["records"], [])
         self.assertIn("FileNotFoundError", report["errors"][str(self.dir / "test_missing.py")])
 
+    def test_triage_selected_methods(self):
+        manifest = self.dir / "methods.txt"
+        manifest.write_text(f"{self.src} RandomTests.test_seeded\n{self.src} OtherTests.test_other\n")
+        out = self.dir / "report.json"
+        work = self.dir / "selected"
+        ctm.main(["triage", "--selection", str(manifest), "--compiler", "true", str(out), str(work)])
+        rows = json.loads(out.read_text())["records"]
+        self.assertEqual({r["test"] for r in rows}, {"RandomTests.test_seeded", "OtherTests.test_other"})
+        self.assertEqual(len(list(work.rglob("*.py"))), 2)
+        self.assertTrue(all(r["status"] == "differs" for r in rows))
+
+    def test_selection_requires_known_unique_methods(self):
+        manifest = self.dir / "methods.txt"
+        for rows, message in [([], "empty"), (["invalid"], "expected"),
+                              (["a.py M.m", "a.py M.m"], "duplicate")]:
+            manifest.write_text("\n".join(rows))
+            with self.assertRaisesRegex(ValueError, message):
+                ctm.read_selection(manifest)
+        with self.assertRaisesRegex(ValueError, "not extracted"):
+            ctm.extract(str(self.src), str(self.out), selected={("Unknown", "test_missing")})
+
     def test_combine_refuses_unknown_tests(self):
         with self.assertRaises(SystemExit), open(os.devnull, "w") as null:
             stderr, sys.stderr = sys.stderr, null
