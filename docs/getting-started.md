@@ -98,7 +98,11 @@ repos:
 Run `pre-commit install` to check staged Python files on each commit, or
 `pre-commit run pystachy-check --all-files` to check all tracked Python files.
 The hook runs the selected revision's `check` command once per file. It reports
-syntax errors without executing your code or installing LLVM.
+syntax errors without executing your code or installing LLVM. It also rejects valid
+source that Pystachy cannot read yet, such as `\N{...}` escapes, non-ASCII
+identifiers and encodings other than UTF-8, Latin-1 and ASCII
+([source text limits](language/compatibility.md#source-text)).
+Use the hook's `exclude` pattern for files that Pystachy will not compile.
 
 ## Measure the work you care about
 
