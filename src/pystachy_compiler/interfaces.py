@@ -529,16 +529,16 @@ def gen_to_object(self, v: Val) -> Val:
         return self.to_object(self.class_value_builtin(v))
     if t == "int" or t == "float" or t == "bool":
         b = self.coerce(v, self.ctype("opt", [t]))  # (its T | None's box, which never changes)
-        return self.iface_box(self.iface_table(b.t, OBJECT), b.v, OBJECT)
+        return self.object_box(b.t, b.v)
     if t == BIG:
         b = self.coerce(v, BIGOPT)  # (a promoting int's box: bigints.py)
-        return self.iface_box(self.iface_table(BIGOPT, OBJECT), b.v, OBJECT)
+        return self.object_box(BIGOPT, b.v)
     u = unopt(t)
     if v.v in self.nn or (not is_opt(t) and u not in self.classes and not is_union(u)):
         if is_union(u):
             return self.union_object(Val(v.v, u))
         held = t if is_sopt(t) else u  # (a number's box is its own value: is_sopt)
-        return self.iface_box(self.iface_table(held, OBJECT), v.v, OBJECT)
+        return self.object_box(held, v.v)
     # (None, which a value of a class, an optional value or a union with a class may be, as None)
     start = self.cur
     some = self.label()
@@ -551,7 +551,7 @@ def gen_to_object(self, v: Val) -> Val:
         b = self.union_object(Val(v.v, u))
     else:
         held = t if is_sopt(t) else u
-        b = self.iface_box(self.iface_table(held, OBJECT), v.v, OBJECT)
+        b = self.object_box(held, v.v)
     self.incoming(ph, b.v, self.cur)
     self.br(end)
     self.place(end)
@@ -569,7 +569,7 @@ def gen_dyn_object(self, v: Val) -> Val:
     self.incoming(ph, "null", start)
     self.cbr(self.ptr_cmp('==', v, Val(self.rtdata("pys_dyn_none_box"), "dyn")).v, end, some)
     self.place(some)
-    b = self.iface_box(self.iface_table("dyn", OBJECT), v.v, OBJECT)
+    b = self.object_box("dyn", v.v)
     self.incoming(ph, b.v, self.cur)
     self.br(end)
     self.place(end)
@@ -651,6 +651,17 @@ def gen_iface_box(self, tab: str, obj: str, t: str) -> Val:
     return Val(b, t)
 
 
+def gen_object_box(self, held: str, obj: str) -> Val:
+    # a new box of object's table of type held and obj, a value of that type (OBJECT), stored as
+    # one: a number's T | None box made of a union's payload is a T | None by that store, as the
+    # Lean checks of payload bits read a box's type from its uses (GUARDS.md)
+    b = self.rt("pys_alloc", "ptr", ["i64 16"])
+    self.mstore('%ptr', self.iface_table(held, OBJECT), b)
+    self.mstore(held, obj, self.maddr('%ptr', b, '1', True))
+    self.nn[b] = True
+    return Val(b, OBJECT)
+
+
 def gen_iface_table(self, impl: str, t: str) -> str:
     # the symbol of the table of implementation type impl for interface t: a constant whose
     # entries iface_finish compiles, those that the program calls
@@ -727,18 +738,13 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
         # implementation of that type; another's is never reached, as the test failed for it)
         nt = op[3:]
         held = unopt(tab.impl) if is_sopt(tab.impl) else tab.impl
-        if held == BIG and nt != BIG:
-            bad = f"narrowing a value of {typestr(tab.iface)} to {typestr(nt)} by isinstance() is not supported where it may hold a promoting int (a module that opts in to promoting ints stored one), which {typestr(nt)} holds only within 64 bits"
+        if held == BIG and nt == "int":
+            # (as|bool and the others never reach a promoting int: their tests fail for it)
+            bad = f"narrowing a value of {typestr(tab.iface)} to {typestr(self.union_type(['int', 'bool']))} by isinstance() is not supported where it may hold a promoting int (a module that opts in to promoting ints stored one), which {typestr(self.union_type(['int', 'bool']))} holds only within 64 bits"
         ok = held == nt or held == "dyn" or (is_union(nt) and held in umembers(nt)) or (nt == "type[object]" and held.startswith("type["))
         unreached = mk("raise", "", line, [mk("call", "", line, [mk("name", "SystemError", line, []), mk("str", f"a value of {typestr(tab.iface)} narrowed by isinstance() to {typestr(nt)} holds a {typestr(held)}", line, [])])])
         body = [unreached]
-        # (a number that goes into a union is made anew, o + 0 or o == True, as the IR check proves
-        # a union's payload by the operation that made it: a box's read proves no member)
         e = mk("name", "_o", line, [])
-        if ok and is_union(nt) and held == "int":
-            e = mk("binop", "+", line, [e, mk("int", "0", line, [])])
-        elif ok and is_union(nt) and held == "bool":
-            e = mk("cmp", "==", line, [e, mk("True", "", line, [])])
         if ok and is_sopt(tab.impl):
             test = mk("cmp", "is", line, [mk("name", "_o", line, []), mk("None", "", line, [])])
             body = [mk("if", "", line, [test, mk("block", "", line, [clone(unreached)]), mk("block", "", line, [])]), mk("return", "", line, [e])]
@@ -1203,4 +1209,22 @@ def gen_iface_narrowed(self, v: Val, nt: str) -> Val:
     if nt in self.classes and not self.is_iface(nt):
         return Val(self.mload(nt, self.maddr('%ptr', v.v, '1', True)), nt)
     e = mk("name", "_o", self.line, [])
+    if is_union(nt):
+        # (int | bool, of isinstance(x, int): a bool test, then the bool or the int that the
+        # entry of that type returns, made the union's member here, where the union's tag is the
+        # one this code gives it; an entry returns no union, whose tag only its own code knows)
+        line = self.line
+        isb = self.iface_isinst(v, mk("name", "bool", line, []))
+        yes = self.label()
+        no = self.label()
+        end = self.label()
+        ph = Ins("phi", nt, "")
+        self.cbr(isb.v, yes, no)
+        for m in ["bool", "int"]:
+            self.place(yes if m == "bool" else no)
+            r = self.coerce(self.iface_op(v, "as|" + m, [], m, clone(e), f"narrowing by isinstance() to {m}", []), nt)
+            self.incoming(ph, r.v, self.cur)
+            self.br(end)
+        self.place(end)
+        return Val(self.phi(ph), nt)
     return self.iface_op(v, "as|" + nt, [], nt, e, f"narrowing by isinstance() to {typestr(nt)}", [])
