@@ -23,6 +23,7 @@ unsupported forms, see [compatibility](compatibility.md).
 | `type[C]`, `type[C] \| None` | The class object of `C`, a class of the program, or of a class deriving from it; see [classes as values](semantics.md#classes-as-values) |
 | `type[object]`, `type` | The class object of any class: an ordinary class of the program or a builtin class |
 | `TextIO` | Text files |
+| `IO[str]` | Native text files and, when imported, the shipped `io.StringIO` |
 | `Generator[Y, S, R]`; `Iterator[T]` or `Iterable[T]` as a generator function's return | Generator objects that yield `Y` (any generator function's) and take `S` from `send()`; see [generators](semantics.md#generators). Elsewhere `Iterator[T]` and `Iterable[T]` type nothing ([iterators](semantics.md#iterators)) |
 
 A `bytes` value comes from a literal (`b"\x00ab"`, `rb"..."`), `bytes()` (empty, `bytes(n)` zero
@@ -891,6 +892,13 @@ from typing import TextIO
 def read_character(stream: TextIO | StringIO) -> str:
     return stream.read(1)
 ```
+
+A `typing.IO[str]` annotation accepts a native text file. When the program imports
+the shipped `io` module, it denotes the same reference union as `TextIO | StringIO`
+above, so `Optional[IO[str]]` can hold either stream or `None`. Without `io`,
+the existing restrictions for `TextIO` apply, including its rejection of `None`.
+Binary streams, `io.TextIOWrapper` objects and arbitrary file-like classes do not
+belong to this bounded annotation.
 
 Arguments, returns, fields, locals, list elements and dict values may use these
 unions. A tagged box retains the original object or file pointer: passing through

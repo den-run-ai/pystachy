@@ -312,6 +312,8 @@ def gen_ann(self, n: Node) -> str:
         for t in ts:
             if t.startswith("!"):
                 return t
+        if base == "io" and ts == ["str"] and self.imported_ref(n.kids[0]) == "typing.IO":
+            return text_stream_type(self)
         if base in ["pattern", "match"] and ts == ["str"]:
             alias = self.imported_ref(n.kids[0])
             if alias in ["typing.Pattern", "typing.Match"]:
@@ -346,6 +348,15 @@ def gen_ann(self, n: Node) -> str:
     if self.pathlike(n):
         return "!" + PATHLIKE
     return "!unsupported type annotation"
+
+def text_stream_type(self) -> str:
+    # open() has a native file handle; io.StringIO is a fixed-layout class.
+    # io.TextIOWrapper specializes on its buffer and has no single class layout.
+    cls = "io$StringIO"
+    if cls in self.classes and cls not in self.tmpl and lib_source(self.classes[cls].node.line, self.libdir, "io.py"):
+        return self.union_type(["file", cls])
+    return "file"
+
 
 def gen_class_family(self, ts: list[str]) -> str:
     # the type of an annotation A | B ... whose members include classes of the program derived
@@ -2758,6 +2769,26 @@ def attr_root(e: Node) -> Node:
     return e
 
 
+def reads_stream_text(self, call: Node, f: FnInfo) -> bool:
+    # Follow only methods with a fixed str result, back to an unrebound text-stream parameter.
+    while call.kind == "call" and call.kids[0].kind == "attr":
+        method = call.kids[0]
+        source = method.kids[0]
+        if source.kind == "name":
+            if source.s not in f.params or not METHODS.get("file." + method.s, "").startswith("str:"):
+                return False
+            t = f.ptypes[f.params.index(source.s)]
+            if t != "file" and not (self.reference_union(t) and t == text_stream_type(self)):
+                return False
+            rebound: dict[str, bool] = {}
+            local_names(guess_scope(f), rebound)
+            return source.s not in rebound
+        if not METHODS.get("str." + method.s, "").startswith("str:"):
+            return False
+        call = source
+    return False
+
+
 def gen_guess(self, e: Node, f: FnInfo) -> str:
     k = e.kind
     if k == "int" or k == "float" or k == "str" or k == "bytes":
@@ -3058,6 +3089,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
     if k == "call" and e.kids[0].kind == "attr" and e.kids[0].kids[0].kind == "name" and e.kids[0].kids[0].s in self.classes:
         ms = self.classes[e.kids[0].kids[0].s].methods  # C.m(...): a static or class method
         return ms[e.kids[0].s].ret if e.kids[0].s in ms and ms[e.kids[0].s].deco != "" else ""
+    if k == "call" and e.kids[0].kind == "attr" and reads_stream_text(self, e, f):
+        return "str"
     if k == "cmp" or (k == "unary" and e.s == "not"):
         return "bool"
     if k == "ifexp" and e.kids[1].kind == "None":
