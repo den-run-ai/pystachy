@@ -2024,9 +2024,9 @@ thread's `Thread` object (`MainThread`) work as in CPython where no other thread
   and `_is_owned()` are the lock's own where it is a reentrant lock; of any other lock they are
   `Condition`'s.
 - A `Thread` keeps no copy of `sys.stderr` and no `_invoke_excepthook` (no started thread reports
-  an exception); `_dangling` is a set, which keeps its threads (no weak containers), and
-  `current_thread()` never makes a `_DummyThread`. There is no `register_at_fork()` (no
-  `os.fork()`), and the module does not `del _thread` (#612).
+  an exception). `_dangling` tracks thread objects with typed weak references. Unreachable
+  threads can clear at the next collection. `current_thread()` never makes a `_DummyThread`.
+  There is no `register_at_fork()` (no `os.fork()`), and the module does not `del _thread` (#612).
 
 ### `concurrent.futures`
 
