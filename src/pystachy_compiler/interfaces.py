@@ -742,6 +742,7 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
             # (as|bool and the others never reach a promoting int: their tests fail for it)
             bad = f"narrowing a value of {typestr(tab.iface)} to {typestr(self.union_type(['int', 'bool']))} by isinstance() is not supported where it may hold a promoting int (a module that opts in to promoting ints stored one), which {typestr(self.union_type(['int', 'bool']))} holds only within 64 bits"
         ok = held == nt or held == "dyn" or (is_union(nt) and held in umembers(nt)) or (nt == "type[object]" and held.startswith("type["))
+        ok = ok or (held in self.classes and nt in self.classes and not self.is_iface(nt) and self.derives(held, nt))
         unreached = mk("raise", "", line, [mk("call", "", line, [mk("name", "SystemError", line, []), mk("str", f"a value of {typestr(tab.iface)} narrowed by isinstance() to {typestr(nt)} holds a {typestr(held)}", line, [])])])
         body = [unreached]
         e = mk("name", "_o", line, [])
@@ -1206,8 +1207,10 @@ def gen_iface_narrowed(self, v: Val, nt: str) -> Val:
     # v, a value of an interface that isinstance() proved holds a value of type nt (not None):
     # an object of a class of the program is held as itself; a number, a str or a class object
     # by its own table's entry, which knows how its type holds it (a number in its T | None's box)
-    if nt in self.classes and not self.is_iface(nt):
+    if nt in self.classes and not self.is_iface(nt) and not self.is_object(v.t):
         return Val(self.mload(nt, self.maddr('%ptr', v.v, '1', True)), nt)
+    # (a value of object's object, by its entry, which returns it at its own class or a base of
+    # it: what the call declares, as a proof of the read sees it)
     e = mk("name", "_o", self.line, [])
     if is_union(nt):
         # (int | bool, of isinstance(x, int): a bool test, then the bool or the int that the
