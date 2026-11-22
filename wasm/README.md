@@ -81,10 +81,16 @@ Commands without handlers need no conversion.
 The default, `WASM_EH=legacy`, also supports early Node 22 releases whose engines
 reject `try_table`. Both encodings use the same runtime and Python exception tag.
 
-The direct emitter gives a named refusal for generators, function values, dynamic values
-and classes that need
-runtime comparison or printing through the program's dispatchers. `wasm/build.sh tir`
-then builds the program through LLVM, and `WASM_TIR_LOG` records the route taken.
+Typed containers can print, compare and hash user-defined objects. For example, a
+`dict[Key, int]` can call `Key.__hash__` and `Key.__eq__` during lookup. The direct
+emitter installs the finalized class helpers in the shared function table and gives the
+reactor a row of callbacks for each static class ID. Exceptions raised by a callback
+can unwind to a Python handler in the guest. Programs using these callbacks require
+a reactor built with `wasm/build.sh runtime-wasm`.
+
+Generators, general function values and explicit dynamic values still receive a named
+refusal. `wasm/build.sh tir` then builds the program through LLVM, and
+`WASM_TIR_LOG` records the route taken.
 
 The source compiler passes the finalized functions and declarations directly to the emitter.
 `build/wasm/wasm_from_source SOURCE.py OUT.wasm` compiles a file in one process. Use `- -`

@@ -144,11 +144,10 @@ runtime_wasm() {
   trap 'rm -rf "$t"' EXIT
   "${LLVM}clang" --target=$TARGET --sysroot="$SYS" -O2 -Wall -Wextra -Werror -c wasm/reactor.c -o "$t/reactor.o"
   # a reactor (no main) exporting every symbol: a program module imports the runtime's functions
-  # and the recursion state by name; the runtime imports the program's code (program.init) and
-  # the class dispatchers (env.pys_obj_*), which wasm/run.mjs supplies
+  # and the recursion state by name. Object callbacks use the two modules' shared table.
   # shellcheck disable=SC2086
   "${LLVM}clang" --target=$TARGET --sysroot="$SYS" -mexec-model=reactor "$t/reactor.o" "$RT/runtime.o" "$RT/stubs.o" \
-    -o "$t/runtime.wasm" -Wl,--export-all -Wl,--growable-table -Wl,--export=__stack_pointer -Wl,--allow-undefined-file=wasm/reactor.imports -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
+    -o "$t/runtime.wasm" -Wl,--export-all -Wl,--growable-table -Wl,--export=__stack_pointer -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
   mv "$t/runtime.wasm" "$RT/runtime.wasm"
   rm -rf "$t"; trap - EXIT
 }

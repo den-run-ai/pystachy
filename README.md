@@ -124,9 +124,10 @@ has the full table, startup and memory costs, and reproduction commands.
 
 ## How it works
 
-The experimental [WebAssembly backend](wasm/README.md) can compile typed Python
-snippets directly from typed IR and run them with named tool callbacks in a Node host.
-Python handlers can catch built-in exceptions raised by the snippet or its runtime calls.
+The experimental [WebAssembly backend](wasm/README.md) compiles supported typed Python
+snippets directly from typed IR for Node and Wasmtime. Typed containers can call a
+class's comparison, hash and representation methods, and Python handlers can catch
+exceptions raised by those methods.
 
 Pystachy compiles the whole program before it runs, including the library modules
 it imports; there is no interpreter fallback. The frontend checks and infers types,

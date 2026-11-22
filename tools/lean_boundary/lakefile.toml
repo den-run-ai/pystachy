@@ -36,6 +36,9 @@ name = "GuardAudit"
 name = "PystachyWasmFrame"
 
 [[lean_lib]]
+name = "PystachyWasmDispatch"
+
+[[lean_lib]]
 name = "Audit"
 
 [[lean_exe]]
