@@ -188,6 +188,10 @@ jobs:
           done
           # Include a user-defined exception whose uncaught __str__ also raises.
           tests/run.sh "$PYSTACHY" wasm tests/programs/exceptions/exc_class_strfail.py
+          # Standard exceptions: Binaryen converts an LLVM command's catches to try_table.
+          npm install --prefix "$RUNNER_TEMP/binaryen" --no-audit --no-fund --ignore-scripts binaryen@132.0.0
+          PATH="$RUNNER_TEMP/binaryen/node_modules/.bin:$PATH" WASM_EH=standard tests/run.sh "$PYSTACHY" wasm \
+            tests/programs/exceptions/exc_class_strfail.py tests/programs/classes/property_read.py
 
       # These hosted/native controls run sequentially after a short GC JIT group.
       # PRs use the second native JIT worker below; neither placement adds a job.
