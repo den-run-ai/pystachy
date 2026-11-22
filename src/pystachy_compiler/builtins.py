@@ -334,8 +334,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if name == "__pys_exc_obj" and self.curfn.name == "<interface>" and len(args) == 1 and self.curfn.ret in self.classes:
         # (an entry of object's table: the object of a class of the program that a caught exception
         # raises, which isinstance() proved it holds, as an except clause binds it: interfaces.py)
-        e = self.expr(args[0], "exc")
-        return Val(self.rt("pys_exc_obj", "ptr", [f"ptr {e.v}"], t=self.curfn.ret), self.curfn.ret)
+        caught = self.expr(args[0], "exc")
+        return Val(self.rt("pys_exc_obj", "ptr", [f"ptr {caught.v}"], t=self.curfn.ret), self.curfn.ret)
     if name == "__pys_exc_user" and self.curfn.name == "<interface>" and len(args) == 1:
         # (and the exception that such an object raises, as a builtin exception class's test
         # narrows it to BaseException: interfaces.py)
@@ -3019,17 +3019,17 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     if (is_list(o.t) or is_vtuple(o.t)) and (m == "index" or m == "count") and len(args) == 1 and args[0].kind != "kw" and args[0].kind != "starred" and (self.holds_iface(o.t) or self.holds_iface(self.dry(args[0]))):
         # (a search of values of an interface, or for one: item is x or item == x, as CPython's,
         # in a function compiled for their types, interfaces.py)
-        x = self.expr(args[0], "")
-        found = self.container_find("find" if m == "index" else "count", x, o)
+        needle = self.expr(args[0], "")
+        found = self.container_find("find" if m == "index" else "count", needle, o)
         if m == "count":
             return found
-        bad = self.label()
-        ok = self.label()
-        self.cbr(self.num_cmp("<", found, Val("0", "int")).v, bad, ok)
-        self.place(bad)
-        missing = self.concat([self.repr(x), Val(self.sconst(" is not in list"), "str")]) if is_list(o.t) else Val(self.sconst("tuple.index(x): x not in tuple"), "str")
+        absent = self.label()
+        present = self.label()
+        self.cbr(self.num_cmp("<", found, Val("0", "int")).v, absent, present)
+        self.place(absent)
+        missing = self.concat([self.repr(needle), Val(self.sconst(" is not in list"), "str")]) if is_list(o.t) else Val(self.sconst("tuple.index(x): x not in tuple"), "str")
         self.raise_("ValueError", missing.v)
-        self.place(ok)
+        self.place(present)
         return found
     if is_dict(o.t) and targs(o.t)[0] == "int" and m in ["get", "pop", "setdefault"]:
         dm = self.dict_any_method(o, m, args)
