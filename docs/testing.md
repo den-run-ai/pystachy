@@ -208,12 +208,17 @@ Use `FILES="..."` to select cases; otherwise the corpus includes the compiler, r
 differential tests, deviations, benchmarks and compile-only IR probes.
 
 The oracle compares emitted IR byte for byte, rejection messages and exit statuses.
-It normalizes each compiler's own library prefix to `lib/` in diagnostic source locations;
-diagnostic text, line numbers, unrelated paths and IR remain significant. Each compiler
+It normalizes each compiler's own library prefix to `lib/` in diagnostic source locations.
+In IR, a string constant whose text is the compiler's real library directory, its home, a
+library module's file or the `ImportError` message naming one becomes `<lib>` or `<home>`,
+with the constant's sizes recomputed. No compiler emits those placeholders, so a relative
+path where the other compiler embeds a real one still differs. Diagnostic text, line
+numbers, unrelated paths and other IR remain significant. Each compiler
 still reads its own library and runtime inputs. Direct executables and Python script
 commands have their homes recognized; unfamiliar wrappers keep raw comparisons.
 Messages with quoted library paths or ambiguous quoting also stay raw so normalization
-cannot hide a change to diagnostic prose.
+cannot hide a change to diagnostic prose; possessives such as `CPython's` and `f()'s` are
+prose, not quotes.
 Use it when a refactor should preserve code generation. An intentional optimization can
 change IR and needs behavioral tests instead.
 
