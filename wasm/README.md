@@ -94,7 +94,9 @@ Plain generators start on first resume. Each instance has its own heap frame, wh
 keeps the next instruction, the producer's function-table index and its local slots.
 At each suspension it saves the typed temporary values needed on that edge. Resuming
 restores them before the successor block selects its phi inputs. This allows different
-producers to share an `Iterator[T]` interface. For programs using `send()` or `throw()`,
+producers to share an `Iterator[T]` interface. A loop can drop a recursively resumed
+generator when its handle comes directly from a constructor whose yields need no cleanup.
+For programs using `send()` or `throw()`,
 the frame also has space for the sent value and thrown exception. A new generator
 rejects a non-None first send, as Python does. Yields requiring cleanup during close
 and programs using explicit dynamic values receive a named refusal. `wasm/build.sh tir` then builds the program through LLVM, and
