@@ -1,0 +1,390 @@
+; Each function breaks one rule of the typed-IR verifier (PYSTACHY_IRCHECK=1), and the
+; expected-error line in it gives the message its first error must contain, in the block that
+; error names, as MLIR's -verify-diagnostics reads expected-error lines. Check with
+;   python3 tools/typed_ir_text.py verify tools/fixtures/typed_ir/invalid.tir
+
+; ---- an op's row: its operand and label counts and the fields it may set
+
+function @operands_beyond_the_count() -> None {
+entry:
+  ; expected-error {{br with 1 operands, where the operation table has 0}}
+  br(int 1) -> L1
+L1:
+  ret.none
+}
+
+function @labels_beyond_the_count() -> None {
+entry:
+  ; expected-error {{cbr with 1 labels, where the operation table has 2}}
+  cbr(bool true) -> L1
+L1:
+  ret.none
+}
+
+function @a_field_outside_the_row() -> None {
+entry:
+  ; expected-error {{ret.none sets k, where its row of the operation table names no field}}
+  ret.none k=1
+}
+
+function @a_field_the_row_does_not_name(n: int) -> None {
+entry:
+  ; expected-error {{num.cmp sets k, where its row of the operation table names t, s:operator}}
+  %t1 = num.cmp < k=1 (int %a0, int 1) : bool
+  ret.none
+}
+
+function @entry_storage_in_a_block() -> None {
+entry:
+  ; expected-error {{slot in a block, where entry storage belongs among the slots}}
+  %x.1 = slot name=x : int
+  ret.none
+}
+
+; ---- an op's types: a type, a type class, a variable, a type around one, the last operand's
+; constraint for further operands, and the result
+
+function @a_type(n: int) -> None {
+entry:
+  ; expected-error {{cbr operand 0 needs bool, got int}}
+  cbr(int %a0) -> L1, L1
+L1:
+  ret.none
+}
+
+function @a_type_class(n: int) -> None {
+entry:
+  ; expected-error {{ptr.cmp operand 0 needs a native reference type or None, got int}}
+  %t1 = ptr.cmp == (int %a0, None null) : bool
+  ret.none
+}
+
+function @a_variable(n: int) -> int {
+entry:
+  ; expected-error {{select operand 2 needs int ($T is int at operand 1), got float}}
+  %t1 = select(bool true, int %a0, float 2.0) : int
+  ret(int %t1)
+}
+
+function @a_variables_class() -> None {
+entry:
+  ; expected-error {{select operand 1 needs a native value type other than None}}
+  %t1 = select(bool true, None null, None null) : None
+  ret.none
+}
+
+function @a_type_around_a_variable(n: int) -> int {
+entry:
+  ; expected-error {{mem.load operand 0 needs &$T, $T a native value type}}
+  %t1 = mem.load(int %a0) : int
+  ret(int %t1)
+}
+
+function @a_variable_bound_by_another_operand(xs: list[int], v: *float) -> None {
+entry:
+  ; expected-error {{list.store operand 2 needs *int ($E is int at operand 0), got *float}}
+  ~%t1 ~%t2 ~%t3 = list.store(list[int] %a0, int 0, *float %a1)
+  ret.none
+}
+
+function @a_further_operand(n: int) -> None {
+entry:
+  ; expected-error {{switch operand 2 needs int, got float}}
+  switch(int %a0, int 1, float 2.0) -> L1, L1, L1
+L1:
+  ret.none
+}
+
+function @a_result_type(n: int) -> None {
+entry:
+  ; expected-error {{num.cmp result needs bool, got int}}
+  %t1 = num.cmp < (int %a0, int 1) : int
+  ret.none
+}
+
+function @a_return_of_another_type() -> int {
+entry:
+  ; expected-error {{ret operand 0 needs the function's return type}}
+  ret(str @s.1)
+}
+
+; ---- what an op's own checks add to its row
+
+function @an_operator_the_op_lacks(n: int) -> None {
+entry:
+  ; expected-error {{num.cmp needs a source comparison: ==, !=, <, <=, > or >=}}
+  %t1 = num.cmp <> (int %a0, int 1) : bool
+  ret.none
+}
+
+function @a_conversion_the_op_lacks(n: int) -> None {
+entry:
+  ; expected-error {{num.cast needs bool to int/float or int to float}}
+  %t1 = num.cast(int %a0) : int
+  ret.none
+}
+
+function @repeated_switch_cases(n: int) -> None {
+entry:
+  ; expected-error {{switch needs distinct int literal cases}}
+  switch(int %a0, int 1, int 1) -> L1, L1, L1
+L1:
+  ret.none
+}
+
+function @a_cleanup_a_yield_lacks() -> gen[int] coroutine {
+entry:
+  ; expected-error {{gen.yield with cleanup 2, where it is 0 or 1}}
+  ~%t1 ~%t2 = gen.yield cleanup=2 (%slot 0) -> L3
+L3:
+  ret.none
+}
+
+; ---- blocks, terminators and the values operands name
+
+function @an_unknown_op() -> None {
+entry:
+  ; expected-error {{unknown op nop}}
+  nop
+  ret.none
+}
+
+function @a_terminator_in_the_middle() -> None {
+entry:
+  ; expected-error {{a terminator in the middle, at ret.none}}
+  ret.none
+  ret.none
+}
+
+function @a_branch_to_no_block() -> None {
+entry:
+  ; expected-error {{a branch to L7, which is no block of it}}
+  br -> L7
+}
+
+function @a_phi_after_other_ops(n: int) -> int {
+entry:
+  br -> L1
+L1:
+  %t2 = num.cmp < (int %a0, int 1) : bool
+  ; expected-error {{a phi after other ops}}
+  %t3 = phi(int %a0) -> entry : int
+  ret(int %t3)
+}
+
+function @a_phi_from_a_block_that_does_not_branch_there(n: int) -> int {
+entry:
+  br -> L1
+L1:
+  ; expected-error {{a phi from L2, which does not branch there}}
+  %t3 = phi(int %a0) -> L2 : int
+  ret(int %t3)
+L2:
+  ret(int %a0)
+}
+
+function @an_operand_that_is_no_value() -> None {
+entry:
+  ; expected-error {{cbr operand flag is no value, parameter, slot, symbol or constant}}
+  cbr(bool flag) -> L1, L1
+L1:
+  ret.none
+}
+
+function @an_operand_that_names_a_lowering_temporary(xs: list[int]) -> int {
+entry:
+  %t1 ~%t2 ~%t3 ~%t4 = list.load(list[int] %a0, int 0) : *int
+  ; expected-error {{ret operand %t2 is a temporary of a list.load op's lowering, which no op may use}}
+  ret(int %t2)
+}
+
+; ---- a value's one type: an operand reads its value at the type its definition gives it, or by
+; a view of specs.TYPE_VIEWS; an address &T and a packed slot *T are never read as each other
+
+function @a_value_read_at_another_type(n: int) -> None {
+  %y.2 = slot name=y : float
+entry:
+  ; expected-error {{mem.store operand 1 reads %a0 as float, but it is int}}
+  mem.store(&float %y.2, float %a0)
+  ret.none
+}
+
+function @a_list_read_with_other_items(xs: list[int]) -> int {
+entry:
+  ; expected-error {{list.len operand 0 reads %a0 as list[str], but it is list[int]}}
+  %t1 = list.len(list[str] %a0) : int
+  ret(int %t1)
+}
+
+function @an_address_read_as_a_packed_slot() -> None {
+  %x.1 = slot name=x : int
+entry:
+  ; expected-error {{rt operand 0 reads the address %x.1 as a packed slot}}
+  %t2 = rt entry=box (*T %x.1) : %ptr
+  ret.none
+}
+
+function @a_packed_slot_read_as_an_address(xs: list[int]) -> int {
+entry:
+  %t1 ~%t2 ~%t3 ~%t4 = list.load(list[int] %a0, int 0) : *int
+  ; expected-error {{mem.load operand 0 reads %t1, a packed slot, as an address}}
+  %t5 = mem.load(&int %t1) : int
+  ret(int %t5)
+}
+
+function @machine_bits_read_at_two_types(n: int) -> opt[int] {
+  %s.1 = slot name=s : str
+entry:
+  %t2 = rt entry=box (*T %a0) : %ptr
+  mem.store(&str %s.1, str %t2)
+  ; expected-error {{ret operand 0 reads %t2 as opt[int], where mem.store operand 1 reads it as str}}
+  ret(opt[int] %t2)
+}
+
+function @another_ops_word_read_as_a_typed_value(s: str) -> str {
+  %s.2 = slot name=s : str
+entry:
+  %t3 = mach.load(%ptr %s.2) : %ptr
+  ; expected-error {{ret operand 0 reads %t3 as str, but it is %ptr}}
+  ret(str %t3)
+}
+
+; ---- casts: each of a kind of specs.CAST_KINDS, which keeps its operand's LLVM type
+
+function @a_cast_of_no_kind(p: %ptr) -> None {
+entry:
+  ; expected-error {{cast wide, where a cast is of a kind of specs.CAST_KINDS}}
+  %t1 = cast wide (%ptr %a0) : str
+  ret.none
+}
+
+function @a_cast_to_another_llvm_type(p: %ptr) -> None {
+entry:
+  ; expected-error {{cast bits of a %ptr to a int, where a cast reads its operand at another type of its LLVM type}}
+  %t1 = cast bits (%ptr %a0) : int
+  ret.none
+}
+
+function @a_bits_cast_of_a_typed_value(s: str) -> None {
+entry:
+  ; expected-error {{cast bits of a str to a list[int], where a cast of kind bits reads a machine word}}
+  %t1 = cast bits (str %a0) : list[int]
+  ret.none
+}
+
+function @a_bits_cast_of_a_reference_read_as_a_word(s: str) -> None {
+entry:
+  ; expected-error {{cast bits of %a0, a str read as a %ptr, where a cast of kind bits reads a machine word}}
+  %t1 = cast bits (%ptr %a0) : list[int]
+  ret.none
+}
+
+function @a_bits_cast_of_a_packed_slot_read_as_a_word(x: float) -> None {
+entry:
+  %t1 = slot.pack(float %a0) : *float
+  ; expected-error {{cast bits of %t1, a *float read as a %slot, where a cast of kind bits reads a machine word}}
+  %t2 = cast bits (%slot %t1) : int
+  ret.none
+}
+
+function @an_object_cast_to_a_union_of_no_classes(p: %ptr) -> None {
+entry:
+  ; expected-error {{cast object of a %ptr to a union[int,str], where a cast of kind object reads}}
+  %t1 = cast object (%ptr %a0) : union[int,str]
+  ret.none
+}
+
+function @a_member_cast_of_a_box(u: union[int,str]) -> None {
+entry:
+  ; expected-error {{cast member of a union[int,str] to a str, where a cast of kind member reads}}
+  %t1 = cast member (union[int,str] %a0) : str
+  ret.none
+}
+
+function @an_opaque_cast_outside_the_copy_memo(xs: list[int]) -> None {
+entry:
+  ; expected-error {{cast opaque of a list[int] to a str, where a cast of kind opaque reads}}
+  %t1 = cast opaque (list[int] %a0) : str
+  ret.none
+}
+
+; ---- a runtime call's instance of its signature: one type for each of its type variables (S its
+; receiver, which binds what no other operand did of T, K and V to what that holds), and the
+; signature's own LLVM type
+
+function @a_runtime_call_with_receivers_of_two_types(r: set[int], s: set[str], o: set[int]) -> None {
+entry:
+  ; expected-error {{rt set.union_more operand 1 needs set[int], got set[str]}}
+  rt entry=set.union_more (set[int] %a0, set[str] %a1, set[int] %a2) : None
+  ret.none
+}
+
+function @a_runtime_call_with_a_result_of_another_type(d: dict[str,int], k: str) -> None {
+entry:
+  %t3 = slot.pack(str %a1) : *str
+  ; expected-error {{rt dict.getitem result needs *int, got *str}}
+  %t4 = rt entry=dict.getitem (dict[str,int] %a0, *str %t3) : *str
+  ret.none
+}
+
+function @a_runtime_result_variable_of_another_llvm_type(n: int) -> None {
+entry:
+  %t2 = slot.pack(int %a0) : *int
+  ; expected-error {{rt ubox result needs the LLVM type ptr of R, got int}}
+  %t3 = rt entry=ubox (int 1, *int %t2) : int
+  ret.none
+}
+
+; ---- functions the verifier accepts
+
+function @accepted_views(xs: list[int], s: str) -> opt[str] {
+  %ys.3 = slot name=ys : list[int]
+entry:
+  %t4 ~%t5 ~%t6 ~%t7 = list.load(list[int] %a0, int 0) : *int
+  %t8 = num.cmp < (int %t4, int 10) : bool
+  %t9 = rt entry=list.new (int 3) : list[T]
+  mem.store(&list[int] %ys.3, list[int] %t9)
+  %t10 = rt entry=box (*T %t4) : %ptr
+  %t11 = ptr.cmp == (opt[int] %t10, None null) : bool
+  %t17 = rt entry=list.new (int 0) : list[str]
+  %t18 = slot.pack(str %a1) : *str
+  rt entry=list.append (list[str] %t17, *str %t18) : None
+  %t19 = rt entry=dict.new (int 1, int 0) : dict[str,int]
+  %t20 = rt entry=dict.has (dict[str,int] %t19, *str %t18) : bool
+  cbr(bool %t8) -> L12, L13
+L12:
+  ret(opt[str] %a1)
+L13:
+  ret(opt[str] null)
+}
+
+function @accepted_casts(p: %ptr, w: %slot) -> int {
+entry:
+  %t1 = cast bits (%ptr %a0) : &int
+  %t2 = mem.load(&int %t1) : int
+  %t3 = cast bits (%slot %a1) : int
+  %t4 = scalar.bin add (int %t2, int %t3) : int
+  ret(int %t4)
+}
+
+function @accepted(n: int, xs: list[int], flag: bool) -> int {
+entry:
+  %t4 = num.cmp < (int %a0, int 10) : bool
+  %t5 = scalar.bin xor (bool %t4, bool %a2) : bool
+  cbr(bool %t5) -> L6, L7
+L6:
+  ~%t8 %t9 %t10 = ovf + (int %a0, int 1) : int
+  check message="OverflowError: integer overflow" (bool %t10) -> L7
+L7:
+  %t11 = phi(int %a0, int %t9) -> entry, L6 : int
+  %t12 = list.len(list[int] %a1) : int
+  %t13 = select(bool %t4, int %t11, int %t12) : int
+  switch(int %t13, int 0, int 1) -> L14, L14, L15
+L14:
+  ret(int %t13)
+L15:
+  ret(int 0)
+L16:
+  raise exception=OverflowError (str @s.1, str @s.2)
+cold "OverflowError: integer overflow" -> L16
+}

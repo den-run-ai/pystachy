@@ -57,9 +57,10 @@ STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pysta
 OPAQUE: dict[str, bool] = {"_weakref": True, "_pystachy_mappingproxy": True, "_pystachy_copy": True}
 # the module that CPython's types of a stand-in name as theirs (__module__, reprs), where it is
 # not the module's own: weakref.ReferenceType, _io.StringIO (every class that lib's
-# io defines is the C module _io's in CPython, as are the binary files of _pystachy_bfile), and
-# mappingproxy, a builtin type
-TYPEMODS: dict[str, str] = {"_weakref": "weakref", "io": "_io", "_pystachy_mappingproxy": "builtins", "_pystachy_bfile": "_io"}
+# io defines is the C module _io's in CPython, as are the binary files of _pystachy_bfile),
+# mappingproxy, a builtin type, and enum's FlagBoundary and EnumCheck (lib/_pystachy_enum.py)
+TYPEMODS: dict[str, str] = {"_weakref": "weakref", "io": "_io", "_pystachy_mappingproxy": "builtins", "_pystachy_bfile": "_io", "_pystachy_enum": "enum",
+                            "_pystachy_collections_abc": "collections.abc"}
 # binary files (lib/_pystachy_bfile.py): the names the loader binds a module's open() of a literal binary
 # mode to (binary_opens), each to the factory of the class CPython's open() makes for that mode, and their type
 BOPENS: dict[str, str] = {"_pys_bfile_reader": "open_reader", "_pys_bfile_writer": "open_writer",
@@ -104,7 +105,8 @@ for _k in "add sub mul truediv floordiv mod matmul and or xor lshift rshift iadd
 for _k in "neg pos invert".split():
     SPECIAL[f"__{_k}__"] = "1:"
 # special methods that CPython calls implicitly and Pystachy never does, and when CPython calls
-# them: a class that defines or inherits one is an error (see declare_fields)
+# them: a class that defines or inherits one is an error (see declare_fields), but the
+# __getattr__ of an ordinary class, which a failed lookup calls (reflection.py's hook_problem)
 UNCALLED: dict[str, str] = {"__new__": "to make each object of the class", "__getattribute__": "to read each attribute",
                             "__getattr__": "for each attribute it does not find", "__setattr__": "to assign each attribute",
                             "__delattr__": "to delete each attribute"}
@@ -127,6 +129,7 @@ CALLS: dict[str, str] = {
     "all(list[bool])": "pys_all:bool", "any(list[int])": "pys_any:bool", "all(list[int])": "pys_all:bool",
     "os.system(str)": "pys_system:int", "os.execv(str,list[str])": "pys_execv:None",
     "os.set_inheritable(int,int)": "pys_set_inheritable:None", "os.set_inheritable(int,bool)": "pys_set_inheritable:None",
+    "os.write(int,bytes)": "pys_os_write:int",
     "os.dup(int)": "pys_os_dup:int", "os.dup2(int,int)": "pys_os_dup2:int", "os.close(int)": "pys_os_close:None",
     "os.chdir(str)": "pys_chdir:None",
     "os.getpid()": "pys_getpid:int", "os.getcwd()": "pys_getcwd:str", "os.path.exists(str)": "pys_exists:bool", "os.path.realpath(str)": "pys_realpath:str",
@@ -175,13 +178,22 @@ CALLS: dict[str, str] = {
 # find_sub(h, n, st, en) is the first index of n in h[st:en], or -1 (memmem, linear in glibc).
 # fail(kind, msg) raises builtin exception kind (a str literal) with message msg, as pys_raise
 # does: for those a raise statement cannot give a message to (UnicodeDecodeError's constructor
-# takes the parts of its message).
+# takes the parts of its message). mul_hi(a, b) is the high 64 bits of the 128-bit product of two
+# 64-bit patterns as unsigned ints (wrap_mul gives the low ones), and urem_wide(hi, lo, d) the
+# remainder of the 128-bit hi:lo by d: the two of (a * b) % d where the product passes 64 bits.
+# float_bits(x) and bits_float(i) give a float's IEEE 754 bits as an int and the float of such
+# bits; fma(x, y, z) is x * y + z rounded once and sqrt(x) the square root with no domain check
+# (a NaN below zero): LLVM's llvm.fma.f64 and llvm.sqrt.f64. fdiv(x, y) is x / y as IEEE 754
+# divides, an inf or a NaN for a zero y: the subset's / raises ZeroDivisionError there.
 RTL: dict[str, str] = {
     "byte": "str,int:int", "str_new": "int:str", "str_put": "str,int,int:None", "str_done": "str:str",
     "copy": "str,int,str,int,int:None", "wrap_add": "int,int:int", "wrap_sub": "int,int:int",
-    "wrap_mul": "int,int:int", "shl": "int,int:int", "lshr": "int,int:int", "null": "str:bool",
+    "wrap_mul": "int,int:int", "shl": "int,int:int", "lshr": "int,int:int", "ashr": "int,int:int", "null": "str:bool",
     "same": "str,int,str,int,int:bool", "find_byte": "str,int,int,int:int", "udiv": "int,int:int",
     "urem": "int,int:int", "mul_ovf": "int,int:bool", "find_sub": "str,str,int,int:int", "fail": "str,str:None",
+    "sdiv": "int,int:int", "srem": "int,int:int", "ctlz": "int:int", "ctpop": "int:int",
+    "mul_hi": "int,int:int", "udiv_wide": "int,int,int:int", "urem_wide": "int,int,int:int", "float_bits": "float:int", "bits_float": "int:float",
+    "fma": "float,float,float:float", "sqrt": "float:float", "fdiv": "float,float:float",
 }
 STR_HEADER_SIZE = 24  # offsetof(Str, s), checked against runtime.c and both CPython glues by rt-abi
 TBAA_LEN = 3
@@ -347,6 +359,30 @@ for _k in ("ABCMeta EllipsisType FunctionType GenericAlias _CallableGenericAlias
            "zip_iterator __all__ __builtins__ __doc__ __file__ __loader__ __name__ __package__ __spec__").split():
     ABCSMORE[_k] = True
 ABCSOTHER = "collections.abc.NAME is not supported: Pystachy's collections.abc (which _collections_abc is too) has only the ABCs"
+# lib's module of the collections.abc classes that a class of the program may derive from (Loader's
+# abc_classes): its classes, by their names in collections.abc, and typing's names of them (typing.Set
+# is set's alias, AbstractSet the ABC). An ABC that isinstance() decides by the methods a class has,
+# as its __subclasshook__ does (each with those methods), and the others, which a class is an
+# instance of by deriving from one (or the builtin classes CPython registers with it: Gen.abc_isinst)
+CABCS = "_pystachy_collections_abc"
+ABC_BASES: dict[str, bool] = {}
+for _k in ("Hashable Iterable Iterator Reversible Sized Container Collection Set MutableSet Mapping MutableMapping "
+           "MappingView KeysView ItemsView ValuesView Sequence MutableSequence").split():
+    ABC_BASES[_k] = True
+ABC_TYPING: dict[str, str] = {"AbstractSet": "Set"}
+for _k in ABC_BASES:
+    if _k != "Set":
+        ABC_TYPING[_k] = _k
+ABC_METHODS: dict[str, list[str]] = {"Hashable": ["__hash__"], "Iterable": ["__iter__"], "Iterator": ["__iter__", "__next__"],
+                                     "Reversible": ["__reversed__", "__iter__"], "Sized": ["__len__"], "Container": ["__contains__"],
+                                     "Collection": ["__len__", "__iter__", "__contains__"], "Callable": ["__call__"],
+                                     "Generator": ["__iter__", "__next__", "send", "throw", "close"], "Awaitable": ["__await__"],
+                                     "Coroutine": ["__await__", "send", "throw", "close"], "AsyncIterable": ["__aiter__"],
+                                     "AsyncIterator": ["__aiter__", "__anext__"], "AsyncGenerator": ["__aiter__", "__anext__", "asend", "athrow", "aclose"],
+                                     "Buffer": ["__buffer__"]}
+ABC_NOMINAL: dict[str, bool] = {}
+for _k in "Set MutableSet Mapping MutableMapping MappingView KeysView ItemsView ValuesView Sequence MutableSequence ByteString".split():
+    ABC_NOMINAL[_k] = True
 CLASSVAR = "typing.ClassVar (a class attribute) is not supported"
 ITERS = "_pystachy_iterators"  # lib's module of the iterator classes iter() makes objects of (Loader.program)
 # lib's modules that hand a container's items on as they are: their reads of a list's, a dict's or a
@@ -545,6 +581,25 @@ for _k in "basename dirname split splitext isabs abspath expanduser".split():
     NONEARG["os.path." + _k] = NONEARG["os.fspath"]  # (posixpath's take os.fspath() of the path first)
 NONEARG["os.path.normpath"] = "_path_normpath: path should be string, bytes or os.PathLike, not NoneType"  # (posix's, in C)
 OPTARG: list[str] = "str repr ascii bool input min max sys.exit exit quit".split()
+# builtins of one value that a closed value union's value splits by its tag (Gen.usplit), and
+# the member types each takes: another member raises CPython's TypeError (NONEARG's, of its type)
+UCALLS: dict[str, list[str]] = {"int": ["int", "float", "bool", "str"], "float": ["int", "float", "bool", "str"],
+                                "abs": ["int", "float", "bool"], "round": ["int", "float", "bool"], "ord": ["str"],
+                                "chr": ["int", "bool"]}
+# the methods of CPython 3.13's str, list, dict, int (bool's too) and float: a closed union's
+# member of another type raises AttributeError for one (Gen.uvalue_method), where one the
+# compiler lacks (utils.has_method) is rejected instead
+PYMETHODS: dict[str, list[str]] = {
+    "str": ("capitalize casefold center count encode endswith expandtabs find format format_map index isalnum isalpha isascii "
+            "isdecimal isdigit isidentifier islower isnumeric isprintable isspace istitle isupper join ljust lower lstrip maketrans "
+            "partition removeprefix removesuffix replace rfind rindex rjust rpartition rsplit rstrip split splitlines startswith "
+            "strip swapcase title translate upper zfill").split(),
+    "list": "append clear copy count extend index insert pop remove reverse sort".split(),
+    "dict": "clear copy fromkeys get items keys pop popitem setdefault update values".split(),
+    "int": "as_integer_ratio bit_count bit_length conjugate from_bytes is_integer to_bytes".split(),
+    "float": "as_integer_ratio conjugate fromhex hex is_integer".split(),
+}
+PYMETHODS["bool"] = PYMETHODS["int"]
 # what those return (for None itself, which always raises)
 NONERET: dict[str, str] = {"len": "int", "int": "int", "float": "float", "ord": "int", "os.system": "int", "os.path.exists": "bool"}
 # builtins whose own code (not CALLS) takes a str, list, dict or tuple
@@ -660,7 +715,7 @@ TEXT_OPS: dict[str, str] = {
 # the methods of frozenset (those that change nothing) and of set, which Gen.smethod compiles
 FSETMETHODS: list[str] = "copy difference intersection isdisjoint issubset issuperset symmetric_difference union".split()
 SETMETHODS: list[str] = FSETMETHODS + "add clear difference_update discard intersection_update pop remove symmetric_difference_update update".split()
-# The typed IR's operations (Ins.op), one row each: "effects|operands|results|labels|fields|value".
+# The typed IR's operations (Ins.op), one row each: "effects|operands|results|labels|fields|value|types".
 # Every instruction has typed operands; there is no text escape hatch. The rows are the one
 # definition of an operation's shape: IROPS, RESULT_NUMBERS, VALUE_AT and the shape tables below
 # are read from them, the IR check holds each instruction to its row (ircheck.op_shape_error), and
@@ -671,72 +726,194 @@ SETMETHODS: list[str] = FSETMETHODS + "add clear difference_update discard inter
 #             memory op its address's (Gen.opfx)
 #   operands  how many Ins.a holds: N, N-M, or N+ for N or more
 #   results   how many numbers Ins.r holds, as its lowering prints them; ? is a call's, by its
-#             signature: none or one
+#             signature: none or one. Where some are its lowering's own, one letter per number:
+#             v a value that other ops use, . a temporary that only names an intermediate LLVM
+#             value of its lowering, which no op may use (OP_TEMPS)
 #   labels    how many Ins.b holds: N; i for none, or two once an exception edge makes a call an
 #             invoke (then it ends its block); a for one per operand (a phi's predecessors, a
 #             switch's default and cases)
 #   fields    which of Ins.t (result type), Ins.s (text), Ins.k (integer) and Ins.x (descriptor)
-#             it may set: t s k x; the others stay "" or 0
+#             it may set, in that order; the others stay "" or 0. Each of s, k and x is given as
+#             s:NAME, its name for the op, which the text form writes it by (typed_ir_text.py):
+#             name and kind, a slot's variable and kind (slot_register); entry, hole and
+#             descriptor, an rt op's RUNTIME key, its empty container's type hole (Gen.holes, as
+#             empty.kind's) and the descriptor of the static type it works on; callee and hint, the
+#             symbol a call calls and "inline" where listguard's copy of a loop inlines it;
+#             module, the module an init runs; message and key, a check's "Kind: text" and its
+#             cold block's key (IFn.cold); exception, what a raise raises; flags, scalar.bin's
+#             overflow flags; metadata, the length, length.range or bytes a machine access
+#             tags; element and inbounds, mach.addr's element type and inbounds flag; item and
+#             index, a tuple slot's native item type and index, and a field.addr's member index;
+#             member and type, the union member or dynamic payload type a payload read takes;
+#             cleanup, whether closing a generator at its gen.yield runs code (GENCLEAN). An
+#             operator selects an arithmetic, conversion or comparison op's computation (ovf's +
+#             - *, scalar.bin's opcode, num.cmp's comparison); the text writes it bare after the
+#             op, as LLVM and MLIR write a comparison's predicate
 #   value     which number names the value Values places: 0 none, 1 the first, 2 the second
 #             (after an address), 3 each
+#   types     its operands' types, then its result's (Ins.t): "OPERAND, ... -> RESULT", without
+#             "-> RESULT" where it has no result type. Each is a type (bool, %slot), a type class
+#             (TYPE_CLASSES), or holds a variable, $T: the same type wherever the row names it, alone
+#             or inside a type (&$T, list[$E]), and of the class given after one of its names
+#             ($T:native). The last operand's holds for any further operands the count admits. *
+#             is decided per instruction: an rt op's by its RUNTIME signature, a call's by its callee
 OPS: dict[str, str] = {
-    "slot": "E|0|1|0|t s k|0",
-    "rt": "*|0+|?|i|t s k x|1", "call": "*|0+|?|i|t s x|0", "icall": "*|1+|?|i|t|0", "init": "*|0|0|i|s|0",
-    "br": "T|0|0|1||0", "cbr": "T|1|0|2||0", "switch": "T|2+|0|a||0", "check": "T R|1|0|1|s x|0",
-    "ret": "T|0-1|0|0||0", "ret.none": "T|0|0|0||0", "raise": "T R N|2|0|0|s|0", "unreachable": "T|0|0|0||0",
-    "phi": "|1+|1|a|t|0", "select": "|3|1|0|t|1", "ovf": "|2|3|0|t s|0",
-    "list.load": "rL|2|4|0|t|0", "list.store": "rL wL|3|3|0||0", "list.len": "rL|1|1|0|t|1",
-    "alloc.fixed": "A|0|1|0|t|0", "vtuple.make": "A|0+|1|0|t|0",
-    "mem.load": "*|1|1|0|t|1", "mem.store": "*|2|0|0||0",
-    "mach.load": "*|1|1|0|t s|1", "mach.store": "*|2|0|0|s|0", "mach.addr": "|2|1|0|t s k|1",
-    "tuple.load": "rL rD rO|1|2|0|t s k|3", "tuple.store": "wL wD wO|2|1|0|s k|3",
-    "field.addr": "|1|1|0|t k|1",
-    "slot.pack": "|1|1|0|t|1", "slot.unpack": "|1|1|0|t|1",
-    "scalar.bin": "|1-2|1|0|t s x|1", "scalar.cast": "|1|1|0|t s|1", "scalar.cmp": "|2|1|0|t s|1",
-    "num.cast": "|1|1|0|t|1", "num.cmp": "|2|1|0|t s|1", "int.ucmp": "|2|1|0|t s|1", "ptr.cmp": "|2|1|0|t s|1",
-    "empty.kind": "wD|1|1|0|k|0",
-    "union.tag": "rL rD rO|1|1|0|t|0", "union.payload": "rL rD rO|1|2|0|t s|2", "union.raw": "rL rD rO|1|2|0|t|2",
-    "dyn.type": "|1|1|0|t|1", "dyn.payload": "|1|2|0|t s|2", "dyn.raw": "|1|2|0|t|2",
-    "big.make": "|2|2|0|t|2", "big.lo": "|1|1|0|t|1", "big.hi": "|1|1|0|t|1",
-    "landing": "T|1|2|1|t|0", "throw": "T R N|1|0|0||0", "exc.match": "|2|2|0|t|0",
+    "slot": "E|0|1|0|t s:name k:kind|0|-> any",
+    "rt": "*|0+|?|i|t s:entry k:hole x:descriptor|1|*", "call": "*|0+|?|i|t s:callee x:hint|0|*", "icall": "*|1+|?|i|t|0|*", "init": "*|0|0|i|s:module|0|*",
+    "br": "T|0|0|1||0|", "cbr": "T|1|0|2||0|bool", "switch": "T|2+|0|a||0|int, int", "check": "T R|1|0|1|s:message x:key|0|bool",
+    "ret": "T|0-1|0|0||0|return", "ret.none": "T|0|0|0||0|", "raise": "T R N|2|0|0|s:exception|0|str, str", "unreachable": "T|0|0|0||0|",
+    "phi": "|1+|1|a|t|0|$T -> $T", "select": "|3|1|0|t|1|bool, $T:scalar, $T -> $T", "ovf": "|2|.vv|0|t s:operator|0|int, int -> int",
+    "list.load": "rL|2|v...|0|t|0|list[$E:item], int -> *$E", "list.store": "rL wL|3|...|0||0|list[$E:item], int, *$E", "list.len": "rL|1|1|0|t|1|list[$E:item] -> int",
+    "alloc.fixed": "A|0|1|0|t|0|-> layout", "vtuple.make": "A|0+|1|0|t|0|$E:velem -> vtuple[$E]",
+    "mem.load": "*|1|1|0|t|1|&$T:native -> $T", "mem.store": "*|2|0|0||0|&$T:native, $T",
+    "mach.load": "*|1|1|0|t s:metadata|1|%ptr -> machine", "mach.store": "*|2|0|0|s:metadata|0|%ptr, machine", "mach.addr": "|2|1|0|t s:element k:inbounds|1|%ptr, int -> %ptr",
+    "tuple.load": "rL rD rO|1|.v|0|t s:item k:index|3|ftuple -> packed", "tuple.store": "wL wD wO|2|.|0|s:item k:index|3|ftuple, packed",
+    "field.addr": "|1|1|0|t k:index|1|class -> &$F",
+    "slot.pack": "|1|1|0|t|1|native -> packed", "slot.unpack": "|1|1|0|t|1|packed -> native",
+    "cast": "|1|1|0|t s:operator|0|any -> any",
+    "scalar.bin": "|1-2|1|0|t s:operator x:flags|1|$T:arith, $T -> $T", "scalar.cast": "|1|1|0|t s:operator|1|bits -> bits", "scalar.cmp": "|2|1|0|t s:operator|1|$T:bits, $T -> bool",
+    "num.cast": "|1|1|0|t|1|numeric -> number", "num.cmp": "|2|1|0|t s:operator|1|$N:number, $N -> bool", "int.ucmp": "|2|1|0|t s:operator|1|int, int -> bool", "ptr.cmp": "|2|1|0|t s:operator|1|ref, ref -> bool",
+    "empty.kind": "wD|1|1|0|k:hole|0|dictset",
+    "union.tag": "rL rD rO|1|1|0|t|0|union -> int", "union.payload": "rL rD rO|1|.v|0|t s:member|2|union -> packed", "union.raw": "rL rD rO|1|.v|0|t|2|union -> %slot",
+    "dyn.type": "|1|1|0|t|1|dyn -> dyntype", "dyn.payload": "|1|.v|0|t s:type|2|dyn -> packed", "dyn.raw": "|1|.v|0|t|2|dyn -> %slot",
+    "big.make": "|2|.v|0|t|2|int, %ptr -> int+", "big.lo": "|1|1|0|t|1|int+ -> int", "big.hi": "|1|1|0|t|1|int+ -> %ptr",
+    "landing": "T|1|..|1|t|0|%addr -> exc", "throw": "T R N|1|0|0||0|exc", "exc.match": "|2|.v|0|t|0|exc, str -> bool",
     # generators (LLVM switched-resume coroutines, docs/internals.md#generators): gen.start ends a
     # generator function's entry block (the frame, its promise and the initial suspend), gen.yield
     # and gen.ret suspend it (gen.ret finally); gen.promise is the address of its promise (of the
     # generator's own, or of a handle's), gen.resume runs it to its next suspend, and gen.drop
     # closes a generator a loop owns and destroys it (it reports what closing raises, as CPython
     # reports an exception it ignores, so it never raises itself)
-    "gen.start": "T A|1|0|1||0", "gen.yield": "T U|1-3|2|1|k|0", "gen.ret": "T|0-2|2|0||0",
-    "gen.promise": "|0-1|1|0|t|0", "gen.resume": "U|1|0|i||0",
-    "gen.drop": "A I rL wL rD wD rO wO rG wG rF wF|1|0|0||0",
+    "gen.start": "T A|1|0|1||0|str", "gen.yield": "T U|1-3|..|1|k:cleanup|0|%slot, %ptr, dyn", "gen.ret": "T|0-2|..|0||0|%slot, %ptr",
+    "gen.promise": "|0-1|1|0|t|0|gen -> %ptr", "gen.resume": "U|1|0|i||0|gen",
+    "gen.drop": "A I rL wL rD wD rO wO rG wG rF wF|1|0|0||0|gen",
 }
 # What the rows say, by op. IROPS: the effects column without E (T ends a block; * as above).
-# RESULT_NUMBERS: the fixed result counts (a call's is Gen.nums'). VALUE_AT: the ops whose values
+# RESULT_NUMBERS: the fixed result counts (a call's is Gen.nums'). OP_TEMPS: the positions in
+# Ins.r of the ops' lowering temporaries, for the ops that have some. VALUE_AT: the ops whose values
 # Values places, by the number each defines (its block and position there), as how: 1, the value
 # of one that defines one; 2, the payload of union.payload/raw and dyn.payload/raw, their second;
 # 3, each value of tuple.load and tuple.store. OP_ENTRY: whether it is entry storage. OP_MIN and
 # OP_MAX: the operand counts (OP_MAX -1 for no limit). OP_LABELS: the label count, or OP_PER_OPERAND
-# or OP_INVOKE. OP_FIELDS: the fields it may set, as bits (OP_T, OP_S, OP_K, OP_X).
+# or OP_INVOKE. OP_FIELDS: the fields it may set, as bits (OP_T, OP_S, OP_K, OP_X). OP_OPERAND_TYPES
+# and OP_RESULT_TYPE: the types column's operand constraints and result constraint ("" for none),
+# for the ops whose row gives them (ircheck.op_type_error).
 OP_T = 1
 OP_S = 2
 OP_K = 4
 OP_X = 8
 OP_PER_OPERAND = -1
 OP_INVOKE = -2
+
+
+# The type classes a types column names, each by what it admits (ircheck.OpTypes.admits decides
+# each); any other name there is a type. A native value type is a Python value's, and a runtime
+# type variable (T K V S) is one only where a class has that name.
+TYPE_CLASSES: dict[str, str] = {
+    "any": "any type",
+    "native": "a native value type: no machine type (%), address (&), packed slot (*) or descriptor (#)",
+    "scalar": "a native value type other than None, a machine scalar (%ptr, %byte, %i32, %slot) or a packed slot",
+    "machine": "a native value type other than None, %ptr, %byte, %i32, %slot or a packed slot",
+    "packed": "a packed slot *T of a native T, or %slot: eight bytes that claim no type",
+    "ref": "a native reference type or None",
+    "number": "int or float",
+    "numeric": "bool, int or float",
+    "arith": "bool, %byte, %i32, int or float",
+    "bits": "bool, %byte, %i32, int, float or %ptr",
+    "union": "a closed union of two or more distinct members, none of them optional",
+    "ftuple": "a fixed tuple",
+    "class": "a declared class",
+    "layout": "a declared class or a fixed tuple",
+    "velem": "a runtime-length tuple's element type",
+    "item": "a list's item type: one type, no machine representation",
+    "dictset": "a dict or a set",
+    "gen": "a generator",
+    "return": "the function's return type, or T where it is opt[T] of a reference T",
+}
+
+# The kinds of a cast op (Ins.s), each a reading of its operand's value at another type of the
+# same LLVM type (utils.lt): lowering erases a cast, and its uses read its operand
+# (Gen.erase_casts). The verifier holds each to its kind's rule (ircheck.cast_error), which holds
+# of the value the operand reads, at the type its definition gives it. A cast that narrows takes
+# the frontend's word for what it reads, such as a test before its readers.
+CAST_KINDS: dict[str, str] = {
+    "bits": "a machine word, which its definition gives only that type, as a typed value: %ptr as a reference or an address &T, %slot as an int or a packed slot *T",
+    "object": "a %ptr as a closed union of classes: the object that a box of the union holds (Gen.cmp_object's phi), which only a ptr.cmp, a mach.load of its class word (an int or a %ptr) and member casts read",
+    "member": "an object cast's value as one of its union's classes or a class derived from one: Gen.cmp_alts makes one for each class it tells apart, beside the object cast, and only code that a test of the object's class leads to reads it",
+    "opaque": "a reference as a str, and back, in lib/_pystachy_copy.py, whose deep-copy memo keeps any reference as a str",
+}
+
+# How an operand may read its value at a type other than the one the value's definition gives it
+# (the definition's type D, the operand's U), each a reading of the same bits that no op of the IR
+# writes (ircheck.value_types). The IR check rejects any other difference. In MLIR a value has one
+# type, which its uses share, and an op converts it; these are the readings that no op makes
+# explicit yet (a cast op makes the others: CAST_KINDS). Those that narrow (bits, opt[U] as U, a
+# derived class, other union members) rely on what the frontend knows, such as a test before
+# them, which the check does not see. instance, alias, optional and class hold inside a type's
+# brackets as well (list[opt[str]] as list[str]). A value whose definition gives only a machine
+# type (%ptr, %slot), a runtime type variable or a placeholder is read at related types by every
+# operand that names a type of its own (an rt op's operands name their runtime signature's).
+TYPE_VIEWS: dict[str, str] = {
+    "machine": "U is D's machine type: %ptr for a reference, an address &T or None (null), %slot for a packed slot *T or an int, %addr for a slot's address",
+    "bits": "D is %ptr, read as a reference or an address &T, or %slot, read as an int, a packed slot *T or an rt op's bool, where an rt op defines it (its RUNTIME result type) or an rt op's operand of a runtime type variable (*T, S) reads it; another op's word is read through a bits cast",
+    "instance": "D or U holds an empty container's placeholder (list[?], or opt[None] for a local first assigned None) or a runtime type variable (T K V S U R) that no binding replaced (Gen.instantiate), in an rt op's result or operand or where no class has its name: each stands for one type",
+    "alias": "one object by two types: a str and a bytes, an exc and its exctype, a recursive alias rec[A] and A's definition (or a union of fewer members stored in it), a set, a frozenset and an AbstractSet, a fixed tuple and a keyword record (kw[...]), a generator with and without its return type; inside brackets an int and an int+, and inside a tuple's a bool read as an int",
+    "int slot": "an int read as a packed slot *int, which holds its value, and back",
+    "optional": "D read as opt[D] of a reference D, None as any reference or opt[...], or opt[U] as U where the closed-union proof shows the value not None (ircheck.optional_reads)",
+    "class": "a class read as a class derived from it, as one of its bases or as a class derived from a base that has a common derived class with it; a closed union read as one with a common member",
+    "runtime bool": "an rt op's bool result, which the runtime ABI passes as an int, read as an int; an int read as an rt op's bool operand",
+    "method": "a bound method fn[m:C.f] or fn[d:f:C] read as its receiver C, and back; a closure fn[c:...] read as its env",
+    "builtin base": "an object of a class deriving from list or dict read as that container, list[T] or dict[K, V] as Gen.bview reads it, and back",
+}
+
+
+def type_list(s: str) -> list[str]:
+    # the comma-separated constraints of s, split only where no bracket is open, without spaces
+    found: list[str] = []
+    depth = 0
+    start = 0
+    for j in range(len(s) + 1):
+        if j == len(s) or (s[j] == "," and depth == 0):
+            c = s[start:j].strip()
+            if c != "":
+                found.append(c)
+            start = j + 1
+        elif s[j] == "[":
+            depth += 1
+        elif s[j] == "]":
+            depth -= 1
+    return found
+
+
+def result_temps(roles: str) -> list[int]:
+    # the positions of a results column's lowering temporaries (its dots), for OP_TEMPS
+    found: list[int] = []
+    for j in range(len(roles)):
+        if roles[j] == ".":
+            found.append(j)
+    return found
+
+
 IROPS: dict[str, str] = {}
 RESULT_NUMBERS: dict[str, int] = {}
+OP_TEMPS: dict[str, list[int]] = {}
 VALUE_AT: dict[str, int] = {}
 OP_ENTRY: dict[str, bool] = {}
 OP_MIN: dict[str, int] = {}
 OP_MAX: dict[str, int] = {}
 OP_LABELS: dict[str, int] = {}
 OP_FIELDS: dict[str, int] = {}
+OP_OPERAND_TYPES: dict[str, list[str]] = {}
+OP_RESULT_TYPE: dict[str, str] = {}
 for _k in OPS:
     _s = OPS[_k].split("|")[0]
     IROPS[_k] = _s.replace("E", "").strip()
     OP_ENTRY[_k] = "E" in _s
     _s = OPS[_k].split("|")[2]
     if _s != "?" and _s != "0":
-        RESULT_NUMBERS[_k] = int(_s)
+        RESULT_NUMBERS[_k] = len(_s) if _s[0] == "v" or _s[0] == "." else int(_s)
+        if "." in _s:
+            OP_TEMPS[_k] = result_temps(_s)
     _s = OPS[_k].split("|")[5]
     if _s != "0":
         VALUE_AT[_k] = int(_s)
@@ -752,8 +929,15 @@ for _k in OPS:
         OP_MAX[_k] = int(_s)
     _s = OPS[_k].split("|")[3]
     OP_LABELS[_k] = OP_PER_OPERAND if _s == "a" else OP_INVOKE if _s == "i" else int(_s)
-    _s = OPS[_k].split("|")[4]
-    OP_FIELDS[_k] = (OP_T if "t" in _s else 0) | (OP_S if "s" in _s else 0) | (OP_K if "k" in _s else 0) | (OP_X if "x" in _s else 0)
+    OP_FIELDS[_k] = 0
+    for _f in OPS[_k].split("|")[4].split():
+        # (t, or a field and its name: s:entry)
+        OP_FIELDS[_k] |= OP_T if _f == "t" else OP_S if _f[0] == "s" else OP_K if _f[0] == "k" else OP_X if _f[0] == "x" else 0
+    _s = OPS[_k].split("|")[6]
+    if _s != "*":
+        _r = _s.find("->")
+        OP_OPERAND_TYPES[_k] = type_list(_s[:_r] if _r >= 0 else _s)
+        OP_RESULT_TYPE[_k] = _s[_r + 2 :].strip() if _r >= 0 else ""
 # the ops that may change what an attribute's read gives, for the facts of narrowed attribute
 # paths (unions.py's path_event): 1 runs code of the program (a generator's resume runs its body,
 # and its yield lets its caller run), 2 a runtime function, by its effects, 3 a store
@@ -866,9 +1050,11 @@ FXBIT: dict[str, int] = {}
 for _j in range(len(FX)):
     FXBIT[FX[_j]] = 1 << _j
 # the runtime functions the compiler declares: "result:params|effects|symbol", with types as the
-# compiler spells them and S the receiver, T K V its element, key and value types, *X a value
-# in an 8-byte slot (i64 in the LLVM binding), # the descriptor of the static type the operation
-# works on (Ins.x), %X an LLVM type X that has no spelling (%ovf: {i64, i1}). "" as symbol means
+# compiler spells them and S the receiver, T K V its element, key and value types, U a second
+# value's (another container's too) and R a result's that its caller gives (variables that each
+# call binds: Gen.instantiate), *X a value in an 8-byte slot (i64 in the LLVM binding), # the descriptor of
+# the static type the operation works on (Ins.x), %X an LLVM type X that has no spelling (%ovf:
+# {i64, i1}). "" as symbol means
 # pys_<key, with . as _>. rt() checks each call against its entry, tools/check_runtime.py checks
 # the entries against runtime.c and runtime.py (their LLVM types, and the effects their call
 # graphs show). A function of runtime.py has R where it may raise in the linked runtime: a raise
@@ -883,7 +1069,7 @@ for _j in range(len(FX)):
 # bool without a default)
 NARROWED: list[str] = [
     "dict.bkey_get", "dict.bkey_pop", "dict.bkey_pop_default", "dict.bkey_setdefault", "dict.get", "dict.items", "dict.pop",
-    "dict.pop_default", "dict.setdefault", "m.floats", "m.prod_int", "sum.int_float",
+    "dict.pop_default", "dict.setdefault", "m.floats", "m.prod_int", "sum.int", "sum.int_float",
 ]
 RUNTIME: dict[str, str] = {
     # Explicit arbitrary-precision integers. Handles are immutable atomic objects;
@@ -900,8 +1086,8 @@ RUNTIME: dict[str, str] = {
     "big.from_str": "int+:str,int|R A|", "big.from_float": "int+:float|R A|", "big.hash": "int:int,%ptr||",
     "big.float": "float:int,%ptr|R|", "big.truediv": "float:int,%ptr,int,%ptr|R A|",
     "big.bit_length": "int:int,%ptr||", "big.bit_count": "int:int,%ptr||", "big.format": "str:int,%ptr,str|R A|",
-    "big.powmod": "int+:int,%ptr,int,%ptr,int,%ptr|R A|", "big.sum": "int+:list[int],int,%ptr|R A rL|",
-    "big.box": "%ptr:int,%ptr|A|",
+    "big.powmod": "int+:int,%ptr,int,%ptr,int,%ptr|R A|", "big.sum": "int+:list[T],int,%ptr|R A rL|",
+    "big.box": "opt[int+]:int,%ptr|A|",
     # a list of ints whose items may be promoting ints past 64 bits (runtime.c's BIGIDS: -2**63 in
     # the item's slot, its Mpz in the list's companion), in a program where int_lists() holds
     "list.set_big": "None:S,int,%ptr|R A rL wL|", "list.append_big": "None:S,%ptr|R A rL wL|",
@@ -912,34 +1098,34 @@ RUNTIME: dict[str, str] = {
     # any type, so that an operation on one may run the program's code (an object's __repr__,
     # __eq__, __lt__ or __hash__: U) and raise; boxing a number allocates (A), but the boxes of
     # -5..256 are constants
-    "dyn.int": "%ptr:int|A|", "dyn.float": "%ptr:float|A|", "dyn.ref": "%ptr:%ptr,%ptr|A rL wL|",
-    "dyn.int_box": "%ptr:int,%ptr|A|", "dyn.float_box": "%ptr:float,%ptr|A|",
-    "dyn.big": "%ptr:int,%ptr|A|", "dyn.big_box": "%ptr:int,%ptr,%ptr|A|",
+    "dyn.int": "dyn:int|A|", "dyn.float": "dyn:float|A|", "dyn.ref": "dyn:%ptr,%ptr|A rL wL|",
+    "dyn.int_box": "dyn:int,%ptr|A|", "dyn.float_box": "dyn:float,%ptr|A|",
+    "dyn.big": "dyn:int,%ptr|A|", "dyn.big_box": "dyn:int,%ptr,%ptr|A|",
     "dyn.big_unbox": "int+:%ptr|R|", "dyn.big_of": "int+:%ptr|R A|",
-    "dyn.int_box_of": "%ptr:%ptr|R A|",
+    "dyn.int_box_of": "dyn:%ptr|R A|",
     "dyn.index_bound": "int:%ptr,int|R|",
-    "dyn.copy_ref": "%ptr:%ptr,%ptr|R|", "dyn.copy_restore": "%ptr:%ptr,%ptr|R A rL wL|",
-    "dyn.copy_list": "%ptr:%ptr|R A rL wL|",
+    "dyn.copy_ref": "%ptr:%ptr,%ptr|R|", "dyn.copy_restore": "dyn:%ptr,%ptr|R A rL wL|",
+    "dyn.copy_list": "dyn:%ptr|R A rL wL|",
     "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.role_isa": "bool:%ptr,%ptr||", "dyn.copy_is_own": "bool:%ptr,int||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
     "dyn.repr": "str:%ptr|R A I U|", "dyn.str": "str:%ptr|R A I U|",
     "dyn.eq": "bool:%ptr,%ptr|R A I U|", "dyn.ne": "bool:%ptr,%ptr|R A I U|", "dyn.cmp": "bool:%ptr,%ptr,int|R A I U|", "dyn.hash": "int:%ptr|R A I U|",
-    "dyn.binop": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.inplace": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.unary": "%ptr:%ptr,int|R A|",
-    "dyn.binop_promote": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.inplace_promote": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.unary_promote": "%ptr:%ptr,int|R A|",
-    "dyn.len": "int:%ptr|R rL rD|", "dyn.getitem": "%ptr:%ptr,%ptr|R A I U|", "dyn.setitem": "None:%ptr,%ptr,%ptr|R A I U|",
+    "dyn.binop": "dyn:%ptr,%ptr,int|R A I U|", "dyn.inplace": "dyn:%ptr,%ptr,int|R A I U|", "dyn.unary": "dyn:%ptr,int|R A|",
+    "dyn.binop_promote": "dyn:%ptr,%ptr,int|R A I U|", "dyn.inplace_promote": "dyn:%ptr,%ptr,int|R A I U|", "dyn.unary_promote": "dyn:%ptr,int|R A|",
+    "dyn.len": "int:%ptr|R rL rD|", "dyn.getitem": "dyn:%ptr,%ptr|R A I U|", "dyn.setitem": "None:%ptr,%ptr,%ptr|R A I U|",
     "dyn.delitem": "None:%ptr,%ptr|R A I U|", "dyn.contains": "bool:%ptr,%ptr|R A I U|",
-    "dyn.list_method": "%ptr:%ptr,int,%ptr,%ptr,%ptr|R A I U rL wL|",
+    "dyn.list_method": "dyn:%ptr,int,%ptr,%ptr,%ptr|R A I U rL wL|",
     "dyn.list_check": "None:%ptr,int|R|",
     "dyn.list_descriptor": "None:%ptr,str|R|",
-    "dyn.list_slice": "%ptr:%ptr,int,int,int|R A rL wL|",
-    "dyn.slice_source": "%ptr:%ptr|R A I U rL rD|",
+    "dyn.list_slice": "dyn:%ptr,int,int,int|R A rL wL|",
+    "dyn.slice_source": "dyn:%ptr|R A I U rL rD|",
     "dyn.list_set_slice": "None:%ptr,int,int,int,%ptr|R A I U rL wL|",
     "dyn.list_del_slice": "None:%ptr,int,int,int|R rL wL|",
     "dyn.iter": "%ptr:%ptr|R A I U rL rD|", "dyn.next": "%ptr:%ptr|R A I U rL rD|",
-    "dyn.iter_box": "%ptr:%ptr|R A I U rL rD|", "dyn.next_box": "%ptr:%ptr|R A I U rL rD|", "dyn.iter_check": "%ptr:%ptr|R|",
-    "dyn.reversed": "%ptr:%ptr|R A rL rD|", "dyn.range_iter": "%ptr:int,int,int,int|R A|",
+    "dyn.iter_box": "dyn:%ptr|R A I U rL rD|", "dyn.next_box": "%ptr:%ptr|R A I U rL rD|", "dyn.iter_check": "dyn:%ptr|R|",
+    "dyn.reversed": "dyn:%ptr|R A rL rD|", "dyn.range_iter": "dyn:int,int,int,int|R A|",
     "dyn.int_of": "int:%ptr|R A|", "dyn.float_of": "float:%ptr|R A|", "dyn.unpack": "%ptr:%ptr,int|R A I U rL rD|",
-    "dyn.slice": "%ptr:%ptr,%ptr,%ptr,%ptr|R A I U|", "dyn.update": "None:%ptr,%ptr|R A I U|",
-    "dyn.list_of": "%ptr:%ptr,%ptr|R A rL wL|", "dyn.list": "list[T]:%ptr|R A I U rL rD|", "dyn.strs": "list[str]:%ptr|R A I U rL rD|", "dyn.id": "int:%ptr||",
+    "dyn.slice": "dyn:%ptr,%ptr,%ptr,%ptr|R A I U|", "dyn.update": "None:%ptr,%ptr|R A I U|",
+    "dyn.list_of": "list[dyn]:%ptr,%ptr|R A rL wL|", "dyn.list": "list[T]:%ptr|R A I U rL rD|", "dyn.strs": "list[str]:%ptr|R A I U rL rD|", "dyn.id": "int:%ptr||",
     "dyn.star_extend": "None:list[dyn],%ptr,%ptr,%ptr|R A I U rL wL rD|",
     "dyn.kw_merge": "None:dict[dyn,dyn],%ptr,%ptr,%ptr,%ptr|R A I U rD wD|",
     "dyn.bind": "list[dyn]:list[dyn],dict[dyn,dyn],str,str,str,int,int,int,int|R A I U rL rD|",
@@ -947,7 +1133,7 @@ RUNTIME: dict[str, str] = {
     # the queue of the fire functions of references whose referents a collection found dead
     "weakref.new": "%ptr:%ptr,%ptr|A I|", "weakref.get": "%ptr:%ptr|I|", "weakref.fired": "%ptr:|I|",
     # homogeneous runtime-length tuples (immutable copied slots)
-    "vtuple.new": "%ptr:list[T]|R A rL wL|", "vtuple.from": "%ptr:%ptr,int|R A|",
+    "vtuple.new": "vtuple[T]:list[T]|R A rL wL|", "vtuple.from": "%ptr:%ptr,int|R A|",
     "vtuple.get_identity": "dyn:%ptr,int,int|R A rO wO|", "vtuple.set_identity": "None:%ptr,int,dyn,int|A rO wO|",
     "vtuple.get": "int:%ptr,int|R|", "vtuple.list": "list[T]:%ptr|R A rO wO|", "vtuple.box": "%ptr:%ptr|R A rO wO|",
     "vtuple.slice": "%ptr:%ptr,int,int,int|R A rO wO|", "vtuple.concat": "%ptr:%ptr,%ptr|R A rO wO|",
@@ -956,10 +1142,10 @@ RUNTIME: dict[str, str] = {
     "list.new": "list[T]:int|A|", "list.new_atomic": "list[T]:int|A|", "list.get": "*T:S,int|R rL|", "list.set": "None:S,int,*T|R rL wL|",
     "list.from_const": "list[T]:%ptr,int|A|",
     "list.append": "None:S,*T|A rL wL|", "list.pop": "*T:S,int|R rL wL|", "list.del": "None:S,int|R rL wL|",
-    "list.insert": "None:S,int,*T|A rL wL|", "list.extend": "None:S,S|A rL wL|", "list.slice": "S:S,int,int|A rL wL|",
-    "list.slice_step": "S:S,int,int,int|R A rL wL|", "list.set_slice": "None:S,int,int,int,S|R A rL wL|",
+    "list.insert": "None:S,int,*T|A rL wL|", "list.extend": "None:S,U|A rL wL|", "list.slice": "S:S,int,int|A rL wL|",
+    "list.slice_step": "S:S,int,int,int|R A rL wL|", "list.set_slice": "None:S,int,int,int,U|R A rL wL|",
     "list.del_slice": "None:S,int,int,int|R rL wL|",
-    "list.copy": "S:S|A rL wL|", "list.clear": "None:S|rL wL|", "list.add": "S:S,S|A rL wL|", "list.mul": "S:S,int|R A rL wL|",
+    "list.copy": "S:S|A rL wL|", "list.clear": "None:S|rL wL|", "list.add": "R:S,U|A rL wL|", "list.mul": "S:S,int|R A rL wL|",
     "list.imul": "None:S,int|R A rL wL|", "list.reverse": "None:S|rL wL|", "list.find": "int:S,*T,#|R? rL rD U?|",
     "list.find_pair": "int:S,*T,%ptr,%ptr|rL rD U|",
     "list.index": "int:S,*T,#,int,int|R A I rL rD U?|", "list.index_as": "int:S,*T,#,int,int,bool,int,%ptr|R A I rL rD U?|", "list.count": "int:S,*T,#|R? rL rD U?|", "list.remove": "None:S,*T,#|R rL wL rD U?|",
@@ -987,12 +1173,12 @@ RUNTIME: dict[str, str] = {
     "dict.get": "*V:S,*K,*V|R? rD U?|", "dict.set": "None:S,*K,*V|R? A rD wD U?|", "dict.pop": "*V:S,*K|R A I rD wD U?|",
     "dict.del": "*V:S,*K|R A I rD wD U?|", "dict.pop_default": "*V:S,*K,*V|R A I rD wD U?|", "dict.popitem": "tuple[K,V]:S|R A rD wD|",
     "dict.setdefault": "*V:S,*K,*V|R? A rD wD U?|", "dict.clear": "None:S|wD|",
-    "dict.getbox": "*V:S,*K,*V|R? A rD U?|", "dict.popbox": "*V:S,*K,*V|R A I rD wD U?|",
+    "dict.getbox": "*opt[V]:S,*K,*opt[V]|R? A rD U?|", "dict.popbox": "*opt[V]:S,*K,*opt[V]|R A I rD wD U?|",
     "dict.copy": "S:S|R A rD U?|", "dict.from": "S:S|R A rD U?|", "dict.keys": "list[K]:S|A rD|", "dict.values": "list[V]:S|A rD|",
     "dict.items": "list[tuple[K,V]]:S|R A rD|", "dict.end": "int:S|rD|", "dict.next": "int:S,int,int,int|R rD|",
     "dict.eq_next": "int:S,int|rD|",
-    "dict.eq_find": "int:S,S,int|R? rD U?|",
-    "dict.eq_pair_find": "int:S,S,int,%ptr|R A I rD wD U|",
+    "dict.eq_find": "int:S,U,int|R? rD U?|",
+    "dict.eq_pair_find": "int:S,U,int,%ptr|R A I rD wD U|",
     "dict.prev": "int:S,int,int,int|R rD|", "dict.key": "*K:S,int|rD|", "dict.val": "*V:S,int|rD|",
     "dict.val_or_zero": "*V:S,int|rD|",
     "dict.find": "int:S,*K|R? rD U?|", "dict.entry": "int:S,*K|R A I rD U?|", "dict.entry_set": "None:S,int,*V|rD wD|",
@@ -1014,30 +1200,30 @@ RUNTIME: dict[str, str] = {
     "dict.update_pairs_big": "None:S,list[T],bool,bool|R? A rL rD wD U?|",
     # get(), pop(), setdefault() and their boxes by such a key, as get, getbox, pop, pop_default,
     # popbox, setdefault, big_pop and big_setdefault by a 64-bit key (bigints.py's BKEY)
-    "dict.bkey_get": "*V:S,int,%ptr,*V|R? rD U?|", "dict.bkey_getbox": "*V:S,int,%ptr,*V|R? A rD U?|",
+    "dict.bkey_get": "*V:S,int,%ptr,*V|R? rD U?|", "dict.bkey_getbox": "*opt[V]:S,int,%ptr,*opt[V]|R? A rD U?|",
     "dict.bkey_pop": "*V:S,int,%ptr|R A I rD wD U?|", "dict.bkey_pop_default": "*V:S,int,%ptr,*V|R A I rD wD U?|",
-    "dict.bkey_popbox": "*V:S,int,%ptr,*V|R A I rD wD U?|", "dict.bkey_setdefault": "*V:S,int,%ptr,*V|R? A rD wD U?|",
+    "dict.bkey_popbox": "*opt[V]:S,int,%ptr,*opt[V]|R A I rD wD U?|", "dict.bkey_setdefault": "*V:S,int,%ptr,*V|R? A rD wD U?|",
     "dict.bkey_big_pop": "int+:S,int,%ptr,bool,int,%ptr|R A I rD wD U?|",
     "dict.bkey_big_setdefault": "int+:S,int,%ptr,int,%ptr|R? A rD wD U?|",
     "dict.find_int_nobox": "int:S,int|rD|",
     "dict.int_find_any": "int:S,%ptr|R A I rD wD U|", "dict.entry_del": "None:S,int|rD wD|",
-    "dict.update": "None:S,S|R A rD wD U?|", "dict.update_pairs": "None:S,list[T]|R? A rL rD wD U?|",
-    "dict.fromkeys": "dict[K,V]:int,list[T],*V|R? A rL U?|", "dict.fromkeys_dict": "dict[K,V]:S,*V|R? A rD U?|",
+    "dict.update": "None:S,U|R A rD wD U?|", "dict.update_pairs": "None:S,list[T]|R? A rL rD wD U?|",
+    "dict.fromkeys": "dict[K,V]:int,list[T],*V|R? A rL U?|", "dict.fromkeys_dict": "dict[K,V]:dict[K,T],*V|R? A rD U?|",
     # sets and frozensets (CPython's tables; Set.kind as Dict.kind): their elements are a dict's
     # keys, which hash, compare and print without user code but an object's (U?, as a dict's). A
     # set's memory counts as a dict's (rD wD: what changes a set may change a dict); what an
     # operation makes, it alone has seen
     "set.new": "set[T]:int|A|", "set.add": "None:S,*T|R? A rD wD U?|", "set.has": "bool:S,*T|R? rD U?|", "set.discard": "None:S,*T|R? rD wD U?|",
-    "set.remove": "None:S,*T|R A I rD wD U?|", "set.pop": "*T:S|R rD wD|", "set.clear": "None:S|A wD|", "set.copy": "S:S|A rD|", "set.unbox": "set[T]:S,%ptr,int|R A rD|",
+    "set.remove": "None:S,*T|R A I rD wD U?|", "set.pop": "*T:S|R rD wD|", "set.clear": "None:S|A wD|", "set.copy": "S:S|A rD|", "set.unbox": "set[T]:frozenset[dyn],%ptr,int|R A rD|",
     "set.int_find_any": "int:S,%ptr|R A I rD wD U|", "set.slot_del": "None:S,int|rD wD|",
-    "set.update": "None:S,S|R? A rD wD U?|", "set.update_list": "None:S,list[T]|R? A rL rD wD U?|", "set.update_dict": "None:S,dict[T,V]|R? A rD wD U?|",
-    "set.union_more": "None:S,S,S|R? A rD wD U?|", "set.or": "S:S,S|R? A rD U?|", "set.and": "S:S,S|R? A rD U?|", "set.and_list": "S:S,list[T]|R? A rL rD U?|",
-    "set.assign": "None:S,S|rD wD|", "set.isub": "None:S,S|R? A rD wD U?|", "set.isub_list": "None:S,list[T]|R? A rL rD wD U?|",
-    "set.sub": "S:S,S|R? A rD U?|", "set.sub_list": "S:S,list[T]|R? A rL rD U?|", "set.sub_dict": "S:S,dict[T,V]|R? A rD U?|",
-    "set.xor": "S:S,S|R? A rD U?|", "set.xor_list": "S:S,list[T]|R? A rL rD U?|", "set.xor_dict": "S:S,dict[T,V]|R? A rD U?|",
-    "set.ixor": "None:S,S|R? A rD wD U?|", "set.ixor_list": "None:S,list[T]|R? A rL rD wD U?|", "set.ixor_dict": "None:S,dict[T,V]|R? A rD wD U?|",
-    "set.cmp": "int:S,S,int|R? rD U?|", "set.le_list": "bool:S,list[T]|R? A rL rD U?|", "set.ge_list": "bool:S,list[T]|R? rL rD U?|",
-    "set.isdisjoint": "bool:S,S|R? rD U?|", "set.isdisjoint_list": "bool:S,list[T]|R? rL rD U?|", "set.next": "int:S,int,int|R rD|",
+    "set.update": "None:S,U|R? A rD wD U?|", "set.update_list": "None:S,list[T]|R? A rL rD wD U?|", "set.update_dict": "None:S,dict[T,V]|R? A rD wD U?|",
+    "set.union_more": "None:S,S,U|R? A rD wD U?|", "set.or": "R:S,U|R? A rD U?|", "set.and": "R:S,U|R? A rD U?|", "set.and_list": "S:S,list[T]|R? A rL rD U?|",
+    "set.assign": "None:S,U|rD wD|", "set.isub": "None:S,U|R? A rD wD U?|", "set.isub_list": "None:S,list[T]|R? A rL rD wD U?|",
+    "set.sub": "S:S,U|R? A rD U?|", "set.sub_list": "S:S,list[T]|R? A rL rD U?|", "set.sub_dict": "S:S,dict[T,V]|R? A rD U?|",
+    "set.xor": "R:S,U|R? A rD U?|", "set.xor_list": "S:S,list[T]|R? A rL rD U?|", "set.xor_dict": "S:S,dict[T,V]|R? A rD U?|",
+    "set.ixor": "None:S,U|R? A rD wD U?|", "set.ixor_list": "None:S,list[T]|R? A rL rD wD U?|", "set.ixor_dict": "None:S,dict[T,V]|R? A rD wD U?|",
+    "set.cmp": "int:S,U,int|R? rD U?|", "set.le_list": "bool:S,list[T]|R? A rL rD U?|", "set.ge_list": "bool:S,list[T]|R? rL rD U?|",
+    "set.isdisjoint": "bool:S,U|R? rD U?|", "set.isdisjoint_list": "bool:S,list[T]|R? rL rD U?|", "set.next": "int:S,int,int|R rD|",
     "set.key": "*T:S,int|rD|", "set.list": "list[T]:S|A rD|",
     # a set of ints whose elements may be past 64 bits (bigints.py, runtime.c's sbig)
     "set.big_add": "None:S,int,%ptr|R? A rD wD U?|", "set.big_has": "bool:S,int,%ptr|R? rD U?|",
@@ -1057,10 +1243,10 @@ RUNTIME: dict[str, str] = {
     "str.get": "str:S,int|R A|", "str.slice": "str:S,int,int|A|", "str.slice_step": "str:S,int,int,int|R A|", "str.add": "str:S,str|A|", "str.mul": "str:S,int|R A|",
     "str.iadd": "str:S,str,int|A|",  # (s += t of a str local, appending in place to the str it owns: Gen.str_append)
     "str.cat": "str:int,str,str,str,str,str,str,str,str|A|",  # (the first n of eight strs: Gen.concat)
-    "str.contains": "bool:S,str|R|", "str.join": "str:S,list[str]|R A rL|", "str.split": "list[str]:S,str,int|R A|",
+    "str.contains": "bool:S,str|R|", "str.join": "str:S,list[str]|R A rL|", "str.split": "list[str]:S,opt[str],int|R A|",
     "str.join_slice": "str:S,list[str],int,int|R A rL|",
-    "str.split_first": "str:S,str,int|R A|",  # (s.split(sep, n)[0]: Gen.index)
-    "str.rsplit": "list[str]:S,str,int|R A|", "str.splitlines": "list[str]:S,bool|R A|", "str.strip": "str:S,str|A|",
+    "str.split_first": "str:S,opt[str],int|R A|",  # (s.split(sep, n)[0]: Gen.index)
+    "str.rsplit": "list[str]:S,opt[str],int|R A|", "str.splitlines": "list[str]:S,bool|R A|", "str.strip": "str:S,str|A|",
     "str.lstrip": "str:S,str|A|", "str.rstrip": "str:S,str|A|", "str.startswith": "bool:S,str,int,int|R|",
     "str.endswith": "bool:S,str,int,int|R|", "str.find": "int:S,str,int,int|R|", "str.rfind": "int:S,str,int,int|R|",
     "str.count": "int:S,str,int,int|R|", "str.index": "int:S,str,int,int|R|", "str.rindex": "int:S,str,int,int|R|",
@@ -1080,7 +1266,7 @@ RUNTIME: dict[str, str] = {
     "bytes.scan": "int:bytes,int,int,int,int,int|R|",  # internal bounded delimiter/control-byte scan
     "unicode_error_str": "str:int,str,str,int,int,str|R A|",
     "bytes.hex": "str:str|R A|", "bytes.hex_sep": "str:str,str,int,int|R A|", "bytes.maketrans": "str:str,str|R A|",
-    "bytes.translate": "str:str,str,str|R A|", "bytes.fromhex": "str:str|R A|", "bytes.from_list": "str:list[int]|R A rL|",
+    "bytes.translate": "str:str,opt[str],opt[str]|R A|", "bytes.fromhex": "str:str|R A|", "bytes.from_list": "str:list[int]|R A rL|",
     "bytes.zeros": "str:int|R A|", "bytes.join": "str:str,list[str]|R A rL|", "bytes.split": "list[str]:str,str,int|R A|",
     "bytes.rsplit": "list[str]:str,str,int|R A|", "bytes.strip": "str:str,str|R A|", "bytes.lstrip": "str:str,str|R A|",
     "bytes.rstrip": "str:str,str|R A|", "bytes.startswith": "bool:str,str,int,int|R|", "bytes.endswith": "bool:str,str,int,int|R|",
@@ -1100,6 +1286,8 @@ RUNTIME: dict[str, str] = {
     "f2i": "int:float|R|", "round": "int:float|R|", "round_n": "float:float,int|R|", "round_int": "int:int,int|R|", "floor": "int:float|R|",
     "ceil": "int:float|R|", "int.str": "int:str,int|R A|", "float.str": "float:str|R A|", "float.hex": "str:float|A|",
     "float.is_integer": "bool:float||", "int.bit_length": "int:int||", "int.bit_count": "int:int||", "fabs": "float:float||fabs",
+    "fma": "float:float,float,float||llvm.fma.f64", "sqrt": "float:float||llvm.sqrt.f64",
+    "ctlz": "int:int,%i1||llvm.ctlz.i64", "ctpop": "int:int||llvm.ctpop.i64",
     "ovf.sadd": "%ovf:int,int||llvm.sadd.with.overflow.i64", "ovf.ssub": "%ovf:int,int||llvm.ssub.with.overflow.i64",
     "ovf.smul": "%ovf:int,int||llvm.smul.with.overflow.i64",
     "m.sqrt": "float:float|R|", "m.sin": "float:float|R|", "m.cos": "float:float|R|", "m.tan": "float:float|R|",
@@ -1123,13 +1311,13 @@ RUNTIME: dict[str, str] = {
     "m.dist": "float:list[float],list[float]|R A rL|", "m.hypot_list": "float:list[float]|A rL|",
     "m.isclose": "bool:float,float,float,float|R|", "m.gamma": "float:float|R|", "m.lgamma": "float:float|R|",
     # any type, by its descriptor
-    "eq": "bool:*T,*T,#|R? rL rD U?|", "cmpop": "int:*T,*T,#,int|R rL rD U?|", "repr": "str:*T,#|R? A I rL rD U?|",
-    "eq.pair": "bool:*T,*T,%ptr,%ptr|rL rD U|",  # conservative: dict lookup's call graph reaches user equality
+    "eq": "bool:*T,*U,#|R? rL rD U?|", "cmpop": "int:*T,*U,#,int|R rL rD U?|", "repr": "str:*T,#|R? A I rL rD U?|",
+    "eq.pair": "bool:*T,*U,%ptr,%ptr|rL rD U|",  # conservative: dict lookup's call graph reaches user equality
     "hash": "int:*T,#|U?|", "hash.id": "int:%ptr||",
     "format": "str:*T,#,str|R A I rL rD U?|", "default_repr": "str:str,%ptr|A|", "repr_enter": "bool:%ptr|I|",
     # reflection records (reflection.py): a name's index in a record's name table, and repr(vars(o))
     "refl.find": "int:%ptr,str||", "refl.vars": "str:%ptr,%ptr|A I rO rL rD U|",
-    "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "new": "%ptr:int|A|", "gc_slow": "%ptr:int,int|A|", "on_stack": "int:%ptr|I|", "box": "%ptr:*T|A|", "ubox": "%ptr:int,*T|A|", "ubox_opt": "%ptr:int,%ptr,int|A|", "unpack_check": "None:int,int|R|", "unpack_ex_check": "None:int,int|R|",
+    "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "new": "%ptr:int|A|", "gc_slow": "%ptr:int,int|A|", "on_stack": "int:%ptr|I|", "box": "opt[T]:*T|A|", "ubox": "R:int,*T|A|", "ubox_opt": "%ptr:int,%ptr,int|A|", "unpack_check": "None:int,int|R|", "unpack_ex_check": "None:int,int|R|",
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|", "warnoptions": "list[str]:|A I|",
     "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "getcwd": "str:|R A I|", "uname": "str:int|R A I|", "exists": "bool:str|I|",
@@ -1143,10 +1331,11 @@ RUNTIME: dict[str, str] = {
     "path_splitext": "tuple[str,str]:str|A|", "path_isabs": "bool:str||", "path_normpath": "str:str|R A|",
     "path_abspath": "str:str|R A I|", "path_relpath": "str:str,str|R A I|", "path_expanduser": "str:str|R A I|",
     "path_commonprefix": "str:list[str]|R A rL|",
-    "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|R A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
+    "realpath": "str:str|R A I|", "getenv": "R:str,opt[str]|R A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
     "environ_set": "None:str,str|R A I|", "environ_pop": "str:str,str|R A I|",
     "environ_get": "str:str|R A I|", "environ_del": "None:str|R A I|", "makedirs": "None:str,int,bool|R A I|",
     "set_inheritable": "None:int,int|R A I|",
+    "os_write": "int:int,bytes|R I|",
     "os_dup": "int:int|R A I|", "os_dup2": "int:int,int|R A I|", "os_close": "None:int|R A I|", "chdir": "None:str|R A I|",
     "cache_lock": "int:str|I|", "cache_lock_fd": "int:|I|", "cache_file_hash": "str:str,int|A I|", "ignored_signals": "int:|I|",
     "listdir": "list[str]:str|R A I|", "listdir_cwd": "list[str]:|R A I|", "mkdir": "None:str,int|R A I|", "mkdir_default": "None:str|R A I|",
@@ -1169,9 +1358,9 @@ RUNTIME: dict[str, str] = {
     "eh_on": "None:|I|", "try_mark": "int:|I|", "exc.handled": "exc:|I|", "exc.restore": "None:exc|I|",
     "exc.begin": "exc:exc,int|R I wL rF wF|", "exc.in": "int:exc,str||", "exc.str": "str:exc|U|", "exc.repr": "str:exc|A U|",
     "exc.new": "exc:str,str,str|A|", "exc.exit": "exc:int,str,str|A|", "exc.detail": "exc:exc,str||", "throw": "None:exc|R N|",
-    "exc.user": "exc:%ptr|A|", "exc.obj": "%ptr:exc||", "exc.id": "%ptr:exc||", "exc.ostr": "str:%ptr|U|", "exc.orepr": "str:%ptr|U|",
-    "exc.brepr": "str:%ptr,str|A|", "exc.cls": "str:%ptr|A|", "exc.name": "str:exc|A|", "exc.type": "str:exc|A|",
-    "exc.setcause": "None:exc,exc|wO|", "exc.cause": "exc:exc|rO|", "exc.errcls": "str:int|A|",
+    "exc.user": "exc:%ptr|A|", "exc.obj": "R:exc||", "exc.id": "%ptr:exc||", "exc.ostr": "str:%ptr|U|", "exc.orepr": "str:%ptr|U|",
+    "exc.brepr": "str:%ptr,str|A|", "exc.cls": "str:%ptr|A|", "exc.name": "str:exc|A|", "exc.qualname": "str:exc|A|", "exc.type": "str:exc|A|",
+    "exc.setcause": "None:exc,opt[exc]|wO|", "exc.cause": "opt[exc]:exc|rO|", "exc.errcls": "str:int|A|",
     # exception classes as values: class objects (runtime.c's exceptions)
     "exc.proto": "exc:str,%ptr|A I|", "exc.canon": "exc:exc|A I|", "exc.sub": "int:exc,exc,str||", "exc.module": "str:exc|A|", "exc.setmodule": "None:%ptr,str|R I|",
     "exc.ctor": "%ptr:exc,%ptr||", "exc.make": "exc:exc,int,str,str,int,int|R A|",
@@ -1186,14 +1375,14 @@ RUNTIME: dict[str, str] = {
     "init": "None:%i32,%ptr,%ptr,%ptr,int|A I|", "finish": "None:|U|", "exit_hook": "None:%ptr|I|", "frameaddress": "%ptr:%i32||llvm.frameaddress.p0",
     # files and the standard streams
     "write": "None:str,int|R I rF wF|", "input": "str:str|R A I rF wF|", "input_lost": "None:|R I|",
-    "open": "file:str,str,str,str,int|R A I rF|", "std": "file:int||",
+    "open": "file:str,str,opt[str],opt[str],int|R A I rF|", "std": "file:int||",
     "file.read": "str:S,int|R A I rF wF|", "file.readline": "str:S|R A I rF wF|", "file.readlines": "list[str]:S|R A I rF wF|",
     "file.write": "int:S,str|R A I rF wF|", "file.put": "None:S,str|R A I rF wF|",
     "file.writelines": "None:S,list[str]|R A I rL rF wF|",
     "file.flush": "None:S|R I rF wF|", "file.close": "None:S|R I rF wF|", "file.drop": "None:S|R I rF wF|",
     "file.closed": "bool:S|rF|", "file.name": "str:S|A rF|", "file.mode": "str:S|A rF|", "file.fileno": "int:S|R I rF|",
     # lib/_pystachy_bfile.py's binary files (__pys_bfile_*): a file of a binary mode, its reads and writes of bytes
-    "bopen": "file:str,str,str,str,str,int|R A I rF|", "bfile.read": "bytes:file,int|R A I rF wF|",
+    "bopen": "file:str,str,opt[str],opt[str],opt[str],int|R A I rF|", "bfile.read": "bytes:file,int|R A I rF wF|",
     "bfile.readline": "bytes:file,int|R A I rF wF|", "bfile.write": "int:file,bytes|R A I rF wF|",
     "bfile.seek": "int:file,int,int|R A I rF wF|", "bfile.tell": "int:file|R A I rF wF|", "bfile.truncate": "int:file,int|R A I rF wF|",
     "bfile.isatty": "int:file|I rF|", "bfile.seekable": "int:file|I rF|",
@@ -1202,6 +1391,7 @@ RUNTIME: dict[str, str] = {
     # runtime mode's primitives (Gen.primitive): a new str's memory, and the C library's searches
     # and copy, over the bytes of strs (a str that _rt.str_new made is written only before
     # _rt.str_done hands it out, so these need no letter either)
+    "tool_call": "str:str,str|R A I|",
     "alloc_atomic": "%ptr:int|A|", "init_lib": "None:%ptr,int|A I|", "cstr": "opt[str]:%ptr,int|R A|", "c_check": "int:int,int|R I|", "c_str": "None:str|R|", "c_at": "%ptr:%ptr,int|R|", "string_at": "str:int,int|R A|", "bytes_at": "bytes:int,int|R A|", "load_library": "int:str|R A I|", "track": "int:%ptr,int,int|A I|", "gc_collect": "None:|A I|", "c_bind": "None:%ptr,%ptr,%ptr|R A I|", "untrack": "None:int|I|", "collected": "int:|I|", "memchr": "%ptr:%ptr,%i32,int||memchr", "memcmp": "%i32:%ptr,%ptr,int||memcmp",
     "memmem": "%ptr:%ptr,int,%ptr,int||memmem", "memmove": "None:%ptr,%ptr,int,%i1||llvm.memmove.p0.p0.i64",
 }
@@ -1210,6 +1400,7 @@ RUNTIME: dict[str, str] = {
 # the runtime's data that programs name (docs/dynamic-any.md): the DynTypes of the builtin types
 # and the constant boxes of None, True and False, with their LLVM types; a module declares those
 # it uses (Gen.rtdata), and tools/check_runtime.py checks that runtime.c defines them
+CLASSREC_LL = "{ptr, ptr, ptr, i64, i64, ptr, i64, ptr}"
 DYNTYPE_LL = "{i64, ptr, ptr, i64, ptr, i64, ptr, ptr, ptr}"
 RTDATA: dict[str, str] = {"pys_dyn_none_box": "{ptr, i64}", "pys_dyn_true_box": "{ptr, i64}", "pys_dyn_false_box": "{ptr, i64}"}
 for _k in "none bool int bigint float str list intlist biglist dict tuple type".split():

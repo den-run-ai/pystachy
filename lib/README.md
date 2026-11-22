@@ -20,6 +20,8 @@ and [iteration](../docs/dynamic-any.md#iteration) contracts, including
 [class values, type-keyed registries, generic calls and annotated factories](../docs/dynamic-any.md#class-values-and-type-keyed-registries).
 That protocol support alone does not establish whole-module compatibility.
 
+The Pystachy-specific [`codemode.call`](../wasm/README.md#calling-tools-from-a-node-host) invokes synchronous tools supplied by a Wasm host.
+
 ## Module guide
 
 Each area matches a row of the [library support table](../docs/stdlib.md#library-support-at-a-glance):
@@ -77,7 +79,7 @@ described [below](#unchanged-cpython-files).
 |---|---|---|---|
 | 🟡 `collections` | Subset implementation | Typed `deque` (both ends, bounded queues, searches and comparisons), `defaultdict`, `OrderedDict`, `Counter` and `namedtuple()` (a NamedTuple class the compiler makes); where a module opts in to [promoting ints](../docs/python-int.md), `Counter`'s counts promote, and so do the ints of the classes' type variables | Items share one type; mappings hold dicts; deque iterators check mutation, other iteration is a snapshot; `namedtuple()` only as a module's top-level `NAME = namedtuple(...)` with literal arguments |
 | 🟡 `copy` | Subset implementation of CPython's module, by static type (`lib/copy.py`, with `_pystachy_copy` for the memo) | `copy()` and `deepcopy()` of numbers, strs, bytes, `None`, functions, ranges, lists, dicts, sets, frozensets, tuples and objects of the program's classes (field by field, or by their `__copy__()` and `__deepcopy__(memo)`), with CPython's memo: shared objects and cycles copy once; `Error` | An object in an `Any` value raises `TypeError`; exceptions, library classes, pickling methods and a deep copy of a `Callable` are compile-time errors; no `replace()`; see [limits](compatibility.md#copy) |
-| 🟡 `enum` | Subset implementation of CPython's module; the compiler makes enum classes from their class statements | `Enum`, `IntEnum`, `StrEnum`, `Flag`, `IntFlag`, classes of `str` or `int` and `Enum`, `auto`, `unique`, `_missing_()`: members and aliases, `name`/`value`, CPython's reprs, lookup by value and by name, flags' composite members, iteration, `len()`, `in`, `__members__`, methods and properties, `__init__` and `__new__` giving members attributes from their values, `_simple_enum`, `global_enum` | Member values are literals of one type, or int and str expressions of them and of the module's constants; int- and str-like members are no `int` or `str` where those are typed; no other mixin types, `boundary=` or functional API; see [limits](compatibility.md#enum) |
+| 🟡 `enum` | Subset implementation of CPython's module; the compiler makes enum classes from their class statements and module-level functional calls | `Enum`, `IntEnum`, `StrEnum`, `Flag`, `IntFlag`, classes of `str` or `int` and `Enum`, `auto`, `unique`, `_missing_()`: members and aliases, `name`/`value`, CPython's reprs, lookup by value and by name, flags' composite members, iteration, `len()`, `in`, `__members__`, methods and properties, `__init__` and `__new__` giving members attributes from their values, `_simple_enum`, `global_enum`, `verify` checks, `member()`/`nonmember()`, flags' `boundary=` (`STRICT`, `CONFORM`, `KEEP`), `FlagBoundary` and `EnumCheck`, the functional API at the top of a module, the class held by variables and fields | Member values are literals of one type, or int and str expressions of them and of the module's constants; int- and str-like members are held as they are where `int` or `str` is annotated, but not as a container's items; no other mixin types, `boundary=EJECT`, `EnumDict`, functional API calls in functions or `type[C]` annotations; see [limits](compatibility.md#enum) |
 | 🟡 `heapq` | Adapted CPython | Heap operations, `nlargest`, `nsmallest`, `key=` | `merge` unavailable; non-list inputs are materialized |
 | 🟢 `bisect` | Unchanged CPython | Bisection and insertion, including `key=` | Subset string and type rules apply |
 | 🟢 `itertools` | Subset implementation of CPython's C module on generators (`_pystachy_itertools`), following the documented pure-Python equivalents | Every function: `count`, `cycle`, `repeat`, `accumulate`, `batched`, `chain` and `chain.from_iterable`, `compress`, `dropwhile`, `filterfalse`, `groupby`, `islice`, `pairwise`, `starmap`, `takewhile`, `tee`, `zip_longest`, `product`, `permutations`, `combinations` and `combinations_with_replacement`, lazy as in CPython, with the C module's argument checks and messages | Iterators are generators of one item type; runtime-length tuples (`batched`, the combinatorics) of scalar items; `tee(it, n)` gives a list; an iterator an exception has left is finished |
@@ -143,7 +145,9 @@ shipped; a program runs on one thread, which `threading` and `_thread` describe 
 ### Runtime services
 
 `typing`, `dataclasses` and `collections.abc` are compiler support; see
-[typing](../docs/language/typing.md).
+[typing](../docs/language/typing.md). A class deriving from one of `collections.abc`'s classes
+inherits its methods from `_pystachy_collections_abc`, a port of CPython's `_collections_abc.py`;
+see [`collections.abc`](compatibility.md#collectionsabc).
 
 | Module | Origin | Supported APIs | Main limitation |
 |---|---|---|---|
@@ -233,7 +237,13 @@ is never imported there. `_pystachy_bfile.py` holds the binary files that `open(
 (the compiler imports it where a module calls `open()` so: loader.py's `binary_opens`). `types.py` binds `TracebackType` from `_pystachy_types.py`, `MappingProxyType`
 from `_pystachy_mappingproxy.py` and CPython's other names of `types` from `_pystachy_typenames`, the
 compiler's, which only it may import. `_collections_abc` has no file here: it is the compiler's builtin
-`collections.abc`, as CPython's `collections` makes it `collections.abc`.
+`collections.abc`, as CPython's `collections` makes it `collections.abc`. `_pystachy_collections_abc.py`
+holds the classes of `collections.abc` that a class statement's base names: the compiler makes the
+class derive from this module's (loader.py's `abc_classes`), whose objects report the module
+`collections.abc`. `_pystachy_enum.py` holds `enum`'s `FlagBoundary`, `EnumCheck`, their members and
+`verify`, which a module's import of them from `enum` imports where it reads them (loader.py's
+`enum_elsewhere`), so that their `StrEnum` classes are no classes of a program that names them only as
+a flag class's `boundary=` or a `@verify(...)`.
 
 `_pystachy_iterators.py` holds the iterator classes of `iter()` over builtin containers
 (`list_iterator`, `dict_keyiterator`, ...). The compiler loads it for a program that calls

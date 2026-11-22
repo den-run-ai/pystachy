@@ -112,7 +112,7 @@ def base_report(source: str, function: str, typed_after_only: bool = False, stop
                          "scope": "Pystachy typed IR; LLVM assembly and execution are not performed"},
         "artifacts": {}, "artifact_sha256": {},
         "limitations": [
-            "Function-level source locations only; typed instructions currently carry no source spans.",
+            "Instruction locations are source lines, without columns or spans.",
             "The frontend combines semantic analysis, specialization and IR construction.",
             "Pass rules describe general contracts, not exact reasons for every missed optimization.",
             "This is the first terminal error, not multi-error or all-units semantic checking.",
@@ -164,18 +164,24 @@ class Observer:
     def selected(self, fn) -> bool:
         return not self.function or self.function in fn.f.ll or self.function in self.diagnostics.shown(fn.f.name)
 
-    def location(self, line: int) -> dict:
+    def location(self, line: int, precision: str = "function") -> dict:
         d = self.diagnostics
         file = d.FILES[line // d.LINES] if line >= d.LINES else d.SRC
         return {"file": file, "line": line % d.LINES if line >= d.LINES else line,
-                "column": None, "precision": "function"}
+                "column": None, "precision": precision}
 
-    @staticmethod
-    def instruction(ins) -> dict:
+    def files(self) -> list[str]:
+        """The program's source files, by the index that the compiler's lines number them by."""
+        return [self.diagnostics.SRC] + self.diagnostics.FILES[1:]
+
+    def instruction(self, ins) -> dict:
+        # An op's location is the line of the statement it implements (Ins.line), which the
+        # compiler gives every op of the functions it builds; None where it is unknown (0).
         return {"op": ins.op, "type": ins.t, "text": ins.s, "immediate": ins.k,
                 "descriptor": ins.x, "results": list(ins.r),
                 "operands": [{"value": a.v, "type": a.t} for a in ins.a],
-                "targets": list(ins.b)}
+                "targets": list(ins.b),
+                "location": self.location(ins.line, "line") if ins.line != 0 else None}
 
     def snapshot(self, fn) -> dict:
         f = fn.f
@@ -279,6 +285,21 @@ class Observer:
             return wrapped
         return decorate
 
+    def instantiate_wrapper(self, original):
+        def wrapped(gen, fn, *args, **kwargs):
+            # Gen.instantiate types a function's runtime calls by what they read, once it is
+            # built: the same producers, so an origin observed on one stays, at its new types
+            before = {ins: self.representation_signature(ins) for block in fn.blocks for ins in block.code
+                      if ins in self.representation_origins}
+            result = original(gen, fn, *args, **kwargs)
+            for ins, signature in before.items():
+                observed = self.representation_origins[ins]
+                if observed["signature"] == signature:
+                    observed["signature"] = self.representation_signature(ins)
+                    observed["definition_type"] = ins.t
+            return result
+        return wrapped
+
     def big_popitem_wrapper(self, original):
         def wrapped(gen, *args, **kwargs):
             value = original(gen, *args, **kwargs)
@@ -376,7 +397,8 @@ class Observer:
         # representation tables before LLVM lowering can consume or mutate them.
         self.after = [self.snapshot(fn) for fn in gen.fns if self.selected(fn)]
         self.after_metadata = {"dynamic_types": self.dynamic_types(gen),
-                               "dynamic_layouts": self.dynamic_layouts(gen), "classes": self.classes(gen)}
+                               "dynamic_layouts": self.dynamic_layouts(gen), "classes": self.classes(gen),
+                               "lowering": self.lowering(gen)}
         if self.guard_evidence:
             self.after_metadata.update(
                 class_layouts=self.class_layouts(gen), union_tags=dict(gen.utags), holes=list(gen.holes),
@@ -431,9 +453,31 @@ class Observer:
         # the unrelated classes whose objects it may also be (a primary chain's and a secondary
         # base's common subclass); and whether its objects begin with the class tag. An object of
         # one class is no object of a class related to it none of these ways: their fields are
-        # other memory (Gen.disjoint).
+        # other memory (Gen.disjoint). And its struct, as field.addr indexes it
+        # (lower_module.struct_types): its fields in order with their types (a name beginning
+        # with a space is hidden storage, such as the class tag), and the index of each field's
+        # "is assigned" flag (fl_fields) and identity box, in the order of their indexes. Its own
+        # flags follow its fields, and its own boxes its flags; a base's are among its fields
+        # (" Base.0" and " Base.box.0"), as a derived class's struct begins with its base's.
         return {name: {"base": info.base, "roles": list(info.roles), "overlaps": sorted(info.overlaps),
-                       "tagged": info.tag != 0} for name, info in sorted(gen.classes.items())}
+                       "tagged": info.tag != 0,
+                       "fields": [{"name": field, "type": info.ftypes[field]} for field in info.fields],
+                       "flags": dict(sorted(info.fflag.items(), key=lambda item: item[1])),
+                       "boxes": dict(sorted(info.fbox.items(), key=lambda item: item[1]))}
+                for name, info in sorted(gen.classes.items())}
+
+    @staticmethod
+    def lowering(gen) -> dict:
+        # Everything else that LLVM lowering reads of the generator at this boundary (its
+        # settings, globals, constants, runtime and extern declarations, holes' key kinds,
+        # dispatch tables and each function's attributes), so that a module printed from this
+        # snapshot compiles to the LLVM the compiler emits: tools/typed_ir_text.py's
+        # lowering_state, which names what it cannot hold yet
+        try:
+            from typed_ir_text import lowering_state
+        except ModuleNotFoundError:  # (this module imported as tools.inspect_compiler)
+            from tools.typed_ir_text import lowering_state
+        return lowering_state(gen)
 
     @staticmethod
     def key_descriptors(gen, functions) -> dict:
@@ -811,6 +855,7 @@ class Observer:
         for name in ("held_value", "held_read", "held_pair"):
             self.wrap(Gen, name, self.held_representation_wrapper(name))
         self.wrap(Gen, "big_popitem", self.big_popitem_wrapper)
+        self.wrap(Gen, "instantiate", self.instantiate_wrapper)
         self.wrap(Gen, "search_hold", self.search_hold_wrapper)
         self.wrap(optimizations, "clone_instruction", self.clone_instruction_wrapper)
         self.wrap(Gen, "effects", self.effects_wrapper)
@@ -854,7 +899,8 @@ class Observer:
                 artifact = name + ".json"
                 state = "completed" if self.report["status"] == "ok" else "partial"
                 snapshot = {"schema_version": SCHEMA_VERSION, "stage": name, "status": state,
-                            "attempt": self.attempt["index"] if self.attempt else 0, "functions": functions}
+                            "attempt": self.attempt["index"] if self.attempt else 0,
+                            "files": self.files(), "functions": functions}
                 if name == "typed-after":
                     snapshot.update(self.after_metadata)
                 write_json(self.output / artifact, snapshot)

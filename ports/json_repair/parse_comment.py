@@ -1,5 +1,4 @@
-# pystachy: dynamic-any
-# Pystachy port: annotate recursive JSON values directly with dynamic Any.
+# Pystachy port: Any is inferred from each call here; the modules that store repaired values opt in.
 from typing import Any
 
 from .utils.json_context import ContextValues

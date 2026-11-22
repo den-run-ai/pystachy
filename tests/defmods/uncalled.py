@@ -1,7 +1,7 @@
 # Classes that define special methods Pystachy never calls, which CPython calls implicitly
-# (__new__, __getattr__, __getattribute__, __setattr__, __delattr__), are errors only where the
-# program uses them: creating them when the module is imported runs none of their code, but
-# their class bodies run, as in CPython.
+# (__new__, __getattribute__, __setattr__, __delattr__; an ordinary class's __getattr__ alone is
+# called, #1536), are errors only where the program uses them: an import runs none of their code,
+# but their class bodies run, as in CPython.
 def note(what: str) -> int:
     print(what)
     return 0

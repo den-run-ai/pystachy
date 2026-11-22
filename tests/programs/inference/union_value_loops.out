@@ -1,0 +1,58 @@
+rows items ["{'id': 1, 'name': 'ab', 'tags': ['x', 'y']}", "{'id': 2.5, 'name': '', 'tags': []}"]
+count TypeError 'int' object is not iterable
+ok TypeError 'bool' object is not iterable
+none TypeError 'NoneType' object is not iterable
+ratio TypeError 'float' object is not iterable
+text items ["'h'", "'é'", "'é'"]
+empty items []
+nested items ['[1, 2]', '[3]', '[]']
+doc items ["'rows'", "'count'", "'ok'", "'none'", "'ratio'", "'text'", "'empty'", "'nested'"]
+1 2 ['x', 'y']
+ tag x 1
+ tag y 1
+ ch a
+ ch b
+2.5 0 []
+total 6
+enum 0 1
+enum 1 2.5
+enum start 10 h
+enum start 11 é
+enum start 12 é
+zip 1 h
+zip 2.5 é
+zip list 10 [1, 2]
+zip list 20 [3]
+zip list 30 []
+key rows
+key ok
+empty else
+[2, 0]
+{'id': 2, 'name': 4, 'tags': 4}
+['h', 'é']
+H,É,É True False
+[[1, 2], [3], []]
+grow 5 [1, 2, 3, 1, 2]
+RuntimeError dictionary changed size during iteration
+zip TypeError 'int' object is not iterable
+item id 1
+item name ab
+item tags ['x', 'y']
+key id
+key name
+key tags
+value 1
+value ab
+value ['x', 'y']
+AttributeError 'int' object has no attribute 'items'
+AttributeError 'list' object has no attribute 'items'
+AttributeError 'str' object has no attribute 'items'
+AttributeError 'NoneType' object has no attribute 'items'
+own 1
+own two
+own [3.5, None]
+own {'k': True}
+small p
+small q
+small TypeError 'int' object is not iterable
+[exit 0]

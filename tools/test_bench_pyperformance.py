@@ -165,6 +165,48 @@ class TimingTests(unittest.TestCase):
         func = "import pyperf\n\n\ndef f(n):\n    return n\n\n\nrunner = pyperf.Runner()\nrunner.bench_func('f', game.f, 1)\n"
         self.assertEqual(bench.upstream_timed_part(func), ("f", []))
 
+    def test_several_bench_func_targets_have_one_timed_loop_each(self):
+        # pprint: upstream calls bench_func() for _safe_repr() and again for pformat()
+        text = self.port("pprint")
+        again = text.replace("safe = p._safe_repr(data, {}, None, 0)", "safe = p.pformat(data)")
+        self.assertNotEqual(again, text)
+        self.assertEqual(bench.timing_errors("pprint", again),
+                         ["the main's timed loops do not call _safe_repr(), pformat(), one each"])
+        loop = "        text = p.pformat(data)\n"
+        self.assertIn(loop, text)
+        self.assertEqual(bench.timing_errors("pprint", text.replace(loop, loop + "        data = data[:]\n")),
+                         ["the main times more than one loop of one statement for a target"])
+        stop = "    seconds += time.perf_counter() - t0\n    print("
+        self.assertIn(stop, text)
+        self.assertEqual(bench.timing_errors("pprint", text.replace(stop, "    print(")),
+                         ["the main does not print the seconds that its timed loops add up"])
+        func = ("import pyperf\n\n\nrunner = pyperf.Runner()\nrunner.bench_func('b', p.b, 1)\n"
+                "runner.bench_func('a', p.a)\n")
+        self.assertEqual(bench.upstream_timed_part(func), (("a", "b"), []))
+
+    def test_a_timer_inside_the_loop_is_around_one_statement(self):
+        # gc_collect times each loop's collection, not the cycles that the loop builds first
+        text = self.port("gc_collect")
+        start = "        t0 = time.perf_counter()  # Pystachy port: pyperf.perf_counter()\n"
+        build = "        all_cycles = create_gc_cycles(cycles, links)\n"
+        self.assertIn(start, text)
+        self.assertIn(build, text)
+        moved = text.replace(start, "").replace(build, start + build)
+        self.assertEqual(bench.timing_errors("gc_collect", moved),
+                         ["benchamark_collection(): the timer is not around one loop"])
+        inside = ("import pyperf\n\n\ndef bench_x(loops):\n    total = 0\n    for _ in range(loops):\n"
+                  "        t0 = pyperf.perf_counter()\n        work()\n        total += pyperf.perf_counter() - t0\n"
+                  "    return total\n\n\nrunner = pyperf.Runner()\nrunner.bench_time_func('x', bench_x)\n")
+        self.assertEqual(bench.upstream_timed_part(inside), (["bench_x"], []))
+        self.assertEqual(bench.upstream_timed_part(inside.replace("        work()\n", "        work()\n        more()\n")),
+                         (["bench_x"], ["bench_x(): its timer is not around one loop"]))
+
+    def test_ports_named_for_library_modules_do_not_shadow_them(self):
+        for name in sorted(bench.BENCHMARKS):
+            with self.subTest(name=name):
+                self.assertNotIn(bench.port_path(name).stem, sys.stdlib_module_names)
+        self.assertLessEqual(bench.SHADOWING, set(bench.BENCHMARKS))
+
     def test_unpack_sequence_runs_upstreams_default_both_variants(self):
         # bench_all(): 400 unpackings of a tuple and of a list of 0..9 per loop
         result = subprocess.run([sys.executable, str(bench.BENCH / "unpack_sequence.py"), "1"],
@@ -292,7 +334,7 @@ class RecordTests(unittest.TestCase):
             cases.extend(generate(source, path.name).cases)
         modules = {bench.port_path(name).stem for name in bench.BENCHMARKS}
         self.assertEqual(imported & modules, modules)
-        self.assertEqual(len(cases), 39)
+        self.assertEqual(len(cases), 52)
         self.assertEqual(len(set(cases)), len(cases))
 
     def test_pytest_correctness_suite_matches_original_pytest(self):
@@ -315,6 +357,58 @@ class RecordTests(unittest.TestCase):
             text = bench.port_path(name).read_text()
             self.assertIn("Pystachy port: a deterministic main replaces pyperf.Runner", text, name)
             self.assertNotIn("import pyperf", text, name)
+
+    def test_regex_record_holds_one_regex_a_line(self):
+        lines = bench.REGEX_RECORD.read_text(encoding="utf-8").split("\n")
+        self.assertEqual(lines.pop(), "")
+        self.assertEqual(len(lines), 4267)
+        kinds = {"s": 0, "p": 0}
+        for line in lines:
+            kind, flags, regex = line.split("\t")
+            kinds[kind] += 1
+            self.assertEqual(re.compile(regex, int(flags)).pattern, regex)
+        self.assertEqual(kinds, {"s": 2797, "p": 1470})
+
+    def test_regex_capture_records_strings_and_compiled_patterns(self):
+        source = (b"import re\nimport pyperf\n\n\ndef capture_regexes():\n    regexes = []\n    real = re.compile\n\n"
+                  b"    def capture(regex, flags=0):\n        regexes.append((regex, flags))\n"
+                  b"        return real(regex, flags)\n    re.compile = capture\n    try:\n        import bm_regex_effbot\n"
+                  b"    finally:\n        re.compile = real\n    return regexes\n")
+        helper = b"import re\np = re.compile('a(b)', re.I)\nre.compile(p)\nre.compile('x|y')\n"
+        with mock.patch.dict(bench.REGEX_HELPERS, {"bm_regex_effbot.py": bench.digest(helper)}, clear=True):
+            self.assertEqual(bench.regex_capture(source, {"bm_regex_effbot.py": helper}, 60),
+                             "s\t2\ta(b)\np\t34\ta(b)\ns\t0\tx|y\n")
+            with self.assertRaisesRegex(RuntimeError, "SHA-256"):
+                bench.regex_capture(source, {"bm_regex_effbot.py": helper + b"\n"}, 60)
+        tabbed = helper.replace(b"'x|y'", b"'x\\ty'")
+        with mock.patch.dict(bench.REGEX_HELPERS, {"bm_regex_effbot.py": bench.digest(tabbed)}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "a regex that a line cannot hold"):
+                bench.regex_capture(source, {"bm_regex_effbot.py": tabbed}, 60)
+
+    def test_census_fails_where_the_regex_record_differs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "bm_regex_compile" / "run_benchmark.py"
+            source.parent.mkdir()
+            source.write_text(CensusTests.UPSTREAM)
+            for name in bench.REGEX_HELPERS:
+                (source.parent / name).write_text("")
+            args = SimpleNamespace(census=tmp, timeout=1)
+            port = bench.port_path("regex_compile").read_text()
+            with mock.patch.dict(bench.UPSTREAM, {"regex_compile": bench.digest(source.read_bytes())}, clear=True), \
+                    mock.patch.object(bench, "upstream_timed_part", return_value=(["bench_regex_compile"], [])), \
+                    mock.patch.object(bench, "unmarked_hunks", return_value=[]), \
+                    mock.patch.object(bench.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "")), \
+                    mock.patch.object(bench, "regex_capture", return_value="s\t0\tx\n") as capture, \
+                    contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as errors:
+                report, valid = bench.census(args, ["compiler"], {})
+                self.assertFalse(valid)
+                self.assertFalse(report["regex_record"]["matches"])
+                self.assertIn("is not what the pinned sources capture", errors.getvalue())
+                capture.return_value = bench.REGEX_RECORD.read_text(encoding="utf-8")
+                report, valid = bench.census(args, ["compiler"], {})
+                self.assertTrue(valid)
+                self.assertEqual(report["regex_record"]["regexes"], 4267)
+            self.assertIn("data/regex_compile.txt", port)
 
     def test_readme_links_the_authoritative_manifest(self):
         readme = (bench.BENCH / "README.md").read_text()
@@ -410,7 +504,7 @@ class ByteBpeShowcaseTests(unittest.TestCase):
 class ArgumentTests(unittest.TestCase):
     def test_invalid_settings_fail_before_execution(self):
         for arguments in (["--runs", "0"], ["--timeout", "inf"], ["--timeout", "-1"], ["--compiler", ""],
-                          ["--benchmarks", "pprint"], ["--benchmarks", "deltablue"]):
+                          ["--benchmarks", "sqlite_synth"], ["--benchmarks", "xml_etree"]):
             with self.subTest(arguments=arguments), mock.patch.object(bench, "execute") as execute:
                 with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
                     bench.main(arguments)

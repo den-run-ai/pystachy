@@ -2,15 +2,17 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names, numeric_statement
 from src.pystachy_compiler.bigints import converts
+from src.pystachy_compiler.builtin_bases import BWORDS, has_def
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, short
-from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
+from src.pystachy_compiler.reflection import VARS_USES, has_hook, hook_missing, hook_prop, hook_read, refl_attr_fields, refl_formatter
 from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, COMPLEXC, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, OBJECTC, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
+from src.pystachy_compiler.unions import ANNTYPES, ann_open, ann_returns, ann_site, ann_takes, field_value
 from src.pystachy_compiler.utils import (
     is_clsval,
     clsof,
@@ -125,8 +127,10 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
             vals = [self.expr(a.kids[0] if a.kind == "kw" else a, "") for a in args[1:]]
             self.wrap_names(w, args[1:], vals, "update_wrapper")
             return w
-        if (f.s == "json$loads" or f.s == "json$dumps" or f.s == "json$_raw_decode") and self.dyn_policy(n.line) and self.lib_fn(f, f.s):
-            r = self.json_any(f.s, args, want, resultsoft)  # (of Any values: #779)
+        if (f.s == "json$loads" or f.s == "json$dumps" or f.s == "json$_raw_decode") and (self.dyn_policy(n.line) or f.s == "json$dumps") and self.lib_fn(f, f.s):
+            # (of Any values: #779. dumps() of a value that is already Any's is the dynamic
+            # encoder's in a module that does not opt in too: an opt-in module's result)
+            r = self.json_any(f.s, args, want, resultsoft, self.dyn_policy(n.line))
             if r is not None:
                 return r
         if self.lib_fn(f, "_pystachy_bytescan$scan") and len(args) == 6 and not any([a.kind == "kw" for a in args]):
@@ -136,13 +140,13 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
             fn = self.funcs[f.s]
             scan_args: list[str] = []
             for j in range(6):
-                held = self.fn.scalar_reads
+                held = self.fn.build.scalar_reads
                 if j > 0 and self.scalar_read_value(args[j]):
-                    self.fn.scalar_reads = True
+                    self.fn.build.scalar_reads = True
                 try:
                     v = self.expr(args[j], fn.ptypes[j])
                 finally:
-                    self.fn.scalar_reads = held
+                    self.fn.build.scalar_reads = held
                 what = f"argument {j + 1} of {short(fn.name)}()" if is_opt(v.t) else ""
                 v = self.coerce(v, fn.ptypes[j], what)
                 scan_args.append(("ptr " if j == 0 else "i64 ") + v.v)
@@ -389,6 +393,11 @@ def gen_class_new(self, c: str, args: list[Node], want: str, resultsoft: bool = 
             self.expr(a.kids[0] if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar" else a, "")
         names = ", ".join([f"'{n}'" for n in ab])
         self.raise_("TypeError", self.sconst(f"Can't instantiate abstract class {short(c)} without an implementation for abstract method{'s' if len(ab) > 1 else ''} {names}"))
+        # the object, which the code that uses it reads in a block of its own, open as after any
+        # expression: what names the current block, as the predecessor of a phi, names the one
+        # it branches from (#1618)
+        self.place(self.label())
+        self.blk.dead = True
         return Val("null", c)
     if c in self.tmpl:
         # a class template: the types of the arguments pick the specialization, whose
@@ -400,6 +409,8 @@ def gen_class_new(self, c: str, args: list[Node], want: str, resultsoft: bool = 
         # bytearray(source, ...): lib/_pystachy_bytearray.py's _new, a function of its
         # arguments' types (the class's own __init__ takes none: its objects are of one class)
         return self.call_fn(self.funcs[BYTEARRAYS + "$_new"], [], args, want, resultsoft=resultsoft)
+    if self.bkind(c) != "" and not has_def(self.classes[c].node, "__init__"):
+        return self.bmake(c, args)  # (the builtin container's __init__: builtin_bases.py)
     o = self.new_obj(c)
     self.init_result(self.call_fn(self.classes[c].methods["__init__"], [o], args, direct=True))
     return o
@@ -716,17 +727,17 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
         vals.append(value)
     o = self.unwrap(o, "TypeError: 'NoneType' object is not callable")
     code = self.mload('%ptr', o.v)
-    env = self.mload('%ptr', self.maddr('%ptr', f'{o.v}', '1', True))
+    env = self.mload('env', self.maddr('%ptr', f'{o.v}', '1', True))
     c = Ins("icall", ts[0], "")
-    c.a = [Val(code, "env"), Val(env, "env")] + vals
+    c.a = [Val(code, "%ptr"), Val(env, "env")] + vals  # (its code: a machine pointer, as lowering calls it)
     idresult = ""
     if dynamic_program():
         # (the whole program's ABI: code that does not track identity passes no objects, Gen.idhere)
         c.a.extend([self.dyn_id_arg(v) if self.idhere() else Val("null", "dyn") for v in vals if numeric_identity(v.t)])
         if numeric_identity(ts[0]):
             idresult = self.alloca("dyn", "")
-            self.mem_store(Val(idresult, "*dyn"), Val("null", "dyn"))
-            c.a.append(Val(idresult, "*dyn"))
+            self.mem_store(Val(idresult, "&dyn"), Val("null", "dyn"))
+            c.a.append(Val(idresult, "&dyn"))
     if ts[0] == "None":
         self.add(c)
         return Val("null", "None")
@@ -735,7 +746,7 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
     if idresult != "" and numeric_identity(ts[0]) and self.idhere():
         result.idexact = result.t == "int" or result.t == BIG or result.t == "float"
         result.idslot = idresult
-        result.idheld = self.mem_load(Val(idresult, "*dyn")).v
+        result.idheld = self.mem_load(Val(idresult, "&dyn")).v
         result.idcounter = self.alloca("int", "")
         result.idversion = "0"
     return result
@@ -890,12 +901,22 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         if s.t != "str":
             self.err(f"fromhex() argument must be str, not {tname(s.t)}")
         return Val(self.rt("pys_bytes_fromhex", "ptr", [f"ptr {s.v}"]), "bytes")
+    if len(self.bsubn) > 0 and o.t.startswith("fn[b:") and o.t[5:-1] in BWORDS and len(args) > 0 and args[0].kind in ["name", "attr"] and self.bkind(unopt(self.target_type(args[0], True))) == o.t[5:-1]:
+        # list.m(o, args) of an object o of a class deriving from list, as its methods name it
+        # (list.append(self, x), list.__init__(self, xs)): list's own m (builtin_bases.py)
+        me = self.expr(args[0], "")
+        if self.bkind(me.t) == o.t[5:-1]:
+            return self.bsuper(me, m, args[1:])
+        args = [self.vnode(me)] + args[1:]
     if (o.t == "fn[b:str]" or o.t == "fn[b:list]" or o.t == "fn[b:dict]") and (has_method(o.t[5:-1], m) or (o.t == "fn[b:str]" and (m == "format" or m == "format_map"))):
         return self.unbound_call(o.t[5:-1], m, args, "" if resultsoft else want)
     if is_kw(o.t):
         return self.kw_method(o, m, args)
     if o.t == "dyn":
         return self.dyn_method(o, m, args)  # (its box's type's: dynamic.py)
+    if self.value_union(self.rec_type(o.t)):
+        # (a closed value union's: its member's method, by the tag, unions.py)
+        return self.uvalue_method(Val(o.v, self.rec_type(o.t)).identity(o), m, args, want, resultsoft)
     if is_opt(o.t):
         o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
     if is_union(o.t):
@@ -953,6 +974,14 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
                 # (an attribute its secondary base declares: read by the object's exact class)
                 return self.obj_call(self.expr(mk("attr", m, self.line, [self.vnode(o)]), ""), args, want, resultsoft)
             return self.obj_call(self.getfield(o, self.field(o, m), m), args, want, resultsoft)  # (o.f(args) of a field f)
+        if m not in ci.methods and self.bkind(o.t) != "":
+            # a method that a class deriving from a builtin container does not define: the
+            # container's own, on the object as that container (builtin_bases.py)
+            self.bfill(o.t, m, args)
+            return self.method(self.bview(o), m, args, want, resultsoft)
+        if m not in ci.methods and has_hook(self, o.t) and hook_missing(self, o.t, m):
+            # (what its class's __getattr__ returns, called: found before the arguments are evaluated)
+            return self.obj_call(hook_read(self, o, m), args, want, resultsoft)
         if m not in ci.methods and not ((m == "_replace" or m == "_asdict" or m == "_make" or m == "index" or m == "count") and o.t in self.nts):
             self.err(f"'{shown(o.t)}' object has no method '{m}'")  # (a specialization's is its class's)
         self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
@@ -967,7 +996,7 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         if ci.methods[m].iters:
             self.err(f"calling {short(o.t)}.{m}() is not supported (its iterator is the list it steps through here): iterate over the object")
         if ci.methods[m].prop:
-            return self.obj_call(self.call_fn(ci.methods[m], [o], []), args, "")
+            return self.obj_call(hook_prop(self, ci.methods[m], o, m), args, "")
         self.cls_bound(ci.methods[m], o.t, True)
         # Only user calls consume the result context; builtin methods retain their
         # normal argument contexts, including when forwarding an open empty result.
@@ -1082,7 +1111,7 @@ def gen_method_value(self, o: Val, name: str) -> Val:
         f = ci.methods[name]
         if f.prop:
             self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{name}'")
-            return self.call_fn(f, [o], [])
+            return hook_prop(self, f, o, name)
         if f.deco != "":
             self.err(f"{'a static' if f.deco == 'staticmethod' else 'a class'} method as a value ({short(t)}.{name}) is not supported: call it")
         if f.iters:
@@ -1229,7 +1258,7 @@ def gen_asdict(self, o: Val, args: list[Node]) -> Val:
             self.err(f"_asdict() of a NamedTuple whose fields have different types is not supported (a dict's values have one type): {short(o.t)}")
     dt = self.ctype("dict", ["str", vt])
     kv = targs(dt)  # (["dyn", "dyn"] where the values are Any values or containers, which a dict of them holds as boxes, keys too: ctype)
-    r = self.rt("pys_dict_new_atomic" if atomic_dict(dt) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", f"i64 {len(ci.fields)}"])
+    r = self.rt("pys_dict_new_atomic" if atomic_dict(dt) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", f"i64 {len(ci.fields)}"], t=dt)
     for fl in ci.fields:
         v = self.list_hold(self.getfield(o, self.field(o, fl), fl), kv[1])  # (a tuple of ints as the dict holds it, a promoting int as a dict of ints does: bigints.py)
         self.dict_store(r, self.to_slot(self.store_key(Val(self.sconst(fl), "str"), kv[0])), v, kv)
@@ -1279,6 +1308,8 @@ def gen_new_obj(self, c: str) -> Val:
     self.nn[o.v] = True
     if self.classes[c].tag > 0:
         self.mstore('int', f'{self.classes[c].tag}', o.v)
+    if self.bkind(c) != "":
+        self.binit(o)  # (the header of the builtin container it derives from: builtin_bases.py)
     if not (self.is_dc(c) and "no-init" not in self.classes[c].dcopts and self.classes[c].methods["__init__"].node.kids[0].kind == "noann"):
         line = self.line
         self.class_defaults(o)
@@ -1293,11 +1324,16 @@ def gen_pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
     if identity_abi(f) and self.idhere() and self.fn_identity(f) and numeric_identity(v.t) and numeric_identity(t) and (not f.scalar_args or f.params[j] in f.idnames) and not self.dyn_id_fresh(v):
         captured = Val(v.v, v.t).identity(v)
         # (a local's last read hands its object on, boxed or not: id_move)
-        captured.idfrom = self.dyn_id_held(v).v if self.fn.idpass and v.t == t and (t == "int" or t == "float") and v.idslot.startswith("%") and ".box." in v.idslot else self.dyn_id_box(v).v
+        captured.idfrom = self.dyn_id_held(v).v if self.fn.build.idpass and v.t == t and (t == "int" or t == "float") and v.idslot.startswith("%") and ".box." in v.idslot else self.dyn_id_box(v).v
         v = captured
     if v.t == "bool" and t == BIG and self.bool_numeric(f, j):
         v = self.to_big(v)  # (a bool that f reads only as a number: the int it equals, see bool_numeric)
-    value = self.coerce(v, t, what) if t != "" else v
+    if ann_site(t) and ann_takes(self, t, v.t) and f.name == "__init__" and f.cls in self.classes and f.node.kids[0].kind == "noann" and self.classes[f.cls].ftypes.get(f.params[j], "") == t:
+        # (an int for a float field, or an enum member for an int or str one, that the __init__
+        # @dataclass writes fills: the field's join)
+        value = field_value(self, self.classes[f.cls], f.params[j], v)
+    else:
+        value = self.coerce(v, t, what) if t != "" else v
     if identity_abi(f) and self.idhere() and self.fn_identity(f) and numeric_identity(value.t) and (not f.scalar_args or f.params[j] in f.idnames) and not self.dyn_id_fresh(value):
         # Capture now, before a later argument can rebind the original local or cell.
         # (A new number has nothing to capture: its companion is null, dyn_id_arg.)
@@ -1365,6 +1401,15 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
     for v in vals[1:]:
         t = self.join(t, v.t)
         if t == "":
+            both = self.union_type([u.t for u in vals]) if all([ann_site(u.t) for u in vals]) else ""
+            if both != "" and not both.startswith("!") and not self.final and ann_open(self):
+                # (-> float overrides, one of which returns an int, or -> int or -> str ones, one
+                # of which returns an enum member: all return what it does, the join of their
+                # returns, see ann_returns)
+                for c in cs:
+                    m = c.methods[f.name]
+                    if m.ret in ANNTYPES and ann_takes(self, m.ret, both) and ann_returns(m) and self.hints.get(f"return:{m.node.line}", "") != both:
+                        self.newhints[f"return:{m.node.line}"] = both
             self.err(f"overrides of {short(o.t)}.{f.name}() return incompatible types; use a common return type")
     ph = Ins("phi", t, "")
     for i in range(len(vals)):
@@ -1382,7 +1427,7 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
             self.incoming(identity, vals[i].idfrom if vals[i].idfrom != "" else "null", edges[i])
         held = self.phi(identity)
         result.idslot = self.alloca("dyn", "")
-        self.mem_store(Val(result.idslot, "*dyn"), Val(held, "dyn"))
+        self.mem_store(Val(result.idslot, "&dyn"), Val(held, "dyn"))
         result.idheld = held
         result.idcounter = self.alloca("int", "")
         result.idversion = "0"
@@ -1485,15 +1530,18 @@ def gen_scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
     return ts if all(numeric_statement(n, names, blocked, {}, True, True) for n in body) else []
 
 
-def int_for_float(f: FnInfo, j: int, t: str) -> bool:
-    # does an argument of type t compile f again, for a float parameter j that takes an int (a
-    # promoting one too) or a bool: a function's or an ordinary method's, whose body then reads
-    # the int, as CPython's does
-    if (t != "int" and t != "bool" and t != BIG) or f.ptypes[j] != "float" or j == f.vararg or j == f.kwarg or len(f.node.kids) < 3:
+def ann_param(self, f: FnInfo, j: int, t: str) -> bool:
+    # does an argument of type t compile f again, for a parameter j annotated float, int or str
+    # that takes it as it is (ann_takes): an int (a promoting one too) or a bool for a float, the
+    # member of an IntEnum, IntFlag or StrEnum class for an int or a str; a function's or an
+    # ordinary method's, whose body then reads the argument, as CPython's does
+    if f.ptypes[j] not in ANNTYPES or not ann_takes(self, f.ptypes[j], t) or j == f.vararg or j == f.kwarg or len(f.node.kids) < 3:
         return False
     if f.gen or f.extern or f.export or f.pyexport or f.clo >= 0 or f.prop or f.acc != "" or f.deco != "":
         return False
-    return f.cls == "" or not (f.name.startswith("__") and f.name.endswith("__"))
+    # (a constructor too, whose fields join: join_hint; but the one @dataclass writes, whose
+    # parameters are its fields: pcoerce)
+    return f.cls == "" or not (f.name.startswith("__") and f.name.endswith("__")) or (f.name == "__init__" and f.node.kids[0].kind != "noann")
 
 
 def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "", unbound: bool = False, got: list[FnInfo] | None = None) -> Val:
@@ -1542,7 +1590,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     kwn: list[str] = []
     kwv: list[Val] = []
     offs: dict[int, Val] = {}  # (the index of each list that an @extern call takes as ffi.at(xs, k))
-    late = False  # (an argument that compiles f for its own type: see int_for_float)
+    late = False  # (an argument that compiles f for its own type: see ann_param)
     for a in args:
         j = pos
         e = a
@@ -1569,11 +1617,11 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             vals[j] = self.at_arg(e, f, j, offs)
             continue
         quiet = identity_abi(f) and not f.generic and f.cls not in self.tmpl and f.scalar_args and f.params[j] not in f.idnames and numeric_identity(f.ptypes[j]) and self.scalar_read_value(e)
-        held = self.fn.scalar_reads
+        held = self.fn.build.scalar_reads
         if quiet:
             # (the callee never observes this argument's object: numeric_proof, as its null
             # companion below says; read it as an operand, without snapshots)
-            self.fn.scalar_reads = True
+            self.fn.build.scalar_reads = True
         # (a sentinel parameter's argument is a T, or the sentinel itself: declare_fn; also as a
         # sentinel parameter of the caller's for the same sentinel that may hold it: only the
         # sentinel can where its type is object's (store_name), unless a closure assigns it (nlw),
@@ -1584,19 +1632,20 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         try:
             arg = self.expr(e, pt if pt != "" or j >= len(hint) else self.generic_hint(e, hint[j]))
         finally:
-            self.fn.scalar_reads = held
-        passing = self.fn.idpass
-        self.fn.idpass = self.id_move(e)
+            self.fn.build.scalar_reads = held
+        passing = self.fn.build.idpass
+        self.fn.build.idpass = self.id_move(e)
         try:
-            if cache is None and not self.rtmode and int_for_float(f, j, arg.t) and (f.cls == "" or (f.cls in self.classes and self.classes[f.cls].tag == 0 and self.classes[f.cls].origin == "" and f.cls not in self.tmpl)):
-                # an int for a float parameter (PEP 484 accepts it, and CPython passes the int
-                # on): the function compiles for it, as a template's does (see instance)
+            if cache is None and not self.rtmode and ann_param(self, f, j, arg.t) and (f.cls == "" or (f.cls in self.classes and (self.classes[f.cls].tag == 0 or f.name == "__init__") and self.classes[f.cls].origin == "" and f.cls not in self.tmpl)):
+                # an int for a float parameter, or an enum member for an int or str one (PEP 484
+                # accepts it, and CPython passes it on as it is): the function compiles for it,
+                # as a template's does (see instance)
                 vals[j] = self.pcoerce(arg, "", f, j)
                 late = True
             else:
                 vals[j] = self.pcoerce(arg, pt, f, j)
         finally:
-            self.fn.idpass = passing
+            self.fn.build.idpass = passing
         if self.curfn.cmpops and self.term and vals[j].v == "undef":
             return Val("undef", want if want not in ["", "?"] else f.ret if f.ret != "" else "int")
         if j in f.pats:
@@ -1632,7 +1681,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
                 vals[j] = Val(self.mload(t, da), t)
                 if self.fn_identity(f) and numeric_identity(t):
                     closure = self.closures[f.clo]
-                    ba = self.maddr('%ptr', pre[0].v, str(len(closure.caps) + closure_default_slots(closure) + len(closure.iflags) + closure.defs.index(j)), True)
+                    ba = self.maddr('int', pre[0].v, str(len(closure.caps) + closure_default_slots(closure) + len(closure.iflags) + closure.defs.index(j)), True)
                     vals[j].idfrom = self.mload('dyn', ba)
             elif df.dglob[j] != "":
                 t = t if t != "" else df.dtypes[j]
@@ -1721,8 +1770,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         c.a.extend([self.dyn_id_arg(vals[j]) if self.idhere() and self.fn_identity(f) and (not f.scalar_args or f.params[j] in f.idnames) else Val("null", "dyn") for j in range(np) if numeric_identity(f.ptypes[j])])
         if numeric_identity(f.ret):
             idresult = self.alloca("dyn", "")
-            self.mem_store(Val(idresult, "*dyn"), Val("null", "dyn"))
-            c.a.append(Val(idresult, "*dyn"))
+            self.mem_store(Val(idresult, "&dyn"), Val("null", "dyn"))
+            c.a.append(Val(idresult, "&dyn"))
     if len(offs) > 0:
         # a list as ffi.at(xs, k): the stub that takes an index after the arguments for each list
         # (0 for one passed as it is), which it checks as the call starts (cextern)
@@ -1776,7 +1825,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     if idresult != "" and numeric_identity(f.ret) and self.fn_identity(f):  # (code that does not track identity gives none)
         result.idexact = result.t == "int" or result.t == BIG or result.t == "float"
         result.idslot = idresult
-        result.idheld = self.mem_load(Val(idresult, "*dyn")).v
+        result.idheld = self.mem_load(Val(idresult, "&dyn")).v
         result.idcounter = self.alloca("int", "")
         result.idversion = "0"
     return result

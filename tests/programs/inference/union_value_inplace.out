@@ -1,0 +1,128 @@
+eval index
+eval factor
+{'count': 5.0, 'rows': [[1, 2], [3, 3]], 'name': 'abcd', 'ratio': 0.5}
+[[1, 2, 9], [3, 3], [7]] [1, 2, 9]
+TypeError unsupported operand type(s) for +=: 'float' and 'str'
+TypeError 'int' object is not iterable
+TypeError can't multiply sequence by non-int of type 'float'
+KeyError 'missing'
+2.0 5.0 -2.0 2.0 2.0 False True False
+int += int 4 2 2
+int *= int 4 2 2
+int += float 4.5 2 2
+int *= float 5.0 2 2
+int += bool 3 2 2
+int *= bool 2 2 2
+int += none TypeError unsupported operand type(s) for +=: 'int' and 'NoneType'
+int *= none TypeError unsupported operand type(s) for *=: 'int' and 'NoneType'
+int += str TypeError unsupported operand type(s) for +=: 'int' and 'str'
+int *= str abab 2 2
+int += list TypeError unsupported operand type(s) for +=: 'int' and 'list'
+int *= list [1, 'x', 1, 'x'] 2 2
+int += dict TypeError unsupported operand type(s) for +=: 'int' and 'dict'
+int *= dict TypeError unsupported operand type(s) for *=: 'int' and 'dict'
+float += int 4.5 2.5 2.5
+float *= int 5.0 2.5 2.5
+float += float 5.0 2.5 2.5
+float *= float 6.25 2.5 2.5
+float += bool 3.5 2.5 2.5
+float *= bool 2.5 2.5 2.5
+float += none TypeError unsupported operand type(s) for +=: 'float' and 'NoneType'
+float *= none TypeError unsupported operand type(s) for *=: 'float' and 'NoneType'
+float += str TypeError unsupported operand type(s) for +=: 'float' and 'str'
+float *= str TypeError can't multiply sequence by non-int of type 'float'
+float += list TypeError unsupported operand type(s) for +=: 'float' and 'list'
+float *= list TypeError can't multiply sequence by non-int of type 'float'
+float += dict TypeError unsupported operand type(s) for +=: 'float' and 'dict'
+float *= dict TypeError unsupported operand type(s) for *=: 'float' and 'dict'
+bool += int 3 True True
+bool *= int 2 True True
+bool += float 3.5 True True
+bool *= float 2.5 True True
+bool += bool 2 True True
+bool *= bool 1 True True
+bool += none TypeError unsupported operand type(s) for +=: 'bool' and 'NoneType'
+bool *= none TypeError unsupported operand type(s) for *=: 'bool' and 'NoneType'
+bool += str TypeError unsupported operand type(s) for +=: 'bool' and 'str'
+bool *= str ab True True
+bool += list TypeError unsupported operand type(s) for +=: 'bool' and 'list'
+bool *= list [1, 'x'] True True
+bool += dict TypeError unsupported operand type(s) for +=: 'bool' and 'dict'
+bool *= dict TypeError unsupported operand type(s) for *=: 'bool' and 'dict'
+none += int TypeError unsupported operand type(s) for +=: 'NoneType' and 'int'
+none *= int TypeError unsupported operand type(s) for *=: 'NoneType' and 'int'
+none += float TypeError unsupported operand type(s) for +=: 'NoneType' and 'float'
+none *= float TypeError unsupported operand type(s) for *=: 'NoneType' and 'float'
+none += bool TypeError unsupported operand type(s) for +=: 'NoneType' and 'bool'
+none *= bool TypeError unsupported operand type(s) for *=: 'NoneType' and 'bool'
+none += none TypeError unsupported operand type(s) for +=: 'NoneType' and 'NoneType'
+none *= none TypeError unsupported operand type(s) for *=: 'NoneType' and 'NoneType'
+none += str TypeError unsupported operand type(s) for +=: 'NoneType' and 'str'
+none *= str TypeError can't multiply sequence by non-int of type 'NoneType'
+none += list TypeError unsupported operand type(s) for +=: 'NoneType' and 'list'
+none *= list TypeError can't multiply sequence by non-int of type 'NoneType'
+none += dict TypeError unsupported operand type(s) for +=: 'NoneType' and 'dict'
+none *= dict TypeError unsupported operand type(s) for *=: 'NoneType' and 'dict'
+str += int TypeError can only concatenate str (not "int") to str
+str *= int abab ab ab
+str += float TypeError can only concatenate str (not "float") to str
+str *= float TypeError can't multiply sequence by non-int of type 'float'
+str += bool TypeError can only concatenate str (not "bool") to str
+str *= bool ab ab ab
+str += none TypeError can only concatenate str (not "NoneType") to str
+str *= none TypeError can't multiply sequence by non-int of type 'NoneType'
+str += str abab ab ab
+str *= str TypeError can't multiply sequence by non-int of type 'str'
+str += list TypeError can only concatenate str (not "list") to str
+str *= list TypeError can't multiply sequence by non-int of type 'list'
+str += dict TypeError can only concatenate str (not "dict") to str
+str *= dict TypeError can't multiply sequence by non-int of type 'dict'
+list += int TypeError 'int' object is not iterable
+list *= int [1, 'x', 1, 'x'] [1, 'x', 1, 'x'] [1, 'x', 1, 'x']
+list += float TypeError 'float' object is not iterable
+list *= float TypeError can't multiply sequence by non-int of type 'float'
+list += bool TypeError 'bool' object is not iterable
+list *= bool [1, 'x'] [1, 'x'] [1, 'x']
+list += none TypeError 'NoneType' object is not iterable
+list *= none TypeError can't multiply sequence by non-int of type 'NoneType'
+list += str [1, 'x', 'a', 'b'] [1, 'x', 'a', 'b'] [1, 'x', 'a', 'b']
+list *= str TypeError can't multiply sequence by non-int of type 'str'
+list += list [1, 'x', 1, 'x'] [1, 'x', 1, 'x'] [1, 'x', 1, 'x']
+list *= list TypeError can't multiply sequence by non-int of type 'list'
+list += dict [1, 'x', 'k', 'j'] [1, 'x', 'k', 'j'] [1, 'x', 'k', 'j']
+list *= dict TypeError can't multiply sequence by non-int of type 'dict'
+dict += int TypeError unsupported operand type(s) for +=: 'dict' and 'int'
+dict *= int TypeError unsupported operand type(s) for *=: 'dict' and 'int'
+dict += float TypeError unsupported operand type(s) for +=: 'dict' and 'float'
+dict *= float TypeError unsupported operand type(s) for *=: 'dict' and 'float'
+dict += bool TypeError unsupported operand type(s) for +=: 'dict' and 'bool'
+dict *= bool TypeError unsupported operand type(s) for *=: 'dict' and 'bool'
+dict += none TypeError unsupported operand type(s) for +=: 'dict' and 'NoneType'
+dict *= none TypeError unsupported operand type(s) for *=: 'dict' and 'NoneType'
+dict += str TypeError unsupported operand type(s) for +=: 'dict' and 'str'
+dict *= str TypeError unsupported operand type(s) for *=: 'dict' and 'str'
+dict += list TypeError unsupported operand type(s) for +=: 'dict' and 'list'
+dict *= list TypeError unsupported operand type(s) for *=: 'dict' and 'list'
+dict += dict TypeError unsupported operand type(s) for +=: 'dict' and 'dict'
+dict *= dict TypeError unsupported operand type(s) for *=: 'dict' and 'dict'
+[1, 'x', 1, 'x', 'c', 'd', 'k'] [1, 'x', 1, 'x', 'c', 'd', 'k']
+ab!ab! ab
+1
+TypeError unsupported operand type(s) for %: 'int' and 'NoneType'
+ZeroDivisionError integer modulo by zero
+1.5
+TypeError unsupported operand type(s) for %: 'float' and 'NoneType'
+ZeroDivisionError float modulo by zero
+TypeError not all arguments converted during string formatting
+TypeError not all arguments converted during string formatting
+TypeError not all arguments converted during string formatting
+TypeError unsupported operand type(s) for %: 'NoneType' and 'int'
+TypeError unsupported operand type(s) for %: 'NoneType' and 'NoneType'
+TypeError unsupported operand type(s) for %: 'NoneType' and 'int'
+TypeError unsupported operand type(s) for %: 'list' and 'int'
+TypeError unsupported operand type(s) for %: 'list' and 'NoneType'
+TypeError unsupported operand type(s) for %: 'list' and 'int'
+1
+TypeError unsupported operand type(s) for %: 'bool' and 'NoneType'
+ZeroDivisionError integer modulo by zero
+[exit 0]

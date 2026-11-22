@@ -16,7 +16,7 @@ from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, Val, slot_register
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.specs import IROPS
-from src.pystachy_compiler.union_state import UnionState
+from src.pystachy_compiler.union_state import UnionState, union_join
 from src.pystachy_compiler.union_proof import UnionProof, proof_number, simple_union_proof
 
 U = "union[int,float]"
@@ -29,7 +29,7 @@ class Case:
         for t in ("int", "float", "str"):
             self.g.utag(t)
         f = FnInfo(name, "@" + name, Node("def", name, 1), "")
-        f.ptypes = ptypes or [U, U, "*" + U, "%ptr"]
+        f.ptypes = ptypes or [U, U, "&" + U, "%ptr"]
         f.params = ["p" + str(i) for i in range(len(f.ptypes))]
         self.fn = IFn(f)
         self.fn.ps = list(range(len(f.ptypes)))
@@ -104,8 +104,8 @@ def optional_spoof():
 
 
 def pointer_spoof():
-    c = Case("narrowed_pointer_operand_spoof", ["*" + W])
-    v = c.op("mem.load", U, a=[("%a0", "*" + U)])
+    c = Case("narrowed_pointer_operand_spoof", ["&" + W])
+    v = c.op("mem.load", U, a=[("%a0", "&" + U)])
     c.guard(v)
     c.block("hit")
     c.ret()
@@ -161,12 +161,12 @@ def same_successor():
 
 def loop_backedge():
     c = Case("loop_backedge_invalidates_first_entry_fact")
-    v = c.op("mem.load", U, a=[("%a2", "*" + U)])
+    v = c.op("mem.load", U, a=[("%a2", "&" + U)])
     c.guard(v, yes="loop", no="exit")
     c.block("loop")
-    v2 = c.op("mem.load", U, a=[("%a2", "*" + U)])
+    v2 = c.op("mem.load", U, a=[("%a2", "&" + U)])
     c.payload(v2)
-    c.op("mem.store", a=[("%a2", "*" + U), ("%a1", U)])
+    c.op("mem.store", a=[("%a2", "&" + U), ("%a1", U)])
     c.op("cbr", a=[("true", "bool")], b=["loop", "exit"])
     c.block("exit")
     c.ret()
@@ -174,7 +174,7 @@ def loop_backedge():
 
 
 def cold_failure_path():
-    c = Case("check_failure_edge_requires_proof", [U, U, "*" + U, "%ptr", "bool"])
+    c = Case("check_failure_edge_requires_proof", [U, U, "&" + U, "%ptr", "bool"])
     c.fn.cold["ValueError: proof probe"] = "cold"
     c.op("check", s="ValueError: proof probe", a=[("%a4", "bool")], b=["next"])
     c.block("next")
@@ -188,14 +188,14 @@ def cold_failure_path():
 def mutated(name, old=False, call=False, untouched=False):
     c = Case(name)
     a = "%a2"
-    v = c.op("mem.load", U, a=[(a, "*" + U)])
+    v = c.op("mem.load", U, a=[(a, "&" + U)])
     c.guard(v)
     c.block("hit")
     if call:
-        c.op("icall", "None", a=[("%a3", "%ptr"), (a, "*" + U)])
+        c.op("icall", "None", a=[("%a3", "%ptr"), (a, "&" + U)])
     elif not untouched:
-        c.op("mem.store", a=[(a, "*" + U), ("%a1", U)])
-    after = v if old else c.op("mem.load", U, a=[(a, "*" + U)])
+        c.op("mem.store", a=[(a, "&" + U), ("%a1", U)])
+    after = v if old else c.op("mem.load", U, a=[(a, "&" + U)])
     c.payload(after)
     c.finish_pair()
     return c
@@ -203,16 +203,16 @@ def mutated(name, old=False, call=False, untouched=False):
 
 def exceptional(old=False):
     c = Case("exception_old_box" if old else "exception_reload")
-    v = c.op("mem.load", U, a=[("%a2", "*" + U)])
+    v = c.op("mem.load", U, a=[("%a2", "&" + U)])
     c.guard(v)
     c.block("hit")
-    c.op("icall", "None", a=[("%a3", "%ptr"), ("%a2", "*" + U)], b=["normal", "landing"])
+    c.op("icall", "None", a=[("%a3", "%ptr"), ("%a2", "&" + U)], b=["normal", "landing"])
     c.block("normal")
     c.ret()
     c.block("landing")
-    c.op("landing", "exc", a=[("%a2", "%ptr")], b=["handler"])
+    c.op("landing", "exc", a=[("%a2", "%addr")], b=["handler"])
     c.block("handler")
-    after = v if old else c.op("mem.load", U, a=[("%a2", "*" + U)])
+    after = v if old else c.op("mem.load", U, a=[("%a2", "&" + U)])
     c.payload(after)
     c.ret()
     c.block("miss")
@@ -222,14 +222,14 @@ def exceptional(old=False):
 
 def aliased_store(mode="pointer", old=False):
     name = "alias_" + mode + ("_old_box" if old else "_reload")
-    c = Case(name, [U, U, "Box", "Box"] if mode == "field" else [U, U, "*" + U, "*" + U])
+    c = Case(name, [U, U, "Box", "Box"] if mode == "field" else [U, U, "&" + U, "&" + U])
     if mode == "field":
         ci = ClassInfo("Box", Node("class", "Box", 1))
         ci.fields = ["value"]
         ci.ftypes = {"value": U}
         c.g.classes["Box"] = ci
-        p = c.op("field.addr", "*" + U, a=[("%a2", "Box")])
-        q = c.op("field.addr", "*" + U, a=[("%a3", "Box")])
+        p = c.op("field.addr", "&" + U, a=[("%a2", "Box")])
+        q = c.op("field.addr", "&" + U, a=[("%a3", "Box")])
         c.fn.fa[p] = True
         c.fn.fa[q] = True
     else:
@@ -237,12 +237,13 @@ def aliased_store(mode="pointer", old=False):
         q = "%a3"
         if mode == "gep":
             q = c.op("mach.addr", "%ptr", "%ptr", [(q, "%ptr"), ("0", "int")])
-    v = c.op("mem.load", U, a=[(p, "*" + U)])
+            q = c.op("cast", "&" + U, "bits", [(q, "%ptr")])  # (the machine address, read as the box's)
+    v = c.op("mem.load", U, a=[(p, "&" + U)])
     c.guard(v)
     c.block("hit")
     # p and q have distinct SSA names but the caller may pass the same address/object.
-    c.op("mem.store", a=[(q, "*" + U), ("%a1", U)])
-    after = v if old else c.op("mem.load", U, a=[(p, "*" + U)])
+    c.op("mem.store", a=[(q, "&" + U), ("%a1", U)])
+    after = v if old else c.op("mem.load", U, a=[(p, "&" + U)])
     c.payload(after)
     c.finish_pair()
     return c
@@ -255,17 +256,19 @@ def raw_parts(c, box):
 
 
 def raw_rebox(mixed=False, phi=False):
-    c = Case("raw_" + ("mixed" if mixed else "same") + ("_phi" if phi else "_source"), [U, U, "*" + U, "%ptr", "bool"])
+    c = Case("raw_" + ("mixed" if mixed else "same") + ("_phi" if phi else "_source"), [U, U, "&" + U, "%ptr", "bool"])
     c.g.runtime("pys_ubox")
     if phi:
         c.op("cbr", a=[("%a4", "bool")], b=["left", "right"])
         c.block("left")
         t0, p0 = raw_parts(c, "%a0")
         _, bad0 = raw_parts(c, "%a1") if mixed else (t0, p0)
+        bad0 = c.op("cast", "int", "bits", [(bad0, "%slot")])  # (the bits as an int, which a phi joins as unionslots does)
         c.op("br", b=["merge"])
         c.block("right")
         t1, p1 = raw_parts(c, "%a1")
         _, bad1 = raw_parts(c, "%a0") if mixed else (t1, p1)
+        bad1 = c.op("cast", "int", "bits", [(bad1, "%slot")])
         c.op("br", b=["merge"])
         c.block("merge")
         tag = c.op("phi", "int", a=[(t0, "int"), (t1, "int")], b=["left", "right"])
@@ -328,10 +331,74 @@ if "union.raw" in IROPS:
 
 
 class UnionProofTests(unittest.TestCase):
+    def test_cast_and_optional_proofs_share_one_definition_scan(self):
+        for cast in (False, True):
+            with self.subTest(cast=cast):
+                c = Case("definition_scans", ["opt[str]", "%ptr"])
+                if cast:
+                    c.op("cast", "str", "bits", [("%a1", "%ptr")])
+                check = c.op("ptr.cmp", "bool", "!=", [("%a0", "opt[str]"), ("null", "None")])
+                c.op("cbr", a=[(check, "bool")], b=["some", "none"])
+                c.block("some")
+                c.g.runtime("pys_text_len")
+                c.op("rt", "int", "text.len", [("%a0", "str")])
+                c.ret()
+                c.block("none")
+                c.ret()
+                with patch.object(ircheck, "value_definitions", wraps=ircheck.value_definitions) as scans:
+                    c.g.verify(c.fn, False)
+                self.assertEqual(scans.call_count, 1)
+
+    def test_invalidating_an_object_visits_only_its_own_field_keys(self):
+        class NoScan(dict):
+            def __iter__(self):
+                raise AssertionError("scanned every tracked domain for one object")
+
+        c = Case("field_invalidation", ["Node", "Node"])
+        c.ret()
+        proof = UnionProof(c.fn, c.g.utags)
+        state = UnionState(proof.base, proof.full)
+        for obj in ("%a0", "%a1"):
+            for index in (1, 2):
+                state.set(proof.field_key(state, obj, index, "Node"), ["str"])
+        state.d = NoScan(state.d)
+        proof.forget_fields(state, "%a0")
+        self.assertNotIn("MF:a0#1", state.d)
+        self.assertNotIn("MF:a0#2", state.d)
+        self.assertEqual(state.d["MF:a1#1"], ["str"])
+        self.assertEqual(state.d["MF:a1#2"], ["str"])
+
+    def test_field_identity_survives_only_matching_storage_on_all_paths(self):
+        c = Case("field_identity", ["Node"])
+        obj = c.op("mem.load", "Node", a=[("%owner.1", "&Node")])
+        c.ret()
+        proof = UnionProof(c.fn, c.g.utags)
+        left = UnionState(proof.base, proof.full)
+        left.loaded[obj] = "%owner.1"
+        left.set("U:" + obj, ["Node"])
+        left.set("MU:%owner.1", ["Node"])
+        right = left.clone()
+        same = union_join(left, right)
+        self.assertEqual(proof.field_key(same, obj, 1, "Node"), "MF:owner.1#1")
+        del right.loaded[obj]
+        changed = union_join(left, right)
+        self.assertEqual(changed.eq["U:" + obj], changed.eq["MU:%owner.1"])
+        self.assertNotEqual(proof.field_key(changed, obj, 1, "Node"), "MF:owner.1#1")
+        self.assertFalse(left.same(right))
+
+    def test_union_store_into_recursive_alias_admits_all_source_members(self):
+        g = Gen()
+        g.recursive["Tree"] = "opt[union[int,float,list[rec[Tree]]]]"
+        self.assertEqual(ircheck.type_view(g, U, "rec[Tree]", False, ""), "alias")
+        self.assertEqual(ircheck.type_view(g, "opt[" + U + "]", "rec[Tree]", False, ""), "alias")
+        self.assertEqual(ircheck.type_view(g, W, "rec[Tree]", False, ""), "")
+        g.recursive["Tree"] = "union[int,float,list[rec[Tree]]]"
+        self.assertEqual(ircheck.type_view(g, "opt[" + U + "]", "rec[Tree]", False, ""), "optional")
+
     def test_repeated_declarations_parse_each_type_once_per_proof(self):
         c = Case("repeated_global_domains")
-        c.op("mem.load", U, a=[("@g.g0", "*" + U)])
-        c.op("mem.load", "opt[" + U + "]", a=[("@g.optional", "*opt[" + U + "]")])
+        c.op("mem.load", U, a=[("@g.g0", "&" + U)])
+        c.op("mem.load", "opt[" + U + "]", a=[("@g.optional", "&opt[" + U + "]")])
         c.guard()
         c.block("hit")
         c.payload()
@@ -355,8 +422,8 @@ class UnionProofTests(unittest.TestCase):
     def test_shared_type_domains_survive_narrowing_and_optional_boxing(self):
         c = Case("shared_global_domains", ["int"])
         c.g.runtime("pys_ubox_opt")
-        c.op("mem.load", U, a=[("@g.first", "*" + U)])
-        c.op("mem.load", U, a=[("@g.second", "*" + U)])
+        c.op("mem.load", U, a=[("@g.first", "&" + U)])
+        c.op("mem.load", U, a=[("@g.second", "&" + U)])
         result = c.op("rt", "%ptr", "ubox_opt", [("%a0", "int")])
         box = c.b.code[-1]
         c.ret()
@@ -514,8 +581,8 @@ class UnionProofTests(unittest.TestCase):
                     slot.r = [c.fn.n]
                     c.fn.slots.append(slot)
                     address = "%tag." + str(slot.r[0])
-                    c.op("mem.store", a=[(address, "*int"), (tag, "int")])
-                    tag = c.op("mem.load", "int", a=[(address, "*int")])
+                    c.op("mem.store", a=[(address, "&int"), (tag, "int")])
+                    tag = c.op("mem.load", "int", a=[(address, "&int")])
                 c.op("switch", a=[(tag, "int"), (str(c.g.utags["int"]), "int")], b=["miss", "hit"])
                 c.block("hit")
                 value = c.op("phi", U, a=[("%a0", U)], b=[predecessor]) if transport == "destination_phi" else "%a0"
@@ -527,12 +594,12 @@ class UnionProofTests(unittest.TestCase):
         for old in (False, True):
             with self.subTest(old=old):
                 c = Case("switch_mutated")
-                value = c.op("mem.load", U, a=[("%a2", "*" + U)])
+                value = c.op("mem.load", U, a=[("%a2", "&" + U)])
                 tag = c.op("union.tag", "int", a=[(value, U)])
-                c.op("mem.store", a=[("%a2", "*" + U), ("%a1", U)])
+                c.op("mem.store", a=[("%a2", "&" + U), ("%a1", U)])
                 c.op("switch", a=[(tag, "int"), (str(c.g.utags["int"]), "int")], b=["miss", "hit"])
                 c.block("hit")
-                after = value if old else c.op("mem.load", U, a=[("%a2", "*" + U)])
+                after = value if old else c.op("mem.load", U, a=[("%a2", "&" + U)])
                 c.payload(after)
                 c.finish_pair()
                 with redirect_stderr(StringIO()):
@@ -595,7 +662,7 @@ class UnionProofTests(unittest.TestCase):
         slot.r = [c.fn.n]
         c.fn.slots.append(slot)
         address = "%local." + str(slot.r[0])
-        c.op("mem.store", a=[(address, "*" + U), ("%a0", U)])
+        c.op("mem.store", a=[(address, "&" + U), ("%a0", U)])
         c.guard(yes="loader")
         c.block("payload")
         c.payload("%future")
@@ -604,7 +671,7 @@ class UnionProofTests(unittest.TestCase):
         c.block("miss")
         c.ret()
         c.block("loader")
-        payload.a[0].v = c.op("mem.load", U, a=[(address, "*" + U)])
+        payload.a[0].v = c.op("mem.load", U, a=[(address, "&" + U)])
         c.op("br", b=["payload"])
         self.assertTrue(simple_union_proof(c.fn, c.g.utags))
         c.g.verify(c.fn, False)
@@ -620,8 +687,8 @@ class UnionProofTests(unittest.TestCase):
                     slot.r = [c.fn.n]
                     c.fn.slots.append(slot)
                     address = "%local." + str(slot.r[0])
-                    c.op("mem.store", a=[(address, "*" + U), ("%a" + str(p), U)])
-                    values.append(c.op("mem.load", U, a=[(address, "*" + U)]))
+                    c.op("mem.store", a=[(address, "&" + U), ("%a" + str(p), U)])
+                    values.append(c.op("mem.load", U, a=[(address, "&" + U)]))
                 c.guard(values[0])
                 c.block("hit")
                 c.payload(values[1] if mode == "other_parameter" else values[0])
@@ -629,7 +696,7 @@ class UnionProofTests(unittest.TestCase):
                 if mode == "raw_bits":
                     c.op("union.tag", "int", a=[("%t" + str(payload.r[1]), U)])
                 elif mode == "collision":
-                    c.op("mem.load", U, a=[("%local.1", "*" + U)])
+                    c.op("mem.load", U, a=[("%local.1", "&" + U)])
                     c.b.code[-1].r = [payload.r[1]]
                 c.finish_pair()
                 self.assertEqual(simple_union_proof(c.fn, c.g.utags), mode == "valid")
@@ -677,18 +744,18 @@ class UnionProofTests(unittest.TestCase):
                 slot.r = [c.fn.n]
                 c.fn.slots.append(slot)
                 address = "%local." + str(slot.r[0])
-                c.op("mem.store", a=[(address, "*" + U), ("%a0", U)])
-                value = c.op("mem.load", U, a=[(address, "*" + U)])
+                c.op("mem.store", a=[(address, "&" + U), ("%a0", U)])
+                value = c.op("mem.load", U, a=[(address, "&" + U)])
                 c.guard(value)
                 c.block("hit")
-                value = c.op("mem.load", U, a=[(address, "*" + U)])
+                value = c.op("mem.load", U, a=[(address, "&" + U)])
                 c.payload(value)
                 c.ret()
                 c.block("miss")
                 if mode == "store":
-                    c.op("mem.store", a=[(address, "*" + U), ("%a1", U)])
+                    c.op("mem.store", a=[(address, "&" + U), ("%a1", U)])
                 else:
-                    c.op("icall", "None", a=[("%a2", "%ptr"), (address, "*" + U)])
+                    c.op("icall", "None", a=[("%a2", "%ptr"), (address, "&" + U)])
                 c.ret()
                 self.assertFalse(simple_union_proof(c.fn, c.g.utags))
                 c.g.verify(c.fn, False)
@@ -712,16 +779,16 @@ class UnionProofTests(unittest.TestCase):
                 self.assertEqual(slot_register(flag), "%local.def." + str(c.fn.n))
                 c.op("cbr", a=[("%a1", "bool")], b=["assign", "join"])
                 c.block("assign")
-                c.op("mem.store", a=[(address, "*" + t), ("%a0", t)])
-                c.op("mem.store", a=[(slot_register(flag), "*bool"), ("true", "bool")])
+                c.op("mem.store", a=[(address, "&" + t), ("%a0", t)])
+                c.op("mem.store", a=[(slot_register(flag), "&bool"), ("true", "bool")])
                 c.op("br", b=["join"])
                 c.block("join")
                 if guarded:
-                    c.guard(c.op("mem.load", t, a=[(address, "*" + t)]), typ=t, yes="hit", no="miss")
+                    c.guard(c.op("mem.load", t, a=[(address, "&" + t)]), typ=t, yes="hit", no="miss")
                     c.block("hit")
                     c.ret()
                     c.block("miss")
-                c.payload(c.op("mem.load", t, a=[(address, "*" + t)]), member="str", typ=t)
+                c.payload(c.op("mem.load", t, a=[(address, "&" + t)]), member="str", typ=t)
                 c.ret()
                 self.assertFalse(simple_union_proof(c.fn, c.g.utags))
                 with redirect_stderr(StringIO()):
@@ -783,12 +850,12 @@ class UnionProofTests(unittest.TestCase):
                 c = make_case()
                 calls = []
 
-                def observe(fn, tags, at, successors, types, calls=calls):
+                def observe(fn, tags, at, successors, types, classes, calls=calls):
                     self.assertIsNotNone(at)
                     self.assertIsNotNone(successors)
                     self.assertIsNotNone(types)
-                    cached = simple_union_proof(fn, tags, at, successors, types)
-                    self.assertEqual(cached, simple_union_proof(fn, tags))
+                    cached = simple_union_proof(fn, tags, at, successors, types, classes)
+                    self.assertEqual(cached, simple_union_proof(fn, tags, classes=classes))
                     self.assertFalse(cached)
                     calls.append(True)
                     return cached
@@ -812,12 +879,12 @@ class UnionProofTests(unittest.TestCase):
         c.b.code[-1].b = NOLABELS
         before = [(i, i.b, list(i.b)) for b in c.fn.blocks for i in b.code]
 
-        def observe(fn, tags, at, successors, types):
+        def observe(fn, tags, at, successors, types, classes):
             self.assertIs(successors[0], shared)
             self.assertIs(successors[1], shared)
             self.assertIs(successors[2], NOLABELS)
             self.assertEqual(successors, [["next", "next"], ["next", "next"], []])
-            return simple_union_proof(fn, tags, at, successors, types)
+            return simple_union_proof(fn, tags, at, successors, types, classes)
 
         with patch.object(ircheck, "simple_union_proof", side_effect=observe) as proof:
             c.g.verify(c.fn, False)
@@ -838,12 +905,12 @@ class UnionProofTests(unittest.TestCase):
             c.ret()
         before = [(i, i.b, list(i.b)) for b in c.fn.blocks for i in b.code]
 
-        def observe(fn, tags, at, successors, types, before=before):
+        def observe(fn, tags, at, successors, types, classes, before=before):
             self.assertEqual(successors[0], ["right", "left"])
             for _, labels, _ in before:
                 self.assertIsNot(successors[0], labels)
             self.assertIsNot(successors[0], NOLABELS)
-            return simple_union_proof(fn, tags, at, successors, types)
+            return simple_union_proof(fn, tags, at, successors, types, classes)
 
         with patch.object(ircheck, "simple_union_proof", side_effect=observe) as proof:
             c.g.verify(c.fn, False)
@@ -893,7 +960,7 @@ class UnionProofTests(unittest.TestCase):
                 error = StringIO()
                 with redirect_stderr(error), self.assertRaises(SystemExit):
                     c.g.verify(c.fn, False)
-                expected = "union.tag needs one union operand and no extra metadata" if invalid_metadata else "a branch to (none for cold-key), which is no block of it"
+                expected = "union.tag with 1 labels, where the operation table has 0" if invalid_metadata else "a branch to (none for cold-key), which is no block of it"
                 self.assertIn(expected, error.getvalue())
                 for labels, values in before:
                     self.assertEqual(labels, values)
@@ -962,19 +1029,23 @@ class UnionProofTests(unittest.TestCase):
                             value = c.op("rt", "*" + element, "list.get", [(receiver, "list[" + element + "]"), ("0", "int")])
                     # Only the generic element is instantiated here. A concrete float
                     # or an opaque union payload cannot be relabelled by this annotation.
-                    c.op("mem.store", a=[(address, "*int"), (value, "int")])
-                    loaded = c.op("mem.load", "int", a=[(address, "*int")])
+                    c.op("mem.store", a=[(address, "&int"), (value, "int")])
+                    loaded = c.op("mem.load", "int", a=[(address, "&int")])
                     c.op("rt", "%ptr", "ubox", [(str(c.g.utags[tag]), "int"), (loaded, "*T")])
                     c.ret()
                     valid = source in ("generic", "specialized") and tag == "int"
-                    # The malformed float store still carries float provenance.
-                    valid = valid or (source == "float" and tag == "float")
-                    with redirect_stderr(StringIO()):
+                    # The malformed float store still carries float provenance, which the union
+                    # proof follows; the value check then rejects the float's slot read as an int.
+                    malformed = source == "float" and tag == "float"
+                    errors = StringIO()
+                    with redirect_stderr(errors):
                         if valid:
                             c.g.verify(c.fn, False)
                         else:
                             with self.assertRaises(SystemExit):
                                 c.g.verify(c.fn, False)
+                    if malformed:
+                        self.assertIn(f"mem.store operand 1 reads {value} as int, but it is *float", errors.getvalue())
 
     def test_homogeneous_tuple_machine_load_retains_element_contract(self):
         for elements in ("int,int", "float,float", "int,float"):
@@ -1100,10 +1171,10 @@ class UnionProofTests(unittest.TestCase):
         # annotation says (tuple[X, X], narrower): its items' float test leaves int and str, so
         # the else branch's str payload is not proved. The control's storage is declared X's.
         x = "union[float,str]"
-        for storage, valid in (("*tuple[" + x + "," + x + "]", True), ("*tuple[" + W + "," + W + "]", False)):
+        for storage, valid in (("&tuple[" + x + "," + x + "]", True), ("&tuple[" + W + "," + W + "]", False)):
             with self.subTest(storage=storage):
                 c = Case("tuple_slot_storage", [storage])
-                owner = c.op("mem.load", "tuple[" + x + "," + x + "]", a=[("%a0", "*tuple[" + x + "," + x + "]")])
+                owner = c.op("mem.load", "tuple[" + x + "," + x + "]", a=[("%a0", "&tuple[" + x + "," + x + "]")])
                 address = c.op("mach.addr", "%ptr", "int", [(owner, "%ptr"), ("0", "int")])
                 bits = c.op("mach.load", "int", a=[(address, "%ptr")])
                 value = c.op("slot.unpack", x, a=[(bits, "%slot")])
@@ -1130,7 +1201,7 @@ class UnionProofTests(unittest.TestCase):
         x = "union[float,str]"
         tx = "tuple[" + x + "," + x + "]"
         for transport in ("select", "select None", "pack", "phi"):
-            for storage, valid in (("*" + tx, True), ("*tuple[" + W + "," + W + "]", False)):
+            for storage, valid in (("&" + tx, True), ("&tuple[" + W + "," + W + "]", False)):
                 with self.subTest(transport=transport, storage=storage):
                     c = Case("tuple_slot_transport", [storage, "bool"])
                     loaded = c.op("mem.load", storage[1:], a=[("%a0", storage)])
@@ -1263,20 +1334,20 @@ class UnionProofTests(unittest.TestCase):
                 c.fn.slots.append(slot)
                 address = "%local." + str(slot.r[0])
                 if mode == "before_init":
-                    c.op("mem.load", U, a=[(address, "*" + U)])
-                c.op("mem.store", a=[(address, "*" + typ), ("null" if mode == "optional" else "%a0", typ)])
+                    c.op("mem.load", U, a=[(address, "&" + U)])
+                c.op("mem.store", a=[(address, "&" + typ), ("null" if mode == "optional" else "%a0", typ)])
                 value = c.op("mem.load", "int" if mode == "scalar_load" else U,
-                             a=[(address, "*int" if mode == "scalar_load" else "*" + U)])
+                             a=[(address, "&int" if mode == "scalar_load" else "&" + U)])
                 c.guard(value)
                 c.block("hit")
                 if mode == "store":
-                    c.op("mem.store", a=[(address, "*" + U), ("%a1", U)])
+                    c.op("mem.store", a=[(address, "&" + U), ("%a1", U)])
                 elif mode == "escape":
-                    c.op("icall", "None", a=[("%a2", "%ptr"), (address, "*" + U)])
+                    c.op("icall", "None", a=[("%a2", "%ptr"), (address, "&" + U)])
                 elif mode == "alias":
                     alias = c.op("mach.addr", "%ptr", "%ptr", [(address, "%ptr"), ("0", "int")])
                     c.op("mach.store", a=[(alias, "%ptr"), ("%a1", U)])
-                value = c.op("mem.load", U, a=[(address, "*" + U)])
+                value = c.op("mem.load", U, a=[(address, "&" + U)])
                 c.payload(value)
                 c.finish_pair()
                 self.assertEqual(simple_union_proof(c.fn, c.g.utags), mode == "immutable")
@@ -1375,6 +1446,35 @@ class UnionProofTests(unittest.TestCase):
                             c.g.verify(c.fn, False)
                         self.assertIn("union.tag needs a nonnull proof", errors.getvalue())
 
+    def test_implicit_null_domain_of_reference_union_boxes(self):
+        for typ, nullable in (("union[Left,Right]", True), ("union[Left,int]", True),
+                              ("union[_pystachy_complex$complex,Left]", True),
+                              ("union[_pystachy_complex$complex,int]", False),
+                              ("union[Left,file]", True), ("union[file,int]", False), (U, False)):
+            for guarded in (False, True):
+                for machine in (False, True):
+                    with self.subTest(typ=typ, guarded=guarded, machine=machine):
+                        c = Case("reference_union_box", [typ])
+                        for cls in ("Left", "Right", "_pystachy_complex$complex"):
+                            c.g.classes[cls] = ClassInfo(cls, Node("class", cls, 1))
+                        if guarded:
+                            nonnull = c.op("ptr.cmp", "bool", "!=", [("%a0", typ), ("null", "None")])
+                            c.op("cbr", a=[(nonnull, "bool")], b=["read", "exit"])
+                            c.block("read")
+                        c.op("mach.load" if machine else "union.tag", "int",
+                             a=[("%a0", "%ptr" if machine else typ)])
+                        c.ret()
+                        if guarded:
+                            c.block("exit")
+                            c.ret()
+                        if nullable and not guarded:
+                            errors = StringIO()
+                            with redirect_stderr(errors), self.assertRaises(SystemExit):
+                                c.g.verify(c.fn, False)
+                            self.assertIn("needs a nonnull proof for %a0", errors.getvalue())
+                        else:
+                            c.g.verify(c.fn, False)
+
     def test_standalone_box_requires_matching_tag_and_payload(self):
         for tag in ("float", "int"):
             with self.subTest(tag=tag):
@@ -1391,6 +1491,33 @@ class UnionProofTests(unittest.TestCase):
                         with self.assertRaises(SystemExit):
                             c.g.verify(c.fn, False)
                         self.assertIn("ubox needs matching tag and payload provenance", errors.getvalue())
+
+    def test_length_box_requires_owner_and_integer_tag(self):
+        # Only a proved header at offset zero supplies an int payload. A fixed tuple
+        # starts with its first item; a list uses its own typed IR operations.
+        owners = ["bytes", "str", "dict[str,int]", "set[int]", "frozenset[str]", "aset[int]", "vtuple[int]"]
+        cases = [(owner, "int", False, True) for owner in owners]
+        cases += [(owner, "float", False, False) for owner in owners]
+        cases += [(owner, "int", True, False) for owner in owners]
+        cases += [("opt[" + owner + "]", "int", False, False) for owner in owners]
+        cases += [(owner, "int", False, False) for owner in ["%ptr", "list[int]", "tuple[int,str]"]]
+        for owner, tag, offset, valid in cases:
+            with self.subTest(owner=owner, tag=tag, offset=offset):
+                c = Case("length_box", [owner])
+                c.g.runtime("pys_ubox")
+                addr = c.op("mach.addr", "%ptr", "int", [("%a0", "%ptr"), ("1", "int")]) if offset else "%a0"
+                value = c.op("mach.load", "int", a=[(addr, "%ptr")])
+                c.op("rt", "%ptr", "ubox", [(str(c.g.utags[tag]), "int"), (value, "*T")])
+                c.ret()
+                if valid:
+                    c.g.verify(c.fn, False)
+                else:
+                    errors = StringIO()
+                    with redirect_stderr(errors), self.assertRaises(SystemExit):
+                        c.g.verify(c.fn, False)
+                    message = ("mach.load needs a nonnull proof" if owner.startswith("opt[") and owner != "opt[vtuple[int]]"
+                               else "ubox needs matching tag and payload provenance")
+                    self.assertIn(message, errors.getvalue())
 
     def test_yielded_payload_is_read_as_the_generator_element_type(self):
         # (gen_slots passes an int member's payload register itself, as the %slot word yielded)
@@ -1448,8 +1575,8 @@ class UnionProofTests(unittest.TestCase):
                     with self.subTest(loaded=loaded, guard=guard, payload=payload):
                         # The unrelated nonoptional parameter must not hide this read
                         # from a shortcut that recognizes only immutable union sources.
-                        c = Case("nullable_machine_tag", ["*" + optional if loaded else optional, U])
-                        value = c.op("mem.load", optional, a=[("%a0", "*" + optional)]) if loaded else "%a0"
+                        c = Case("nullable_machine_tag", ["&" + optional if loaded else optional, U])
+                        value = c.op("mem.load", optional, a=[("%a0", "&" + optional)]) if loaded else "%a0"
                         if guard:
                             condition = c.op("ptr.cmp", "bool", guard, [(value, optional), ("null", "None")])
                             c.op("cbr", a=[(condition, "bool")], b=["read", "exit"])
@@ -1513,9 +1640,10 @@ class UnionProofTests(unittest.TestCase):
                 self.assertLess(max(sizes), 16)
 
     def test_select_between_none_and_a_fresh_box_carries_its_member(self):
-        # Gen.ubox boxes an object that may be None as select(obj is None, null, ubox(obj)): a
-        # machine pointer whose own type names no union. Its member reaches a later guarded read;
-        # a pointer of unknown provenance in its place, or a read with no None test, does not.
+        # Gen.ubox boxes an object that may be None as select(obj is None, null, ubox(obj)), of the
+        # union's type, whatever its condition says of the object. Its member reaches a later
+        # guarded read; a pointer of unknown provenance in its place, or a read with no None
+        # test, does not.
         mixed = "union[Item,int]"
         for mode, accepted, message in (("box", True, ""), ("optional-box", True, ""),
                                         ("unknown", False, "union.payload needs tag int"),
@@ -1535,7 +1663,7 @@ class UnionProofTests(unittest.TestCase):
                 else:
                     box = c.op("rt", "%ptr", "ubox", [(str(c.g.utags["Item"]), "int"), (bits, "*T")])
                 absent = c.op("ptr.cmp", "bool", "==", [("%a0", "Item"), ("null", "None")])
-                chosen = c.op("select", "%ptr", a=[(absent, "bool"), ("null", "%ptr"), ("%a3" if mode == "unknown" else box, "%ptr")])
+                chosen = c.op("select", mixed, a=[(absent, "bool"), ("null", mixed), ("%a3" if mode == "unknown" else box, mixed)])
                 c.op("br", b=["join"])
                 c.block("number")
                 number = c.op("rt", "%ptr", "ubox", [(str(c.g.utags["int"]), "int"), ("%a1", "*T")])

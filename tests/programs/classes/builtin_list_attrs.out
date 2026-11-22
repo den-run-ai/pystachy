@@ -1,0 +1,10 @@
+r:a,b ['a', 'b'] b 2 rows rows r r:a,b|['a', 'b'] r:a,b ['a', 'b']
+True False 2 Rows Rows
+True True False True False
+10
+[3, 4] s 2 False
+10 ['r:a,b', 'q:'] ['r:a,b', 'z:y'] y
+TypeError unhashable type: 'Rows'
+True True 1 b r:a 1
+r: False True r
+[exit 0]

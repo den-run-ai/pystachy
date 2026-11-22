@@ -347,6 +347,8 @@ class Parser:
             own = c.s
             n.s = private_name(own, cls, only)
             c.s = n.s
+            if c.s != own:
+                c.pyname = own  # (a private nested class's __name__, whose binding is mangled: Loader's nested_classes)
             tps = self.tparams.get(n.line, "").split()
             if any([private_name(t, own, []) != t for t in tps]):
                 c.tpsource = " ".join(tps)

@@ -473,15 +473,16 @@ python3 tools/pytest_native_suites.py --suite byte_bpe --mode python
 make test-pytest-workloads
 ```
 
-The registry runs 19 example suites and the 25 delivered pyperformance workloads
+The registry runs 19 example suites and the 38 delivered pyperformance workloads
 as independent suites, each using the same source under original CPython pytest
 and generated native execution. Each suite keeps its sibling imports; shared
 fixtures across directories are not implied. Every registered case must execute
 and pass: a skip, xfail, empty collection or missing report fails qualification.
 The default runs JIT and AOT; `--mode python` checks generation separately.
 `--json` retains every per-suite collection and phase comparison.
-The pyperformance tests use five separate categories to bound native build
-memory and keep the JSON dynamic-`Any` consumer separate from typed workloads.
+The pyperformance tests use ten separate categories to bound native build
+time and memory, and keep the dynamic-`Any` and promoting-int consumers separate
+from typed workloads.
 
 These are API correctness checks. Existing recorded stdout/stderr, real CLIs,
 network/FFI/BLAS ownership, package installation and upstream-reference checks

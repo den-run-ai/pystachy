@@ -1,5 +1,5 @@
 """Exercise the real GC verification shell with deterministic compiler/test doubles: the bounded
-self-compilation, the gc-ir halves (the compiler collecting every 1000 allocations against stage 2,
+self-compilation, the gc-ir thirds (the compiler collecting every 1000 allocations against stage 2,
 through the real tools/irsame.sh) and the program-stressed suites, each with its compiler-stressed
 sample drawn from its own balanced shard; and the CI gate (merge_verification) on their reports."""
 from collections import Counter
@@ -32,7 +32,7 @@ WEIGHTS = {"tests/programs/x/example.py": 2600, "tests/deviations/example.py": 1
            **{case: 300 + index * 397 % 1700 for index, case in enumerate(FILLERS)}}
 # Stressed compilation has a different cost distribution from native JIT/AOT execution.
 GC_WEIGHTS = {case: 100 + index * 769 % 3100 for index, case in enumerate(CASES)}
-GC_RESERVE = [10000, 0]
+GC_RESERVE = [10000, 0, 0]
 
 
 def checks(case):
@@ -56,18 +56,18 @@ def split(group):
             [case for i, case in enumerate(shard) if i % every != offset])
 
 
-def half(case):
-    """The gc-ir half that compiles CASE."""
-    return next(index for index, shard in enumerate(shards(2, gc=True)) if case in shard)
+def third(case):
+    """The gc-ir third that compiles CASE."""
+    return next(index for index, shard in enumerate(shards(3, gc=True)) if case in shard)
 
 
-GC_STEPS = ["gc-self", "gc-ir-0", "gc-ir-1", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2"]
+GC_STEPS = ["gc-self", "gc-ir-0", "gc-ir-1", "gc-ir-2", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2"]
 # group, mode and its steps after bootstrap
 SUITES = [("gc-jit-0", "jit", ["gc-jit-0"]), ("gc-jit-1", "jit", ["gc-jit-1"]),
           ("gc-aot-0", "aot", ["gc-aot-0"]), ("gc-aot-1", "aot", ["gc-aot-1"]), ("gc-aot-2", "aot", ["gc-aot-2"])]
 # The gate's contract for these groups alone (tests/verify.sh --list's, without the other groups)
-CONTRACT = ("all bootstrap gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2\n" +
-            "gc-ir-0 bootstrap gc-ir-0\ngc-ir-1 bootstrap gc-ir-1\n" +
+CONTRACT = ("all bootstrap gc-ir-0 gc-ir-1 gc-ir-2 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2\n" +
+            "gc-ir-0 bootstrap gc-ir-0\ngc-ir-1 bootstrap gc-ir-1\ngc-ir-2 bootstrap gc-ir-2\n" +
             "".join(f"{group} bootstrap {' '.join(steps)}\n" for group, _, steps in SUITES))
 
 
@@ -97,7 +97,7 @@ class GCVerificationTests(unittest.TestCase):
         compiler = self.root / "bin/compiler"
         compiler.write_text(f"#!{sys.executable}\n" + '''import os
 import signal
-if os.environ.get("VERIFY_MOCK_MODE") == "timeout-kill" and os.environ.get("PYSTACHY_GC_STRESS") == "5000":
+if os.environ.get("VERIFY_MOCK_MODE") == "timeout-kill" and os.environ.get("PYSTACHY_GC_STRESS") == "7000":
     signal.signal(signal.SIGTERM, signal.SIG_IGN)   # before the other imports: TERM must find it ignored
 from pathlib import Path
 import shutil
@@ -148,7 +148,7 @@ if args[0] == "build":
 else:
     text = "fixed point\\n"
     if stress:
-        assert stress == "5000", stress
+        assert stress == "7000", stress
         assert os.environ["PYSTACHY_GC"] == "stats"
         Path("gc-child.pid").write_text(str(os.getpid()))
         if mode in ("timeout", "timeout-kill", "signal"):
@@ -253,7 +253,7 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
 
     def test_fixture_shards_hold_samples_in_their_own_order(self):
         # (the preconditions of the tests below: each shard's sample has a case, and is not its C order)
-        self.assertNotEqual(shards(2, gc=True), shards(2))
+        self.assertNotEqual(shards(3, gc=True), shards(3))
         for group, _, _ in SUITES:
             mode, shard, sample, rest = split(group)
             self.assertTrue(sample and rest, group)
@@ -263,20 +263,20 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
         result, report, _ = self.run_group("gc-ir-0")
         self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
         compiled = [case for command, case, stress in self.compiles() if command == "ir" and stress == "1000"]
-        self.assertCountEqual(compiled, shards(2, gc=True)[0])
-        self.assertNotEqual(set(compiled), set(shards(2)[0]))
+        self.assertCountEqual(compiled, shards(3, gc=True)[0])
+        self.assertNotEqual(set(compiled), set(shards(3)[0]))
         result, report, _ = self.run_group("gc-jit-0")
         self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
         weighted_runs = self.runs()
         (self.root / "tests/gc_case_weights.txt").unlink()
         result, report, _ = self.run_group("gc-ir-0")
         self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
-        expected = shards(2)[0]
         compiled = [case for command, case, stress in self.compiles() if command == "ir" and stress == "1000"]
-        self.assertCountEqual(compiled, expected)
+        self.assertCountEqual(compiled, shards(3)[0])
         result, report, _ = self.run_group("gc-jit-0")
         self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
         self.assertEqual(self.runs(), weighted_runs)
+        expected = shards(2)[0]   # (the JIT halves' first, whatever the identity weights)
         sample, rest = (cases for _, _, cases in self.runs())
         self.assertEqual(sample, expected[merge.GC_SAMPLE_OFFSETS["jit"]::merge.GC_SAMPLE_EVERY])
         self.assertCountEqual(sample + rest, expected)
@@ -286,10 +286,10 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
         path.write_text("\n".join(line for line in path.read_text().splitlines() if not line.startswith("reserve ")) + "\n")
         result, report, _ = self.run_group("gc-ir-0")
         self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
-        expected = reference_shards(CASES, GC_WEIGHTS, DEFAULTS, 2)[0][0]
+        expected = reference_shards(CASES, GC_WEIGHTS, DEFAULTS, 3)[0][0]
         compiled = [case for command, case, stress in self.compiles() if command == "ir" and stress == "1000"]
         self.assertCountEqual(compiled, expected)
-        self.assertNotEqual(set(compiled), set(shards(2, gc=True)[0]))
+        self.assertNotEqual(set(compiled), set(shards(3, gc=True)[0]))
         result, report, _ = self.run_group("gc-jit-0")
         self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
         _, _, sample, rest = split("gc-jit-0")
@@ -302,12 +302,15 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
         self.assertEqual([step["name"] for step in report["steps"]], ["bootstrap", "gc-self"])
         step = report["steps"][-1]
         self.assertTrue(step["ir_identical"])
-        self.assertEqual(step["compiler_interval"], 5000)
+        self.assertEqual(step["compiler_interval"], 7000)
         self.assertNotIn("expected", step)
         for text in ("gc-self: started", "limit 10m", "gc-self: finished after", "gc statistics"):
             self.assertIn(text, logs["gc-self"])
 
-    def test_compact_cache_group_finishes_two_cache_lanes_before_gc_self(self):
+    def test_pr_gc_self_runs_alone_and_an_aot_quarter_takes_the_two_cache_lanes(self):
+        # GC self-compilation, which grows with the compiler, has a PR job to itself; the two
+        # runtime-cache lanes follow the third AOT quarter, the shortest, so neither shares the
+        # 15-minute job limit with the other
         shutil.copy(ROOT / "tools/ci_sample.py", self.root / "tools/ci_sample.py")
         compiler = self.root / "bin/compiler"
         compiler.write_text(compiler.read_text().replace(
@@ -337,22 +340,36 @@ if not os.environ.get("VERIFY_MOCK_SERIAL"):
 print((97 if name == "native" else 99), "passed, 0 failed")
 ''')
         cache.chmod(0o755)
-        for mode, serial in (("pass", False), ("pass", True), ("mismatch", False), ("timeout", False)):
-            with self.subTest(mode=mode, serial=serial):
+        listed = subprocess.run(["sh", "tests/verify.sh", "--list"], cwd=self.root, env=self.env,
+                                text=True, capture_output=True, timeout=60)
+        plans = {line.split()[0]: line.split()[1:] for line in listed.stdout.splitlines()}
+        self.assertEqual(plans["native-aot-2"], ["bootstrap", "tests-native-aot-2", "runtime-cache"])
+        self.assertEqual(plans["gc-self"], ["bootstrap", "gc-self"])
+        self.assertNotIn("cache-gc", plans)
+        self.assertEqual([group for group, steps in plans.items()
+                          if group != "all" and "runtime-cache" in steps and "gc-self" in steps], [])
+        # (the quarter's corpus run needs the real suite: the fixture's plan keeps its cache step)
+        self.mutate_verify("native-aot-2) echo 'bootstrap tests-native-aot-2 runtime-cache'",
+                           "native-aot-2) echo 'bootstrap runtime-cache'")
+        for serial in (False, True):
+            with self.subTest(serial=serial):
                 self.env["VERIFY_MOCK_SERIAL"] = "1" if serial else ""
                 for name in ("native", "hosted"):
                     (self.root / ("started-" + name)).unlink(missing_ok=True)
-                result, report, logs = self.run_group("cache-gc", mode)
-                self.assertEqual([step["name"] for step in report["steps"]],
-                                 ["bootstrap", "runtime-cache", "gc-self"])
-                cache_step, gc_step = report["steps"][1:]
+                result, report, logs = self.run_group("native-aot-2")
+                self.assertEqual([step["name"] for step in report["steps"]], ["bootstrap", "runtime-cache"])
+                cache_step = report["steps"][1]
                 self.assertEqual(cache_step["compilers"], ["stage2", "CPython-hosted"])
                 self.assertEqual((cache_step["result"], cache_step["passed"], cache_step["expected"]),
                                  ("pass", 196, 196), logs["runtime-cache"])
-                # The parent records cache completion only after both lanes have ended.
-                # Starting GC afterwards bounds this group to two simultaneous compiler lanes.
-                self.assertLess(result.stdout.index("runtime-cache"), result.stdout.index("gc-self: starting"))
-                self.assertEqual(gc_step["compiler_interval"], 5000)
+                self.assertNotIn("gc-self", result.stdout)
+                self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
+        for mode in ("pass", "mismatch", "timeout"):
+            with self.subTest(mode=mode):
+                result, report, logs = self.run_group("gc-self", mode)
+                self.assertEqual([step["name"] for step in report["steps"]], ["bootstrap", "gc-self"])
+                gc_step = report["steps"][1]
+                self.assertEqual(gc_step["compiler_interval"], 7000)
                 self.assertEqual(gc_step["ir_identical"], mode == "pass")
                 self.assertEqual((result.returncode, report["result"], gc_step["result"]),
                                  (0, "pass", "pass") if mode == "pass" else (1, "fail", "fail"))
@@ -401,7 +418,7 @@ print((97 if name == "native" else 99), "passed, 0 failed")
         for mode, cases in observed.items():  # each case once in each mode
             self.assertEqual(Counter(cases), Counter(CASES), mode)
         self.assertFalse(samples["jit"] & samples["aot"])   # (the modes stress different cases here)
-        for group in ("gc-ir-0", "gc-ir-1"):
+        for group in ("gc-ir-0", "gc-ir-1", "gc-ir-2"):
             result, report, _ = self.run_group(group)
             self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
             reports[group] = report
@@ -437,23 +454,23 @@ print((97 if name == "native" else 99), "passed, 0 failed")
                     with self.assertRaisesRegex(ValueError, "the sample must be the shard's cases"):
                         merge.validate_report({**report, "git": {"commit": "a" * 40}}, group, ["bootstrap", group])
 
-    def test_gc_ir_halves_compile_every_case_once_stressed_as_stage2_does(self):
+    def test_gc_ir_thirds_compile_every_case_once_stressed_as_stage2_does(self):
         compiled = []
-        for group, index in (("gc-ir-0", 0), ("gc-ir-1", 1)):
+        for group, index in (("gc-ir-0", 0), ("gc-ir-1", 1), ("gc-ir-2", 2)):
             with self.subTest(group=group):
                 result, report, logs = self.run_group(group)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertEqual([step["name"] for step in report["steps"]], ["bootstrap", group])
                 self.assertEqual(self.runs(), [])  # Identity must not also spend this job's budget on JIT.
                 step = report["steps"][1]
-                cases = shards(2, gc=True)[index]
+                cases = shards(3, gc=True)[index]
                 syntax = [case for case in cases if "/syntax_" in case]
                 self.assertEqual(step["name"], f"gc-ir-{index}")
                 self.assertEqual((step["ir_cases"], step["ir_identical"], step["runtime_identical"]),
                                  (len(cases), True, True))
                 self.assertEqual((step["check_cases"], step["check_identical"]), (len(syntax), True))
                 self.assertEqual((step["compiler_interval"], step["reference"]), (1000, "stage2"))
-                self.assertEqual((step["shard_index"], step["shard_count"]), (index, 2))
+                self.assertEqual((step["shard_index"], step["shard_count"]), (index, 3))
                 self.assertEqual((report["sources"]["corpus_cases"], report["sources"]["syntax_cases"]), (len(CASES), 2))
                 self.assertIn(f"{len(cases)} programs identical", logs[f"gc-ir-{index}"])
                 self.assertIn("1 programs identical", logs[f"gc-ir-{index}"])   # (runtime.py)
@@ -465,7 +482,7 @@ print((97 if name == "native" else 99), "passed, 0 failed")
                         rows = [line.split(" ", 1) for line in timing.read_text().splitlines()]
                         self.assertCountEqual([case for _, case in rows], selected)
                         self.assertTrue(all(ms.isascii() and ms.isdigit() for ms, _ in rows))
-                # each case of the half by both compilers (rt for runtime.py), syntax cases checked by both
+                # each case of the third by both compilers (rt for runtime.py), syntax cases checked by both
                 calls = self.compiles()
                 for case in cases:
                     for stress in ("-", "1000"):
@@ -473,7 +490,7 @@ print((97 if name == "native" else 99), "passed, 0 failed")
                         self.assertEqual(calls.count(("check", case, stress)), int(case in syntax), (case, stress))
                 self.assertEqual(calls.count(("rt", "runtime.py", "1000")), 1)
                 compiled += [case for command, case, stress in calls if command == "ir" and stress == "1000"]
-        self.assertEqual(Counter(compiled), Counter(CASES))   # the halves: every case once, stressed
+        self.assertEqual(Counter(compiled), Counter(CASES))   # the thirds: every case once, stressed
 
     def test_gc_ir_differences_and_missing_cases_cannot_pass(self):
         for mode, target, field, text in (
@@ -486,10 +503,10 @@ print((97 if name == "native" else 99), "passed, 0 failed")
                 ("gc-rt-differs", None, "runtime_identical", "DIFF runtime.py"),
                 ("gc-ir-missing", None, "ir_identical", "programs identical")):
             with self.subTest(mode=mode):
-                index = half(target) if target else 1
-                group, cases = f"gc-ir-{index}", shards(2, gc=True)[index]
+                index = third(target) if target else 1
+                group, cases = f"gc-ir-{index}", shards(3, gc=True)[index]
                 irsame = self.root / "tools/irsame.sh"
-                if mode == "gc-ir-missing":   # irsame drops the half's last case and finds the others identical
+                if mode == "gc-ir-missing":   # irsame drops the third's last case and finds the others identical
                     irsame.rename(self.root / "tools/irsame-real.sh")
                     irsame.write_text('#!/bin/sh\n[ "$1" = --check ] || [ $# -le 3 ] || { n=$#; i=0; for a; do '
                                       'i=$((i + 1)); [ $i = 1 ] && set --; [ $i = $n ] || set -- "$@" "$a"; done; }\n'
@@ -504,7 +521,7 @@ print((97 if name == "native" else 99), "passed, 0 failed")
                 self.assertEqual((step["name"], step["result"]), (f"gc-ir-{index}", "fail"))
                 self.assertIs(step[field], False)
                 self.assertIn(text, logs[step["name"]])
-                if mode == "gc-ir-missing":   # (all but one of the half's cases compared, and runtime.py)
+                if mode == "gc-ir-missing":   # (all but one of the third's cases compared, and runtime.py)
                     self.assertEqual((step["ir_cases"], step["runtime_identical"]), (len(cases) - 1, True))
                     self.assertIn(f"{len(cases) - 1} programs identical", logs[step["name"]])
                     self.assertEqual(sum(1 for command, _, stress in self.compiles()
@@ -515,8 +532,8 @@ print((97 if name == "native" else 99), "passed, 0 failed")
                     merge.validate_report({**report, "git": {"commit": "a" * 40}}, group, ["bootstrap", group])
 
     def test_local_aliases_run_all_selected_gc_checks(self):
-        for group, expected in (("gc-stress", GC_STEPS), ("gc-ir", GC_STEPS[1:3]), ("gc-jit", GC_STEPS[1:5]),
-                                ("gc-aot", GC_STEPS[5:])):
+        for group, expected in (("gc-stress", GC_STEPS), ("gc-ir", GC_STEPS[1:4]), ("gc-jit", GC_STEPS[1:6]),
+                                ("gc-aot", GC_STEPS[6:])):
             with self.subTest(group=group):
                 result, report, logs = self.run_group(group)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

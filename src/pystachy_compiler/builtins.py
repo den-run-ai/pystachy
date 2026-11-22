@@ -1,14 +1,15 @@
 """Builtins component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
+from src.pystachy_compiler.builtin_bases import BITER
 from src.pystachy_compiler.utils import clsof, is_union, umembers
 from src.pystachy_compiler.diagnostics import int_lists
 from src.pystachy_compiler.frames import IterArg, Reduce
-from src.pystachy_compiler.ir import Data, Ins, Loop, Val
+from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.lexer import Lexer, codepoint, utf8len
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.parser import Parser
-from src.pystachy_compiler.reflection import VARS_USES
+from src.pystachy_compiler.reflection import VARS_USES, hook_of
 from src.pystachy_compiler.bigints import held, narrow_type, search_type
 from src.pystachy_compiler.specs import (
     ARITY,
@@ -48,6 +49,7 @@ from src.pystachy_compiler.specs import (
     RANGES,
     TYPESMOD,
     TYPESUSE,
+    UCALLS,
     VERSIONINFO,
     VTUPLE_ITEMS,
 )
@@ -311,6 +313,12 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return Val("null", "None")
     if name == "__pys_exc_repr":
         return self.exc_brepr(self.expr(args[0], ""))  # (exc_helpers)
+    if name == "__pys_tool_call":
+        if (self.curfn.mod != "codemode" or not lib_source(self.curfn.node.line, self.libdir, "codemode.py") or len(args) != 2):
+            self.err(f"name '{name}' is not defined")
+        tool = self.coerce(self.expr(args[0], "str"), "str")
+        payload = self.coerce(self.expr(args[1], "str"), "str")
+        return Val(self.rt("pys_tool_call", "ptr", [f"ptr {tool.v}", f"ptr {payload.v}"]), "str")
     if name == "__pys_gc_collect":
         # gc.collect()'s collection (lib/_pystachy_gc.py): the runtime's, started now
         if self.curfn.mod != "gc" or len(args) != 0:
@@ -684,8 +692,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         hv = self.expr(args[0], "")
         if unopt(hv.t) in self.classes and self.classes[unopt(hv.t)].mod in GLUE:
             self.refl_supported(unopt(hv.t), "hasattr()")  # (pyobj.Object's names are not its twin's)
-        if self.refl_prop_in(hv.t, args[1].s) or (self.reference_union(hv.t) and "file" not in umembers(unopt(hv.t))):
-            # (a property's getter, and each class of a union of classes: reflection.py)
+        if self.refl_prop_in(hv.t, args[1].s) or hook_of(self, hv.t) != 0 or (self.reference_union(hv.t) and "file" not in umembers(unopt(hv.t))):
+            # (a property's getter, a class's __getattr__, and each class of a union of classes: reflection.py)
             return self.refl_hasattr_lit(hv, args[1].s, self.knownobj(args[0]))
         if hv.t in self.classes and self.classes[hv.t].tag > 0:
             # A derived class may add this attribute, or leave its field unassigned.
@@ -710,7 +718,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
                     self.place(arm)
                 hy = self.has(ci.name, attr)
                 if attr in ci.fflag and attr not in ci.fdefault and attr not in ci.methods:
-                    value = self.mem_load(Val(self.fgep(Val(hv.v, ci.name), ci.fflag[attr]), "*bool")).v
+                    value = self.mem_load(Val(self.fgep(Val(hv.v, ci.name), ci.fflag[attr]), "&bool")).v
                 else:
                     value = "false" if hy == 0 else "true"
                 self.incoming(ph, value, self.cur)
@@ -728,11 +736,11 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.cbr("true" if hv.v in self.nn else self.ptr_cmp('!=', hv, Val('null', 'None')).v, l1, l2)
             self.place(l1)
             ci = self.classes[hv.t]
-            fv = self.mem_load(Val(self.fgep(hv, ci.fflag[args[1].s]), "*bool")).v
+            fv = self.mem_load(Val(self.fgep(hv, ci.fflag[args[1].s]), "&bool")).v
             shadows = self.exc_shadows(ci, args[1].s)
             if len(shadows) > 0:
                 # (or the object is of a class whose class variable shadows the field: getfield)
-                cls = self.mem_load(Val(self.fgep(hv, ci.fpos[" cls"]), "*str")).v
+                cls = self.mem_load(Val(self.fgep(hv, ci.fpos[" cls"]), "&str")).v
                 for x in shadows:
                     self.xcls[x.name] = True
                     match = self.ptr_cmp('==', Val(cls, "str"), Val(f"@x.{x.name}", "str")).v
@@ -747,6 +755,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if hy < 0:
             return self.ptr_cmp('!=', hv, Val('null', 'None'))
         return Val("true" if hy == 1 else "false", "bool")
+    if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and args[0].kind != "starred" and self.cabc_ref(args[1]) != "":
+        return self.cabc_issub(args[0], self.cabc_ref(args[1]), args[1])
     if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and args[1].kind != "starred" and not self.exc_classes(args[1]) and self.exc_dynamic(args[1]):
         # issubclass(t, c) of an exception class's class object t, c a value holding them
         v = self.expr(args[0], "")
@@ -979,6 +989,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     else:
         vals = [self.expr(a, w, resultsoft=resultsoft) for a in args if a.kind != "kw"]
         kvals = [self.expr(a.kids[0], "") for a in kws]
+    if len(self.bsubn) > 0 and len(vals) > 0:
+        vals[0] = self.bbuiltin(name, vals[0], len(vals))  # (of a class deriving from a builtin container: builtin_bases.py)
     rev = "0"
     keyv = Val("", "")
     for j in range(len(kws)):
@@ -1047,6 +1059,11 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             out = self.int_ucmp('>', Val(self.scalar('sub', [Val(nb, 'int'), Val('2', 'int')]), "int"), Val('34', "int")).v
             nonzero = self.num_cmp("!=", Val(nb, "int"), Val("0", "int")).v
             self.guard(self.scalar('and', [Val(out, 'bool'), Val(nonzero, 'bool')]), "ValueError: int() base must be >= 2 and <= 36, or 0")
+    if name in UCALLS and len(vals) > 0 and len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) == 0 and self.value_union(vals[0].t) and len([m for m in umembers(unopt(vals[0].t)) if m not in UCALLS[name]]) > 0 and COMPLEXC not in umembers(unopt(vals[0].t)):
+        # (a closed value union's that may hold what this builtin takes no value of, a str or
+        # a container: each member's call by its tag, and CPython's TypeError for those and
+        # for None: usplit)
+        return self.usplit(name, vals, 0, want)
     for i in range(len(vals)):
         if vals[i].t == "None" and name in NONERET and len(vals) == 1:
             # None itself (a template's parameter whose argument is None): CPython's error
@@ -1059,7 +1076,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             bad = "int() can't convert non-string with explicit base"
         elif (name == "sum" or name == "math.prod") and i == 0:
             bad = "'NoneType' object is not iterable"
-        if bad != "":
+        if bad != "" and name == "len" and self.value_union(vals[i].t):
+            vals[i] = self.unone(vals[i], bad)  # (a branch, as a closed union's subscript tests it: unone)
+        elif bad != "":
             vals[i] = self.unwrap(vals[i], "TypeError: " + bad)
         elif name not in OPTARG:
             if f"{name}({','.join([unopt(v.t) for v in vals])})".replace(BIG, "int") not in CALLS and name not in OPTCALLS:
@@ -1114,7 +1133,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return vals[0]  # a str path is its own file system path, and posixpath's normcase() of it
     if (name == "os.getenv" or name == "os.environ.get") and (len(vals) == 1 or (len(vals) == 2 and vals[1].t == "None")):
         # without a default the result is the variable's value or None
-        return Val(self.rt("pys_getenv", "ptr", [f"ptr {self.coerce(vals[0], 'str', f'argument 1 of {name}()').v}", "ptr null"]), "opt[str]")
+        return Val(self.rt("pys_getenv", "ptr", [f"ptr {self.coerce(vals[0], 'str', f'argument 1 of {name}()').v}", "ptr null"], "", "opt[str]"), "opt[str]")
     if (name == "math.floor" or name == "math.ceil" or name == "math.trunc") and len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool"):
         return self.as_int(vals[0])
     if name == "round" and len(vals) >= 1 and (vals[0].t == "int" or vals[0].t == "bool"):
@@ -1145,7 +1164,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             return Val(fbits("0.0"), "float")
         if len(vals) == 1:
             return Val(self.rt("fabs", "double", [f"double {self.as_float(vals[0]).v}"]), "float")
-        xs = self.rt("pys_list_new", "ptr", [f"i64 {len(vals)}"])
+        xs = self.rt("pys_list_new", "ptr", [f"i64 {len(vals)}"], t="list[float]")
         for v in vals:
             self.list_write("list.append", [Val(xs, "list[float]"), Val(self.to_slot(self.as_float(v)), "*float")])
         return Val(self.rt("pys_m_hypot_list", "double", [f"ptr {xs}"]), "float")
@@ -1188,7 +1207,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             LINKDL.append("dl")
         spec = CALLS[key].split(":")
         r = spec[1] if spec[1] != "" else vals[0].t
-        return self.rres(self.rt(spec[0], rtt(r), [self.rarg(v) for v in vals]), r)
+        # (getenv's result, the variable's value or else the default, is a str where the default
+        # is one: its RUNTIME result R, which the call gives)
+        return self.rres(self.rt(spec[0], rtt(r), [self.rarg(v) for v in vals], "", r if spec[0] == "pys_getenv" else ""), r)
     if len(vals) == 0:
         self.err(f"unsupported call {name}()")
     v = vals[0]
@@ -1259,8 +1280,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if is_kw(t) and name == "dict" and len(vals) == 1:
         return self.kw_dict(v)  # (a new dict: CPython's dict(kwargs) copies it too)
     if name == "len":
-        if is_union(unopt(t)) and all(m == "str" or is_list(m) or is_dict(m) for m in umembers(unopt(t))):
-            return self.uop(v, "len")
+        if is_union(unopt(t)) and (all(m == "str" or is_list(m) or is_dict(m) for m in umembers(unopt(t))) or (self.value_union(t) and any(m == "str" or is_list(m) or is_dict(m) for m in umembers(unopt(t))))):
+            return self.uop(v, "len")  # (a member without a length raises CPython's TypeError: unions.py)
         if t in self.classes and "__len__" in self.classes[t].methods:
             self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
             return self.objlen(v)
@@ -1632,6 +1653,7 @@ def gen_keys_of(self, xs: Val, key: Val) -> Val:
     # [key(x) for x in xs]: the keys of a sort, computed in order, as CPython computes them
     # before it sorts; xs is a list that no other code sees (a copy, or the items a list gave up)
     ks = self.rt("pys_list_new", "ptr", [f"i64 {self.mload('int', xs.v)}"])
+    made = self.blk.code[len(self.blk.code) - 1]  # (its rt op, typed below once the keys' type is known)
     ctr = self.alloca("int", "")
     self.mstore('int', '0', ctr)
     lc = self.label()
@@ -1660,6 +1682,8 @@ def gen_keys_of(self, xs: Val, key: Val) -> Val:
     self.mstore('int', f"{self.scalar('add', [Val(i, 'int'), Val('1', 'int')])}", ctr)
     self.br(lc)
     self.place(le)
+    if made.op == "rt" and len(made.r) == 1 and tmpname(made.r[0]) == ks:
+        made.t = self.ctype("list", [k.t])  # (an instance of list.new's list[T]: Gen.instantiate)
     return Val(ks, self.ctype("list", [k.t]))
 
 def gen_key_sort(self, xs: Val, key: Val, rev: str, taken: bool) -> None:
@@ -1747,7 +1771,7 @@ def gen_key_none_join(self, r: Val, lnone: str, xs: Val, vals: list[Val], name: 
     self.br(lend)
     self.place(lnone)
     if len(vals) > 0:
-        xs = Val(self.rt("pys_list_new", "ptr", [f"i64 {len(vals)}"]), self.ctype("list", [r.t]))
+        xs = Val(self.rt("pys_list_new", "ptr", [f"i64 {len(vals)}"], t=self.ctype("list", [r.t])), self.ctype("list", [r.t]))
         for v in vals:
             self.list_store(xs, self.list_hold(v, r.t), "append")
     if is_list(xs.t):
@@ -2129,7 +2153,7 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
         self.mstore(r.stt, self.coerce(result, r.stt, "math.prod() must preserve its start type").v, r.acc)
         return
     if r.collect:
-        self.list_store(Val(self.mload("%ptr", r.acc), self.ctype("list", [r.t])), self.list_hold(v, r.t), "append")
+        self.list_store(Val(self.mload(self.ctype("list", [r.t]), r.acc), self.ctype("list", [r.t])), self.list_hold(v, r.t), "append")
         return
     if r.name != "sum":
         # the first item is kept; another where it is greater (max) or less (min) than the kept one
@@ -2319,7 +2343,9 @@ def gen_consume(self, n: Node, want: str, arg: IterArg | None = None, resultsoft
     if n.kind == "listcomp":
         return self.listcomp(n, want, "", "", arg, resultsoft=resultsoft)
     if not self.iterator_call(n):
-        return self.expr(n, want, resultsoft=resultsoft)
+        # (an object of a class deriving from a builtin container, which leaves iteration to it:
+        # the container, None too, whose error each caller raises as for an optional one: builtin_bases.py)
+        return self.bdecay(self.expr(n, want, resultsoft=resultsoft), BITER)
     if n.kids[0].s == "range":
         # The runtime backing is pointer-free: keep list[int] regardless of want.
         # Optional/union item storage needs a fresh scanned allocation, never retyping.
@@ -2367,7 +2393,7 @@ def gen_as_list(self, v: Val, name: str) -> Val:
         # (a dynamic value's items, as list() takes them: a fresh list of their boxes, or of the
         # strs they must be for str.join(): dynamic.py)
         fn = "pys_dyn_strs" if name == "join" else "pys_dyn_list"
-        return Val(self.rt(fn, "ptr", [f"ptr {v.v}"]), "list[str]" if name == "join" else "list[dyn]")
+        return Val(self.rt(fn, "ptr", [f"ptr {v.v}"], t="list[str]" if name == "join" else "list[dyn]"), "list[str]" if name == "join" else "list[dyn]")
     if v.t in self.nts:
         self.notnone(v, "TypeError: must assign iterable to extended slice" if name == "slice" else "TypeError: 'NoneType' object is not iterable")
         v = self.ntup(v, True)
@@ -2424,7 +2450,7 @@ def gen_as_list(self, v: Val, name: str) -> Val:
     if is_set(v.t):
         return Val(self.rt("pys_set_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [selem(v.t)]))
     if is_vtuple(v.t):
-        return Val(self.rt("pys_vtuple_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]]))
+        return Val(self.rt("pys_vtuple_list", "ptr", [f"ptr {v.v}"], t=self.ctype("list", [targs(v.t)[0]])), self.ctype("list", [targs(v.t)[0]]))
     if is_tuple(v.t):
         ts = [narrow_type(x) for x in targs(v.t)]  # (a list holds 64-bit ints: bigints.py)
         et = ts[0] if len(ts) > 0 else "str" if name == "join" else "int"  # (the empty tuple: no item to type)
@@ -2438,7 +2464,7 @@ def gen_as_list(self, v: Val, name: str) -> Val:
         # (the empty tuple's list is scanned: no item proves its array pointer-free, and its callers
         # type it as the list they want, list(()) where a list[str] goes: an atomic array would hide
         # that list's strs from the collector)
-        r = self.rt("pys_list_new_atomic" if len(ts) > 0 and atomic_list(self.ctype("list", [et])) else "pys_list_new", "ptr", [f"i64 {len(ts)}"])
+        r = self.rt("pys_list_new_atomic" if len(ts) > 0 and atomic_list(self.ctype("list", [et])) else "pys_list_new", "ptr", [f"i64 {len(ts)}"], t=self.ctype("list", [et]) if len(ts) > 0 else "list[?]")
         for i in range(len(ts)):
             item = self.tget(v, i)
             if self.ctype("list", [et]) == "list[dyn]":
@@ -3053,7 +3079,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         if kx.t == BIG:
             r = self.rt(self.dict_key_fn(fn, kx), "i64", [f"ptr {o.v}"] + self.dict_key_args(kx, k) + [f"i64 {dv}"], self.key_fx(kv[0]))
         else:
-            r = self.nonekey(kx, dv, fn, [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"], self.key_fx(kv[0]), kv[0])
+            r = self.nonekey(kx, dv, fn, [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"], self.key_fx(kv[0]), kv[0], o.t)
         if fn == "pys_dict_popbox" and self.dict_int(o.t):
             return self.dict_box(r)  # (a value past 64 bits: bigints.py)
         return self.held_read(self.from_slot(r, vt))
@@ -3346,7 +3372,8 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             self.guard(self.scalar('xor', [Val(numok, 'bool'), Val('true', 'bool')]), "ValueError: tuple.index(x): x not in tuple")
     elif numx.t != "" and m == "index":
         fn = "pys_list_index_as"  # (its ValueError names x, not the item)
-        av = av + ["i64 " + self.to_slot(Val(numok, "bool")), "i64 " + self.to_slot(numx), f"ptr {self.sconst(self.desc(numx.t, '=='))}"]
+        # (the flag and the number as the bits of runtime words: a bool and an int)
+        av = av + ["i64 " + self.slot_word(Val(numok, "bool")).v, "i64 " + self.slot_word(numx).v, f"ptr {self.sconst(self.desc(numx.t, '=='))}"]
     if bk.t != "":
         self.bool_find(o.v, bk, av[1][4:])
     x = self.key_fx(K) if base == "dict" else ""  # (Ins.x of a lookup: U? where the keys are objects)
@@ -3371,9 +3398,10 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         self.list_write("list." + m, operands)
         return Val("null", "None")
     if kx.t != "":
-        res = self.nonekey(kx, av[2][4:] if m == "get" else "", fn, av, x, K)
+        res = self.nonekey(kx, av[2][4:] if m == "get" else "", fn, av, x, K, o.t, "*" + rtype if optget else "")
     else:
-        res = self.rt(self.dict_key_fn(fn, bigkey) if bigkey.t != "" else fn, "i64" if slot else rtt(rtype), av, x)
+        # (d.get(k)'s value or None: its optional type, which no operand gives)
+        res = self.rt(self.dict_key_fn(fn, bigkey) if bigkey.t != "" else fn, "i64" if slot else rtt(rtype), av, x, "*" + rtype if optget else "")
     if numok != "true" and m == "count":
         res = self.select(numok, Val(res, "int"), Val("0", "int"))
     if fn == "pys_dict_getbox" and self.dict_int(o.t):
@@ -3577,7 +3605,7 @@ def gen_dict_pairs(self, v: Val, want: str, found: str = "") -> Val:
         if not is_dict(t) or "?" in t:
             t = self.ctype("dict", ["int", "int"])
             self.guessed[self.curfn.ll] = f"dict() at line {self.line} of tuples of {len(targs(et))} items makes only an empty dict, taken as {typestr(t)}: give it a type first, as in d: dict[K, V] = dict(...)"
-        return Val(self.rt("pys_dict_new_atomic" if atomic_dict(t) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(targs(t)[0], True)}", "i64 0"]), t)
+        return Val(self.rt("pys_dict_new_atomic" if atomic_dict(t) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(targs(t)[0], True)}", "i64 0"], t=t), t)
     kv = targs(et)
     if self.key_problem(kv[0]) != "":
         self.err(self.key_problem(kv[0]))
@@ -3586,7 +3614,7 @@ def gen_dict_pairs(self, v: Val, want: str, found: str = "") -> Val:
         item = made_var("__item", self.line)
         v = self.listcomp(mk("listcomp", "", self.line, [mk("name", "__item", self.line, []), item, self.vnode(v)]), "list[tuple[dyn,dyn]]")
         kv = ["dyn", "dyn"]
-    d = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", "i64 0"])
+    d = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", "i64 0"], t=self.ctype("dict", kv))
     self.update_pairs(d, v, kv)  # (their promoting ints: bigints.py)
     return Val(d, self.ctype("dict", kv))
 

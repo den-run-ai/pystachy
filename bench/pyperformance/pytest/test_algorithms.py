@@ -3,13 +3,13 @@ import pytest
 
 import bpe_tokeniser
 import comprehensions
+import deltablue
 import fannkuch
 import generators
 import go
 import hexiom
 import meteor_contest
 import nqueens
-import pidigits
 import richards
 import richards_super
 import unpack_sequence
@@ -44,8 +44,13 @@ def test_nqueens(size: int, expected_count: int):
         assert solutions == [(1, 3, 0, 2), (2, 0, 3, 1)]
 
 
-def test_pidigits():
-    assert pidigits.calc_ndigits(20) == [3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7, 9, 3, 2, 3, 8, 4]
+def test_deltablue():
+    chain, projection = deltablue.delta_blue(5)
+    assert chain == 99
+    # The scale constraint divides: the source's value is a float, the others stay ints.
+    assert projection[0] == -190.0 and projection[1] == 1050
+    assert str(projection[2]) == "[2000, 2005, 2010, 2015, 1050]"
+    assert str(projection[0]) == "-190.0" and str(projection[1]) == "1050"
 
 
 def test_bpe_tokeniser():

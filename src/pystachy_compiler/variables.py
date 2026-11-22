@@ -1,5 +1,6 @@
 """Variables component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BSTORE
 from src.pystachy_compiler.utils import identity_default, is_union, umembers
 import os
 from src.pystachy_compiler.analysis import (
@@ -27,7 +28,7 @@ from src.pystachy_compiler.dynamic import XCMP, boxed_list_items, comparison_rec
 from src.pystachy_compiler.frames import Frame, IterArg
 from src.pystachy_compiler.ir import Blk, Ins, Val, tmpname, one_num
 from src.pystachy_compiler.symbols import Closure, FnInfo
-from src.pystachy_compiler.names import ENUMCLASSES, owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, local_class, owner, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, BYTEARRAYC, COMPLEXC, INERT_DECOS, NONEVAR, NONE_ITEM, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
 from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, made_var, mk, name_targets, starred_target
 from src.pystachy_compiler.utils import (
@@ -122,8 +123,8 @@ def gen_load_name(self, name: str) -> Val:
             if t == "None":
                 return Val("null", "None")
         if name in self.owned and not self.appending:
-            self.mem_store(Val(self.owned[name], "*int"), Val("0", "int"))  # (what reads it may keep it: str_append)
-        r = self.mem_load(Val(self.lreg[name], "*" + t)).v
+            self.mem_store(Val(self.owned[name], "&int"), Val("0", "int"))  # (what reads it may keep it: str_append)
+        r = self.mem_load(Val(self.lreg[name], "&" + t)).v
         if (name == self.selfname or (name in self.curfn.nnp and self.may_decline(self.curfn))) and name not in self.compvars:
             # (and, in a comparison method that may return NotImplemented, a parameter whose
             # object is known not to be None, which it may pass on: to super().__eq__(other))
@@ -132,7 +133,7 @@ def gen_load_name(self, name: str) -> Val:
         if name in self.idbox and numeric_identity(t):
             # (A parameter's slot starts with its companion: null where the caller passed a
             # new number, dyn_id_arg, which its first crossing boxes.)
-            if name in self.fn.lazyflag and not self.fn.scalar_reads:
+            if name in self.fn.build.lazyflag and not self.fn.build.scalar_reads:
                 self.lazy_resolve(name)  # (a lazy field local's object gets its box: dynamic.py)
             self.dyn_id_read(val, self.idbox[name])
         if name in self.narrowed and (is_opt(t) or is_union(t) or t == "dyn" or t in self.classes) and t != NONEVAR:
@@ -150,7 +151,7 @@ def gen_load_name(self, name: str) -> Val:
             t = self.none_global(name)
             if t == "None":
                 return Val("null", "None")
-        r = self.mem_load(Val(f"@g.{name}", "*" + t)).v
+        r = self.mem_load(Val(f"@g.{name}", "&" + t)).v
         if is_opt(t) or is_union(t):
             self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
         val = Val(r, t)
@@ -430,20 +431,21 @@ def gen_closure(self, n: Node) -> Val:
         f.dglob[j] = f"&{offset}"
         offset += 2 if value.t == "int+" else 1
         dvals.append(value)
+    # The environment mixes defaults and pointers. Each slot is an eight-byte word on every target.
     env = self.rt("pys_alloc", "ptr", [f"i64 {8 * max(len(c.caps) + closure_default_slots(c) + len(c.iflags) + (len(c.defs) if dynamic_program() else 0), 1)}"])
     for i in range(len(c.caps)):
         if c.ctypes[i] != "None":
             x = c.caps[i]
-            a = self.maddr('%ptr', env, f'{i}', True)
+            a = self.maddr('int', env, f'{i}', True)
             self.mstore('%ptr', self.cells[x] if x in self.cells else self.lreg[x], a)
     for j in range(len(dvals)):
         a = self.maddr('int', env, f'{f.dglob[c.defs[j]][1:]}', True)
         self.mstore(dvals[j].t, dvals[j].v, a)
         if self.idhere() and numeric_identity(dvals[j].t):
-            b = self.maddr('%ptr', env, f'{len(c.caps) + closure_default_slots(c) + len(c.iflags) + j}', True)
+            b = self.maddr('int', env, f'{len(c.caps) + closure_default_slots(c) + len(c.iflags) + j}', True)
             self.mstore('dyn', dvals[j].idfrom, b)
     for j in range(len(c.iflags)):
-        a = self.maddr('%ptr', env, f'{len(c.caps) + closure_default_slots(c) + j}', True)
+        a = self.maddr('int', env, f'{len(c.caps) + closure_default_slots(c) + j}', True)
         self.mstore('%ptr', self.iflag[c.iflags[j]], a)
     self.nn[env] = True
     return Val(env, c.t)
@@ -759,11 +761,11 @@ def gen_read(self, n: Node) -> Val:
     initialized = constant and not self.modlevel and owner(name) == self.curfn.mod and self.curfn.node.kind == "def" and self.intat[name] < self.curfn.node.line
     if n.chk and name in self.ltype:
         if name in self.lflag and name not in self.compvars:
-            bad = self.scalar('xor', [Val(self.mem_load(Val(self.lflag[name], '*bool')).v, 'bool'), Val('true', 'bool')])
+            bad = self.scalar('xor', [Val(self.mem_load(Val(self.lflag[name], '&bool')).v, 'bool'), Val('true', 'bool')])
             self.guard(bad, f"UnboundLocalError: cannot access local variable '{name}' where it is not associated with a value")
     elif not initialized and (n.chk or self.foreign(name)) and name in self.gflag and (name in self.gtypes or (name in self.funcs and name not in self.ltype)):
         # (a global, or a function whose def statement may not have run yet)
-        bad = self.scalar('xor', [Val(self.mem_load(Val(f'@g.{name}.def', '*bool')).v, 'bool'), Val('true', 'bool')])
+        bad = self.scalar('xor', [Val(self.mem_load(Val(f'@g.{name}.def', '&bool')).v, 'bool'), Val('true', 'bool')])
         self.guard(bad, self.unbound(name, self.copying))
     if constant:
         # Keep a variable read dynamic for frontend rules (tuple index/length), while LLVM
@@ -801,7 +803,7 @@ def gen_modchk(self, n: Node) -> None:
         elif p[2] == "L":
             un = f"UnboundLocalError: cannot access local variable '{p[1]}' where it is not associated with a value"
         flag = f"@init.{p[0]}.done" if p[2] == "A" else self.imp_flag(p[0], p[2] == "G" or p[2] == "M" or p[2] == "I")
-        self.guard(self.scalar('xor', [Val(self.mem_load(Val(flag, '*bool')).v, 'bool'), Val('true', 'bool')]), un)
+        self.guard(self.scalar('xor', [Val(self.mem_load(Val(flag, '&bool')).v, 'bool'), Val('true', 'bool')]), un)
 
 def gen_imp_flag(self, x: str, glob: bool) -> str:
     # the flag of name x, which an import in a try statement binds (Loader.import_binds()), set
@@ -817,7 +819,7 @@ def gen_imp_flag(self, x: str, glob: bool) -> str:
         i = Ins("slot", "bool", x)
         i.k = 1
         i.r = one_num(self.n)
-        self.fn.slots.append(i)
+        self.slot(i)
         self.iflag[x] = f"%{x}.def.{self.n}"
     return self.iflag[x]
 
@@ -828,13 +830,17 @@ def gen_foreign(self, name: str) -> bool:
 def gen_unbound(self, name: str, imp: bool = False) -> str:
     # what CPython raises for reading name unbound (as M.x from another module, or imp: by
     # from M import x, naming the file of M, as found when compiling)
+    s = short(name)
+    i = name.rfind("$") + 1
+    if "." in name[i:] and name in self.classes and not local_class(name):
+        s = name[i : name.find(".", i)]  # (C.N of a nested class, read before C is bound: CPython's error names C)
     if self.foreign(name) and imp:
         f = self.mfile[owner(name)]
         where = os.path.realpath(f) if f.endswith(".py") else "unknown location"
-        return f"ImportError: cannot import name '{short(name)}' from '{owner(name)}' ({where})"
+        return f"ImportError: cannot import name '{s}' from '{owner(name)}' ({where})"
     if self.foreign(name):
-        return f"AttributeError: module '{owner(name)}' has no attribute '{short(name)}'"
-    return f"NameError: name '{short(name)}' is not defined"
+        return f"AttributeError: module '{owner(name)}' has no attribute '{s}'"
+    return f"NameError: name '{s}' is not defined"
 
 def gen_qtype(self, name: str) -> str:
     # the type of variable name here, or ""
@@ -1796,9 +1802,9 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         cv = self.coerce(v, t, self.assigned_to(v, t, name))
         self.join_at(was[0], was[1], was[2])
         self.identity_global(name, t, True)  # (dynamic.py)
-        self.mem_store(Val(f"@g.{name}", "*" + t), cv)
+        self.mem_store(Val(f"@g.{name}", "&" + t), cv)
         if name in self.gflag:
-            self.mem_store(Val(f"@g.{name}.def", "*bool"), Val("true", "bool"))
+            self.mem_store(Val(f"@g.{name}.def", "&bool"), Val("true", "bool"))
         if name in self.gidbox and numeric_identity(t):
             self.dyn_id_store(self.gidbox[name], v, t)  # (the object it now holds: dyn_box)
     else:
@@ -1852,15 +1858,15 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         was = self.join_at("local", name, t)  # (a value it does not take may widen it: join_hint)
         cv = self.coerce(v, t, self.assigned_to(v, t, name))
         self.join_at(was[0], was[1], was[2])
-        self.mem_store(Val(self.lreg[name], "*" + t), cv)
+        self.mem_store(Val(self.lreg[name], "&" + t), cv)
         if name in self.lflag and name not in self.compvars:
-            self.mem_store(Val(self.lflag[name], "*bool"), Val("true", "bool"))
+            self.mem_store(Val(self.lflag[name], "&bool"), Val("true", "bool"))
         if name in self.owned:
-            self.mem_store(Val(self.owned[name], "*int"), Val("0", "int"))  # (a value others may hold: str_append)
+            self.mem_store(Val(self.owned[name], "&int"), Val("0", "int"))  # (a value others may hold: str_append)
         if name in self.idbox and numeric_identity(t):
             self.dyn_id_store(self.idbox[name], v, t)  # (the object it now holds: dyn_box)
-        if name in self.fn.lazyflag:
-            self.mem_store(Val(self.fn.lazyflag[name], "*bool"), Val("false", "bool"))  # (no longer a field's object)
+        if name in self.fn.build.lazyflag:
+            self.mem_store(Val(self.fn.build.lazyflag[name], "&bool"), Val("false", "bool"))  # (no longer a field's object)
         # (a local a closure assigns (nonlocal) keeps its declared type: a call may run the
         # closure, as narrowable says)
         u = unopt(t)
@@ -1889,9 +1895,13 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
         return self.ltype.get(n.s, self.gtypes.get(n.s, "") if self.is_global(n.s) else "")
     if n.kind == "slice":
         t = unopt(self.target_type(n.kids[0], True))
+        if self.bdecays(t, BSTORE) and "?" not in self.bbase(t):
+            t = self.bbase(t)  # (builtin_bases.py)
         return t if is_list(t) or t == "dyn" else ""
     if n.kind == "attr" or n.kind == "index":
         t = self.target_type(n.kids[0], True)
+        if n.kind == "index" and self.bdecays(t, BSTORE) and "?" not in self.bbase(t):
+            t = self.bbase(t)  # (an item of the builtin container its class derives from: builtin_bases.py)
         if t == "dyn":
             return "dyn"  # (an Any value's item or attribute: a display stored there holds Any values, cont[k] = {})
         if n.kind == "attr" and self.is_prop(t, n.s):
@@ -1904,6 +1914,12 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
             return elem(t)
         if n.kind == "index" and is_dict(t):
             return targs(t)[1]
+        if n.kind == "index" and self.value_union(self.rec_type(t)):
+            # (a closed union's list or dict member takes the store, ustore: a display stored
+            # there is made of its items' type, doc["rows"][0]["tags"] = [])
+            items = self.usub_items(unopt(self.rec_type(t)))
+            joined = self.union_type(items) if len(items) > 0 else "!"
+            return "" if joined.startswith("!") else joined
         if n.kind == "index" and t in self.classes and "__setitem__" in self.classes[t].methods and len(self.classes[t].methods["__setitem__"].ptypes) > 2:
             return self.classes[t].methods["__setitem__"].ptypes[2]
         if base and n.kind == "index" and is_tuple(t) and self.dyn_policy(n.line):
@@ -1939,8 +1955,49 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
         return "dyn" if self.target_type(n.kids[1], True) == "dyn" and self.target_type(n.kids[2], True) == "dyn" else ""  # (Any either way)
     return ""
 
+def gen_ustore(self, o: Val, t: Node, v: Val) -> None:
+    # o[k] = v for a closed union o of builtin values (expressions.py's usubscript reads one): k
+    # is evaluated once, then the list or dict that the box's tag names takes the store as a
+    # value of its own type does, v coerced to its items' type. A member that takes no item
+    # assignment, or no index of k's type, raises CPython's TypeError. A dict whose keys are of
+    # another type than k raises TypeError too, where CPython adds the key
+    # (tests/deviations/union_store_key.py): the dict's layout holds keys of one type.
+    u = unopt(o.t)
+    index = self.expr(t.kids[1], "")
+    kt = index.t
+    if kt not in ["int", "bool", "str", BIG]:
+        self.err(f"assigning an item of a closed union value ({typestr(o.t)}) at {typestr(kt)} is not supported: narrow the value with isinstance() first, or index it with an int or a str")
+    o = self.unone(o, "'NoneType' object does not support item assignment")
+    end = self.label()
+    tag = self.mload('int', o.v)
+    members = umembers(u)
+    for i in range(len(members)):
+        m = members[i]
+        nxt = self.label() if i + 1 < len(members) else ""
+        if nxt != "":
+            arm = self.label()
+            self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(m)), "int")).v, arm, nxt)
+            self.place(arm)
+        if not (is_list(m) or is_dict(m)):
+            self.raise_("TypeError", self.sconst(f"'{tname(m)}' object does not support item assignment"))
+        elif is_list(m) and kt == "str":
+            self.raise_("TypeError", self.sconst("list indices must be integers or slices, not str"))
+        elif is_dict(m) and (targs(m)[0] == "str") != (kt == "str"):
+            self.raise_("TypeError", self.sconst(f"expected a {typestr(targs(m)[0])} key, got {tname(kt)}"))
+        else:
+            item = self.uget(Val(o.v, u), m)
+            # (a list's index as an int: a bool's, or a promoting int's, bigints.py)
+            at = self.as_int(index) if kt == "bool" or (kt == BIG and not is_dict(m)) else index
+            self.assign(mk("index", "", t.line, [self.vnode(item), self.vnode(at)]), v)
+            self.br(end)
+        if nxt != "":
+            self.place(nxt)
+    self.place(end)
+
 def gen_assign(self, t: Node, v: Val) -> None:
     k = t.kind
+    if (k == "tuple" or k == "list") and self.bdecays(v.t, BITER):
+        v = self.bview(v)  # (a, b = o: the items of the builtin container its class derives from, builtin_bases.py)
     if k == "index" and t.kids[0].kind == "attr" and t.kids[1].kind != "slice" and self.dotted(t.kids[0]) == "os.environ":
         # os.environ[name] = value: the process's environment, as os.environ.__setitem__() sets it
         name = self.coerce(self.expr(t.kids[1], "str"), "str", "the name in os.environ[...]")
@@ -2062,6 +2119,9 @@ def gen_assign(self, t: Node, v: Val) -> None:
     elif k == "index":
         o = self.expr(t.kids[0], self.default_want(t.kids[0], "[]", [t.kids[1]], v.t))
         nosub = "TypeError: 'NoneType' object does not support item assignment"
+        if self.bdecays(o.t, BSTORE):
+            self.bstored(o.t, t.kids[1], v.t)
+            o = self.bview(o)  # (o[k] = v of the builtin container its class derives from: builtin_bases.py)
         if o.t == "dyn":
             self.dyn_setitem(o, self.expr(t.kids[1], "dyn"), v)  # (by its box's type: dynamic.py)
             return
@@ -2087,10 +2147,17 @@ def gen_assign(self, t: Node, v: Val) -> None:
             self.protocol(o, "__setitem__", [ik, v])
         elif is_kw(o.t):
             self.err("changing **kwargs is not supported: copy it to a dict first (d = dict(kwargs))")
+        elif self.value_union(o.t) and any(is_list(m) or is_dict(m) for m in umembers(unopt(o.t))):
+            self.ustore(o, t, v)  # (the member its tag names: below)
         else:
             self.err(f"'{o.t}' does not support item assignment")
     elif k == "slice":
         bnd: list[str] = []
+        ot = unopt(self.target_type(t.kids[0], True)) if len(self.bsubn) > 0 else ""
+        if self.bkind(ot) != "" and "?" in self.bbase(ot):
+            # (o[a:b] = v, the first items of an object of a class deriving from a bare list: builtin_bases.py)
+            vt = self.bbase(v.t) if self.bdecays(v.t, BITER) else unopt(v.t)
+            self.bfound(ot, self.ctype("list", [self.iter_elem(vt) if self.iter_elem(vt) != "" else "?"]))
         written: list[Val] = []
         o = self.slice_target(t, bnd, "TypeError: 'NoneType' object does not support item assignment", None, None, written)
         if len(written) > 0:
@@ -2106,7 +2173,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
     elif k == "tuple" and is_opt(v.t):
         self.assign(t, self.unwrap(v, "TypeError: cannot unpack non-iterable NoneType object"))
     elif k == "tuple" and is_vtuple(v.t):
-        self.assign(t, self.list_identity(Val(self.rt("pys_vtuple_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]]))))  # (its items, as a list's)
+        self.assign(t, self.list_identity(Val(self.rt("pys_vtuple_list", "ptr", [f"ptr {v.v}"], t=self.ctype("list", [targs(v.t)[0]])), self.ctype("list", [targs(v.t)[0]]))))  # (its items, as a list's)
     elif k == "tuple" and (is_list(v.t) or v.t == "str"):
         # a, b = xs: the length is checked when it runs, as CPython does. CPython takes every
         # item before it stores the first, so where a store may change the list (xs[1], xs[0] =
@@ -2165,7 +2232,7 @@ def gen_slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] |
     # converts them again at the store, after the RHS has run (a typed list's objects, which
     # their __index__() gives the bounds of: slice_late). Strs and tuples cannot
     # change, and Pystachy has no slice objects for __setitem__
-    o = self.expr(t.kids[0], "")
+    o = self.bdecay(self.expr(t.kids[0], ""), BSTORE if "assignment" in nosub else BDEL if "deletion" in nosub else BITEM)  # (builtin_bases.py)
     dvs: list[Val] = []
     if o.t == "dyn":
         for j in range(3):
@@ -2245,7 +2312,7 @@ def gen_slice_store(self, o: Val, bnd: list[str], v: Val) -> None:
     elif v.t == "bytes":
         v = Val(self.rt("pys_bytes_list", "ptr", [f"ptr {v.v}"]), "list[int]")
     elif v.t == "tuple[]":
-        v = Val(self.rt("pys_list_new", "ptr", ["i64 0"]), o.t)  # (() and [] have no item to type)
+        v = Val(self.rt("pys_list_new", "ptr", ["i64 0"], t=o.t if is_list(o.t) else ""), o.t)  # (() and [] have no item to type)
     elif not is_list(v.t):
         v = self.as_list(v, "slice")
     if not is_list(v.t):

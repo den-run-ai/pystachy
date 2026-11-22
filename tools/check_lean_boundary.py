@@ -52,10 +52,14 @@ BUILTIN_PAYLOADS = {
     "dict[dyn,dyn]": ("@pys_dyntype_dict",), "vtuple[dyn]": ("@pys_dyntype_tuple",),
     "list[dyn]": ("@pys_dyntype_list",), "list[int]": ("@pys_dyntype_intlist", "@pys_dyntype_biglist")}
 # struct DynType's cls word, in i64 words: class dispatchers switch on it
-CLASS_WORD = "3"
+CLASS_FIELD = "3"
 MAX_TAGS = 262144
 MAX_CONDITION = 64
+MAX_INSTRUCTION_TEXT = 4096
 OP_KEYS = {"op", "type", "text", "immediate", "descriptor", "results", "operands", "targets"}
+# An instruction's source location (inspect_compiler.py: the line of the statement it implements,
+# or None where unknown), which no check reads. A snapshot made before locations has none.
+LOCATION_KEYS = {"file", "line", "column", "precision"}
 # How each typed-IR operation (IROPS, src/pystachy_compiler/specs.py) is normalized. Ordinary
 # operations write no private slot (a slot whose address reaches any other operation is not
 # private) and no box (boxes are immutable; a store through an address derived from a box is
@@ -105,8 +109,8 @@ def require(condition, message):
         raise ValueError(message)
 
 
-def name(value, what):
-    require(isinstance(value, str) and 0 < len(value) <= 256 and "\0" not in value,
+def name(value, what, limit=256):
+    require(isinstance(value, str) and 0 < len(value) <= limit and "\0" not in value,
             f"invalid {what}")
     return value
 
@@ -119,19 +123,72 @@ def unique_object(pairs):
     return result
 
 
+def erase_casts(function):
+    """A function record as lowering prints it (the compiler's Gen.erase_casts): a cast is no
+    instruction, and an operand that reads one reads the value it casts. The adapters model
+    values, which a cast does not change; the shape checker reads casts as the snapshot has them."""
+    # (records that are no well-formed functions are left as they are, for the adapters' own checks)
+    blocks = [b for b in function["blocks"] if isinstance(b, dict) and isinstance(b.get("operations"), list)]
+    source = {}
+    for block in blocks:
+        for op in block["operations"]:
+            if isinstance(op, dict) and op.get("op") == "cast":
+                require(isinstance(op.get("results"), list) and len(op["results"]) == 1 and isinstance(op.get("operands"), list)
+                        and len(op["operands"]) == 1 and isinstance(op["operands"][0], dict), "invalid cast")
+                source[f"%t{op['results'][0]}"] = op["operands"][0].get("value")
+    if not source:
+        return function
+    for value in list(source):
+        cast = source[value]
+        seen = {value}
+        while cast in source:
+            require(cast not in seen, "a cycle of casts")
+            seen.add(cast)
+            cast = source[cast]
+        source[value] = cast
+    for block in blocks:
+        block["operations"] = [op for op in block["operations"] if not (isinstance(op, dict) and op.get("op") == "cast")]
+        for op in block["operations"]:
+            for operand in op.get("operands", []) if isinstance(op, dict) and isinstance(op.get("operands"), list) else []:
+                if isinstance(operand, dict) and isinstance(operand.get("value"), str) and operand["value"] in source:
+                    operand["value"] = source[operand["value"]]
+    return function
+
+
 def read_snapshot(path, limit=MAX_BYTES):
+    # (its functions, and those of the null checks' evidence, without casts: erase_casts)
     descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0))
     with os.fdopen(descriptor, "rb") as source:
         require(stat.S_ISREG(os.fstat(source.fileno()).st_mode), "snapshot must be a regular file")
         raw = source.read(limit + 1)
     require(len(raw) <= limit, f"snapshot exceeds {limit} bytes")
-    return json.loads(raw, object_pairs_hook=unique_object), hashlib.sha256(raw).hexdigest()
+    snapshot = json.loads(raw, object_pairs_hook=unique_object)
+    if isinstance(snapshot, dict):
+        for function in snapshot["functions"] if isinstance(snapshot.get("functions"), list) else []:
+            if isinstance(function, dict) and isinstance(function.get("blocks"), list):
+                erase_casts(function)
+        for evidence in snapshot["nullcheck_evidence"] if isinstance(snapshot.get("nullcheck_evidence"), list) else []:
+            for side in ("before", "after"):
+                if isinstance(evidence, dict) and isinstance(evidence.get(side), dict) and isinstance(evidence[side].get("blocks"), list):
+                    erase_casts(evidence[side])
+    return snapshot, hashlib.sha256(raw).hexdigest()
+
+
+def instruction_fields(value):
+    """Whether value holds exactly an instruction's fields, OP_KEYS, with or without a location."""
+    if not isinstance(value, dict):
+        return False
+    location = value.get("location")
+    if location is not None and not (isinstance(location, dict) and set(location) == LOCATION_KEYS
+                                     and isinstance(location["file"], str) and type(location["line"]) is int):
+        return False
+    return set(value) - {"location"} == OP_KEYS
 
 
 def instruction(value, slot=False):
-    require(isinstance(value, dict) and set(value) == OP_KEYS, "invalid instruction fields")
+    require(instruction_fields(value), "invalid instruction fields")
     for key in ("op", "type", "text", "descriptor"):
-        require(isinstance(value[key], str) and len(value[key]) <= 4096, f"invalid instruction {key}")
+        require(isinstance(value[key], str) and len(value[key]) <= MAX_INSTRUCTION_TEXT, f"invalid instruction {key}")
     if value["op"] not in ({"slot"} if slot else SUPPORTED_OPS):
         raise Unsupported(f"unsupported operation: {value['op']}")
     require(type(value["immediate"]) is int and (value["immediate"] in (0, 1, 2) if slot
@@ -146,7 +203,7 @@ def instruction(value, slot=False):
     for operand in value["operands"]:
         require(isinstance(operand, dict) and set(operand) == {"value", "type"}, "invalid operand")
         name(operand["value"], "operand value")
-        name(operand["type"], "operand type")
+        name(operand["type"], "operand type", MAX_INSTRUCTION_TEXT)
     require(isinstance(value["targets"], list) and len(value["targets"]) <= 256,
             "invalid instruction targets")
     for target in value["targets"]:
@@ -173,7 +230,9 @@ def check_payload_consumers(blocks):
     for block in blocks:
         for op in block["operations"]:
             if op["op"] == "dyn.payload":
-                shape(op, 1, 2, typ="%slot", texts=(op["text"],))
+                shape(op, 1, 2, texts=(op["text"],))
+                # (the packed slot of the declared type, or the untyped %slot of older snapshots)
+                require(op["type"] in ("%slot", "*" + op["text"]), "invalid dyn.payload shape")
                 addresses.add(f"%t{op['results'][0]}")
                 payloads[f"%t{op['results'][1]}"] = op["text"]
     for block in blocks:
@@ -186,15 +245,20 @@ def check_payload_consumers(blocks):
                 typ = payloads[value]
                 if op["op"] == "slot.unpack":
                     shape(op, 1, 1, typ=typ)
-                    require(operand["type"] == "%slot", "dyn.payload unpack requires a slot operand")
+                    require(operand["type"] in ("%slot", "*" + typ), "dyn.payload unpack requires a slot operand")
                 elif typ == "int":
                     # The runtime ABI names an uninterpreted i64 slot *T. These
                     # two constructors copy that word unchanged into a fresh
                     # optional/union box; they do not dereference it as a pointer.
+                    # (Gen.instantiate types the slot argument as the value it reads, *int, and
+                    # the box as the optional or union it makes, where the signature says *T and
+                    # its result)
                     boxed = op["op"] == "rt" and op["text"] in {"box", "ubox"}
-                    if boxed and operand["type"] == "*T":
+                    if boxed and operand["type"] in ("*T", "*int", "%slot"):
                         index = 1 if op["text"] == "ubox" else 0
-                        shape(op, index + 1, 1, typ="%ptr", texts=(op["text"],))
+                        shape(op, index + 1, 1, texts=(op["text"],))
+                        require(op["type"] == "%ptr" or op["type"].startswith(("opt[", "union[")),
+                                f"invalid {op['op']} shape")
                         require(position == index and (index == 0 or op["operands"][0]["type"] == "int"),
                                 "dyn.payload int boxing requires the runtime slot argument")
                     else:
@@ -427,7 +491,7 @@ def resolved_container(declared, used):
     dict[?,?]: a container of that kind) or a local first assigned None (specs.NONEVAR: an
     optional object or optional union: a box pointer or null). Each lowers to a pointer, and
     none is a dyn value."""
-    if not used.startswith("*") or "?" in used:
+    if not used.startswith("&") or "?" in used:
         return False
     resolved = used[1:]
     if declared == "opt[None]":
@@ -451,7 +515,7 @@ def short(typ):
     constant table's tuple type, by a name made from its digest, the same for each use of it."""
     if len(typ) <= 256:
         return typ
-    pointer = "*" if typ.startswith("*") else ""
+    pointer = typ[0] if typ.startswith(("*", "&")) else ""
     return f"{pointer}long.{hashlib.sha256(typ[len(pointer):].encode()).hexdigest()[:24]}"
 
 
@@ -532,7 +596,7 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
             read_layouts[payload] = holder
             return tags
         return {holder}
-    name(fn.get("return_representation"), "return representation")
+    name(fn.get("return_representation"), "return representation", MAX_INSTRUCTION_TEXT)
     recursion = fn.get("recursion")
     require(isinstance(recursion, dict), "invalid recursion record")
     if recursion.get("generator") or recursion.get("coroutine"):
@@ -541,11 +605,11 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
     require(isinstance(parameters, list) and len(parameters) <= 128, "invalid parameters")
     # Registers defined on entry: parameters of any representation, the identity boxes that
     # accompany numeric parameters (%aidN) and the identity-return address (%idret).
-    definitions = {"%idret": ("*dyn", None, -1)}
+    definitions = {"%idret": ("&dyn", None, -1)}
     identity_arguments = set()
     for index, parameter in enumerate(parameters):
         require(isinstance(parameter, dict), "invalid parameter")
-        typ = name(parameter.get("representation"), "parameter representation")
+        typ = name(parameter.get("representation"), "parameter representation", MAX_INSTRUCTION_TEXT)
         definitions[f"%a{index}"] = (typ, None, -1)
         if numeric_identity(typ):
             identity_arguments.add(f"%aid{index}")
@@ -565,7 +629,7 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
         # a tuple value rather than storage.
         op = instruction(raw, slot=True)
         shape(op, 0, 1, texts=(op["text"],))
-        name(op["type"], "slot representation")
+        name(op["type"], "slot representation", MAX_INSTRUCTION_TEXT)
         # Name a slot as lowering does (slot_register, src/pystachy_compiler/ir.py): a local's
         # "is assigned" flag and numeric identity companions share its number, which is no name.
         number = op["results"][0]
@@ -701,10 +765,10 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
     def check_operand(operand, label, offset, predecessor=None):
         value = operand["value"]
         if value in slots:
-            require(operand["type"] in {"*" + slots[value], "%ptr", "%addr"}
+            require(operand["type"] in {"&" + slots[value], "%ptr", "%addr"}
                     or resolved_container(slots[value], operand["type"]), "slot address has wrong type")
         elif value == "%idret":
-            require(operand["type"] == "*dyn", "identity-return address has wrong type")
+            require(operand["type"] == "&dyn", "identity-return address has wrong type")
         elif value in identity_arguments:
             require(operand["type"] == "dyn", "identity argument has wrong type")
         elif value.startswith("%"):
@@ -877,8 +941,8 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
                 found, test = None, None
                 if kind == "dyn.type" and len(operands) == 1:
                     found = tag_reads, operands[0]["value"]
-                elif (kind == "mach.addr" and op["text"] == "int" and len(operands) == 2
-                      and operands[0]["value"] in tag_reads and operands[1]["value"] == CLASS_WORD):
+                elif (kind == "mach.addr" and op["text"] == "dyntype" and len(operands) == 2
+                      and operands[0]["value"] in tag_reads and operands[1]["value"] == CLASS_FIELD):
                     found = class_addresses, tag_reads[operands[0]["value"]]
                 elif (kind == "mach.load" and op["type"] == "int" and len(operands) == 1
                       and operands[0]["value"] in class_addresses):
@@ -971,7 +1035,8 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
                 emit({"op": "jump", "next": len(nodes) + 1})
             elif kind == "dyn.payload":
                 tags = accepted(op["text"])
-                shape(op, 1, 2, typ="%slot", texts=(op["text"],))
+                shape(op, 1, 2, texts=(op["text"],))
+                require(op["type"] in ("%slot", "*" + op["text"]), "invalid dyn.payload shape")
                 require(operands[0]["type"] == "dyn" and (operands[0]["value"] in definitions
                                                           or operands[0]["value"].startswith("@")),
                         "dyn.payload requires a dynamic register or constant box")

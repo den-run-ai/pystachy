@@ -1,6 +1,6 @@
 # pyperformance benchmarks
 
-These are 25 of the 52 benchmarks tried from [pyperformance](https://github.com/python/pyperformance)
+These are 38 of the 52 benchmarks tried from [pyperformance](https://github.com/python/pyperformance)
 1.14.0, adapted so that Pystachy compiles them. CPython runs the same adapted files, so each
 comparison runs identical source in CPython, the JIT and AOT. The adaptations and smaller
 inputs change the work, so these results are not comparable with published pyperformance numbers.
@@ -21,7 +21,9 @@ python3 bench/pyperformance/richards.py 10
 ```
 
 Each benchmark's main takes the number of loops as its first argument; some also take input
-sizes. It prints its results to standard output and the seconds of the part that pyperf would
+sizes. `bpe_tokeniser`, `pyflate`, `regex_compile` and `telco` read a file of [data/](data/)
+by its path from the repository root: run them from there, or pass the file as their last
+argument. A main prints its results to standard output and the seconds of the part that pyperf would
 time to standard error. The check runs small inputs once and compares CPython, JIT and AOT
 output, without timings. `make bench-pyperformance` runs five processes per mode and writes
 `build/pyperformance.json`. Both targets accept `BENCH_COMPILER`; `BENCH_ARGS` adds options to
@@ -38,8 +40,8 @@ cannot validate the kernels.
 
 ## Shared pytest correctness suite
 
-The [pytest tests](pytest/) import all 25 delivered benchmark modules and exercise
-their existing workload functions with 39 ordinary pytest cases. The same files
+The [pytest tests](pytest/) import all 38 delivered benchmark modules and exercise
+their existing workload functions with 52 ordinary pytest cases. The same files
 run under original CPython pytest and the [native runner](../../docs/pytest-native.md):
 
 ```sh
@@ -48,16 +50,20 @@ python3 tools/pytest_native_suites.py --group pyperformance --mode jit
 python3 tools/pytest_native_suites.py --group pyperformance --mode aot
 ```
 
-The registry preserves all 39 cases in five independent categories, each with
+The registry preserves all 52 cases in ten independent categories, each with
 its own original-pytest oracle. This bounds native build memory and separates
-the JSON opt-in from typed workloads. `make bench-pyperformance-check` includes
+the JSON, TOML and nested-list opt-ins from typed workloads. `pidigits` has a
+category of its own: its promoting-int opt-in makes every `int` list read in its
+program check for a large value, and `unpack_sequence`'s 400 unrolled list unpackings
+then took most of the algorithms suite's AOT build. `make bench-pyperformance-check` includes
 both native modes in addition to its existing process/timing/provenance checks.
 
 These original tests check full discrete results where available, finite numeric
 reference values with explicit tolerances, complete generator order, nonuniform
 SOR and signed sparse-matrix inputs, fixture cleanup, and JSON values. Reference
-values were checked with pinned CPython 3.13.16. The JSON tests retain the workloads'
-existing dynamic `Any` contract; the other tests use concrete types. They do not
+values were checked with pinned CPython 3.13.16; those of the thirteen ports added on
+20 November 2026 with CPython 3.13.18. The JSON, TOML and `gc_traversal` tests retain
+the workloads' dynamic `Any` contract; the other tests use concrete types. They do not
 require importing pyperf or changing any timed workload source.
 
 Keep `bench-pyperformance-check`, the corpus controls and controller unit tests:
@@ -102,9 +108,12 @@ directory is also accepted. In that mode each source hash is verified and the ar
 hash is unmeasured (`null`).
 
 The runner's [`UPSTREAM` map](../../tools/bench_pyperformance.py) is the authoritative
-file-by-file SHA-256 manifest for all 52 sources. Its `BENCHMARKS` map selects the 25
+file-by-file SHA-256 manifest for all 52 sources. Its `BENCHMARKS` map selects the 38
 ports and their normal and smoke inputs. Keep provenance in those checked manifests
 when adding a port; the tables below describe adaptations and recorded first errors.
+A port named for a standard library module is `bm_NAME.py` (`bm_base64.py`,
+`bm_logging.py`, `bm_pathlib.py`, `bm_pprint.py`): `NAME.py` beside the other entry
+points would shadow that module.
 
 The 52 are the 31 benchmarks that this port set out to try, mostly CPU-bound and often cited,
 and the 21 others that need no third-party package. The release's other 21 benchmarks list third-party
@@ -122,13 +131,31 @@ Mary Shelley's Frankenstein excerpt bundled with pyperformance 1.14.0 at commit
 The [pristine byte-BPE source and provenance](../../examples/byte_bpe/upstream/provenance.json)
 record the source, corpus and pyperformance license files used by the showcase.
 
+Three more files in [data/](data/) come from the same sdist:
+
+| File | Source | SHA-256 |
+|---|---|---|
+| `telco-bench.b` | `bm_telco/data/telco-bench.b`, byte for byte | `421380256393f8b92c8e17d4d7606b5ebc4b9b5efb7245078199ea3f486a1c6f` |
+| `interpreter.tar.bz2` | `bm_pyflate/data/interpreter.tar.bz2`, byte for byte | `81101162ee7fc7a3db86d1a87e0c86781304eb9026aca4078432004a1383c51a` |
+| `regex_compile.txt` | What `bm_regex_compile`'s `capture_regexes()` captures: a line for each of its 4,267 regexes | `8b1daa110136e80ae892ceb3b9a4d8a8777e11a9967781d8f3c7d0efc594140d` |
+
+`--census` captures the regexes again under CPython, from `bm_regex_compile`'s
+`run_benchmark.py` and its hash-pinned copies of two other benchmarks, and fails where
+`regex_compile.txt` differs. [pyaes/](pyaes/) is pyaes 1.6.1, which `bm_crypto_pyaes`
+requires: the four modules and `LICENSE.txt` of `pyaes-1.6.1.tar.gz`, SHA-256
+`02c1b1405c38d3c370b085fb952dd8bea3fadcee6411ad99f312cc129c536d8f`, committed unchanged
+before its marked edits. `tomli_loads`'s 16.8 MB fixture is not vendored; see its
+[adaptations](#adaptations).
+
 ## License
 
 pyperformance is distributed under the MIT License; [LICENSE](LICENSE) and [AUTHORS](AUTHORS)
 are its `COPYING` and `AUTHORS` files. Each port keeps its upstream header. `regex_v8.py`'s
 header carries the V8 project's BSD license, and `raytrace.py`'s states the MIT License.
-`deltablue` is excluded pending a separate provenance decision: its upstream docstring
-says the JavaScript original was GPL-licensed. The other 25 benchmarks remain included.
+`deltablue.py`'s docstring says that it was ported from V8's `deltablue.js`, itself "derived
+from the Smalltalk implementation by John Maloney and Mario Wolczko", and that "The original
+Javascript implementation was licensed under the GPL". It is included as a benchmark, in
+the file that pyperformance distributes under its MIT License.
 `fannkuch.py`, `meteor_contest.py`, `nbody.py`, `pidigits.py`, `regex_dna.py` and `spectral_norm.py` say they
 come from The Computer Language Benchmarks Game, whose programs are published under the
 3-clause BSD License. `richards.py` and `richards_super.py` credit a Java version
@@ -137,6 +164,17 @@ Friedrich Bolz". pyperformance distributes all of these files under its MIT Lice
 origins are listed so that a license review can confirm that this suffices. See
 [THIRD_PARTY_NOTICES](../../THIRD_PARTY_NOTICES). Byte BPE credits Shantanu Jain and
 tiktoken; those notices also retain tiktoken's MIT copyright and permission text.
+
+Of the other ports added on 20 November 2026, `pyflate.py` says "Copyright 2006--2007-01-21
+Paul Sladen" and permits use "under any DFSG-compatible license (eg. BSD, GNU GPLv2)";
+its archive, `interpreter.tar.bz2`, holds 25 source files of PyPy's interpreter.
+`decimal_factorial.py` and `decimal_pi.py` come from CPython's
+`Modules/_decimal/tests/bench.py`, "Copyright (C) 2001-2012 Python Software Foundation",
+"Modified and extended by Stefan Krah". `telco.py` implements the telco benchmark of
+speleotrove.com, which its data file comes from. `regex_compile.txt` holds the regexes
+of `regex_effbot` and of `regex_v8`, whose header carries the V8 project's license.
+pyaes is "Copyright (c) 2014 Richard Moore", under the MIT License in
+[pyaes/LICENSE.txt](pyaes/LICENSE.txt).
 
 ## Adaptations
 
@@ -159,14 +197,24 @@ adaptations follow these rules:
   `--census` checks it against the upstream files.
 - Older ports turn `range_it = range(loops)` into a list, from before range values were
   supported; later ports keep the range.
+- Where the runner calls `bench_func()` several times (`pprint`), the main times one loop
+  for each call and prints their total. Where upstream's timer is inside its loop, around
+  one statement (`gc_collect`, `gc_traversal`), the port keeps it there.
 
 | Benchmark | Other adaptations |
 |---|---|
 | `barnes_hut` | Integer zeros that become floats are float literals. Constructors, the particle list and the child nodes are annotated. |
+| `base64` | A `randbytes()` built on `randrange()` replaces `random.randbytes()`, which takes one `getrandbits()` of all its bits, beyond the 63 that the library's has: the data differ from upstream's. All eleven benchmarks run in upstream's order; digests of every encoding and its decoded round trip are printed outside the timers. |
 | `bpe_tokeniser` | Five kernel adaptations: annotate the decoder field and empty ranks dictionary; type the pair `Counter`; materialize `zip` for `enumerate`; pass the UTF-8 replacement policy positionally. The runner exposes the unchanged pattern, permits smaller vocabularies, and takes an explicit corpus path instead of `__file__`. |
 | `chaos` | A Park–Miller generator replaces `random.seed()` and `randrange()`, so the points differ from upstream. `GVector` has float parameters and defaults; `__rmul__ = __mul__` becomes a method; fields are annotated; loops replace two-clause comprehensions; `length` starts as `0.0`; `x` and `y` are converted to int in one assignment each; an impossible `type()` message is a literal. `main()` returns the game, whose `create_image_chaos()` the main times with the default arguments. |
 | `comprehensions` | The empty widget list is annotated. The upstream `Enum` and enum iteration are restored. The complete sorted widget order is checked. |
+| `crypto_pyaes` | None besides the runner; the ciphertext's digest is printed. The vendored [pyaes](pyaes/) keeps Python 3's helpers where upstream redefines Python 2's, calls `range()` for `xrange()`, annotates the constructors that fields and subclasses need, decorates `Counter.value`, and leaves out the mode table and the block feeder import, which only the modes that the benchmark does not use need. |
+| `decimal_factorial` | `factorial()` returns `int \| decimal.Decimal`, annotated because it calls itself before it returns. The sizes are a module list, `SIZES`, which the main replaces for a smaller run. The factorials are returned, and the main prints a remainder of each: `str()` of a `Decimal` of more than 4,300 digits raises `ValueError` here. |
+| `decimal_pi` | The discarded result has a variable of its own: upstream's `_` also holds the loop's int. Pi at both precisions is printed. |
+| `deltablue` | An annotated list replaces each `OrderedCollection()`, a class derived from `list`. `Strength`'s class attributes, `None` until the module assigns them, are annotated, and `Strength` replaces `self.__class__`. The `super().__init__()` calls of classes whose base is `object` are left out. `Constraint` declares the methods that only its subclasses define. Constructors, `Variable`'s fields and the methods that call one another are annotated; a variable's value is `int \| float`, an int until a scale constraint divides it. The tests return the values they leave, which the main prints. |
 | `logging` | All three kernels run directly on the same `StringIO` stream. The driver checks every emitted line and verifies that disabled calls produce no output. |
+| `gc_collect` | `total_time` starts as a float. Rebinding the list replaces `del all_cycles`, because `del` of a local is rejected in an imported module, and the pytest suite imports this one. The assertion also accepts the 0 that Pystachy's `gc.collect()` returns: it does not count what it frees. The timed call is a collection by Pystachy's tracing collector, not by CPython's cycle collector. |
+| `gc_traversal` | Opt into dynamic `Any` for the lists, which nest to any depth, and annotate them. `total_time` starts as a float. The lists that survive are walked outside the timer. The timed call is a collection by Pystachy's tracing collector. |
 | `generators` | The recursive `Tree`, `yield from`, range slicing and iteration are unchanged. A size argument limits smoke/GC runs to 100 nodes; the normal run keeps 100,000. The complete yielded sequence is checked outside the timer. |
 | `json_dumps` | Opt into dynamic `Any`; annotate the empty dict and the list of `(Any, range)` workload tuples. Preserve all four upstream payloads and counts by default; smoke uses one encode per case and a three-element HUGE list. Complete small encodings and the repeated huge encoding are checked outside the timer. |
 | `json_loads` | Opt into dynamic `Any` and annotate the fresh heterogeneous tuple. All keys in upstream `DICT` are strings, so `str(rand_val)` replaces the generic `type(key)(rand_val)` branch. Preserve `Random(5)`, all three payloads and the 20 unrolled loads per payload; decoded values are printed after timing. |
@@ -177,14 +225,20 @@ adaptations follow these rules:
 | `meteor_contest` | `SE` is `51`, not `51.0`, because floats cannot be set elements or dict keys. Loops replace a two-clause comprehension and `dict()` of a generator expression. A list replaces another generator expression, and `''.join(reversed(s))` replaces `s[::-1]`. |
 | `nbody` | None. |
 | `nqueens` | `permutations()` and `n_queens()` return lists instead of yielding. `tuple()` takes a list comprehension. `reverse()` and concatenation replace a slice step and a slice assignment. |
+| `pathlib` | `exists()` replaces `Path.stat()`, which is not available: it makes the same system call without building the result. The main can replace `NUM_FILES` for a smaller run. The sorted names of both listings are checked. |
 | `pidigits` | The module opts in to [promoting ints](../../docs/python-int.md) with `# pystachy: python-int`, so the digits use CPython's arbitrary-precision `int`. A generator expression replaces `map(lambda k: ..., icount(1))`, which is equally lazy over the infinite count. Every computed digit is printed. |
+| `pprint` | None besides the runner, which times upstream's two `bench_func()` calls, of `_safe_repr()` and of `pformat()`, in a loop each. A size argument limits smoke runs to 50 items; the normal run keeps 100,000. |
+| `pyflate` | The archive is read into an `io.BytesIO`, whose type can annotate the bit field's constructor; a binary file's cannot. Constructors are annotated, and the fields that other methods set are declared. `c[0]` replaces `ord(c)` of bytes, a lambda calls the static sort key, and raising a string becomes the `TypeError` it raises. Three errors on paths that the bzip2 archive never takes are corrected so that they compile: `self.f._read()`, `"".join()` of bytes in `gzip_main()` and `%x` of `hex()`. Upstream's MD5 check of the output is kept. |
 | `raytrace` | A list replaces `array.array('B')`. `Vector` and `Point` have float coordinates, and the scene uses float literals. Class attributes are declared. Unreachable `Point` and `Vector` results are commented out of `Vector.__add__()` and `Point.__sub__()`. Raising a string becomes the `TypeError` it raises. Keyword parameters replace `**kwargs`, and the image is not written. |
+| `regex_compile` | The regexes come from a [record](#provenance) of what upstream captures by replacing `re.compile()`, `re.search()` and `re.sub()`, which a compiled program cannot do. An entry that upstream captured as a compiled pattern is compiled once, before the timer, and given to `re.compile()` as upstream gives it. An argument limits smoke runs to the first 300 regexes. |
 | `regex_dna` | The sequence is an ASCII `str`, not bytes. The generator builds lists of strings, and the patterns are strings. |
 | `regex_effbot` | A global replaces the function attribute `bench_regex_effbot.data`, and a loop replaces a dict comprehension. The `USE_BYTES` branches, never taken, are commented out. |
 | `regex_v8` | None besides the checksum, computed after the timed loops because the blocks discard their results: substitution contents, search contents and positions, split pieces and boundaries, and module-level search/match/sub results. |
 | `richards`, `richards_super` | Constructors, fields and the `Task` methods that inference needs are annotated. `BUFSIZE_RANGE` is a list. |
 | `scimark` | Lists replace `array('d')` and `array('i')`. `Random`'s class constants are written out, and fields set by `initialize()` are declared. `ArrayList` no longer derives from `Array2D`, because its rows have a different type; its items are rows, and the inherited methods are copied. `indexes()` returns a list. `Array2D` is passed as `None` because classes are not values, and the `BENCHMARKS` table is replaced by the main. |
 | `spectral_norm` | Accumulators and `u` start as floats. |
+| `telco` | The `BytesIO` has a name of its own; upstream reuses the file's. The test `datum == ''`, never true of bytes, is left out, because a bytes/str comparison is rejected. The data file's path is an argument. The three sums are printed. |
+| `tomli_loads` | `tomllib` stands in for `tomli`, whose code it has been since Python 3.11. The document is a parameter: the main generates one of the fixture's shape with made-up values (200 pull-request records, 1.6 MB, by default), because the 16.8 MB fixture holds other people's names and text and is not vendored. Given a path, it parses that file instead. |
 | `unpack_sequence` | A tuple literal replaces `tuple(range(10))`. The main runs upstream's default, `bench_all()`: the tuple and the list variants. |
 
 The `random` substitutes produce 31-bit values, including `go`'s Zobrist hash strings.
@@ -197,70 +251,43 @@ Results within a benchmark are checked against CPython, not against upstream pyp
 
 ## Census
 
-These are recorded probes, last updated for `3aa7265a` on 2026-11-03; they are not
+These are recorded probes, last updated for `299d12ad` on 2026-11-20; they are not
 rerun automatically when the compiler changes. Use the [census command](#provenance)
-with the pinned upstream sources to check today's first errors. The full byte-BPE
-port above covers training, encoding and decoding; the earlier fixed-rank sample
-below did not.
+with the pinned upstream sources to check today's first errors.
 
-The same 52 upstream files were compiled on `8444af96` (before the stdlib additions)
-and `3aa7265a` (with the argparse adapter). With only the runner replaced, both
-compiled seven to IR: `fannkuch`, `generators`, `nbody`, `nqueens`, `regex_v8`,
-`spectral_norm` and `unpack_sequence`. The original sdist run on `5eaf5638` found
-the same seven. Eight of the other files advanced past a missing-module error:
+With only the runner replaced, nine of the 52 upstream files compile to IR at that
+revision: `fannkuch`, `gc_collect`, `generators`, `nbody`, `nqueens`, `pprint`,
+`regex_v8`, `spectral_norm` and `unpack_sequence`. The native compiler and the
+CPython-hosted one gave the same 52 results. The
+[3 November record](https://github.com/den-run-ai/pystachy/blob/299d12ad5b2a4446088a5c0565fa25eb258c5a94/bench/pyperformance/README.md#census)
+had seven, on a library without `base64`, `decimal`, `gc`, `hashlib`, `pprint` or
+`subprocess`; it also describes the samples that preceded some ports.
 
-| Previously missing | Benchmarks and next blockers |
-|---|---|
-| `argparse` | `argparse`: bare `list` return annotation |
-| `copy` | `deepcopy`: bare `list` dataclass field |
-| `enum` | `comprehensions`: empty widget list needs an annotation |
-| `glob` | `2to3`: missing `subprocess` |
-| `logging` | `logging`: dispatch table containing distinct function types |
-| `pathlib` | `bpe_tokeniser`: decoder field needs an annotation; `pathlib`: missing `Path.stat()`; `tomli_loads`: missing `tomli` |
-
-Separate import programs for `argparse`, `copy`, `enum`, `logging` and `pathlib`
-executed in JIT. A separate pyperf 2.10.0 worker with psutil 7.2.2 ran under
-CPython 3.13.16. Compiling that worker with Pystachy stopped at the missing
-`sysconfig` import in pyperf.
-
-The adapted suite uses CPython's output as the oracle in JIT and AOT. Three extra
-samples also matched in both modes: BPE encoding with fixed ranks and materialized
-`zip` pairs, deepcopy of the benchmark dataclass with a `list[int]` field, and
-pathlib's eight-file setup followed by glob, binary reads and cleanup. These
-samples exclude BPE training, copy reduction hooks and `Path.stat()`, respectively.
+Compiling a pyperf 2.10.0 worker, which is outside the census, stopped at
+`shutil.which`, which `pyperf/_utils.py` imports.
 
 <a id="sources-without-a-delivered-port"></a>
 <a id="scope-and-remaining-candidates"></a>
 
 ### Sources without a port
 
-The middle column records the shipped-library result at the census revisions
+The middle column records the shipped-library result at the census revision
 above. The last column records the original `5eaf5638` probe with a CPython 3.13.18
 stdlib overlay. “Same” describes that historical run. A source can have more
 blockers than its first error, and a newer compiler may have removed one.
 
 | Benchmark | First error with the shipped library | Historical overlay result |
 |---|---|---|
-| `2to3` | no `subprocess` module | `signal` imports the missing `_signal` |
+| `2to3`, `python_startup` | `sys.executable` | `signal` imports the missing `_signal` |
 | `argparse` | bare `list` return annotation on `generate_arguments()` | a bare `list` annotation (`-> list`) |
 | `async_generators`, `coroutines` | `async def` | same |
 | `async_tree`, `asyncio_tcp` | no `asyncio` module | `socket` imports the missing `_socket` |
-| `base64` | no `base64` module | `random.randbytes()` needs `int.to_bytes()` |
 | `concurrent_imap` | no `multiprocessing` module | `signal` imports the missing `_signal` |
-| `crypto_pyaes` | no `pyaes` module (third-party) | same |
-| `decimal_factorial`, `decimal_pi`, `telco` | no `decimal` module | `contextvars` imports the missing `_contextvars` |
 | `deepcopy` | a bare `list` annotation (`lst: list`) | a bare `list` annotation (`lst: list`) |
-| `deltablue`, `typing_runtime_protocols` | unsupported base class | same |
-| `gc_collect`, `gc_traversal` | no `gc` module | same |
+| `typing_runtime_protocols` | unsupported base class | same |
 | `mdp` | no `fractions` module | `contextvars` imports the missing `_contextvars` |
-| `pathlib` | `Path.stat()` | `shutil` imports `bz2`, which imports the missing `_bz2` |
 | `pickle` | no `pickle` module | `copyreg` keys a dict by classes |
-| `pprint` | no `pprint` module | statements in the body of class `PrettyPrinter` |
-| `pyflate` | no `hashlib` module | inheritance with generic class templates |
-| `python_startup` | no `subprocess` module | `signal` imports the missing `_signal` |
-| `regex_compile` | global `regexes` needs a type annotation | same |
 | `sqlite_synth` | no `sqlite3` module | `sqlite3` imports the missing `_sqlite3` |
-| `tomli_loads` | no `tomli` module (third-party) | no `tomli` module (third-party) |
 | `xml_etree` | no `xml` module | `xml.etree.ElementTree` imports the missing `_elementtree` |
 
 The argparse kernel also registers subparsers, argument groups and 1,000 options whose names
@@ -276,15 +303,15 @@ When evaluating another port:
 - Preserve the behavior being measured. Async/event-loop, process-pool, CPython GC,
   interpreter startup and database workloads need the corresponding runtime behavior;
   replacing it with a simpler kernel changes the benchmark.
-- Keep the numeric semantics of `decimal_factorial`, `decimal_pi`, `telco` and the
-  fractions-based `mdp`. Fixed-width substitutes change what they test. `pidigits`
-  uses [promoting ints](../../docs/python-int.md) to retain CPython's `int` semantics.
-- Check beyond the first error. For example, `regex_compile` also replaces another
-  module's regex calls, so annotating its global alone does not complete the port.
-- Account for external inputs and licenses. `crypto_pyaes` needs `pyaes`; `tomli_loads`
-  needs `tomli` and a 16.8 MB fixture that is too large to vendor; `deltablue` is
-  deferred for its [license provenance](#license). Shipping `tomllib` alone does
-  not supply the benchmark's `tomli` dependency.
+- Keep the numeric semantics of the fractions-based `mdp`, as the decimal ports keep
+  theirs with the library's `decimal`: fixed-width substitutes change what a benchmark
+  tests. `pidigits` uses [promoting ints](../../docs/python-int.md) to retain CPython's
+  `int` semantics.
+- Check beyond the first error. For example, `deepcopy`'s kernels also copy through
+  `__reduce__()` and `__setstate__()`, so its annotation alone does not complete the port.
+- Account for external inputs and licenses, as `crypto_pyaes` does with a vendored pyaes
+  and `tomli_loads` with a generated document, and as the [license notes](#license) do
+  for `deltablue`.
 
 Related design and coverage history is in
 [#361](https://github.com/den-run-ai/pystachy/issues/361) (benchmark coverage),
@@ -297,29 +324,39 @@ Related design and coverage history is in
 
 ### Ported sources before their adaptations
 
-The recorded census also compiled the upstream file of each port. These were its
-first errors before the adaptations; "none" means that replacing the runner was enough
+The recorded census also compiled the upstream file of each port. These are its
+first errors before the adaptations; "none" means that replacing the runner is enough
 at that revision.
 
 | Benchmark | First error of the upstream file |
 |---|---|
 | `barnes_hut` | field `particles` needs a type annotation |
+| `base64` | `int.to_bytes()`, which `random.randbytes()` calls |
 | `bpe_tokeniser` | field `_decoder` needs a type annotation |
 | `chaos` | class attribute `__rmul__` needs a type annotation |
 | `comprehensions` | empty `widgets` list needs a type annotation |
-| `fannkuch`, `generators`, `nbody`, `nqueens`, `regex_v8`, `spectral_norm`, `unpack_sequence` | none |
+| `crypto_pyaes` | no `pyaes` module (third-party) |
+| `decimal_factorial` | `factorial()` needs a return annotation: it calls itself before it returns |
+| `decimal_pi` | `expected int, got Decimal` (line 42) |
+| `deltablue` | unsupported base class: `OrderedCollection` derives from `list` |
+| `fannkuch`, `gc_collect`, `generators`, `nbody`, `nqueens`, `pprint`, `regex_v8`, `spectral_norm`, `unpack_sequence` | none |
 | `float` | field `x` needs a type annotation |
+| `gc_traversal` | empty `current_list` needs a type annotation |
 | `go` | field `pos_child` needs a type annotation |
-| `hexiom` | class attribute `HIGHEST_VALUE_STRATEGY` used as a class-body default |
+| `hexiom` | field `nodes_by_id` needs a type annotation |
 | `json_dumps` | an empty dict needs a type annotation |
 | `json_loads` | `expected int, got str` (line 50) |
 | `logging` | dispatch table contains distinct function types |
 | `meteor_contest` | `expected int, got float` (line 88) |
+| `pathlib` | `Path.stat()` |
 | `pidigits` | `map()` outside a call that takes its items at once |
+| `pyflate`, `richards`, `richards_super` | inheritance with generic class templates |
 | `raytrace`, `scimark` | no `array` module |
-| `regex_dna` | `bytearray()` |
+| `regex_compile` | global `regexes` needs a type annotation |
+| `regex_dna` | `expected str, got bytes` (line 174) |
 | `regex_effbot` | function attribute `bench_regex_effbot.data` |
-| `richards`, `richards_super` | inheritance with generic class templates |
+| `telco` | `expected BinaryIO, got BytesIO` (line 41) |
+| `tomli_loads` | no `tomli` module (third-party) |
 
 `python3 tools/bench_pyperformance.py --census pyperformance-1.14.0.tar.gz` prints each first
 error in full.
@@ -351,7 +388,8 @@ The table gives **millions of whole-process instructions**, sorted by change.
 Positive values mean more instructions; negative values mean fewer. `pidigits`
 needed alpha.4's [promoting ints](../../docs/python-int.md); alpha.3 raised
 `OverflowError`, so it has no comparable row. `logging` and `bpe_tokeniser` joined
-the suite after this measurement, so the table does not cover the current 25-port suite.
+the suite after this measurement, as did the thirteen ports of 20 November, so the table
+does not cover the current 38-port suite.
 
 | Benchmark | alpha.3 | alpha.4 | Change |
 |---|---:|---:|---:|

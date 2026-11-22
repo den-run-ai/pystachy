@@ -5,7 +5,7 @@ already-emitted immutable function objects are candidates. No source is inferred
 again, and no code or profiling state is created while the program runs.
 """
 from __future__ import annotations
-from src.pystachy_compiler.ir import Blk, IFn, Ins, Loop, Val, tmpname, one_num
+from src.pystachy_compiler.ir import Blk, IFn, Ins, Loop, Val, real_ops, tmpname, one_num
 from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.utils import identity_abi, is_callable
 
@@ -99,8 +99,7 @@ def callback_clone(fn: IFn, param: int, target: str, code: str, ft: str, codes: 
     g.synthetic, g.noret = True, f.noret
     g.cmpops = f.cmpops
     out = IFn(g)
-    out.ps, out.n = [p for p in fn.ps], fn.n
-    out.numeric_only = fn.numeric_only
+    out.ps, out.n, out.located, out.casts = [p for p in fn.ps], fn.n, fn.located, [n for n in fn.casts]
     out.fa, out.cold, out.coldh = dict(fn.fa), dict(fn.cold), dict(fn.coldh)
     out.rdepth, out.resumes, out.setslimit = fn.rdepth, fn.resumes, fn.setslimit
     # The original entry owns the source frame; a version is an uncounted helper.
@@ -126,7 +125,9 @@ def callback_clone(fn: IFn, param: int, target: str, code: str, ft: str, codes: 
 def callback_guards(fn: IFn, param: int, targets: list[str], variants: list[IFn]) -> None:
     # Retain the entry's depth snapshot ahead of the dispatcher. Every branch
     # executes the body once, after the caller has evaluated all arguments.
+    # The dispatcher is the function's entry: its ops take the snapshot's line.
     entry = fn.blocks[0]
+    line = entry.code[0].line
     fn.n += 1
     fallback = Blk(f"L{fn.n}")
     fallback.code = entry.code[1:]
@@ -147,7 +148,6 @@ def callback_guards(fn: IFn, param: int, targets: list[str], variants: list[IFn]
         compare.r = one_num(fn.n)
         branch = Ins("cbr", "", "")
         branch.a, branch.b = [Val(tmpname(fn.n), "bool")], [hit.label, miss.label]
-        current.code.extend([compare, branch])
         call = Ins("call", fn.f.ret, variants[j].f.ll)
         call.a = [Val(f"%a{p}", fn.f.ptypes[p]) for p in fn.ps]
         ret = Ins("ret", "", "")
@@ -155,6 +155,9 @@ def callback_guards(fn: IFn, param: int, targets: list[str], variants: list[IFn]
             fn.n += 1
             call.r = one_num(fn.n)
             ret.a = [Val(tmpname(fn.n), fn.f.ret)]
+        for i in [compare, branch, call, ret]:
+            i.line = line
+        current.code.extend([compare, branch])
         hit.code = [call, ret]
         added.append(hit)
         if miss is not fallback:
@@ -188,7 +191,7 @@ def specialize_callbacks(fns: list[IFn], adapters: dict[str, str], objects: dict
         params = [p for p in fn.ps if is_callable(f.ptypes[p])]
         if len(params) != 1 or f.ptypes[params[0]] not in candidates:
             continue
-        size = len(fn.slots) + sum(len(b.code) for b in fn.blocks)
+        size = len(fn.slots) + sum(real_ops(b.code) for b in fn.blocks)  # (no cast: lowering erases them)
         if size > 256 or (size + 4) * 2 + extra > 4096:
             continue
         param = params[0]

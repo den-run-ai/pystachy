@@ -1,0 +1,7 @@
+deque [True, False, False, True, False, False] [False, True, True, False, True, True] 0 2
+bytearray [False, True, False, False, True, False] [True, False, True, True, False, True] 1 2
+Counter [False, False, True, False, False, True] [True, True, False, True, True, False] 2 2
+deque [True, False, False, True, False, False] [False, True, True, False, True, True] 0 2
+bytearray [False, True, False, False, True, False] [True, False, True, True, False, True] 1 2
+Counter [False, False, True, False, False, True] [True, True, False, True, True, False] 2 2
+[exit 0]

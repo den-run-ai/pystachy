@@ -109,6 +109,13 @@ test-program-cache: $(PROGRAM_CACHE_COMPILER)
 test-ffi: pystachy
 	PY="$(PY)" tests/ffi/run.sh ./pystachy "jit aot"
 
+# Other CPython versions (tools/python_versions.sh): under each of PYTHONS, the hosted compiler's IR
+# must be stage 1's, a corpus sample must pass with it, and test-ffi with that CPython's libpython,
+# e.g. make python-versions PYTHONS="python3.11 python3.12 python3.14 python3.15t"
+PYTHONS ?= python3
+python-versions: pystachy
+	r=0; for p in $(PYTHONS); do tools/python_versions.sh "$$p" ./pystachy build || r=1; done; exit $$r
+
 bench: pystachy
 	PY="$(PY)" bench/run.sh
 
@@ -465,12 +472,14 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_dynany_comparisons.py
 	$(PY) -m unittest discover -s tools -p test_dynany_dict_kinds.py
 	$(PY) -m unittest discover -s tools -p test_diagnostic_capture.py
+	$(PY) -m unittest discover -s tools -p test_cli_usage.py
 	$(PY) -m unittest discover -s tools -p test_loader_preprocessing.py
 	$(PY) -m unittest discover -s tools -p test_ctypes_schema.py
 	$(PY) -m unittest discover -s tools -p test_ffi_twin.py
 	$(PY) -m unittest discover -s tools -p test_parser_allocations.py
 	$(PY) -m unittest discover -s tools -p test_exception_bindings.py
 	$(PY) -m unittest discover -s tools -p test_inspect_compiler.py
+	$(PY) -m unittest discover -s tools -p test_rejection_survey.py
 	$(PY) -m unittest discover -s tools -p test_compiler_pipeline.py
 	$(PY) -m unittest discover -s tools -p test_compiler_stage_admission.py
 	$(PY) -m unittest discover -s tools -p test_compiler_abi_stages.py
@@ -494,6 +503,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
 	$(PY) -m unittest discover -s tools -p test_lean_layout_metadata.py
 	$(PY) -m unittest discover -s tools -p test_source_lines.py
+	$(PY) -m unittest discover -s tools -p test_pre_commit_check.py
 	$(PY) -m unittest discover -s tools -p test_pystachy_toolchain.py
 	$(PY) -m unittest discover -s tools -p test_retained_ir.py
 	$(PY) -m unittest discover -s tools -p test_jitfdprobe.py
@@ -502,6 +512,7 @@ check-fast: lint-python typecheck check-repository
 # The ordinary compiler and runtime do not invoke Lean.
 check-lean-boundary:
 	cd tools/lean_boundary && lake build
+	$(PY) tools/check_lean_wasm_frame.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_access.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_inline.py
@@ -564,7 +575,7 @@ check-repository:
 # sources; pip install -r tools/requirements-dev.txt gives the versions CI uses
 lint: lint-python
 	$(PY) tools/runtime_roots.py
-	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh)
+	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh wasm/*.sh)
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c tools/bytescanprobe.c tools/floatprobe.c pyext.c pyembed.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -std=c11 -D_GNU_SOURCE -DLLVM_VERSION_MAJOR=18 lljit.c
@@ -584,7 +595,7 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check example-cli-check netio-check netio-dogfood-check bench-netio blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe floatprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast check-lean-boundary check-lean-corpus check-lean-int lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi python-versions bench bench-extended bench-extended-check example-cli-check netio-check netio-dogfood-check bench-netio blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe floatprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast check-lean-boundary check-lean-corpus check-lean-int lint clean install uninstall test-install
 
 # Explicit programs give a bounded gate; without them this inventories the entire corpus.
 LEAN_GUARD_FLAGS ?=

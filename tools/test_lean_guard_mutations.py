@@ -66,7 +66,7 @@ class UnionMutationTests(unittest.TestCase):
                     prefix = [op("mach.addr", "%ptr", "int", [100], [(source, "%ptr"), ("0", "int")])]
                     address = "%t100"
                 elif mode == "field.addr":
-                    prefix = [op("field.addr", "*int", results=[100], operands=[(source, "Box")])]
+                    prefix = [op("field.addr", "&int", results=[100], operands=[(source, "Box")])]
                     address = "%t100"
                 elif mode == "cast":
                     prefix = [op("scalar.cast", "%ptr", "bitcast", [100], [(source, "union[int,str]")])]
@@ -81,7 +81,7 @@ class UnionMutationTests(unittest.TestCase):
                 else:
                     typed = mode in {"mem.store", "field.addr"}
                     store = op("mem.store" if typed else "mach.store",
-                               operands=[(address, "*int" if typed else "%ptr"), (tag, "int")])
+                               operands=[(address, "&int" if typed else "%ptr"), (tag, "int")])
                 block["operations"][offset:offset] = prefix + [store]
                 self.refused(snapshot, function)
 
@@ -99,8 +99,8 @@ class UnionMutationTests(unittest.TestCase):
         block, offset, payload = self.int_read(function)
         source = payload["operands"][0]["value"]
         block["operations"][offset:offset] = [
-            op("mem.store", operands=[("%alias.100", "*union[int,str]"), (source, "union[int,str]")]),
-            op("mem.load", "union[int,str]", results=[101], operands=[("%alias.100", "*union[int,str]")]),
+            op("mem.store", operands=[("%alias.100", "&union[int,str]"), (source, "union[int,str]")]),
+            op("mem.load", "union[int,str]", results=[101], operands=[("%alias.100", "&union[int,str]")]),
             op("mach.store", operands=[("%t101", "%ptr"), (str(snapshot["union_tags"]["str"]), "int")])]
         self.refused(snapshot, function)
 

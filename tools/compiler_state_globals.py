@@ -18,6 +18,9 @@ LOOKUP = set("""
 analysis.BINDERS analysis.READS_ONLY_FNS builtins.FSPRIMS
 ctypes_schema.SCALARS ctypes_schema.MARKERS
 bigints.BIGOPS bigints.BKEY bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
+builtin_bases.BWORDS builtin_bases.BITER builtin_bases.BREV builtin_bases.BITEM builtin_bases.BSTORE
+builtin_bases.BDEL builtin_bases.BLEN builtin_bases.BTRUTH builtin_bases.BIN builtin_bases.BSHOW
+builtin_bases.BREPR builtin_bases.BARITH builtin_bases.BCMP builtin_bases.BITERATE
 cached_run.BUILD_ENV cached_run.CPU_FIELDS cached_run.KEYED_ENV
 cache_toolchain.SYSTEM_INPUTS
 driver.COMPILER_SOURCES driver.CPUID driver.LLJIT_LLVM driver.RTPARTS
@@ -26,7 +29,8 @@ dynamic.BINDUNDERS dynamic.BUILTIN dynamic_proof.BUILTIN_KINDS dynamic_proof.BUI
 dynamic_proof.BOX_TAGS expressions.ORDERS expressions.CMPDUNDERS
 ir.NONUMS ir.NOVALS ir.NOLABELS ir.OPERAND_KINDS
 lexer.KEYWORDS lexer.OPS lexer.ESCAPES lexer.PREFIXES lexer.NONPRINT lexer.NOTID
-loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS loader.FUNCTOOLS_NAMES loader.ORDERINGS
+loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS loader.FUNCTOOLS_NAMES loader.ORDERINGS loader.QUIET_CALLS loader.ONCE_DYNAMIC loader.LOCAL_CLASS_DECOS loader.LOCAL_METHOD_DECOS
+loader.ENUM_BOUNDARIES loader.ENUM_CHECKS loader.ENUM_ELSEWHERE loader.ENUM_UNCALLED
 local_versions.UNVERSIONED machine_ir.WORD_READS optimizations.PASS_CONTRACTS parser.ATOMS patterns.SEQ_SCALARS program.BOUND_FORMS program.ORDER_OPS program.TV_TYPES
 pipeline.STAGE_PREDECESSORS
 reflection.BUILTIN_TYPES reflection.CLASS_BUILTINS reflection.SLOT_WRAPPERS reflection.OBJ_BUILTINS reflection.TYPE_BUILTINS reflection.PICKLING
@@ -38,17 +42,18 @@ specs.IOPS specs.CHECKED specs.IRT specs.FOPS specs.FRT specs.ICMP specs.FCMP
 specs.SPECIAL specs.UNCALLED specs.REFL specs.ORDOP specs.DUNDER specs.UNARY
 specs.CALLS specs.RTL specs.TBAA_SIZES specs.TBAA_NAMES specs.ERRNO specs.MODFUNCS
 specs.CTYPES specs.MODATTRS specs.OSCONST specs.FLOATINFO specs.VERSIONINFO
-specs.TYPING specs.TYPEARGS specs.ABCS specs.ABCSMORE specs.RANGE_TAKERS specs.RANGE_METHODS
+specs.TYPING specs.TYPEARGS specs.ABCS specs.ABCSMORE specs.ABC_BASES specs.ABC_TYPING specs.ABC_METHODS specs.ABC_NOMINAL specs.RANGE_TAKERS specs.RANGE_METHODS
 specs.FUTURE specs.DEFAULTS specs.EXCEPTIONS specs.EXCBASES specs.PLAIN_EXC_BASES specs.EXCATTRS specs.EXCINIT
 specs.EXCKW specs.HASATTR specs.NONEARG specs.OPTARG specs.NONERET specs.OPTCALLS specs.PROTOCOL_MATH
 specs.NOREF specs.UNSUPPORTED specs.INERT_DECOS specs.IDENTITY_DECOS specs.INERT specs.PURE specs.RAISERS
-specs.CODECS specs.ARITY specs.METHODS specs.TEXT_OPS
+specs.CODECS specs.ARITY specs.METHODS specs.TEXT_OPS specs.PYMETHODS specs.UCALLS
 specs.FSETMETHODS specs.SETMETHODS specs.OPS specs.IROPS specs.RESULT_NUMBERS specs.OPTS specs.VALUE_AT specs.FX specs.LIST_READS specs.LIST_WRITES
-specs.OP_ENTRY specs.OP_MIN specs.OP_MAX specs.OP_LABELS specs.OP_FIELDS
+specs.OP_ENTRY specs.OP_MIN specs.OP_MAX specs.OP_LABELS specs.OP_FIELDS specs.OP_TEMPS
+specs.OP_OPERAND_TYPES specs.OP_RESULT_TYPE specs.TYPE_CLASSES specs.TYPE_VIEWS specs.CAST_KINDS ircheck.VTUPLE_ELEMS utils.RT_VARS ircheck.CONSTRAINT_PARTS ircheck.OP_KINDS
 specs.FXBIT specs.RUNTIME specs.NARROWED specs.PATH_OPS specs.READ_HELPERS specs.INT_HELPERS specs.RTDATA specs.RTSYM
 structs.STRUCT_FNS structs.NATIVE_SIZES structs.STANDARD_SIZES
 syntax.DCOPTS syntax.EXPRNAMES syntax.STARTS syntax.CMPOPS syntax.AUGOPS syntax.BINOPS syntax.NOKIDS
-utils.DECRUNS
+unions.ANNTYPES utils.DECRUNS
 """.split())
 
 # These four rewind boundaries have executable removal controls in
@@ -62,10 +67,13 @@ REWOUND = {
 RESET = {
     "diagnostics.FILES": "loader rebuilds the program file-index space before parsing",
     "diagnostics.DYNFILES": "loader resets file-index opt-ins with the file table",
+    "diagnostics.STATICFILES": "loader rebuilds static markers with the file table on each load and retry",
     "diagnostics.IDINERT": "loader rebuilds checked identity-inert hints with the file table on each load and retry",
     "diagnostics.INTFILES": "loader resets file-index python-int opt-ins with the file table",
     "diagnostics.INTSPANS": "loader resets the line spans of lib's promoting definitions with the file table",
     "names.ENUMCLASSES": "loader resets the enum classes it makes, by their statements' lines, with the file table",
+    "names.NESTED": "loader resets the nested enum classes it records, by their outer statements' lines, with the file table",
+    "names.LOCALWHY": "loader resets why it left class statements inside functions, by their lines, with the file table",
     "names.ORDERED": "loader resets the @total_ordering classes it records, by their statements' lines, with the file table",
 }
 RETAINED = {
@@ -97,12 +105,15 @@ WRITERS = {
     "diagnostics.CAPTURED": {"diagnostics.fail"},
     "diagnostics.FILES": {"loader.Loader.program", "loader.Loader.parse"},
     "diagnostics.DYNFILES": {"loader.Loader.program", "loader.Loader.pragmas"},
+    "diagnostics.STATICFILES": {"loader.Loader.program", "loader.Loader.pragmas"},
     "diagnostics.IDINERT": {"loader.Loader.program", "loader.Loader.pragmas"},
     "diagnostics.INTFILES": {"loader.Loader.program", "loader.Loader.pragmas"},
     "diagnostics.INTSPANS": {"loader.Loader.program", "loader.Loader.int_spans"},
     "syntax.LAMBDAS": {"parser.Parser.test1", "driver.compile_program"},
     "names.RENAMED": {"program.gen_prepare_program", "pipeline.gen_lower_program", "driver.compile_program"},
     "names.ENUMCLASSES": {"loader.Loader.program", "loader.enum_classes"},
+    "names.NESTED": {"loader.Loader.program", "loader.hoist_nested"},
+    "names.LOCALWHY": {"loader.Loader.program", "loader.local_classes"},
     "names.ORDERED": {"loader.Loader.program", "loader.functools_classes"},
     "program_cache.ACTIVE": {"program_cache.start", "program_cache.stop"},
     "program_cache.VALID": {"program_cache.start", "program_cache._record", "program_cache.tracked_kind",
@@ -122,7 +133,7 @@ WRITERS = {
     "specs.LINKDL": {"lower_module.gen_cextern", "builtins.gen_builtin", "driver.compile_program"},
     "specs.GLUE": {"loader.Loader.load"},
     "specs.SPECSHOW": {"templates.gen_specialize"},
-    "specs.MODULES": {"driver.runtime_ir", "driver.main"},
+    "specs.MODULES": {"driver.runtime_ir", "driver.prefer_program_ffi"},
     "ir.TMPNAMES": {"ir.tmpname"},
     "ir.ONENUMS": {"ir.one_num"},
 }

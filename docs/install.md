@@ -144,6 +144,12 @@ Source builds need **Python 3.11+** to bootstrap and `make`, in addition to LLVM
 There are no pip dependencies for building or running the compiler. Ordinary AOT programs
 run without Python; compiling new programs still requires LLVM.
 
+The compiler runs under CPython 3.11 to 3.15, including the free-threaded 3.14t and 3.15t,
+and emits the same IR for itself and its runtime under each: compiled programs keep CPython
+3.13's semantics whichever interpreter runs the compiler. A daily workflow checks that IR, a
+sample of programs and the [FFI](ffi.md) under each
+([other CPython versions](testing.md#other-cpython-versions)).
+
 ## Ubuntu 24.04 (x86-64 or ARM64)
 
 ```sh
@@ -221,6 +227,13 @@ on Ubuntu, or `python3.13 -m pystachy run demo.py` with Homebrew, to run the com
 under CPython. [Compiler commands and settings](internals.md) covers other modes.
 
 ## Check or prepare dependencies
+
+Run `pystachy doctor` to see the compiler version, runtime cache, LLVM search
+directory, the five tools' versions and Clang's target triple. It exits with 1
+if a tool cannot report a version or the tools have different major versions.
+For pip and uv installations it also shows whether the managed LLVM is cached
+or pending download, when applicable. An incomplete managed installation also
+exits with 1. The check runs offline and leaves the caches untouched.
 
 ```sh
 tools/setup.sh --check       # validate Python, make and all five supported LLVM tools; no installation
@@ -306,9 +319,16 @@ extensions need a matching interpreter ABI, and the explicit embedding bridge ne
 libpython and its Python packages. Applications may also need external libraries and
 resource files.
 
-The Linux archives retain a **glibc 2.39+** support baseline. `manylinux_2_28` is a
-feasible follow-up build target, not a compatibility tag for the current Ubuntu-built
-compiler. The [30 October 2026 portability audit](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/linux-portability.md)
+The Linux archives retain a **glibc 2.39+** support baseline: they are built on Ubuntu
+24.04, and their compiler imports glibc 2.38 symbols. Source builds also work on glibc 2.28.
+The daily [manylinux workflow](../.github/workflows/manylinux.yml) builds the compiler in the
+`manylinux_2_28` image (AlmaLinux 8) with that distribution's LLVM 22, checks that the compiler,
+an AOT program and an extension module need no glibc symbol newer than 2.28, and runs corpus
+areas in JIT and AOT ([older glibc](testing.md#older-glibc)). There, the system's libm gives
+other last digits than the corpus records for a few `pow`, `log2` and `statistics` results, in
+CPython as in Pystachy. On x86-64, the portable LLVM 18.1.8 JIT also passes the nested
+exception-handler check with both launchers at code generation levels 0 and 2. `manylinux_2_28` is not yet a compatibility tag for the
+published archives. The [30 October 2026 portability audit](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/linux-portability.md)
 records the v0.1.0-alpha.3 artifact measurements and older-sysroot/toolchain requirements.
 An older native baseline and compiler packages with a pinned toolchain are tracked
 in [#998](https://github.com/den-run-ai/pystachy/issues/998).

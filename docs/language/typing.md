@@ -9,7 +9,7 @@ unsupported forms, see [compatibility](compatibility.md).
 |---|---|
 | `int` | Signed 64-bit; overflow raises `OverflowError` |
 | `float`, `bool`, `str` | Double-precision floats; strings hold UTF-8, with code-point lengths, indexing and slicing |
-| `complex` | Two double-precision floats; an `int` or `float` where `complex` is declared is rejected, as an `int` is for `float` ([complex numbers](semantics.md#complex-numbers)) |
+| `complex` | Two double-precision floats; an `int` or `float` where `complex` is declared is rejected ([complex numbers](semantics.md#complex-numbers)) |
 | `bytes` | Immutable bytes, whose items are ints; also a dict key and set element |
 | `list[T]`, `dict[K, V]` | One static element type, or one key and value type |
 | `set[T]`, `frozenset[T]` | Elements must use the supported dict key types |
@@ -96,7 +96,8 @@ defines `__eq__` or `__hash__`: they hash and compare by identity, whichever mem
 typed by their class or the union. An object key may be `None`. Floats, NamedTuples and exception objects cannot be keys or set
 elements. `hash()` gives CPython's results for ints, floats, `None`, objects with `__hash__`,
 frozensets and tuples and NamedTuples of these; a str's and an object's identity hash differ from CPython's,
-which change from run to run, but are equal for equal strs and for the same object.
+which change from run to run, but are equal for equal strs and for the same object. A union of
+`int`, `float`, `bool` and `str` members hashes as its member does, also as a tuple's item.
 
 `Optional[T]`, `None | T` and `Union[T, None]` are equivalent. Repeated members of
 `Union[...]` collapse: `Union[T, T, None]` is optional and `Union[T]` is `T`.
@@ -125,8 +126,9 @@ The supported `collections.abc` annotations use concrete container types:
 | `Set[T]` | `set[T]`, or an abstract set (below) once the program gives one a frozenset |
 | `Callable[[A, B], R]` | The same `Callable` as `typing` |
 
-These types are invariant. A tuple or string is not a `Sequence`, and `isinstance()`
-tests of these annotations are decided using the compiled type. A `Sequence[T]` parameter's
+These types are invariant: a tuple or string is not a `Sequence` here. `isinstance()` and
+`issubclass()` with `collections.abc`'s classes answer as CPython's do, by the value's type
+([`collections.abc`](../../lib/compatibility.md#collectionsabc)). A `Sequence[T]` parameter's
 empty tuple default, `= ()`, is an empty list where the function only reads the parameter's
 items: it loops over it, tests membership (last in a chain) or truth, or passes it as the
 iterable that `len()`, `sorted()`, `sum()` and similar builtins read, but never indexes, compares,
@@ -167,10 +169,13 @@ its `None` result type; an explicit `-> None` still rejects returning a value.
 Unannotated `__str__` and `__repr__` use their required `str` result type and `__bool__`
 uses `bool`; their bodies are checked against those contracts. An unannotated `__len__` or
 `__hash__` infers `int` or `bool`. Constructors keep their `None` result contract.
-There is no implicit `int` to `float`
-conversion in an assignment or return: write `1.0`, or convert explicitly. An `int` argument
-for a `float` parameter is not converted either: the function is
-[compiled for the `int`](#int-arguments-for-float-parameters).
+There is no implicit `int` to `float` conversion: an `int` given where an annotation says
+`float` stays an `int`, as in CPython. A variable, a field or a return annotated `float`
+then [holds an `int | float`](#int-values-in-float-locations), and a function is
+[compiled for an `int` argument](#int-arguments-for-float-parameters) of a `float` parameter.
+A `float` item of a container takes no `int`: write `1.0`, or convert explicitly. In the
+same way, a member of an `IntEnum`, `IntFlag` or `StrEnum` class given where `int` or `str` is
+annotated [stays the member](#enum-members-in-int-and-str-locations).
 Arithmetic and numeric list searches may mix integers and floats. Equality also compares
 closed builtin value trees with different layouts: numbers, strings, `None`, and lists, dicts
 or tuples of these, including optional and union members. Each operand keeps its own layout;
@@ -210,9 +215,10 @@ restriction on builtin module attributes.
 
 `Final[T]` uses type `T` without enforcing immutability. `x: Final = value` infers the
 value's type. In a class body, a constant gives a field its type, and any other value makes a
-class attribute typed as an unannotated one is (`FLAGS: Final = ["a", "b"]`). Nested classes,
-dataclasses, `NamedTuple`s and classes that are not compiled (whose creation may read the
-annotation, as a `TypedDict`'s does) still need a constant or `Final[T]`. `x: Final` alone
+class attribute typed as an unannotated one is (`FLAGS: Final = ["a", "b"]`), also in a class
+that a function running once defines ([classes inside functions](#classes-inside-functions)).
+Other nested classes, dataclasses, `NamedTuple`s and classes that are not compiled (whose
+creation may read the annotation, as a `TypedDict`'s does) still need a constant or `Final[T]`. `x: Final` alone
 binds nothing. In the same classes, `x: ClassVar[T] = value` is the class attribute
 `x: T = value`; `ClassVar` without a value, and in a dataclass, is unsupported.
 `@overload` stubs are discarded when followed by their implementation; they do not create
@@ -514,8 +520,9 @@ exception behavior. Each operand evaluates once, left to right, before dispatch;
 `None` raises `TypeError`. Results remain `int` or `float` according to the actual
 operands; when both are possible the result is `int | float`, including when all
 current calls happen to pass integers. Declare that result bound explicitly in
-returns and mutable storage. Power, bitwise operations, and unions containing
-strings or other nonnumeric members still require narrowing.
+returns and mutable storage. Power and bitwise operations still require narrowing.
+A union that also holds a str, a list or a dict takes the same operators by each
+pair of member types ([operations on closed unions](#operations-on-closed-unions)).
 
 `format(value, spec)` and f-string format specifications select the native member's
 formatter after evaluating the value and specification once. Numeric and string
@@ -524,9 +531,10 @@ members retain their supported formats; `None` accepts only an empty specificati
 Ordering comparisons (`<`, `<=`, `>`, `>=`) of numeric unions, and calls of builtin
 functions with a scalar-union argument (`abs()`, `round()`, `int()`, `float()`, `min()` and
 `max()` of values, `math` functions and others), use each member's native operation, chosen by
-the tag. Each operand and argument is evaluated once, in CPython's order. Narrow before other
-arithmetic, ordering and member methods; lists of numeric union items also order and sum, as
-described above. Recursive JSON-shaped types use the
+the tag. Each operand and argument is evaluated once, in CPython's order. Unions with a str
+member order, add and call methods by the member too
+([operations on closed unions](#operations-on-closed-unions)); lists of numeric union items
+also order and sum, as described above. Recursive JSON-shaped types use the
 [bounded recursive alias form](#recursive-value-aliases-prototype). Arbitrary `Any`,
 runtime compilation and speculative type assumptions are out of scope.
 Boxing may allocate; this feature expands supported programs and makes no performance
@@ -535,9 +543,9 @@ claim.
 A `complex` member, as mypy's `int | bool | float | complex | str` holds one, narrows with
 `isinstance()`; truth tests, `str()`, `repr()`, printing, `format()` and f-string
 specifications, `==` and `!=` (across members, so `1 == 1+0j` is true), `+`, `-`, `*`, `/`
-and `**` of numeric members, and `abs()` select its operations by the tag. Ordering, `hash()`
-(as of any union), other builtins, and the equality of containers that hold such a union
-require narrowing first.
+and `**` of numeric members, and `abs()` select its operations by the tag. Ordering, `hash()`,
+other builtins, and the equality of containers that hold such a union require narrowing
+first.
 
 ### Inferred unions
 
@@ -585,8 +593,9 @@ then compiles the program again with the union as that location's annotation, up
 times. A program without joins compiles once, as before. A template's function or class
 specialization joins its own locations: `mean([1, 2])` keeps an `int` total, and only the
 specialization for a `list[float]` holds a union. Annotated variables, parameters, constants
-and locations of other types do not join: a value of a list type and a `str`, or objects of
-two classes, still need an annotation or are rejected. A joined union supports the
+and locations of other types do not join (but a location annotated `float` that is
+[given an `int`](#int-values-in-float-locations)): a value of a list type and a `str`, or
+objects of two classes, still need an annotation or are rejected. A joined union supports the
 operations of an annotated one, so narrow it before other operations; a global or a field
 is not narrowed by a test, as described above.
 
@@ -597,6 +606,112 @@ a closure captures, and of functions whose first attempt compiled another functi
 closure or specialization still compile the program again; so do all joins in a program
 that opts in to [dynamic `Any`](../dynamic-any.md). Either way, the result is that of the
 annotated program.
+
+### `int` values in `float` locations
+
+A variable, a field or a return annotated `float` takes an `int` or a `bool`, as PEP 484
+allows, and holds it unconverted, as CPython does. A location that is given one becomes an
+`int | float` (with a `bool`, a `bool | float`), as if it were annotated so:
+
+```python
+from dataclasses import dataclass
+
+
+@dataclass
+class P:
+    x: float
+    y: float = 0
+
+    def first(self) -> float:
+        return self.x
+
+
+p = P(3)
+total: float = 0
+print(p, p.x / 2, p.first(), P(0) == P(0.0), total)  # P(x=3, y=0) 1.5 3 True 0
+```
+
+This holds for module and local variables, for fields annotated in a class body (a
+dataclass's and a `NamedTuple`'s too, with their defaults, `default_factory` results and the
+arguments of the `__init__` they write) or at `self.x: float = ...` in `__init__`, for
+annotated class attributes, and for functions and methods annotated `-> float`, whose callers
+then take the union. Overrides of a method in a hierarchy all return it once one of them
+does. A hand-written `__init__` given an `int` for a `float` parameter is
+[compiled for it](#int-arguments-for-float-parameters), and the fields it fills join.
+Tests: [dataclass fields](../../tests/programs/classes/float_field_int.py),
+[their defaults](../../tests/programs/classes/float_field_factory.py),
+[plain classes](../../tests/programs/classes/float_field_plain.py),
+[a class template](../../tests/programs/classes/float_field_template.py),
+[`NamedTuple` fields](../../tests/programs/classes/float_field_namedtuple.py),
+[variables](../../tests/programs/numbers/float_var_int.py) and
+[returns](../../tests/programs/numbers/float_return_int.py).
+
+Only a store that would be an error widens a location: one that is given only floats keeps
+the type `float` and its code. The compiler finds these stores as it finds
+[inferred unions](#inferred-unions) and compiles the program again, so each annotated
+location in a chain (a field, the method that returns it, the variable that takes the
+result) costs one of the eight passes; past them, the store's error is reported.
+
+The value is a [numeric union](#closed-scalar-unions): it prints, formats, compares and
+hashes as its member does and supports `+`, `-`, `*`, `/`, `//` and `%`, and `isinstance()`
+narrows a local that holds it. What a union does not support stays an error, such as `**`,
+an item of a `list[float]` or a `Callable[..., float]`'s result; its message names where the
+program first gave an `int` to a field, global or return annotated `float`. `float(x)`
+there, or at the use, keeps a float. These keep the type `float` and reject an `int`: items
+of containers and tuples (`list[float]`, `tuple[float, float]`), `float | None`, a class
+attribute that only its value types (`scale = 1.5`), a parameter's default (`k: float = 2`)
+and a store to a parameter, a property setter's argument, a generator's yields, the result
+of a special method (`__float__`) and of a function that C or CPython calls, and the
+`__init__` parameters of a class template or an exception class. An `Any` value is checked
+against the location's type where it is unboxed, as [dynamic `Any`](../dynamic-any.md)
+describes: it does not widen the location. In a module that opts in to
+[promoting ints](../python-int.md#storage-boundaries) the union's ints are 64-bit, and
+arithmetic on it that could yield an `int` is rejected.
+
+### Enum members in `int` and `str` locations
+
+A member of an `IntEnum` or `IntFlag` class is also an `int` in CPython, and a `StrEnum`
+member a `str`. Where `int` or `str` is annotated, such a member is held as it is, so its
+class, `repr()`, `type()` and `isinstance()` stay CPython's:
+
+```python
+from enum import IntEnum
+
+
+class Color(IntEnum):
+    RED = 1
+
+
+def bump(n: int) -> int:
+    return n + 1
+
+
+def same(n: int) -> int:
+    return n
+
+
+level: int = Color.RED
+print(bump(Color.RED), repr(same(Color.RED)), repr(level), level + 1)  # 2 <Color.RED: 1> <Color.RED: 1> 2
+```
+
+A function with such a parameter is compiled for the member's class, as one with a `float`
+parameter is [for an `int`](#int-arguments-for-float-parameters); its `-> int` or `-> str`
+result is then what its returns give. A variable, a field or a return annotated `int` or `str`
+that is given a member becomes an `int | Color` (or a `str | Shade`), as an
+[`int` makes a `float` location](#int-values-in-float-locations) a union, in the same places
+and passes. Tests: [parameters](../../tests/programs/library/lib_enum_int_param.py),
+[stores](../../tests/programs/library/lib_enum_int_store.py),
+[records](../../tests/programs/library/lib_enum_int_records.py) and
+[`StrEnum`](../../tests/programs/library/lib_enum_str_store.py).
+
+The member then supports what its class supports here (see the [enum limits](../../lib/compatibility.md#enum)):
+a method of `int` or `str` it lacks is an error that names the call or the store, and so is a
+method call on the union, which needs narrowing first. Its `.value` there compiles the code as
+annotated. Items of containers (`list[int]`), a conditional expression of a member and an
+`int`, unions such as `int | None`, parameter defaults and the cases listed above for `float`
+still reject a member ([test](../../tests/errors/library/lib_enum_int_list.py)), and so does
+an `int` location in a module that opts in to
+[promoting ints](../python-int.md#storage-boundaries).
 
 ## Mixed scalar and container unions
 
@@ -656,9 +771,95 @@ or `None`-only displays retain context from an unambiguous declared member.
 Dictionary equality keeps hashed lookup for matching key layouts. Different key
 layouts compare keys pairwise, which can take quadratic time; ordinary string-keyed
 JSON-shaped dictionaries use hashed lookup. User objects, files, functions and sets
-inside mixed-value equality remain unsupported. Narrow before ordering, container
-methods on a union receiver or indexing; there is no generic method dispatch.
-Container members are not [inferred](#inferred-unions).
+inside mixed-value equality remain unsupported. Loops, method calls, arithmetic,
+orderings and membership select the member's own operation
+([below](#operations-on-closed-unions)). Container members are not
+[inferred](#inferred-unions).
+
+### Operations on closed unions
+
+A union of scalars, lists and dictionaries, with or without `None`, performs an
+operation by the member that its box's tag names, so JSON-shaped values need no
+`isinstance()` for them:
+
+```python
+import json
+
+doc = json.loads('{"rows": [{"id": 7, "tags": ["a", "b"]}, {"id": 8.5, "tags": []}]}')
+total = 0.0
+for row in doc["rows"]:
+    total += row["id"] * 2
+    row["tags"].append("seen")
+    if "a" in row["tags"] and row["id"] < 8:
+        print(row["tags"][0].upper(), int(row["id"]))  # A 7
+print(total, len(doc["rows"]))  # 31.0 2
+doc["count"] = 2
+```
+
+| Operation | Selected member | Another member raises |
+| --- | --- | --- |
+| `v[i]`, `v[i] = x`, `len(v)` | list, dict or str | `TypeError`, as below |
+| `for x in v`, comprehensions, `enumerate()`, `zip()` | list items, dict keys, str characters | `TypeError: 'int' object is not iterable` |
+| `for k, x in v.items()`, `keys()`, `values()` | the dict | `AttributeError` |
+| `v.method(...)` | each member whose type has the method | `AttributeError: 'int' object has no attribute 'upper'` |
+| `+ - * / // %`, unary `+ -`, `x += y`, `o[k] *= n` | each pair of types that has the operation | `TypeError: unsupported operand type(s) for +: 'int' and 'str'` |
+| `< <= > >=` | numbers with numbers, strs with strs | `TypeError: '<' not supported between instances of 'str' and 'int'` |
+| `x in v`, `x not in v` | list, dict or str | `TypeError: argument of type 'int' is not iterable` |
+| `int(v)`, `float(v)`, `abs(v)`, `round(v)`, `ord(v)`, `chr(v)` | the types the builtin takes | the builtin's `TypeError` |
+
+Each operand is evaluated once, in order, before the tags are read, and an
+`AttributeError` is raised before a call's arguments are evaluated, as CPython looks
+the method up first. `None` raises as any other member that lacks the operation does.
+A result is the union of the selected members' results: `doc["n"] + 1` is an
+`int | float`, and a loop's variable is the union of a list's items, a dict's keys and
+`str`. A local that takes such a result becomes that union; `int(v)` or `float(v)`
+gives one type. A loop steps through a list by index against its current length and
+fails if a dict changes size, as those types' own loops do. `x += y` and `x *= n`
+change a list in `x` in place, so another reference to it sees the new items, and
+`o[k] op= y` evaluates `o` and `k` once.
+
+What every member rejects stays an error: `x + "a"` for an `int | float` is rejected
+as `int + str` is, and so is a method that no member has. A method that CPython's type
+has and the compiler lacks, such as `str.translate()`, is rejected rather than raising
+`AttributeError` for a str. `pop`, `index` and `count`, which a list shares with a dict
+or a str, raise CPython's error for arguments the selected type does not take.
+
+Narrowing is still needed for:
+
+- the ordering of two values that may both be lists, whose items are the union's;
+- `**`, bit operations and shifts;
+- `reversed()`, `str.join()` of a union value, and `sum()`, `min()`, `max()` and
+  `sorted()` of the union's values;
+- `is` where both operands may hold a number or a str (`held is rows` is compiled for a list
+  `rows`: a number or str is never that list);
+- methods of unions that hold two list types or two dict types, objects or tuples.
+
+`value % number` takes the remainder of a number in `value`. A str there that holds no
+conversion raises CPython's `TypeError: not all arguments converted during string
+formatting`; one that holds a conversion raises `TypeError` too, where CPython formats
+with it ([deviation](../../tests/deviations/union_percent_format.py)): a format string
+computed at run time is not compiled. The fixtures are
+`tests/programs/inference/union_value_loops.py`, `union_value_methods.py`,
+`union_value_operators.py` and `union_value_inplace.py`, and
+`tests/errors/inference/union_value_*.py`.
+
+For an index, the value is evaluated first and the index, an `int`, a `bool` or a
+`str`, once after it. A
+member that cannot take the operation raises the error CPython raises for that object:
+`'int' object is not subscriptable`, `list indices must be integers or slices, not str`,
+`object of type 'float' has no len()` or `'str' object does not support item
+assignment`. A dict whose keys have another type than the index raises `KeyError` on
+a read. The result of an index is the union of the members' item types, which a
+[recursive alias](#recursive-value-aliases-prototype) is itself, so chains such as
+`doc["rows"][0]["id"]` keep one type. A display stored through a union takes that item
+type, as one stored into a list or dict of the union does.
+
+An item assigned at an index whose type the selected dict's keys do not have raises
+`TypeError`, where CPython adds the key
+([deviation](../../tests/deviations/union_store_key.py)): `value[0] = x` works for a
+list in `value` and raises for a `dict[str, T]` there. Slices, a union that holds
+objects or tuples, and other index types still need narrowing
+([cases](../../tests/programs/inference/recursive_alias_index.py)).
 
 A union may hold one `Callable[[...], R]` beside scalars, lists and dictionaries, for a
 parameter that takes a value or a function that decides it:
@@ -764,8 +965,12 @@ that the tag selects performs it:
 A `None` value raises CPython's `TypeError` there, or is `None`'s own text and truth. A `str`
 member has no arithmetic to select, and members whose results have no union (two differently
 typed tuples from `divmod()`) are rejected: narrow first. So are a method call, an attribute,
-`is` between two such values, `hash()`, `callable()` where a member's class or one derived from
+`hash()`, `callable()` where a member's class or one derived from
 it defines `__call__`, and use as a set element, a dict key or in `sorted()`.
+`is` and `is not` compare such a value with an object, as in `key.fileobj is sock` for a
+`Socket | int` field: the same object or not, and never a number or str. Where both operands
+may hold a number or str, as two `Socket | int` values may, `is` is rejected, because the
+identity of two numbers is not modeled: narrow one operand to the class first.
 A comparison method whose parameter is such a union (`other: Money | int`) takes each member.
 No union with a class member is [inferred](#inferred-unions): annotate the variable, as in
 `total: int | Money = 0`. [`sum()` of objects](semantics.md#sums-of-objects) returns one.
@@ -888,10 +1093,11 @@ print(half(3), keep(3), keep(3.0))  # 1.5 3 3.0
 
 Where the return annotation is `float`, that compilation infers its result from its returns,
 so `keep(3)` is the `int` `3`. It has a template's limits: an augmented or conditional store
-of a `float` to the parameter, a store of the `int` into `float` storage (a field, a
-`list[float]`) and a recursive call before a return statement that returns the `int` are
-errors, which name the call and the parameter. Pass a `float` to compile the function as
-annotated.
+of a `float` to the parameter, a store of the `int` into a `list[float]` and a recursive call
+before a return statement that returns the `int` are errors, which name the call and the
+parameter. Pass a `float` to compile the function as annotated. An `int | float` argument,
+as a `float` field that was [given an `int`](#int-values-in-float-locations) is, compiles
+the function for the union in the same way.
 
 The body then computes with `int` operations where CPython's does, and they follow the
 [`int` deviations](compatibility.md#numbers): a result past 64 bits raises `OverflowError`,
@@ -901,11 +1107,12 @@ rejected such calls at compile time
 ([deviation](../../tests/deviations/int_for_float_int_ops.py)). A `float` argument, as in
 `10.0`, computes in floats.
 
-This applies to direct calls of module-level functions and of ordinary methods of classes
-outside inheritance hierarchies. Constructors and other special methods, properties, static
-and class methods, closures, generators, cached functions, `*args`, methods of generic
-classes and values called through a `Callable` keep the annotated type and reject the `int`,
-as annotated variables, fields and container items do.
+This applies to direct calls of module-level functions, of ordinary methods of classes
+outside inheritance hierarchies and of hand-written constructors (but an exception class's),
+whose fields then hold the `int` too. Other special methods, properties, static and class
+methods, closures, generators, cached functions, `*args`, methods and constructors of class
+templates and values called through a `Callable` keep the annotated type and reject the
+`int`, as container items and parameter defaults do.
 
 ### Variadic arguments
 
@@ -1031,6 +1238,10 @@ dependencies before a subclass is used. For example, `errors = Errors(Options(..
 can precede `Checker(errors)` when `Options` has independently annotated storage.
 This retry also supports imported, aliased, qualified and quoted parameter annotations;
 it does not activate unrelated imported subclasses or make variable-layout fields nominal.
+
+A class in a hierarchy can take such a class as a constructor parameter before any code
+uses that class's own subclass, as `pathlib`'s `_PurePathParents(path: PurePosixPath)` does
+in a program that never names `Path`.
 
 An imported subclass becomes available when compiled code needs it, including class
 tests and annotations of a called helper. Its activation recompiles earlier dispatch sites
@@ -1377,6 +1588,54 @@ exceptions. Repeated slot declarations and class variables or methods shadowing 
 slots are also unsupported, as are new slots shadowing inherited methods, properties or
 class variables.
 
+### Nested classes
+
+A class statement in the body of a class statement of a module's body makes a class of the
+module, as CPython's does: `Outer.Inner` reads it, also from other modules, its
+`__qualname__` is `Outer.Inner` and its `__name__` `Inner`, and later statements of the outer
+body (annotations, defaults, bases, a comprehension's first iterable) read it as `Inner`, as
+CPython's class scope does ([scope](../../tests/programs/classes/class_nested_scope.py)), while
+`Outer.Inner` raises NameError until the outer class statement ends, as CPython's attribute is
+unbound until then ([test](../../tests/programs/classes/class_nested_unbound.py)). Under a
+private name, `__Inner`, the outer class binds `_Outer__Inner`, as CPython mangles it
+([test](../../tests/programs/classes/class_nested_private.py)). It may
+nest classes itself, name itself in a quoted annotation, be a dataclass, a `NamedTuple`, an
+enum class or an exception class, and other classes may derive from it
+([test](../../tests/programs/classes/class_nested.py),
+[enums](../../tests/programs/classes/class_nested_enum.py),
+[exceptions](../../tests/programs/classes/class_nested_exc.py)). The outer class binds it as a
+class attribute, so `self.Inner(...)` makes one; an enum class, and a class nested in a
+dataclass or `NamedTuple`, is no class attribute, so its outer class's objects do not read it
+([test](../../tests/errors/classes/class_nested_enum_attr.py)), though `hasattr()` finds it.
+Pystachy makes a nested class before the class around it, so a call that CPython runs first,
+in that class's decorators, bases or body before the nested class, is an error
+([test](../../tests/errors/classes/class_nested_after_call.py)), as is one whose decorators or
+bases read a name that the outer body binds before it, which CPython reads in that body's scope
+([test](../../tests/errors/classes/class_nested_scope_base.py)), and so are a decorator of the
+outer body that reads a nested class ([test](../../tests/errors/classes/class_nested_deco_name.py))
+and classes nested in an enum class, a generic class of PEP 695 or a class of an `if` or `try`
+statement.
+
+### Classes inside functions
+
+A class statement directly in the body of a function that runs at most once makes a class of the
+module: the main program's function or method that one call runs, which the module's code, or
+another such function, makes outside loops, comprehensions and lambdas (`main()`, or a test
+method that a harness calls once). CPython makes one class object then too, which Pystachy makes
+before the module statement that runs the function. Its `__qualname__` is CPython's
+(`report.<locals>.Square`), and the function's code after the statement reads it, as do its own
+methods, also in quoted annotations ([test](../../tests/programs/classes/local_class_once.py));
+it may be a dataclass, an enum class, an exception class or a `NamedTuple`
+([test](../../tests/programs/classes/local_class_test_method.py)). What the class statement does
+must not tell when it runs: its decorators are `dataclass`, `total_ordering`, `final` or
+`unique`, its bases and class-body values are names, attributes and literals (no calls but
+`dataclasses.field()`), and its methods read none of the function's own names but the classes it
+defines before. A class inside a function that may run more than once, which CPython makes anew
+each time ([test](../../tests/errors/classes/local_class_called_twice.py)), one whose methods
+read the function's variables ([test](../../tests/errors/classes/local_class_capture.py)), and
+one inside a loop, an `if` or a nested function stay errors, which name the reason. A program
+that names functions or attributes at run time (`getattr()`, `globals()`) keeps them all errors.
+
 ## Single inheritance
 
 An ordinary class may derive from one previously declared ordinary class, including an
@@ -1435,6 +1694,14 @@ abstract methods: those decorated with `@abstractmethod` (also under `@property`
 class with an abstract method left raises CPython's `TypeError` once the arguments are
 evaluated ([abc](../../lib/compatibility.md#abc)).
 
+A class may derive from one of `collections.abc`'s classes, or typing's name of one, also
+subscripted: `class Lower(MutableMapping[str, int])`, `class Ticks(Iterator[int])`. It defines
+the abstract methods and inherits the others, which CPython's `_collections_abc.py` writes
+(`Mapping.get`, `keys()`, `MutableMapping.update`, `Sequence.index`, `Set`'s operators); the
+subscript types nothing, as the class's own annotations type its methods
+([test](../../tests/programs/classes/abc_mutable_mapping.py),
+[limits](../../lib/compatibility.md#collectionsabc)).
+
 Instance reads of class attributes honor subclass defaults and instance assignments. A class
 attribute may be rebound through its defining class; assigning an inherited attribute through
 a subclass that has not declared its own default is unsupported.
@@ -1457,11 +1724,12 @@ A class may also take identity decorators, which CPython applies to it unchanged
 undecorated; reading their names still raises `NameError` where their imports have not run,
 and `__final__` is not set (reading it is a compile-time error).
 
-Builtin subclasses, NamedTuple inheritance, inheritance between a
-dataclass and a class that is not one, other decorated subclasses, field/method name
-collisions, and overriding a method with another kind of method are unsupported. Inherited
-class methods using `cls` retain restrictions on default values, imports and calls through a
-base-typed object. Exception classes follow the [exception rules](semantics.md#user-exception-classes).
+Subclasses of builtin types other than [`list` and `dict`](#subclasses-of-list-and-dict),
+NamedTuple inheritance, inheritance between a dataclass and a class that is not one, other
+decorated subclasses, field/method name collisions, and overriding a method with another kind
+of method are unsupported. Inherited class methods using `cls` retain restrictions on default
+values, imports and calls through a base-typed object. Exception classes follow the [exception
+rules](semantics.md#user-exception-classes).
 
 ### Method-only secondary bases
 
@@ -1495,8 +1763,19 @@ and the class that combines the bases may call `super()` only for methods that n
 base defines: CPython's method resolution order puts the secondary bases after the primary's,
 where such a call could find them. Abstract base classes (`abc.ABC`), `__slots__` in the
 combined hierarchy (but with traits, below), and secondary bases with class attributes,
-property setters, constructors or other special methods are outside this subset. Single
+property setters or special methods other than `__init__` are outside this subset. Single
 inheritance from the combined class works, `super()` included.
+
+A secondary base may have an `__init__` that stores its attributes (`self.size = size`): they
+are its declared attributes (below), fields of each class that combines it, whose own `__init__`
+calls it as `Sized.__init__(self, ...)`, as CPython's code calls a mixin's
+([test](../../tests/programs/classes/inheritance_secondary_init.py)). Where neither the class nor
+its primary chain defines `__init__`, the base's makes the class's objects, as CPython's method
+resolution order finds it there; where two secondary bases define one, that is an error
+([test](../../tests/errors/classes/inheritance_secondary_init_two.py)). The class's own `__init__`
+may take other parameters. Its `super().__init__()` would reach the next class of the combining
+class's method resolution order, which depends on that class: not supported
+([test](../../tests/errors/classes/inheritance_secondary_init_super.py)).
 
 A secondary base may declare attributes by annotation alone, as mypy's plugin interfaces do
 (`options: Options`, `path: str`;
@@ -1537,3 +1816,59 @@ trait's class method that overrides one of that chain's may not use `cls`. A met
 and the primary chain define apart, which their shared class does not, gives bound methods that
 compare equal through either base but cannot become a `Callable`. `__slots__` in such a
 hierarchy needs every trait to declare `__slots__ = ()`.
+
+### Subclasses of list and dict
+
+A class may name `list`, `list[T]`, `dict` or `dict[K, V]` as its one base, as
+`traceback.StackSummary`, `functools._HashedSeq`, the `email` package's `TokenList`,
+`urllib.parse._Quoter` and pytest's `_bestrelpath_cache` do. Its objects are lists or dicts to
+every operation the class does not define: indexing, slices, item stores and deletion,
+`len()`, truth, iteration and the builtins that iterate, `in`, `repr()` and `str()`, the
+comparisons, the operators (`+`, `*`, `+=`, `|`, `|=`) and the builtin's methods. An object
+begins with the builtin's header, followed by the class's own fields, so such an operation is
+the builtin's own code on the same pointer: the same runtime calls and inline paths, with no
+class test (an object that may be `None` is tested for it first, as a `list[T] | None` is, and
+raises CPython's error). The class keeps its methods, fields set in `__init__`, class
+attributes, properties, `__slots__`, `__hash__` and any special method it defines;
+`type(x).__name__` is its name, and `isinstance(x, list)` or `isinstance(x, dict)` is true.
+
+The class's `__init__` may call `super().__init__()` or `super().__init__(items)`, and its
+methods reach the builtin's own methods, and its `__getitem__`, `__setitem__`, `__delitem__`
+and `__contains__`, through `super().m(...)`, `list.m(self, ...)` or `dict.m(self, ...)`, as
+an `OrderedDict` or a case-insensitive dict that overrides item access does; the class's own
+`__setitem__` and the others then serve `o[k] = v`, `o[k]`, `del o[k]` and `k in o`. A class
+without `__init__` is made by `C()` or `C(items)` (and, for a dict, keyword arguments), as
+`list()` and `dict()` make one. The builtin's own operations call none of the class's methods,
+as in CPython: `C(items)`, `+=`, `extend()` and `update()` fill the object as the builtin does
+where the class defines `append()`, `extend()` or `__setitem__`. Each comparison operator is
+the builtin's unless the class defines that operator's method, so a class that defines
+`__eq__` alone still compares `!=` as the builtin does, and a right operand whose class
+defines the reflected method is asked first. A slice, `+`, `*`, `|` or `copy()` makes a plain
+list or dict, as in CPython. Without `__eq__` and `__hash__` the objects are unhashable, as
+lists and dicts are.
+
+A dict subclass's `__missing__` is called by `d[key]` and `d[key] op= value` where `key` is not
+there, as CPython's `dict.__getitem__` calls it, and by nothing else (`get()`, `in`,
+`setdefault()` and `pop()` never call it); `__missing__` may store the key and may leave its
+parameter unannotated. The key must have the dict's key type: a `bool` looked up among `int`
+keys is rejected there.
+
+A bare base takes its item types from the first item stored into one of its objects, as an empty
+list or dict does: an item that `C(items)`, `super().__init__(items)`, `append()`, `insert()`,
+`extend()`, `update()`, `setdefault()`, `+=`, `|=`, an item or slice assignment or a `d[key]`
+read whose `__missing__` returns a value stores or gives, in any function. Name the types in the
+base (`class C(list[str])`, `class D(dict[str, int])`) where nothing stores an item or where
+items of different types are stored; all objects of the class, and of its specializations, hold
+one item type.
+
+An object keeps its class only in storage of its class: variables, fields, unannotated
+parameters (which specialize the function, as for any class) and containers such as `list[C]`.
+Storing it where a `list[T]` or `dict[K, V]` is expected (an annotated parameter, return or
+variable, or an item of `list[list[T]]`), as a dynamic `Any` value, or copying it with
+`copy.copy()` or `copy.deepcopy()` is rejected rather than losing its class; `list(x)` and
+`dict(x)` copy the items. Other builtin bases (`set`, `str`, `int`, `tuple`, ...), a class
+deriving from such a class, such a class in multiple inheritance or with a decorator, a
+`TypeVar` item type, `__new__`, `C.fromkeys()`, special methods called through `super()` other
+than `__init__`, `__getitem__`, `__setitem__`, `__delitem__`, `__contains__`, `__len__`,
+`__repr__` and `__str__` (`__iter__`, `__eq__`, ...), slices of an object whose class defines
+`__getitem__`, and sequence patterns in `match` on such an object are unsupported.

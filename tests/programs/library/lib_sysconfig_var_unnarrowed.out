@@ -1,0 +1,3 @@
+3 3 13
+AttributeError 'NoneType' object has no attribute 'split'
+[exit 0]

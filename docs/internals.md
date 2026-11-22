@@ -327,6 +327,20 @@ constants are shared (`sconst`); and since records and tables are internal, `glo
 only for classes that reach a reflective site. `RUNTIME` declares `refl.find` without effects
 and `refl.vars` with `A I rO rL rD U` (a field's `__repr__` may run user code).
 
+A class's `__getattr__` ([attribute fallback](language/semantics.md#attribute-fallback)) needs
+no record and no new IR operation, because every attribute of a class is known. `o.name` of a
+name the class lacks is a call of the method with a string constant (`hook_read`). A field with
+an "is assigned" flag branches on the flag and joins the method's value with the field's in a
+`phi` (`hook_field`, in `getfield`); such a read is a call, so it is no narrowed attribute path
+(`hook_reads`). A property's getter runs in a `try` block whose `AttributeError` handler calls
+the method (`hook_prop`). Where the method's value is not of the field's type, the read is
+rejected if an object of the class or of a derived one may lack the field: `fl_fields` records
+those fields per class (`ClassInfo.funset`), with `super().__init__()` assigning what the
+base's `__init__` surely does. `getattr()` with a default and `hasattr()` wrap these lookups in
+the handler they already use for a getter. A program that reaches such a handler without
+exception handling is compiled again with it on, as a dynamic slice is (`NeedSliceEH`). A class
+without the method compiles to the IR it compiled to before.
+
 **Dynamic values.** Opt-in `Any` values use immutable `{DynType *, payload}` boxes.
 The `DynType` identifies the Python type and payload layout; compiler-generated helpers
 dispatch operations on boxed values. See [dynamic `Any`](dynamic-any.md#representation)
@@ -540,7 +554,9 @@ level of code generation (`lli`'s ORC generates code at `-O2` whatever `-O` says
 `PYSTACHY_JIT_CODEGEN=0` needs no `llc`; it installs none of LLVM's signal handlers, stack
 printer or perf listener; the process exits with the JIT's code still mapped; and an LLVM option
 that LLVM does not know is ignored rather than an error (the C API's parser reports none), so the
-driver passes only `-profile-guided-section-prefix=false`, which LLVM 18 to 23 know.
+driver uses `-profile-guided-section-prefix=false` and `-trap-unreachable`. The latter gives
+otherwise empty functions an instruction so GCC 8 can find the following function’s unwind
+entry on x86-64.
 
 The driver builds the runner at first use, as it builds the runtime: the selected toolchain's
 `clang` compiles `lljit.c`, which declares the part of the C API it calls, so no LLVM headers are

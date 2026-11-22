@@ -156,6 +156,9 @@ def gen_finalize_program(self) -> None:
     # Admission belongs to the retained program boundary. The backend may consume
     # bodies only after runtime/extension export contracts have been checked.
     self.validate_module()
+    # (then the key kinds of holes, which lowering reads as tables rather than asking the
+    # frontend, after admission's errors as before: tools/typed_ir_text.py prints the boundary)
+    self.key_kinds()
     if chk and not one_nums_intact():
         fail("internal error: an op changed the shared list of its number (one_num)", 0)
     timing_end(phase + ".finalize", started)

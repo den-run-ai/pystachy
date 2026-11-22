@@ -1,0 +1,4 @@
+{"p": [3, 4], "n": [[5, 6]]}
+[1, 2]
+TypeError Object of type Point is not JSON serializable
+[exit 0]

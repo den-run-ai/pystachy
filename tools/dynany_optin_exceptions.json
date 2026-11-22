@@ -154,6 +154,20 @@
       "diagnostic": "tests/programs/classes/class_value_complex.py:8: error: isinstance() is only supported with the builtin types and classes as its second argument",
       "reason": "With the pragma the entry module opts in to dynamic Any, where type(x) gives a class box, an Any value, as it did before class objects were typed, and isinstance() takes no Any value as its second argument; the unchanged program passes.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/9"
+    },
+    {
+      "case": "tests/programs/inference/static_module.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/inference/static_module.py:1: error: '# pystachy: static' and '# pystachy: dynamic-any' cannot both apply to a module: static rejects the Any values that dynamic-any makes",
+      "reason": "The program is marked '# pystachy: static', which rejects the Any values that the sweep's dynamic-any comment makes; the two comments contradict by design.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/1530"
+    },
+    {
+      "case": "tests/programs/inference/static_module.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/inference/static_module.py:1: error: '# pystachy: static' and '# pystachy: dynamic-any' cannot both apply to a module: static rejects the Any values that dynamic-any makes",
+      "reason": "The program is marked '# pystachy: static', which rejects the Any values that the sweep's dynamic-any comment makes; the two comments contradict by design.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/1530"
     }
   ]
 }
