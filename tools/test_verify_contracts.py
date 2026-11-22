@@ -84,7 +84,7 @@ class ContractLaneTests(unittest.TestCase):
         for name in ("tests", "tests/programs", "tests/programs/x", "tests/errors", "tests/errors/x",
                      "tests/ffi", "tools", "src", "lib", "ryu", "mpz", "bin"):
             (self.root / name).mkdir()
-        for name in ("tests/verify.sh", "tests/corpus.sh"):
+        for name in ("tests/verify.sh", "tests/corpus.sh", "tools/self_compile_once.sh"):
             shutil.copy(ROOT / name, self.root / name)
         for name in ("pystachy.py", "runtime.py", "runtime.c", "tests/programs/x/example.py"):
             (self.root / name).write_text("# fixture\n")
@@ -114,6 +114,8 @@ if args[0] == "build":
     shutil.copy(__file__, output)
     output.chmod(0o755)
 else:
+    if args[0] == "ir" and os.environ.get("PYSTACHY_TIMING") == "1":
+        print("pystachy-timing\\tprogram.attempt\\t0.5", file=sys.stderr)
     output.write_text("fixed point\\n")
 ''')
         (self.root / "bin/tool.py").write_text(tool)

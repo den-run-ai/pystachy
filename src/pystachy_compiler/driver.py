@@ -215,8 +215,8 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
                 passes = 0
             elif isinstance(retry, ClassBoxes):
                 # (the monotone class-name registry survives, as the identity restart below keeps it)
-                for k in g.clsused:
-                    clsany[k] = True
+                for index in g.clsused:
+                    clsany[index] = True
                 hints = {}
                 xnot = {}
                 xwant = {}
@@ -960,12 +960,12 @@ def main() -> None:
     if len(argv) >= 3 and argv[1] == "check" and argv[2] == "--semantic" and not os.path.exists(argv[2]):
         argv = argv[:2] + argv[3:]
         semantic = True
-    known = len(argv) >= 2 and (argv[1] == "run" or argv[1] == "build" or argv[1] == "ext" or argv[1] == "ir" or argv[1] == "check" or argv[1] == "rt")
-    if known and len(argv) >= 3 and (argv[2] == "--help" or argv[2] == "-h") and not os.path.exists(argv[2]):
+    known_cmd = len(argv) >= 2 and (argv[1] == "run" or argv[1] == "build" or argv[1] == "ext" or argv[1] == "ir" or argv[1] == "check" or argv[1] == "rt")
+    if known_cmd and len(argv) >= 3 and (argv[2] == "--help" or argv[2] == "-h") and not os.path.exists(argv[2]):
         print_usage(False)
         return
-    if len(argv) < 3 or not known:
-        if len(argv) >= 2 and not known:
+    if len(argv) < 3 or not known_cmd:
+        if len(argv) >= 2 and not known_cmd:
             print(f"pystachy: error: unknown command '{argv[1]}'", file=sys.stderr)
         elif len(argv) == 2:
             print(f"pystachy {argv[1]}: error: missing the source file", file=sys.stderr)

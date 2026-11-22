@@ -66,7 +66,8 @@ class ShardVerificationTests(unittest.TestCase):
         for name in ("tests", "tests/programs", "tests/programs/x", "tests/deviations", "tests/errors",
                      "tests/errors/x", "src", "lib", "ryu", "mpz", "bin", "tools"):
             (self.root / name).mkdir()
-        for name in ("tests/verify.sh", "tests/corpus.sh", "tools/irsame.sh", "tools/ci_sample.py"):
+        for name in ("tests/verify.sh", "tests/corpus.sh", "tools/irsame.sh", "tools/ci_sample.py",
+                     "tools/self_compile_once.sh"):
             shutil.copy(ROOT / name, self.root / name)
         for name in ("pystachy.py", "runtime.py", "runtime.c", "tests/programs/x/example.py",
                      "tests/programs/x/syntax_example.py", "tests/deviations/example.py"):
@@ -129,6 +130,10 @@ if args[0] == "build":
         mark = "__ubsan_handle" if sanitized and os.environ.get("VERIFY_MOCK_MODE") != "plain-runtime" else ""
         (cache / "runtime-mock.bc").write_text(f"bitcode {mark}\\n")
 else:
+    if args[0] == "ir" and os.environ.get("PYSTACHY_TIMING") == "1":
+        # (stage 3's attempts: tools/self_compile_once.sh requires one)
+        attempts = 3 if Path("mock-mode").read_text() == "restarts" else 1
+        print("pystachy-timing\\tprogram.attempt\\t0.5\\n" * attempts, end="", file=sys.stderr)
     output.write_text("fixed point\\n")
 ''')
         compiler.chmod(0o755)
@@ -199,6 +204,16 @@ esac
         report = json.loads((self.root / "build/verification.json").read_text())
         logs = {step["name"]: (self.root / step["log"]).read_text() for step in report["steps"]}
         return result, report, logs
+
+    def test_bootstrap_fails_when_stage3_needs_more_than_one_inference_attempt(self):
+        result, report, logs = self.run_group("bootstrap", mode="restarts")
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual([(step["name"], step["result"]) for step in report["steps"]], [("bootstrap", "fail")])
+        self.assertIn("took 3 type-inference attempts", logs["bootstrap"])
+        self.assertNotIn("fixed point", logs["bootstrap"])
+        result, report, logs = self.run_group("bootstrap")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(report["steps"][0]["result"], "pass")
 
     def selected(self, log):
         return [line.removeprefix("selected: ") for line in log.splitlines() if line.startswith("selected: ")]

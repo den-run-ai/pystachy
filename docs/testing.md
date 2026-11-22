@@ -624,7 +624,7 @@ from the budget. Each test runner uses at most four processes within its worker.
 
 | PR work | Jobs | Coverage |
 |---|---:|---|
-| Linux bootstrap | 1 | x86-64 compiler/runtime fixed points and verified compiler bundle. |
+| Linux bootstrap | 1 | x86-64 compiler/runtime fixed points, one inference attempt for the compiler's source and verified compiler bundle. |
 | Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata. |
 | Native AOT | 4 | Disjoint quarters of the **complete** corpus in AOT; the third worker then runs both runtime-cache checks, side by side, and the fourth checks scaling's second half. |
 | Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers; the first then checks native program-cache invalidation and execution, the second runtime ABI, cache and GC controls. |
