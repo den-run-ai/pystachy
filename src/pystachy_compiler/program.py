@@ -2129,11 +2129,11 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
         # the class templates: an __init__ parameter without an annotation, or with one that
         # names a class template (Holder(b: Box)), which then types nothing either
         grow = False
-        for ci in self.classes.values():
+        for ci in list(self.classes.values()):  # (an annotation of object makes its interface's class: interfaces.py)
             if ci.name not in self.tmpl and ci.exc == "" and self.init_template(ci.node, ci.name in fixedcls):
                 self.tmpl[ci.name] = True
                 grow = True
-    for ci in self.classes.values():
+    for ci in list(self.classes.values()):
         ci.init_only = ci.exc == "" and ci.name not in self.tmpl and self.init_generic(ci.node)
         if ci.tag != 0 and ci.name in self.tmpl:
             self.request_fixed_params(ci.name)

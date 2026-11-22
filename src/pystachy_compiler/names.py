@@ -8,6 +8,11 @@ def owner(name: str) -> str:
     return "" if o == "__main__" else o
 
 
+# the stored type that an object annotation names where no template takes it: a value of the builtin
+# interface that every type implements (interfaces.py), shown as object (diagnostics.shown)
+OBJECT = "_pystachy_iface$object"
+
+
 # the classes named otherwise than the name their statement binds, by their qualified names: those
 # namedtuple() makes, named by its typename (_Mismatch = namedtuple("Mismatch", ...)), see Gen.program
 RENAMED: dict[str, str] = {}

@@ -295,6 +295,18 @@ from src.pystachy_compiler.interfaces import (
     gen_iface_isinst as interfaces_iface_isinst,
     gen_iface_narrow as interfaces_iface_narrow,
     gen_iface_narrowed as interfaces_iface_narrowed,
+    gen_object_iface as interfaces_object_iface,
+    gen_is_object as interfaces_is_object,
+    gen_object_impl as interfaces_object_impl,
+    gen_to_object as interfaces_to_object,
+    gen_union_object as interfaces_union_object,
+    gen_object_note as interfaces_object_note,
+    gen_dyn_object as interfaces_dyn_object,
+    gen_object_dyn as interfaces_object_dyn,
+    gen_object_type_attr as interfaces_object_type_attr,
+    gen_object_is as interfaces_object_is,
+    gen_object_is_object as interfaces_object_is_object,
+    gen_object_is_num as interfaces_object_is_num,
 )
 from src.pystachy_compiler.unions import (
     gen_field_key as unions_field_key,
@@ -3792,6 +3804,42 @@ class Gen:
 
     def iface_narrowed(self, v: Val, nt: str) -> Val:
         return interfaces_iface_narrowed(self, v, nt)
+
+    def object_iface(self) -> str:
+        return interfaces_object_iface(self)
+
+    def is_object(self, t: str) -> bool:
+        return interfaces_is_object(self, t)
+
+    def object_impl(self, t: str) -> str:
+        return interfaces_object_impl(self, t)
+
+    def to_object(self, v: Val) -> Val:
+        return interfaces_to_object(self, v)
+
+    def union_object(self, v: Val) -> Val:
+        return interfaces_union_object(self, v)
+
+    def object_note(self, ts: list[str]) -> str:
+        return interfaces_object_note(self, ts)
+
+    def dyn_object(self, v: Val) -> Val:
+        return interfaces_dyn_object(self, v)
+
+    def object_dyn(self, v: Val) -> Val:
+        return interfaces_object_dyn(self, v)
+
+    def object_type_attr(self, v: Val, what: str) -> Val:
+        return interfaces_object_type_attr(self, v, what)
+
+    def object_is(self, x: Val, y: Val) -> Val:
+        return interfaces_object_is(self, x, y)
+
+    def object_is_object(self, x: Val, y: Val) -> Val:
+        return interfaces_object_is_object(self, x, y)
+
+    def object_is_num(self, x: Val, y: Val) -> Val:
+        return interfaces_object_is_num(self, x, y)
 
     def joinable(self, t: str) -> bool:
         return unions_joinable(self, t)

@@ -11,11 +11,11 @@ calls through the interface use (iface_finish): an implementation needs only wha
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import where
 from src.pystachy_compiler.ir import Data, Ins, Val
-from src.pystachy_compiler.names import short
+from src.pystachy_compiler.names import OBJECT, short
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
-from src.pystachy_compiler.specs import BIG, SPECSHOW
+from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, EMPTYFS, OBJECTC, SPECSHOW
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.utils import clone, elem, gelem, is_callable, is_dict, is_gen, is_list, is_opt, is_tuple, is_union, lt, targs, typestr, unopt
+from src.pystachy_compiler.utils import clone, elem, gelem, is_callable, is_clsval, is_dict, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_union, is_vtuple, lt, targs, typestr, umembers, unopt
 
 # the intrinsic that an interface method's body calls: its table entry (iface_call)
 IFACE_CALL = "__pystachy_iface__"
@@ -31,6 +31,18 @@ PROTOCOLS = ["typing.Protocol", "typing_extensions.Protocol"]
 # an Iterator[T]. In a Protocol's methods, Iterator[X] and Iterable[X] annotate these (iface_ann)
 ITERATOR = "typing$Iterator"
 ITERABLE = "typing$Iterable"
+
+# OBJECT (names.py) is the stored interface that `object` annotates where no template takes it (a
+# parameter's object annotation still makes a template): a variable's, a field's, a container's
+# items, a function's result. Every type implements it, and it declares no operation but those of
+# every interface: a number, held as the box of its T | None (its own pointer for a reference), is
+# printed, compared, hashed and tested by its type's own operations, which isinstance() narrows it
+# to (object_iface); any other operation is an error that says so (object_note)
+
+# the builtin types whose names isinstance() takes beside the program's classes for a value of
+# an interface (iface_classes), and those a test narrows such a value to, as the type it is then
+# (iface_narrow: an int may be a bool, which keeps its own repr and truth)
+BUILTIN_TESTS = ["int", "float", "bool", "str", "bytes", "list", "dict", "tuple", "set", "frozenset", "type"]
 
 # operations whose adapter uses the builtin form that CPython's own operation is, so that a
 # builtin type (a list, a generator, a file) can implement them: next(o), iter(o), len(o), ...
@@ -217,11 +229,14 @@ def gen_iface_of(self, c: str, ts: list[str]) -> str:
     if key in self.ifmade:
         return self.ifmade[key]
     if key not in self.ifspecs:
-        self.ifspecs[key] = [f"{c}-i{len(self.ifspecs) + 1}", c] + ts
+        self.ifspecs[key] = [c if c == OBJECT else f"{c}-i{len(self.ifspecs) + 1}", c] + ts
     name = self.ifspecs[key][0]
     self.ifmade[key] = name
     line = self.line
-    if c == ITERATOR:
+    if c == OBJECT:
+        # object: no operation of its own (OBJECT)
+        node = mk("class", name, line, [mk("block", "", line, [])])
+    elif c == ITERATOR:
         # Iterator[T]: __next__ gives T, __iter__ an Iterator[T] (of the same object, usually)
         node = mk("class", name, line, [mk("block", "", line, [op_def("__next__", [], ts[0], line), op_def("__iter__", [], name, line)])])
     elif c == ITERABLE:
@@ -243,7 +258,7 @@ def gen_iface_of(self, c: str, ts: list[str]) -> str:
     for m in IMPLICIT:
         if len([d for d in node.kids[0].kids if d.kind == "def" and d.s == m]) == 0:
             node.kids[0].kids.append(implicit_def(m, node.line))
-    SPECSHOW[name] = f"{short(c)}[{', '.join([typestr(t) for t in ts])}]"
+    SPECSHOW[name] = "object" if c == OBJECT else f"{short(c)}[{', '.join([typestr(t) for t in ts])}]"
     self.iface_make(name, c, node)
     self.line = line
     return name
@@ -300,8 +315,14 @@ def gen_iface_respec(self) -> None:
     # order before any code is compiled: a join hint of this pass may name one
     for key in [k for k in self.ifspecs]:
         spec = self.ifspecs[key]
-        if spec[1] == ITERATOR or spec[1] == ITERABLE or spec[1] in self.ifgeneric:
+        if spec[1] == ITERATOR or spec[1] == ITERABLE or spec[1] == OBJECT or spec[1] in self.ifgeneric:
             self.iface_of(spec[1], spec[2:])
+
+
+def gen_object_iface(self) -> str:
+    # the interface that an object annotation names in a variable, a field, a container's items
+    # or a result (OBJECT), made by the first that names it
+    return self.iface_of(OBJECT, [])
 
 
 def gen_iface_use(self, f: FnInfo) -> None:
@@ -392,11 +413,28 @@ def gen_is_iface(self, t: str) -> bool:
     return t in self.ifaces
 
 
+def gen_is_object(self, t: str) -> bool:
+    # is t the type of a value that an object annotation stores (OBJECT)
+    return t == OBJECT
+
+
+def gen_object_note(self, ts: list[str]) -> str:
+    # what an error of an operation that its operands' types ts do not take adds where one is
+    # object's (OBJECT), whose value takes only the operations of every value: "" otherwise
+    for t in ts:
+        if t == OBJECT and self.int_policy(self.line):
+            # (iface_narrow: an int there is a promoting int, which a bool that passes the test is not)
+            return " (narrow a value of object with isinstance() to float, bool, str, bytes, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)"
+        if t == OBJECT:
+            return " (narrow a value of object with isinstance() to int, float, bool, str, bytes, type or a class of the program first: it takes only str(), repr(), format(), hash(), ==, !=, is, isinstance() and a truth test otherwise)"
+    return ""
+
+
 def gen_iface_reflect(self, t: str, what: str) -> None:
     # an error where what (type(), isinstance(), hash(), ...) needs the class of a value of
     # static type t that an interface is: only the run time knows its object's class (#487)
     if self.is_iface(t):
-        self.err(f"{what} of a value of {typestr(t)} is not supported: its object's class is known only when the program runs (#487)")
+        self.err(f"{what} of a value of {typestr(t)} is not supported: its object's class is known only when the program runs (#487)" + self.object_note([t]))
 
 
 def gen_iface_call(self, args: list[Node]) -> Val:
@@ -448,9 +486,137 @@ def gen_iface_impl(self, t: str) -> str:
     return ""
 
 
+def gen_object_impl(self, t: str) -> str:
+    # why a value of type t cannot be a value of object (OBJECT), or "": any value, but a
+    # function or Callable value, an exception and a value of another interface (whose box is not
+    # its object), each as to_object holds it
+    u = unopt(t)
+    if t == "dyn":
+        return ""  # (an Any value: dyn_object)
+    if self.refl_builtin_class(t) != "":
+        return ""  # (a builtin class named, as its class object: to_object)
+    if t.startswith("fn[") or is_callable(u):
+        return f"a function or Callable value as a value of object is not supported yet: call it, or store a {typestr(t)} where one is expected"
+    if t == "exc" or t == "exctype" or u == "exc" or u == "exctype" or (u in self.classes and self.classes[u].exc != ""):
+        return "an exception (or its class) as a value of object is not supported yet"
+    if self.is_iface(u):
+        return f"a value of {typestr(u)} as a value of object is not supported: convert the object itself"
+    if is_union(u):
+        for m in umembers(u):
+            why = self.object_impl(m)
+            if why != "":
+                return why
+        return ""
+    if u == "int" or u == "float" or u == "bool" or u == BIG or lt(u) == "ptr":
+        return ""
+    return f"a value of {typestr(t)} as a value of object is not supported"
+
+
+def gen_to_object(self, v: Val) -> Val:
+    # v as a value of object (OBJECT): None as None (null), a number as a box of the table of
+    # its T | None and that T | None's own box, an optional value as None or what it holds, a
+    # union's as the member its tag selects, a builtin class named as its class object, any
+    # other value as a box of the table of its type and the value itself
+    why = self.object_impl(v.t)
+    if why != "":
+        self.err(f"expected object, got {typestr(v.t)}: {why}")
+    t = v.t
+    if t == "None":
+        return Val("null", OBJECT)
+    if t == "dyn":
+        return self.dyn_object(v)
+    if self.refl_builtin_class(t) != "":
+        return self.to_object(self.class_value_builtin(v))
+    if t == "int" or t == "float" or t == "bool":
+        b = self.coerce(v, self.ctype("opt", [t]))  # (its T | None's box, which never changes)
+        return self.iface_box(self.iface_table(b.t, OBJECT), b.v, OBJECT)
+    if t == BIG:
+        b = self.coerce(v, BIGOPT)  # (a promoting int's box: bigints.py)
+        return self.iface_box(self.iface_table(BIGOPT, OBJECT), b.v, OBJECT)
+    u = unopt(t)
+    if v.v in self.nn or (not is_opt(t) and u not in self.classes and not is_union(u)):
+        if is_union(u):
+            return self.union_object(Val(v.v, u))
+        held = t if is_sopt(t) else u  # (a number's box is its own value: is_sopt)
+        return self.iface_box(self.iface_table(held, OBJECT), v.v, OBJECT)
+    # (None, which a value of a class, an optional value or a union with a class may be, as None)
+    start = self.cur
+    some = self.label()
+    end = self.label()
+    ph = Ins("phi", OBJECT, "")
+    self.incoming(ph, "null", start)
+    self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, end, some)
+    self.place(some)
+    if is_union(u):
+        b = self.union_object(Val(v.v, u))
+    else:
+        held = t if is_sopt(t) else u
+        b = self.iface_box(self.iface_table(held, OBJECT), v.v, OBJECT)
+    self.incoming(ph, b.v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), OBJECT)
+
+
+def gen_dyn_object(self, v: Val) -> Val:
+    # v, an Any value, as a value of object: None (its box) as None, any other value as a box of
+    # the table of Any and v's own box, whose entries compile the operations of Any values
+    # (dynamic.py), which know its type when the program runs
+    start = self.cur
+    some = self.label()
+    end = self.label()
+    ph = Ins("phi", OBJECT, "")
+    self.incoming(ph, "null", start)
+    self.cbr(self.ptr_cmp('==', v, Val(self.rtdata("pys_dyn_none_box"), "dyn")).v, end, some)
+    self.place(some)
+    b = self.iface_box(self.iface_table("dyn", OBJECT), v.v, OBJECT)
+    self.incoming(ph, b.v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), OBJECT)
+
+
+def gen_object_dyn(self, v: Val) -> Val:
+    # v, a value of object, as an Any value: None's box for None, else its object as an Any
+    # value, which its table's entry makes of it as its type's value is made one (dynamic.py)
+    e = mk("name", "_o", self.line, [])
+    return self.iface_apply(v, "dyn()", [], "dyn", e, "Any", [], "dyn", v, v)
+
+
+def gen_object_type_attr(self, v: Val, what: str) -> Val:
+    # type(v).__name__ (what: __name__, __qualname__ or __module__) of a value of object: its
+    # object's type's, by its table's entry; NoneType's (builtins) for None
+    line = self.line
+    e = mk("attr", what, line, [mk("call", "", line, [mk("name", "type", line, []), mk("name", "_o", line, [])])])
+    return self.iface_apply(v, "type()." + what, [], "str", e, f"type().{what}", [], "type()." + what, v, v)
+
+
+def gen_union_object(self, v: Val) -> Val:
+    # v, a value of a union known not to be None, as a value of object: the member its tag
+    # selects, converted as to_object converts it (the union's box is not that member's value)
+    ms = umembers(v.t)
+    end = self.label()
+    ph = Ins("phi", OBJECT, "")
+    for j in range(len(ms)):
+        nxt = self.label() if j + 1 < len(ms) else ""
+        if nxt != "":
+            arm = self.label()
+            self.cbr(self.utest(v, [ms[j]], False), arm, nxt)
+            self.place(arm)
+        x = self.to_object(self.uget(v, ms[j]))
+        self.incoming(ph, x.v, self.cur)
+        self.br(end)
+        if nxt != "":
+            self.place(nxt)
+    self.place(end)
+    return Val(self.phi(ph), OBJECT)
+
+
 def gen_to_iface(self, v: Val, t: str) -> Val:
     # v as a value of interface t: a new box of the table of v's type for t and v itself; a
     # value of a class that is None stays None (null)
+    if t == OBJECT:
+        return self.to_object(v)  # (any value: its own rules)
     why = self.iface_impl(v.t)
     if why != "":
         self.err(f"expected {typestr(t)}, got {typestr(v.t)}: {why}")
@@ -554,12 +720,47 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
         x = mk("name", f"_a{j}", line, [])
         a.append(x if m is None or m.npos < 0 or j + 1 < m.npos else mk("kw", m.params[j + 1], line, [x]))
     parts = op.split("|", 2) if derived else []
-    if derived and (parts[0] == "==" or parts[0] == "!=") and self.unequal_types(parts[2], tab.impl):
+    bad = ""
+    body: list[Node] = []
+    if derived and parts[0] == "as":
+        # (a narrowing, iface_narrowed: the object as the type the test proved, of an
+        # implementation of that type; another's is never reached, as the test failed for it)
+        nt = op[3:]
+        held = unopt(tab.impl) if is_sopt(tab.impl) else tab.impl
+        if held == BIG and nt != BIG:
+            bad = f"narrowing a value of {typestr(tab.iface)} to {typestr(nt)} by isinstance() is not supported where it may hold a promoting int (a module that opts in to promoting ints stored one), which {typestr(nt)} holds only within 64 bits"
+        ok = held == nt or held == "dyn" or (is_union(nt) and held in umembers(nt)) or (nt == "type[object]" and held.startswith("type["))
+        unreached = mk("raise", "", line, [mk("call", "", line, [mk("name", "SystemError", line, []), mk("str", f"a value of {typestr(tab.iface)} narrowed by isinstance() to {typestr(nt)} holds a {typestr(held)}", line, [])])])
+        body = [unreached]
+        # (a number that goes into a union is made anew, o + 0 or o == True, as the IR check proves
+        # a union's payload by the operation that made it: a box's read proves no member)
+        e = mk("name", "_o", line, [])
+        if ok and is_union(nt) and held == "int":
+            e = mk("binop", "+", line, [e, mk("int", "0", line, [])])
+        elif ok and is_union(nt) and held == "bool":
+            e = mk("cmp", "==", line, [e, mk("True", "", line, [])])
+        if ok and is_sopt(tab.impl):
+            test = mk("cmp", "is", line, [mk("name", "_o", line, []), mk("None", "", line, [])])
+            body = [mk("if", "", line, [test, mk("block", "", line, [clone(unreached)]), mk("block", "", line, [])]), mk("return", "", line, [e])]
+        elif ok:
+            body = [mk("return", "", line, [e])]
+    elif derived and parts[0] == "is" and parts[1] != OBJECT:
+        e = o
+        body = object_is_body(tab.impl, parts[1], line)  # (x is a number: object_is_num)
+    elif derived and (parts[0] == "==" or parts[0] == "!=") and (self.unequal_types(parts[2], tab.impl) or (tab.iface == OBJECT and never_equal(self, parts[2], tab.impl))):
         # (a number or str and an object of a class that defines no __eq__ or __ne__: CPython
-        # compares them by identity, never the same, as unions' members are compared)
+        # compares them by identity, never the same, as unions' members are compared; and, held
+        # by a value of object, values of builtin types of different kinds, a number and a str,
+        # a list and a tuple, ...)
         e = mk("False" if parts[0] == "==" else "True", "", line, [])
     elif derived:
         e = with_line(clone(face.dexpr[op]), line)  # (an operation the protocol does not declare: iface_op)
+        if tab.iface == OBJECT and (parts[0] == "==" or parts[0] == "!=") and e.kind == "cmp":
+            ts = [tab.impl if x.s == "_o" else parts[2] for x in e.kids]
+            if (eq_kind(self, ts[0]) == "type" or ts[0] == OBJECTC) and ts[1] in self.classes and ts[1] != OBJECTC and not self.is_iface(ts[1]):
+                # (a class object, or object()'s object, and an object of a class: CPython asks the
+                # class's __eq__ or __ne__, reflected, as the object on the left asks it first)
+                e.kids = [e.kids[1], e.kids[0]]
     elif op in face.props:
         e = mk("attr", op, line, [o])
     elif op in BUILTIN_FORMS and len(ps) == 0 and (op in IMPLICIT or tab.impl not in self.classes or op == "__next__" or op == "__iter__"):
@@ -568,7 +769,8 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
         e = operator_expr(op, o, a, line)  # (a builtin type's operator: o[a0], a0 in o, o + a0, ...)
     else:
         e = mk("call", "", line, [mk("attr", op, line, [o])] + a)
-    body = [mk("return", "", line, [e])]
+    if len(body) == 0:
+        body = [mk("return", "", line, [e])]
     if e.kind == "assign" or e.kind == "del":
         body = [e]  # (o[a0] = a1, del o[a0]: statements, whose operation returns None)
     if ((op in face.implicit and (op == "__repr__" or op == "__str__")) or op == "format()") and (is_gen(tab.impl) or tab.impl == "file"):
@@ -580,6 +782,8 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
         body = [mk("raise", "", line, [mk("call", "", line, [mk("name", "NotImplementedError", line, []), msg])])]
     f.node.kids = [mk("params", "-1,-1", line, []), mk("noann", "", line, []), mk("block", "", line, body)]
     self.making.append(f"making the table of {typestr(tab.impl)} as {typestr(tab.iface)} (for {face.dshow[op] if derived else op}), converted at {where(line)}")
+    if bad != "":
+        self.err(bad)
     fr = self.save()
     self.modlevel = False
     self.lenient = False
@@ -641,6 +845,9 @@ def gen_iface_cmp(self, op: str, a: Val, b: Val) -> Val:
     # a comparison of which an operand is a value of an interface: is and is not compare the
     # objects the boxes hold (None's null), as their identity is the objects'; == and != compare
     # the objects as Python does (iface_eq); an ordering is not supported yet
+    if (op == "is" or op == "is not") and (self.is_object(a.t) or self.is_object(b.t)):
+        r = self.object_is(a, b) if self.is_object(a.t) else self.object_is(b, a)
+        return r if op == "is" else Val(self.scalar('xor', [Val(r.v, 'bool'), Val('true', 'bool')]), "bool")
     if op == "is" or op == "is not":
         u = b.t if self.is_iface(a.t) else a.t
         if is_union(unopt(u)):
@@ -652,8 +859,159 @@ def gen_iface_cmp(self, op: str, a: Val, b: Val) -> Val:
     if op == "==" or op == "!=":
         return self.iface_eq(op, a, b)
     t = a.t if self.is_iface(a.t) else b.t
-    self.err(f"comparing values of {typestr(t)} with {op} is not supported: their objects' classes are known only when the program runs (compare with ==, != or is)")
+    self.err(f"comparing values of {typestr(t)} with {op} is not supported: their objects' classes are known only when the program runs (compare with ==, != or is)" + self.object_note([a.t, b.t]))
     return Val("false", "bool")
+
+
+def gen_object_is(self, x: Val, y: Val) -> Val:
+    # x is y, x a value of object (OBJECT): None is only None; an object of a class, a str, a
+    # container or a class object is itself (the box's second word); a number is, as PyPy has it,
+    # any equal number of its type (an int and a promoting int both being ints, a float by its
+    # bits), which CPython's small ints, bools and constants are, and other equal numbers may or
+    # may not be (docs/language/compatibility.md); another value of object by its own value
+    t = y.t
+    if self.refl_builtin_class(t) != "":
+        y = self.class_value_builtin(y)  # (a builtin class named: its class object)
+        t = y.t
+    if t == "None":
+        return self.ptr_cmp('==', x, y)
+    if self.is_object(t):
+        return self.object_is_object(x, y)
+    if t == "int" or t == "float" or t == "bool" or t == BIG:
+        return self.object_is_num(x, y)
+    if is_sopt(t):
+        # (None, or the number it holds)
+        if y.v in self.nn:
+            return self.object_is_num(x, self.deref(y))
+        end = self.label()
+        some = self.label()
+        ph = Ins("phi", "bool", "")
+        self.incoming(ph, self.ptr_cmp('==', x, Val('null', 'None')).v, self.cur)
+        self.cbr(self.ptr_cmp('==', y, Val('null', 'None')).v, end, some)
+        self.place(some)
+        r = self.object_is_num(x, self.deref(y))
+        self.incoming(ph, r.v, self.cur)
+        self.br(end)
+        self.place(end)
+        return Val(self.phi(ph), "bool")
+    if is_union(unopt(t)) or t == "dyn":
+        # (None, or the member its tag selects, or the value an Any value is, as a value of object:
+        # a number in a new box, which object_is_object's entry compares by its value)
+        return self.object_is_object(x, self.to_object(y))
+    if self.is_iface(t):
+        return self.ptr_cmp('==', self.iface_obj(x), self.iface_obj(y))
+    if self.isref(t):
+        return self.ptr_cmp('==', self.iface_obj(x), y)  # (not held by a value of object, it is never x)
+    self.err(f"comparing a value of object with a value of {typestr(t)} by 'is' is not supported")
+    return Val("false", "bool")
+
+
+def gen_object_is_object(self, x: Val, y: Val) -> Val:
+    # x is y of two values of object: the same object (or both None), else, where neither is
+    # None, by x's table's entry, which asks whether y is the object of x's type that it holds
+    # (object_is: a number by its value)
+    same = self.ptr_cmp('==', self.iface_obj(x), self.iface_obj(y))
+    line = self.line
+    end = self.label()
+    more = self.label()
+    ph = Ins("phi", "bool", "")
+    self.incoming(ph, "true", self.cur)
+    self.cbr(same.v, end, more)
+    self.place(more)
+    for v in [x, y]:
+        if v.v not in self.nn:
+            some = self.label()
+            self.incoming(ph, "false", self.cur)
+            self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, end, some)
+            self.place(some)
+    e = mk("cmp", "is", line, [mk("name", "_a0", line, []), mk("name", "_o", line, [])])
+    r = self.iface_op(Val(x.v, OBJECT), "is|" + OBJECT, [OBJECT], "bool", e, "its object is object", [Val(y.v, OBJECT)])
+    self.incoming(ph, r.v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), "bool")
+
+
+def gen_object_is_num(self, x: Val, y: Val) -> Val:
+    # x is y, x a value of object and y an int, a float or a bool: whether x holds a number of
+    # y's type equal to it (object_is), by x's table's entry (an entry of another type: False)
+    line = self.line
+    e = mk("cmp", "is", line, [mk("name", "_o", line, []), mk("name", "_a0", line, [])])
+    if x.v in self.nn:
+        return self.iface_op(x, "is|" + y.t, [y.t], "bool", e, f"its object is {typestr(y.t)}", [y])
+    end = self.label()
+    some = self.label()
+    ph = Ins("phi", "bool", "")
+    self.incoming(ph, "false", self.cur)
+    self.cbr(self.ptr_cmp('==', x, Val('null', 'None')).v, end, some)
+    self.place(some)
+    r = self.iface_op(x, "is|" + y.t, [y.t], "bool", e, f"its object is {typestr(y.t)}", [y])
+    self.incoming(ph, r.v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), "bool")
+
+
+def eq_kind(self, t: str) -> str:
+    # the kind of builtin value that a value of type t is, as CPython's == finds values of two
+    # kinds unequal (each kind's __eq__ declines the other's): "num" (a number, also a complex
+    # one), "str", "bytes", "list", "tuple", "dict", "set" (a set or a frozenset), "None", "type"
+    # (a class object, equal only to itself); "" for a type whose values' classes decide (an
+    # object of a class of the program, a value of an interface) or another (a file, ...)
+    u = unopt(t)
+    if u == "int" or u == "float" or u == "bool" or u == BIG or u == COMPLEXC:
+        return "num"
+    if u in self.classes or self.is_iface(u):
+        return ""
+    if u == "str" or u == "bytes" or u == "None":
+        return u
+    if is_list(u) or is_dict(u):
+        return "list" if is_list(u) else "dict"
+    if is_tuple(u) or is_vtuple(u):
+        return "tuple"
+    if is_set(u) or u == EMPTYFS:
+        return "set"
+    return "type" if is_clsval(u) or u == "exctype" else ""
+
+
+def never_equal(self, a: str, b: str) -> bool:
+    # are a value of type a (an optional one not None) and one of type b, which an implementation
+    # of object compares (iface_eq), never equal, as values of builtin types of two kinds are
+    return eq_kind(self, a) != "" and eq_kind(self, b) != "" and eq_kind(self, a) != eq_kind(self, b)
+
+
+def num_kind(t: str) -> str:
+    # the Python type of a number of type t, as identity tells numbers apart (object_is): "int"
+    # for an int and a promoting int, "float", "bool"; "" for any other type
+    if t == "int" or t == BIG:
+        return "int"
+    return t if t == "float" or t == "bool" else ""
+
+
+def object_is_body(impl: str, h: str, line: int) -> list[Node]:
+    # the body of the entry of implementation impl for x is h, h a number of type h (object_is_num):
+    # a number of its kind is h where it equals it (a float by its bits: NaN is a NaN, 0.0 is not
+    # -0.0), any other value never
+    held = unopt(impl) if is_sopt(impl) else impl
+    no = mk("return", "", line, [mk("False", "", line, [])])
+    o = mk("name", "_o", line, [])
+    a = mk("name", "_a0", line, [])
+    if impl == "dyn":
+        return [mk("return", "", line, [mk("cmp", "is", line, [o, a])])]  # (an Any value's identity: dynamic.py)
+    if num_kind(held) == "" or num_kind(held) != num_kind(h):
+        return [no]
+    same = mk("cmp", "==", line, [o, a])
+    if held == "float":
+        zero = mk("cmp", "!=", line, [clone(o), mk("float", "0.0", line, [])])
+        sign = mk("cmp", "==", line, [mk("call", "", line, [mk("name", "str", line, []), clone(o)]), mk("call", "", line, [mk("name", "str", line, []), clone(a)])])
+        nans = mk("boolop", "and", line, [mk("cmp", "!=", line, [clone(o), clone(o)]), mk("cmp", "!=", line, [clone(a), clone(a)])])
+        same = mk("boolop", "or", line, [mk("boolop", "and", line, [same, mk("boolop", "or", line, [zero, sign])]), nans])
+    body = [mk("return", "", line, [same])]
+    if is_sopt(impl):
+        # (a number's box, which is never None here: object_impl)
+        test = mk("cmp", "is", line, [clone(o), mk("None", "", line, [])])
+        body = [mk("if", "", line, [test, mk("block", "", line, [no]), mk("block", "", line, [])])] + body
+    return body
 
 
 def gen_iface_op(self, v: Val, key: str, args: list[str], ret: str, e: Node, show: str, vals: list[Val]) -> Val:
@@ -718,6 +1076,10 @@ def gen_iface_none(self, none: str, a: Val, b: Val) -> Val:
     if none == "format":
         self.guard(self.num_cmp('!=', Val(self.mload('int', a.v), "int"), Val('0', "int")).v, "TypeError: unsupported format string passed to NoneType.__format__")
         return Val(self.sconst("None"), "str")
+    if none == "dyn":
+        return Val(self.rtdata("pys_dyn_none_box"), "dyn")  # (None as an Any value: object_dyn)
+    if none.startswith("type()."):
+        return Val(self.sconst("builtins" if none == "type().__module__" else "NoneType"), "str")  # (object_type_attr)
     return Val("false", "bool")
 
 
@@ -731,6 +1093,10 @@ def gen_iface_eq(self, op: str, a: Val, b: Val) -> Val:
     left = self.is_iface(a.t)
     x = a if left else b
     other = b if left else a
+    if self.is_object(x.t) and is_union(unopt(other.t)) and self.object_impl(other.t) == "":
+        # (a union's value as a value of object, its member as itself: compared by both tables'
+        # entries, as no implementation's own comparison takes a closed union)
+        other = self.to_object(other)
     if "?" in other.t:
         self.err(f"comparing a value of {typestr(x.t)} with a {typestr(other.t)} by {op} is not supported: annotate the empty container")
     none = other.t == "None"
@@ -770,8 +1136,9 @@ def gen_iface_held(self, t: str) -> bool:
 
 def gen_iface_classes(self, c: Node) -> list[str]:
     # the classes that c, isinstance()'s second argument for a value of an interface, names: a
-    # class of the program (not a protocol), object, or a tuple or union of these; ["!"] for
-    # another type, which an implementation's entry might not see as the caller's code does
+    # class of the program (not a protocol), object, a builtin type of BUILTIN_TESTS that the
+    # module does not bind, or a tuple or union of these; ["!"] for another type, which an
+    # implementation's entry might not see as the caller's code does
     if c.kind == "tuple" or (c.kind == "binop" and c.s == "|"):
         out: list[str] = []
         for x in c.kids:
@@ -784,6 +1151,8 @@ def gen_iface_classes(self, c: Node) -> list[str]:
         return [c.s]
     if c.kind == "name" and c.s == "object" and not self.bound("object"):
         return ["object"]
+    if c.kind == "name" and c.s in BUILTIN_TESTS and not self.bound(c.s):
+        return [c.s]
     return ["!"]
 
 
@@ -793,7 +1162,7 @@ def gen_iface_isinst(self, v: Val, c: Node) -> Val:
     # subclasses); False for None, but isinstance(None, object)
     cs = self.iface_classes(c)
     if "!" in cs:
-        self.err(f"isinstance() of a value of {typestr(v.t)} is only supported with the program's classes as its second argument (or a tuple of them): the object's class is known only when the program runs")
+        self.err(f"isinstance() of a value of {typestr(v.t)} is only supported with the program's classes and the builtin types {', '.join(BUILTIN_TESTS)} as its second argument (or a tuple of them): the object's class is known only when the program runs")
     if "object" in cs:
         return Val("true", "bool")
     line = self.line
@@ -808,16 +1177,30 @@ def gen_iface_isinst(self, v: Val, c: Node) -> Val:
 
 
 def gen_iface_narrow(self, c: Node) -> str:
-    # the class that a value of an interface holds where isinstance(x, c) is true, which its
-    # reads take (iface_narrowed): c's, where it names one class that has one layout (not a
-    # class template's, whose objects' types its specializations are); "" otherwise
+    # the type that a value of an interface holds where isinstance(x, c) is true, which its reads
+    # take (iface_narrowed): c's, where it names one class that has one layout (not a class
+    # template's, whose objects' types its specializations are), bool, float, str or bytes; int
+    # | bool for int, whose test a bool passes (keeping its own repr and truth), but in a module
+    # that opts in to promoting ints, whose union would hold 64-bit ints; any class's class
+    # object for type; "" otherwise (a container's item types are not known)
     cs = self.iface_classes(c)
     if len(cs) != 1 or cs[0] == "!" or cs[0] == "object" or cs[0] in self.tmpl:
         return ""
-    return cs[0]
+    k = cs[0]
+    if k in self.classes:
+        return k
+    if k == "int":
+        return "" if self.int_policy(self.line) else self.union_type(["int", "bool"])
+    if k == "bool" or k == "float" or k == "str" or k == "bytes":
+        return k
+    return "type[object]" if k == "type" else ""
 
 
 def gen_iface_narrowed(self, v: Val, nt: str) -> Val:
-    # v, a value of an interface that isinstance() proved holds an object of class nt (not None):
-    # that object, as a value of nt
-    return Val(self.mload(nt, self.maddr('%ptr', v.v, '1', True)), nt)
+    # v, a value of an interface that isinstance() proved holds a value of type nt (not None):
+    # an object of a class of the program is held as itself; a number, a str or a class object
+    # by its own table's entry, which knows how its type holds it (a number in its T | None's box)
+    if nt in self.classes and not self.is_iface(nt):
+        return Val(self.mload(nt, self.maddr('%ptr', v.v, '1', True)), nt)
+    e = mk("name", "_o", self.line, [])
+    return self.iface_op(v, "as|" + nt, [], nt, e, f"narrowing by isinstance() to {typestr(nt)}", [])

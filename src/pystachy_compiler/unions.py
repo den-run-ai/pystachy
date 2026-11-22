@@ -4,7 +4,7 @@ from src.pystachy_compiler.analysis import ann_target
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, where
 from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
-from src.pystachy_compiler.names import owner
+from src.pystachy_compiler.names import OBJECT, owner
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, FXBIT, NONEVAR, OPTTYPES, PYMETHODS
 from src.pystachy_compiler.utils import elem, has_method, is_callable, is_clsval, is_dict, is_fn, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, tname, typestr, umembers, unopt
@@ -407,6 +407,8 @@ def gen_union_type(self, ts: list[str]) -> str:
     none = False
     if "dyn" in ts:
         return "dyn"  # (Any | T: a dynamic value holds any of them)
+    if OBJECT in ts:
+        return OBJECT  # (object | T: a value of object holds any of them, interfaces.py)
     for t in ts:
         t = self.rec_type(t)
         if t == "None" or t == NONEVAR:
@@ -558,7 +560,7 @@ def gen_narrow_val(self, v: Val, nt: str) -> Val:
         return v
     if v.t == "dyn":
         return self.dyn_narrowed(v, nt)  # (a dynamic value's box, which a test proved holds an nt)
-    if self.is_iface(v.t) and nt in self.classes and not self.is_iface(nt):
+    if self.is_iface(v.t) and not self.is_iface(nt):
         return self.iface_narrowed(v, nt)  # (an interface's box, whose object a test proved an nt)
     if v.t in self.classes and nt in self.classes and (self.derives(nt, v.t) or nt in self.classes[v.t].overlaps):
         return Val(v.v, nt)

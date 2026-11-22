@@ -7,7 +7,7 @@ from src.pystachy_compiler.diagnostics import int_lists
 from src.pystachy_compiler.frames import IterArg, Reduce
 from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.lexer import Lexer, codepoint, utf8len
-from src.pystachy_compiler.names import short
+from src.pystachy_compiler.names import OBJECT, short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.reflection import VARS_USES, hook_of
 from src.pystachy_compiler.bigints import held, narrow_type, search_type
@@ -677,6 +677,11 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         v = self.expr(args[0], "")
         if v.t == "dyn":
             return self.dyn_call(self.dyn_dispatcher("callable", ["dyn"], "bool", ""), [v])
+        if self.callable_type(v.t) == -3:
+            # (a value of an interface whose protocol declares no __call__: its object's class
+            # tells, by its table's entry; None is not callable)
+            e = mk("call", "", self.line, [mk("name", "callable", self.line, []), mk("name", "_o", self.line, [])])
+            return self.iface_apply(v, "callable()", [], "bool", e, "callable()", [], "callable", v, v)
         ucalls = [m for m in umembers(unopt(v.t)) if is_callable(m)] if is_union(unopt(v.t)) else []
         if len(ucalls) > 0:
             # (a union that holds a Callable: its box's tag tells, and None is not callable)
@@ -1389,7 +1394,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         # (CPython copies a mapping by its keys() and __getitem__, else the pairs it iterates over)
         self.err(f"dict() of an object ('{tname(t)}') is not supported: make the dict with a comprehension ({{k: v for k, v in x.items()}})")
     if t in self.classes and name in NONEARG:
-        self.err(NONEARG[name].replace("NoneType", tname(t)))  # (CPython's TypeError: its class has no __len__, __abs__, ...)
+        self.err(NONEARG[name].replace("NoneType", tname(t)) + self.object_note([t]))  # (CPython's TypeError: its class has no __len__, __abs__, ...)
     if is_gen(t) and name == "len":
         self.err("object of type 'generator' has no len()")
     if is_gen(t) and name == "dict":
@@ -1401,15 +1406,18 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     us = [j for j in range(len(vals)) if ((self.scalar_union(vals[j].t) or self.cx_union(vals[j].t)) and not is_opt(vals[j].t)) or self.object_union(vals[j].t)]
     if len(us) > 0 and len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) == 0:
         return self.usplit(name, vals, us[0], want)  # (each member's call: union splitting)
-    self.err(f"unsupported call {(asked if name.startswith('math.') else key).replace(RANGEC, 'range').replace(COMPLEXC, 'complex')}")
+    self.err(f"unsupported call {(asked if name.startswith('math.') else key).replace(RANGEC, 'range').replace(COMPLEXC, 'complex').replace(OBJECT, 'object')}" + self.object_note([x.t for x in vals]))
     return v
 
 def gen_callable_type(self, t: str) -> int:
     # callable(x) for x of static type t: 1 (a function or Callable), 0, -2 (an object whose
-    # class defines __call__: callable unless it is None), or -1 (a union that holds a Callable
-    # beside other values: its box's tag tells)
+    # class defines __call__: callable unless it is None), -1 (a union that holds a Callable
+    # beside other values: its box's tag tells), or -3 (a value of an interface that declares no
+    # __call__: its object's class tells, interfaces.py)
     if is_fn(t) or is_callable(t) or t == "exctype" or is_clsval(t):
         return 1  # (a class object too: a call makes an object of its class)
+    if self.is_iface(t) and "__call__" not in self.classes[t].methods:
+        return -3
     if is_union(unopt(t)) and len([m for m in umembers(unopt(t)) if is_callable(m)]) > 0:
         return -1
     if is_opt(t) and (is_callable(unopt(t)) or unopt(t) == "exctype" or is_clsval(unopt(t))):

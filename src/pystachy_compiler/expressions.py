@@ -2550,11 +2550,11 @@ def gen_conversion(self, v: Val, flags: str, width: str, prec: str, t: str) -> V
             v = Val(self.rt("pys_f2i", "i64", [f"double {v.v}"]), "int")  # %d truncates a float, as int() does
         v = v if v.t == BIG else self.as_int(v)  # (a promoting int's own digits: format_)
         if v.t != "int" and v.t != BIG:
-            self.err(f"%{t} format: {'a real number' if t in 'diu' else 'an integer'} is required, not {tname(v.t)}")
+            self.err(f"%{t} format: {'a real number' if t in 'diu' else 'an integer'} is required, not {tname(v.t)}" + self.object_note([v.t]))
         return self.format_(v, mk("str", spec + ("d" if t == "i" or t == "u" else t), self.line, []))
     v = self.as_float(v if v.t == BIG else self.as_int(v))
     if v.t != "float":
-        self.err(f"must be real number, not {tname(v.t)}")
+        self.err(f"must be real number, not {tname(v.t)}" + self.object_note([v.t]))
     return self.format_(v, mk("str", spec + (prec if prec != "" else ".6") + t, self.line, []))
 
 def gen_format_(self, v: Val, spec: Node) -> Val:
@@ -3733,7 +3733,7 @@ def gen_argtype(self, t: str, m: str, j: int, missing: str) -> str:
     # argument is evaluated for that type); missing: the error where t does not define m
     ms = self.classes[t].methods
     if m not in ms:
-        self.err(missing)
+        self.err(missing + self.object_note([t]))
     if ms[m].bad != "":
         self.err(ms[m].bad)  # (an imported module's method that cannot be compiled)
     return ms[m].ptypes[j] if j < len(ms[m].ptypes) else ""
@@ -3781,7 +3781,7 @@ def gen_obj_iterator(self, v: Val, none: str, missing: str, name: str = "__iter_
     if name not in ms and "__getitem__" in ms:
         self.err(f"iterating over {short(v.t)} by its __getitem__ is not supported (CPython calls __getitem__(0), __getitem__(1), ... until IndexError): define __iter__")
     if name not in ms:
-        self.err(missing)
+        self.err(missing + self.object_note([v.t]))
     f = ms[name]
     if f.bad != "":
         self.err(f.bad)  # (an imported module's generator __iter__: its own error, not its type's)
@@ -4095,8 +4095,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
         a = left_operand(self, n.kids[1], want, resultsoft, [])
     else:
         a = self.expr(n.kids[1], want, resultsoft=resultsoft)
-    if is_vtuple(unopt(want)) or want == "dyn" or (is_aset(unopt(want)) and (self.widens(a.t, want) or a.t == EMPTYFS)):
-        a = self.coerce(a, want)  # (construct the requested representation in its arm: a box, dynamic.py; a set or a frozenset as the AbstractSet wanted)
+    if is_vtuple(unopt(want)) or want == "dyn" or self.is_object(want) or (is_aset(unopt(want)) and (self.widens(a.t, want) or a.t == EMPTYFS)):
+        a = self.coerce(a, want)  # (construct the requested representation in its arm: a box, dynamic.py, or a value of object, interfaces.py; a set or a frozenset as the AbstractSet wanted)
     keep = kept is not None and is_union(unopt(want)) and a.t in ["int", "float", "bool", "str", BIG]
     if not keep and ((is_fn(a.t) and is_callable(unopt(want))) or is_union(unopt(want))):
         a = self.coerce(a, want)  # (a function where a Callable is expected: made one in its arm)
@@ -4119,7 +4119,7 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
     else:
         b = self.expr(n.kids[2], wb, resultsoft=resultsoft)
     self.branch -= 1
-    if is_vtuple(unopt(want)) or want == "dyn" or (is_aset(unopt(want)) and (self.widens(b.t, want) or b.t == EMPTYFS)):
+    if is_vtuple(unopt(want)) or want == "dyn" or self.is_object(want) or (is_aset(unopt(want)) and (self.widens(b.t, want) or b.t == EMPTYFS)):
         b = self.coerce(b, want)
     # (an operand's arms of one type, or an int and a promoting int, which join below: no union is made)
     same = keep and (b.t == a.t or self.join(a.t, b.t) == BIG)
@@ -4332,7 +4332,7 @@ def gen_unary(self, n: Node) -> Val:
         return r
     if v.infer_from != "":
         self.err(f"cannot infer what {v.infer_from}() returns: its recursive return type is unresolved; annotate its return type")
-    self.err(f"bad operand type for unary {op}: '{tname(v.t)}'")
+    self.err(f"bad operand type for unary {op}: '{tname(v.t)}'" + self.object_note([v.t]))
     return v
 
 def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
@@ -5777,14 +5777,15 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
     # CPython's TypeError, at compile time
     an = tname(a.t)
     bn = tname(b.t)
+    note = self.object_note([a.t, b.t])
     if op == "+" and (a.t == "str" or is_list(a.t) or is_tuple(a.t)):
-        self.err(f'can only concatenate {an} (not "{bn}") to {an}')
+        self.err(f'can only concatenate {an} (not "{bn}") to {an}' + note)
     if op == "+" and a.t == "bytes":
-        self.err(f"can't concat {bn} to bytes")
+        self.err(f"can't concat {bn} to bytes" + note)
     sq = a.t == "str" or a.t == "bytes" or is_list(a.t) or is_tuple(a.t)
     if op == "*" and (sq or b.t == "str" or b.t == "bytes" or is_list(b.t) or is_tuple(b.t)):
-        self.err(f"can't multiply sequence by non-int of type '{bn if sq else an}'")
-    self.err(f"unsupported operand type(s) for {shown if shown != '' else '** or pow()' if op == '**' else op}: '{an}' and '{bn}'")
+        self.err(f"can't multiply sequence by non-int of type '{bn if sq else an}'" + note)
+    self.err(f"unsupported operand type(s) for {shown if shown != '' else '** or pow()' if op == '**' else op}: '{an}' and '{bn}'" + note)
     return a
 
 def gen_complex_value(self, re: Val, im: Val) -> Val:

@@ -632,7 +632,7 @@ def gen_with_cm(self, m: Val, it: Node, body: list[Node]) -> None:
     c = m.t
     ms = self.classes[c].methods
     if "__enter__" not in ms:
-        self.err(f"'{tname(c)}' object does not support the context manager protocol")
+        self.err(f"'{tname(c)}' object does not support the context manager protocol" + self.object_note([c]))
     if "__exit__" not in ms:
         self.err(f"'{tname(c)}' object does not support the context manager protocol (missed __exit__ method)")
     f = ms["__exit__"]
