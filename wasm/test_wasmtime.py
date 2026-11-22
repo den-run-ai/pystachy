@@ -16,6 +16,7 @@ from wasm.run_wasmtime import Runner
 REACTOR = """(module
   (import "program" "init" (func $init))
   (import "program" "raise" (func $raise (param i32)))
+  (import "wasi_snapshot_preview1" "proc_exit" (func $exit (param i32)))
   (memory (export "memory") 1)
   (global $sp (export "__stack_pointer") (mut i32) (i32.const 96))
   (func (export "_initialize"))
@@ -25,8 +26,8 @@ REACTOR = """(module
   (func (export "pys_throw") (param i32)
     ;; An uncaught Python exception must return here with the C stack restored.
     (if (i32.ne (global.get $sp) (i32.const 96)) (then unreachable))
-    (i32.store (i32.const 32) (local.get 0))
-    (call $raise (local.get 0)))
+    (call $raise (local.get 0))
+    (call $exit (local.get 0)))
   (func (export "fail") (global.set $sp (i32.const 8)) (call $raise (i32.const 17))))"""
 
 

@@ -42,11 +42,10 @@ def instruction(i: Ins) -> Inst:
 
 def function(fn: IFn, closed: bool, exceptions: bool) -> Func:
     f = fn.f
-    if fn.coro:
-        raise Refused(f"{f.ll} is a generator")
     if fn.ps != [j for j in range(len(f.ptypes)) if f.ptypes[j] != "None"]:
         raise Refused(f"parameter ABI of {f.ll}")
     out = Func(f.ll)
+    out.coroutine = fn.coro
     out.ptypes = f.ptypes
     out.ret = f.ret
     out.attrs["kind"] = f.node.kind
@@ -99,8 +98,10 @@ def wasm_module(gen: Gen) -> Module:
         cd.nbox = ci.nbox
         m.classes[name] = cd
     m.set_object_tables(gen.ocls, gen.ocmp, gen.hcls)
+    m.plain_generators = {t: 1 for t in gen.genplain}
     for k in range(1, len(gen.holes)):
         m.holes[k] = gen.holes[k]
+    m.roots = gen.gcroots
     for g in gen.globs:
         m.globals[g.v] = g.t
         m.order.append(g.v)

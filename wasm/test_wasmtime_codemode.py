@@ -43,13 +43,15 @@ except ValueError:
                     self.assertEqual(out.read_text(), "caught ValueError\n" if route == "direct" else "résultat\n")
                     self.assertEqual(err.read_bytes(), b"")
 
-    def test_direct_object_dispatch_and_key_layouts(self):
+    def test_direct_recordings(self):
         runner = Runner(Path(os.environ.get("WASM_RUNTIME", "build/wasm")) / "runtime.wasm")
         with tempfile.TemporaryDirectory() as directory:
             binary, out, err = [Path(directory) / name for name in ("program.wasm", "out", "err")]
             for fixture in ("containers/tuple_runtime_object_compare", "containers/dict_user_hash",
                             "classes/object_containers", "generics/template_empty_forward",
-                            "classes/builtin_dict_basic", "classes/builtin_list_token_list"):
+                            "classes/builtin_dict_basic", "classes/builtin_list_token_list",
+                            "reflection/callables", "exceptions/exc_class_values", "generators/gen_resume_typed_iterators",
+                            "library/lib_atexit", "library/lib_atexit_exit", "library/lib_atexit_uncaught"):
                 with self.subTest(fixture=fixture):
                     source = Path("tests/programs") / (fixture + ".py")
                     subprocess.run(["wasm/build.sh", "direct", source, binary], check=True,
@@ -59,4 +61,9 @@ except ValueError:
                     status = runner.run(program, stdout=out, stderr=err)
                     self.assertEqual(out.read_bytes() + f"[exit {status}]\n".encode(),
                                      source.with_suffix(".out").read_bytes())
-                    self.assertEqual(err.read_bytes(), b"")
+                    expected_error = source.with_suffix(".err")
+                    expected = expected_error.read_bytes() if expected_error.exists() else b""
+                    if source.stem == "lib_atexit":
+                        expected = (b"Exception ignored in atexit callback:\nSystemExit: 3\n"
+                                    b"Exception ignored in atexit callback:\n" + expected)
+                    self.assertEqual(err.read_bytes(), expected)

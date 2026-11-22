@@ -126,8 +126,9 @@ has the full table, startup and memory costs, and reproduction commands.
 
 The experimental [WebAssembly backend](wasm/README.md) compiles supported typed Python
 snippets directly from typed IR for Node and Wasmtime. Typed containers can call a
-class's comparison, hash and representation methods, and Python handlers can catch
-exceptions raised by those methods.
+class's comparison, hash and representation methods. The same function table handles
+typed callbacks, closures, bound methods and plain generator resumes. Python
+handlers can catch exceptions across these calls.
 
 Pystachy compiles the whole program before it runs, including the library modules
 it imports; there is no interpreter fallback. The frontend checks and infers types,

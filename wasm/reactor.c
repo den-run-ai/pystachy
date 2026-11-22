@@ -67,12 +67,22 @@ I pys_obj_cmp(I c, I op, I a, I b) {
 
 /* The header is the first field of runtime.c's Exc. While a direct program is running,
    the host throws that pointer with the tag imported by its landing pads. If the pointer
-   escaped the program, the host re-enters pys_throw with this hook disarmed, so the
-   runtime applies its ordinary uncaught cleanup, diagnostic and SystemExit handling. */
+   escaped the program, the host lets the first unwind from pys_throw return to C to report it. Exceptions
+   from guest callbacks during reporting or pys_finish still use the guest tag. */
 _Unwind_Reason_Code _Unwind_ForcedUnwind(struct _Unwind_Exception *e, _Unwind_Stop_Fn stop, void *arg) {
   (void)stop; (void)arg;
   program_raise(e);
   return _URC_END_OF_STACK;
+}
+
+/* The guest start function supplies the addresses of its global pointer slots.
+   The host relocates their table before entering pys_wasi_run. */
+static I **program_roots;
+static uint32_t program_nroots;
+__attribute__((export_name("pys_wasi_set_global_roots")))
+void pys_wasi_set_global_roots(I **roots, uint32_t count) {
+  program_roots = roots;
+  program_nroots = count;
 }
 
 __attribute__((export_name("pys_wasi_run"))) int pys_wasi_run(void) {
@@ -80,8 +90,7 @@ __attribute__((export_name("pys_wasi_run"))) int pys_wasi_run(void) {
   if (__wasi_args_sizes_get(&argc, &size)) abort();
   char **argv = calloc(argc + 1, sizeof *argv), *buf = malloc(size);
   if (!argv || !buf || __wasi_args_get((uint8_t **)argv, (uint8_t *)buf)) abort();
-  /* (no roots: the collector is off, wasm/README.md) */
-  pys_init((int)argc, argv, __builtin_frame_address(0), 0, 0);
+  pys_init((int)argc, argv, __builtin_frame_address(0), program_roots, program_nroots);
   program_init();
   pys_finish();
   return 0;

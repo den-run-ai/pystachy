@@ -88,8 +88,17 @@ reactor a row of callbacks for each static class ID. Exceptions raised by a call
 can unwind to a Python handler in the guest. Programs using these callbacks require
 a reactor built with `wasm/build.sh runtime-wasm`.
 
-Generators, general function values and explicit dynamic values still receive a named
-refusal. `wasm/build.sh tir` then builds the program through LLVM, and
+Typed callables use the same function table. A closure keeps its environment and a
+bound method keeps its receiver. An indirect call uses its finalized IR signature,
+including its exception handler. Both hosts also run registered Python exit handlers
+on normal return, on `sys.exit()` and while reporting an uncaught exception.
+
+Plain generators start on first resume. Each instance has its own heap frame, which
+keeps the next instruction, the producer's function-table index and its local slots.
+This allows different producers to share an `Iterator[T]` interface. Generators with
+cleanup at a yield, extended protocols or live temporary values that the emitter
+cannot preserve receive a named refusal. Explicit dynamic values also receive a
+named refusal. `wasm/build.sh tir` then builds the program through LLVM, and
 `WASM_TIR_LOG` records the route taken.
 
 The source compiler passes the finalized functions and declarations directly to the emitter.
@@ -214,8 +223,8 @@ covers a 2,000-container round trip and catching `RecursionError` on deeper inpu
 ## What differs from a native build
 
 - **The collector is off.** The conservative stack scan cannot see WebAssembly locals, so
-  `runtime.c` disables collection under WASI. Mid-run collection needs roots for live
-  guest and runtime locals, plus a table of program globals in the direct reactor.
+  `runtime.c` disables collection under WASI. The direct reactor registers the program’s global pointer slots before execution.
+  Mid-run collection still needs roots for live guest and runtime locals.
   The shared heap tracer scans complete four-byte pointer words on wasm32.
   The engine caps memory (4 GiB for wasm32).
 - **LLVM/WASI commands use WebAssembly exception handling.** The adapter lowers native

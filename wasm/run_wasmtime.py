@@ -30,21 +30,35 @@ def guest_execution():
         _guest_lock.release()
 
 # Keep the exception inside Wasm, including when it crosses a C runtime frame.
-# The table links guest.init after the reactor and its imported tag exist.
+# The table breaks the cycle between the reactor, guest, and bridge imports.
 BRIDGE = """(module
-  (type $init (func))
-  (table (export "entry") 1 funcref)
+  (type $void (func))
+  (type $run (func (result i32)))
+  (type $report (func (param i32)))
+  (table (export "entry") 4 funcref)
   (tag $exc (export "exception") (param i32))
-  (global $active (mut i32) (i32.const 0))
+  (global $report_unwind (mut i32) (i32.const 0))
+  (func (export "init")
+    (call_indirect (type $void) (i32.const 1))  ;; pys_eh_on
+    (call_indirect (type $void) (i32.const 0))) ;; guest.init
   (func (export "raise") (param $ptr i32)
-    (if (global.get $active) (then (throw $exc (local.get $ptr)))))
-  (func (export "invoke") (result i32)
-    (global.set $active (i32.const 1))
+    (if (global.get $report_unwind)
+      (then (global.set $report_unwind (i32.const 0)))
+      (else (throw $exc (local.get $ptr)))))
+  (func (export "invoke") (param $report i32) (result i32 i32)
+    (local $status i32)
     (block $caught (result i32)
       (try_table (catch $exc $caught)
-        (call_indirect (type $init) (i32.const 0)))
+        (if (local.get $report)
+          (then
+            ;; Pass the original unwind to C so it reports, then catch normally
+            ;; when Python runs during reporting or in atexit callbacks.
+            (global.set $report_unwind (i32.const 1))
+            (call_indirect (type $report) (local.get $report) (i32.const 3))
+            unreachable))
+        (local.set $status (call_indirect (type $run) (i32.const 2))))
       (i32.const 0))
-    (global.set $active (i32.const 0))))"""
+    (local.get $status)))"""
 
 
 def u32(reader: io.BytesIO) -> int:
@@ -227,22 +241,12 @@ class Runner:
             bridge = wt.Instance(store, self.bridge, []).exports(store)
             linker.define(store, "env", "pystachy_exception", bridge["exception"])
             linker.define(store, "program", "raise", bridge["raise"])
+            linker.define(store, "program", "init", bridge["init"])
         else:
             linker.define_func("program", "raise", wt.FuncType([wt.ValType.i32()], []), lambda _: None)
+            linker.define_func("program", "init", wt.FuncType([], []),
+                               lambda caller: guest.exports(caller)["init"](caller), access_caller=True)
 
-        def init(caller):
-            if bridge is None:
-                guest.exports(caller)["init"](caller)
-                return
-            stack = export("__stack_pointer")
-            saved = stack.value(caller)
-            export("pys_eh_on")(caller)
-            uncaught = bridge["invoke"](caller)
-            if uncaught:
-                stack.set_value(caller, saved)
-                export("pys_throw")(caller, uncaught)
-
-        linker.define_func("program", "init", wt.FuncType([], []), init, access_caller=True)
         for name, typ in self.dispatchers:
             def missing(*_, name=name):
                 raise wt.Trap(f"{name}: the program has no such dispatcher")
@@ -263,13 +267,23 @@ class Runner:
         linker.define(store, "env", "memory", memory)
         linker.define(store, "env", "data", wt.Global(store, wt.GlobalType(wt.ValType.i32(), False), data))
         guest = linker.instantiate(store, program.module)
-        if bridge is not None:
-            bridge["entry"].set(store, 0, guest.exports(store)["init"])
         for offset in program.relocs:
             at = data + offset
             relative = int.from_bytes(memory.read(store, at, at + 4), "little")
             memory.write(store, ((relative + data) & U32_MAX).to_bytes(4, "little"), at)
-        return export("pys_wasi_run")(store)
+        if bridge is None:
+            return export("pys_wasi_run")(store)
+        functions = (guest.exports(store)["init"], export("pys_eh_on"), export("pys_wasi_run"), export("pys_throw"))
+        for index, function in enumerate(functions):
+            bridge["entry"].set(store, index, function)
+        stack = export("__stack_pointer")
+        saved = stack.value(store)
+        uncaught = 0
+        while True:
+            uncaught, status = bridge["invoke"](store, uncaught)
+            if not uncaught:
+                return status
+            stack.set_value(store, saved)
 
 
 def main() -> int:

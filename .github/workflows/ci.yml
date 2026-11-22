@@ -171,6 +171,10 @@ jobs:
           wasm/build.sh emitter
           python3 -m pip install --only-binary=:all: wasmtime==51.0.0
           python3 wasm/run_wasmtime.py build/wasm/gc-mark-probe.wasm
+          wasm/build.sh gc-globals-probe
+          wasm/build.sh direct wasm/test_gc_globals_guest.py build/wasm/gc-globals/guest.wasm
+          node --no-warnings wasm/run.mjs --runtime build/wasm/gc-globals/runtime.wasm build/wasm/gc-globals/guest.wasm
+          python3 wasm/run_wasmtime.py --runtime build/wasm/gc-globals/runtime.wasm build/wasm/gc-globals/guest.wasm
           python3 -m unittest wasm.test_wasmtime wasm.test_wasmtime_codemode
           node --no-warnings --test wasm/test_codemode.mjs
           direct_cases=(tests/programs/apps/ouro2_*.py tests/programs/runtime/rt_float_hex.py
