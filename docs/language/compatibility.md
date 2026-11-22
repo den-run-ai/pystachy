@@ -724,9 +724,11 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
   container type, and in a module that opts in to promoting ints a test of `int`, does not;
   values of `object` as dict keys or set elements, or in a list or tuple that the runtime
   searches, sorts or compares; functions, `Callable` values, exceptions, exception classes and
-  protocol values as values of `object`; and, in a module that does not opt in to promoting
-  ints, narrowing to `int` a value that may hold a promoting int
-  ([error tests](../../tests/errors/classes/object_storage_arith.py)).
+  protocol values as values of `object`, and an empty display; `==` of two values of `object`
+  where two of the stored types do not compare (a list of one class and of another); with
+  dynamic `Any`, a stored type that cannot become an `Any` value once a value of `object` meets
+  one; and, in a module that does not opt in to promoting ints, narrowing to `int` a value that
+  may hold a promoting int ([error tests](../../tests/errors/classes/object_storage_arith.py)).
 - **Dynamic `Any`:** typed mutable containers other than the supported native `list[int]`
   boundary becoming `Any`, unimplemented prototype operations,
   runtime `**` expansion of native dictionaries with non-str keys, or None-first storage
