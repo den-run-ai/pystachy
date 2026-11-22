@@ -2562,6 +2562,7 @@ def gen_conversion(self, v: Val, flags: str, width: str, prec: str, t: str) -> V
         return self.format_(sv, mk("str", ("<" if "-" in flags else ">") + width + prec, self.line, []))
     if self.is_object(v.t) or self.is_view(v.t):
         v = self.object_convert(v, "%" + t)  # (the number, or %c's character, of the type it holds: interfaces.py)
+    v = self.bool_int(v)  # (a bool | int as the int it is: conversions.py)
     if v.t in self.classes and t != "c":
         # A number's conversion asks an object for it: %d for its __int__(), else its
         # __index__(); %x, %X and %o for its __index__(); %e, %f and %g for its __float__(), else
@@ -2785,7 +2786,7 @@ def gen_slice_bound(self, x: Node, dvs: list[Val], fold: bool = False) -> str:
     # goes to dvs, and its place, ?<index>, to slice_dyn, which converts it
     if x.kind == "omit":
         return "-9223372036854775808"
-    bv = self.expr(x, "int")
+    bv = self.bool_int(self.expr(x, "int"))  # (a bool | int as the int it is: conversions.py)
     if bv.t == "None":
         return "-9223372036854775808"
     if fold and bv.t == "bool" and (bv.v == "true" or bv.v == "false"):

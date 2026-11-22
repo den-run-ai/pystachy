@@ -521,7 +521,14 @@ exception behavior. Each operand evaluates once, left to right, before dispatch;
 `None` raises `TypeError`. Results remain `int` or `float` according to the actual
 operands; when both are possible the result is `int | float`, including when all
 current calls happen to pass integers. Declare that result bound explicitly in
-returns and mutable storage. Power and bitwise operations still require narrowing.
+returns and mutable storage. Power and bitwise operations still require narrowing, but a
+`bool | int` (as `isinstance(x, int)` narrows a value of [`object`](#object) to) is the int it
+is wherever CPython reads a bool as its int and the result is an `int` either way: an index, a
+slice bound, a repetition count, `range()`, `hex()`, `oct()`, `bin()`, `%d` and `%x`, a builtin
+method's index or count, `**`, `<<` and `>>`, and `&`, `|` and `^` with an `int`
+([test](../../tests/programs/classes/object_storage_bool_int.py)). A variable, a parameter or a
+field of type `int` takes no `bool | int`, which would hold the bool itself: `int(x)` converts
+it ([error test](../../tests/errors/classes/object_storage_int_param.py)).
 A union that also holds a str, a list or a dict takes the same operators by each
 pair of member types ([operations on closed unions](#operations-on-closed-unions)).
 
@@ -1118,8 +1125,9 @@ value's type ([tests](../../tests/programs/classes/object_storage_values.py)):
   which narrows `x` as an `if`, an early `return`, a `continue` or a `while` narrows a union: to
   the class, to `bool`, `float`, `str`, `bytes` or `type[object]`, and to `int | bool` for `int`,
   whose test a bool passes, keeping its own `repr()`
-  ([test](../../tests/programs/classes/object_storage_narrow.py)); where an `int` is expected,
-  `not isinstance(x, bool)` narrows that to `int`, or `int(x)` converts it
+  ([test](../../tests/programs/classes/object_storage_narrow.py)), which indexes, counts and
+  shifts as its int ([`bool | int`](#closed-scalar-unions)); where an `int` variable or
+  parameter takes it, `not isinstance(x, bool)` narrows that to `int`, or `int(x)` converts it
   ([test](../../tests/programs/classes/object_storage_int.py)).
 
 A test of a container type narrows `x` to a read-only view of the container it holds, whose

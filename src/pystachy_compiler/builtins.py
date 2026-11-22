@@ -1221,6 +1221,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.rres(self.rt(spec[0], rtt(r), [self.rarg(v) for v in vals], "", r if spec[0] == "pys_getenv" else ""), r)
     if len(vals) == 0:
         self.err(f"unsupported call {name}()")
+    if (name == "hex" or name == "oct" or name == "bin") and len(vals) == 1:
+        vals[0] = self.bool_int(vals[0])  # (a bool | int as the int it is, which they ask for: conversions.py)
     v = vals[0]
     t = v.t
     if name == "abs" and len(vals) == 1 and t in self.classes and "__abs__" in self.classes[t].methods:
@@ -3284,7 +3286,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 i += 1
                 continue
             if p == "int":
-                v = self.as_int(v)  # an index or a count may be a bool, as in CPython
+                v = self.as_int(self.bool_int(v))  # an index or a count may be a bool, as in CPython (a bool | int too)
             if base == "dict" and i == 0 and v.t == BIG and self.dict_bigkey(o.t) and (m == "get" or m == "pop" or m == "setdefault"):
                 bigkey = v  # (its {lo, m}, which the runtime functions BKEY names take: bigints.py)
                 av += self.dict_key_args(v, "")

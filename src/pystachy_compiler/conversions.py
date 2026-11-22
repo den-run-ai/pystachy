@@ -109,12 +109,32 @@ def gen_as_int(self, v: Val) -> Val:
         return self.big_narrow(v)  # (a promoting int, where a 64-bit int is needed: bigints.py)
     return v
 
+def gen_bool_int(self, v: Val) -> Val:
+    # v, where it is a bool | int (a value of object that isinstance(x, int) narrowed, a union an
+    # annotation or a join made), as the int it is where an int is asked for: a bool's 0 or 1, by
+    # the union's tag, whose member each arm reads; any other v as it is
+    if not is_union(v.t) or sorted(umembers(v.t)) != ["bool", "int"]:
+        return v
+    yes = self.label()
+    no = self.label()
+    end = self.label()
+    ph = Ins("phi", "int", "")
+    self.cbr(self.utest(v, ["bool"], False), yes, no)
+    for m in ["bool", "int"]:
+        self.place(yes if m == "bool" else no)
+        r = self.as_int(self.uget(v, m))
+        self.incoming(ph, r.v, self.cur)
+        self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), "int")
+
 def gen_index_of(self, v: Val, none: str) -> Val:
     # operator.index() of an object, where CPython asks a subscript, a slice bound, a
     # repetition count or an argument of range(), hex(), oct(), bin() and %x for an integer:
     # its class's __index__(), which must return an int. Every operand is evaluated before it
-    # is called, and None raises none ("Kind: text"). Numbers pass unchanged. An Any value is
-    # asked as the program runs (dyn_index)
+    # is called, and None raises none ("Kind: text"). Numbers pass unchanged, a bool | int as the
+    # int it is (bool_int). An Any value is asked as the program runs (dyn_index)
+    v = self.bool_int(v)
     if v.t == "dyn":
         return self.dyn_index(v, none)
     if v.t not in self.classes or "__index__" not in self.classes[v.t].methods:
@@ -361,6 +381,10 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         hint = self.object_note([v.t]) if self.int_policy(self.line) else " (narrow a value of object with isinstance() first, as `if isinstance(x, int):` narrows x to an int)"
     if self.is_view(v.t):
         hint = self.object_note([v.t])
+    if is_union(v.t) and sorted(umembers(v.t)) == ["bool", "int"] and (t == "int" or t == BIG):
+        # (an index, a count, a shift and other operations take its int, bool_int; a variable, a
+        # parameter or a field would hold the bool as it is)
+        hint = " (a bool passes isinstance(x, int): int(x) is its int, and `not isinstance(x, bool)` narrows x to int)"
     self.err(f"expected {typestr(t)}, got {typestr(v.t)}{hint}")
     return v
 

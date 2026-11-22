@@ -2069,7 +2069,7 @@ def gen_ival(self, n: Node, none: str = "", index: bool = True, recv: Val | None
     # an int | None that is None raises none ("Kind: text"). With index, an object gives its
     # __index__() (enumerate()'s start too), which the sequence recv asks for: one that is None
     # raises recvnone before the call
-    v = self.expr(n, "int")
+    v = self.bool_int(self.expr(n, "int"))  # (a bool | int as the int it is: conversions.py)
     if is_sopt(v.t) and none != "":
         v = self.unwrap(v, none)
     if index and (v.t == "dyn" or (v.t in self.classes and "__index__" in self.classes[v.t].methods)):
