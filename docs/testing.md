@@ -1155,7 +1155,7 @@ does the [Variants workflow](../.github/workflows/variants.yml), which
 [Python versions workflow](../.github/workflows/python-versions.yml), which
 [other CPython versions](#other-cpython-versions) describes. The
 [Wasm corpus workflow](../.github/workflows/wasm-corpus.yml) runs daily and manually, and no check
-requires it either: four shards compare every program in both Wasm modes with
+requires it either: six shards compare every program in both Wasm modes with
 [the known differences](../wasm/README.md#checking-the-whole-corpus), where PR CI builds a few dozen.
 
 The [LLVM toolchain workflow](../.github/workflows/llvm-toolchain.yml) runs only when a person

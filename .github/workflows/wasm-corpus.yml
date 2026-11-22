@@ -1,7 +1,7 @@
 # Advisory: the whole corpus in tests/run.sh's Wasm modes, wasm and wasm-tir (wasm/README.md),
 # compared with wasm/known_differences.txt by wasm/check_corpus.py, which fails on a difference
 # the list does not name. CI's Wasm step builds only a few dozen programs per pull request; this
-# runs every program daily and on demand, in four shards (tools/shard_cases.sh). One same-run
+# runs every program daily and on demand, in six shards (tools/shard_cases.sh). One same-run
 # producer verifies the compiler that every shard uses.
 name: Wasm corpus
 
@@ -53,7 +53,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0/4, 1/4, 2/4, 3/4]
+        shard: [0/6, 1/6, 2/6, 3/6, 4/6, 5/6]
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
       PYSTACHY_JOBS: '4'

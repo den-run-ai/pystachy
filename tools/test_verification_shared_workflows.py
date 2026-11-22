@@ -65,7 +65,7 @@ class SharedCompilerWorkflowTests(unittest.TestCase):
         self.assertEqual(variant['variant'], ['opt-1 cflags-O0', 'opt-2', 'opt-3', 'opt-4', 'opt-5', 'opt-6'])
         self.assertEqual(variant['shard'], ['0/4', '1/4', '2/4', '3/4'])
         wasm = workflow('wasm-corpus.yml')['jobs']['corpus']['strategy']['matrix']
-        self.assertEqual(wasm['shard'], ['0/4', '1/4', '2/4', '3/4'])
+        self.assertEqual(wasm['shard'], [f'{index}/6' for index in range(6)])
         coverage = workflow('coverage.yml')['jobs']
         rows = coverage['runtime']['strategy']['matrix']['include']
         self.assertEqual([(row['suites'], row['shard']) for row in rows],
