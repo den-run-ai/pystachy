@@ -8,7 +8,7 @@
 ; reading below is an error. Check with
 ;   python3 tools/typed_ir_text.py verify tools/fixtures/typed_ir/fields.tir
 
-module {
+module version=1 {
   class Config fields=[hook:opt[str] level:int]
   class Failure base=ValueError fields=[" cls":str " str":str " args":str path:str] flags=[path:4]
   class Leaf base=Root tagged fields=[" class":int count:int items:list[int] " Root.0":bool " Root.1":bool " Root.box.0":dyn tail:str] flags=[count:3 items:4 tail:7] boxes=[count:5]

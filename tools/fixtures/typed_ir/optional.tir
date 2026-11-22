@@ -2,7 +2,7 @@
 ; them not None (ircheck.optional_reads, UnionProof.check_some). Each function without an
 ; expected error verifies; tools/test_typed_ir_text.py removes their tests to see them fail.
 
-module {
+module version=1 {
   class Node tagged fields=[" class":int name:opt[str]]
   class Other tagged fields=[" class":int label:opt[str]]
 }

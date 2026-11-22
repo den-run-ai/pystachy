@@ -5,7 +5,7 @@
 ; class, so without the module each reading below is an error. Check with
 ;   python3 tools/typed_ir_text.py verify tools/fixtures/typed_ir/classes.tir
 
-module {
+module version=1 {
   class Base tagged
   class Both base=Storage roles=[Reader] tagged
   class Derived base=Base tagged
