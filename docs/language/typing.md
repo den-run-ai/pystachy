@@ -1358,7 +1358,10 @@ builtin type's subclass or a generic class, and with no `__slots__`
 ([error test](../../tests/errors/classes/template_under_slots.py)), secondary base,
 `__init_subclass__`, `__class_getitem__` or `__init__` whose parameters make it a template; the
 template has one base and no decorator. A template whose own fields all have annotations keeps
-one class ([fixed-layout constructors](#class-templates-and-generic-classes)).
+one class ([fixed-layout constructors](#class-templates-and-generic-classes)). The template
+itself derives from no class, only its specializations do: a class attribute that only the base
+binds is read through an object or the base, not through the template's name
+([error test](../../tests/errors/classes/template_under_class_attr.py)).
 
 ### Explicit generic classes
 
