@@ -630,8 +630,8 @@ class UnionProof:
             for b in fn.blocks:
                 for i in b.code:
                     r = tmpname(i.r[0]) if len(i.r) > 0 else ""
-                    if (i.op == "mach.addr" or i.op == "field.addr") and i.a[0].v in self.roots:
-                        self.roots[r] = self.roots[i.a[0].v]
+                    if (i.op == "mach.addr" or i.op == "field.addr" or (i.op == "cast" and i.t.startswith("&"))) and i.a[0].v in self.roots:
+                        self.roots[r] = self.roots[i.a[0].v]  # (a cast's address is its operand's: lowering erases it)
                     if "U:" + r in wanted:
                         if (i.op == "phi" or i.op == "slot.pack" or i.op == "slot.unpack" or i.op == "cast"):
                             for a in i.a:
@@ -824,6 +824,8 @@ class UnionProof:
         # the select's own rule
         for a in i.a[1:]:
             d = self.defs[a.v] if a.v in self.defs else None
+            while d is not None and d.op == "cast" and d.a[0].v in self.defs:
+                d = self.defs[d.a[0].v]  # (a box read through a bits cast: Gen.settle)
             if a.v != "null" and (d is None or d.op != "rt" or (d.s != "ubox" and d.s != "ubox_opt")):
                 return False
         return True

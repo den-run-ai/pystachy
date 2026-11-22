@@ -803,6 +803,7 @@ from src.pystachy_compiler.emission import (
     gen_returned_none as emission_returned_none,
     gen_rt as emission_rt,
     gen_instantiate as emission_instantiate,
+    gen_settle as emission_settle,
     gen_list_get as emission_list_get,
     gen_list_len as emission_list_len,
     gen_list_write as emission_list_write,
@@ -3031,6 +3032,9 @@ class Gen:
 
     def instantiate(self, fn: IFn) -> None:
         emission_instantiate(self, fn)
+
+    def settle(self, fn: IFn, late: bool) -> None:
+        emission_settle(self, fn, late)
 
     def list_len(self, o: Val) -> str:
         return emission_list_len(self, o)

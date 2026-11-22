@@ -900,5 +900,98 @@ L4:
                                             'flags=[x:1 y:4] boxes=[x:2 y:5]\n}\n\n' + self.CASE), [])
 
 
+class SettleTests(unittest.TestCase):
+    # Gen.settle, once a function is built: each value whose type the frontend left open takes
+    # the one type its uses read it at, and a runtime call's word that an operand reads as a
+    # typed value is read through a bits cast. Each settled function verifies.
+    def settle(self, source, holes=()):
+        fn = text.to_ifn(text.parse_function(source))
+        gen = text.gen_for(fn)
+        gen.holes = [""] + list(holes)
+        gen.n = 100
+        gen.settle(fn, False)
+        gen.instantiate(fn)
+        gen.settle(fn, True)
+        out = text.format_function(text.from_ifn(fn))
+        self.assertEqual(text.verify_errors(out), [], out)
+        return fn, out
+
+    def test_an_empty_list_takes_the_type_its_use_decided(self):
+        _, out = self.settle("""function @f(n: int) -> list[str] {
+  %xs.1 = slot name=xs : list[?]
+entry:
+  %t2 = rt entry=list.new hole=1 (int 0) : list[?]
+  mem.store(&list[?] %xs.1, list[?] %t2)
+  %t3 = mem.load(&list[?] %xs.1) : list[?]
+  %t4 = rt entry=str.int (int %a0) : str
+  %t5 = slot.pack(str %t4) : *str
+  rt entry=list.append (list[str] %t3, *str %t5) : None
+  %t6 = mem.load(&list[str] %xs.1) : list[str]
+  ret(list[str] %t6)
+}
+""", ["list[str]"])
+        self.assertNotIn("?", out)
+        self.assertIn("%xs.1 = slot name=xs : list[str]", out)
+        self.assertIn("mem.store(&list[str] %xs.1, list[str] %t2)", out)
+        self.assertIn("%t3 = mem.load(&list[str] %xs.1) : list[str]", out)
+
+    def test_a_dicts_items_bind_its_runtime_calls_variables(self):
+        _, out = self.settle("""function @g() -> dict[str,int] {
+  %d.1 = slot name=d : dict[?,?]
+entry:
+  %t2 = rt entry=dict.new hole=1 (int 0, int 0) : dict[?,?]
+  mem.store(&dict[?,?] %d.1, dict[?,?] %t2)
+  %t3 = mem.load(&dict[?,?] %d.1) : dict[?,?]
+  %t4 = slot.pack(str %a0) : *str
+  rt entry=dict.set (dict[?,?] %t3, *str %t4, *V 1) : None
+  %t5 = mem.load(&dict[str,int] %d.1) : dict[str,int]
+  ret(dict[str,int] %t5)
+}
+""".replace("@g()", "@g(s: str)"), ["dict[str,int]"])
+        self.assertNotIn("?", out)
+        self.assertIn("rt entry=dict.set (dict[str,int] %t3, *str %t4, *int 1) : None", out)
+
+    def test_the_type_a_use_decided_wins_over_a_view_of_it(self):
+        # (bytes.join's runtime signature reads its list as a list[str]: the alias view)
+        _, out = self.settle("""function @j(b: bytes) -> str {
+entry:
+  %t1 = rt entry=list.new hole=1 (int 0) : list[?]
+  %t2 = slot.pack(bytes %a0) : *bytes
+  rt entry=list.append (list[bytes] %t1, *bytes %t2) : None
+  %t3 = rt entry=bytes.join (str %a0, list[str] %t1) : str
+  ret(str %t3)
+}
+""".replace("(str %a0, list[str]", "(str @b.0, list[str]"), ["list[bytes]"])
+        self.assertIn("%t1 = rt entry=list.new hole=1 (int 0) : list[bytes]", out)
+        self.assertIn("(str @b.0, list[str] %t1)", out)
+
+    def test_a_runtime_word_read_as_a_typed_value_is_read_through_a_cast(self):
+        fn, out = self.settle("""function @k() -> int {
+entry:
+  %t1 = rt entry=alloc (int 8) : %ptr
+  mem.store(&int %t1, int 0)
+  %t2 = mem.load(&int %t1) : int
+  ret(int %t2)
+}
+""")
+        self.assertEqual(fn.casts, [101])
+        self.assertIn("  %t1 = rt entry=alloc (int 8) : %ptr\n  %t101 = cast bits (%ptr %t1) : &int\n  mem.store(&int %t101, int 0)\n", out)
+        self.assertIn("%t2 = mem.load(&int %t101) : int", out)
+
+    def test_a_locals_first_none_and_a_placeholder_no_use_decides_stay_open(self):
+        source = """function @h() -> str {
+  %b.1 = slot name=b : opt[None]
+entry:
+  mem.store(&opt[None] %b.1, opt[None] null)
+  %t2 = mem.load(&str %b.1) : str
+  %t3 = rt entry=list.new hole=1 (int 0) : list[?]
+  %t4 = list.len(list[?] %t3) : int
+  ret(str %t2)
+}
+"""
+        _, out = self.settle(source, [""])
+        self.assertEqual(out.split("\n", 1)[1], source.split("\n", 1)[1])  # (its body: not its effects)
+
+
 if __name__ == "__main__":
     unittest.main()

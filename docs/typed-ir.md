@@ -328,11 +328,19 @@ An operand's type is how its instruction reads the value. In MLIR a value has on
 every use shares, and an op converts it. With `PYSTACHY_IRCHECK=1`, after each operation's own
 checks, the verifier requires an operand that names a result, a parameter or a slot's register
 to read it at the type its definition gives, or by one of the views of the third table
-(`TYPE_VIEWS`): readings of the same bits that no op writes yet, such as a runtime call's
-`%slot` result read as `int` or an empty list's `list[?]` read as `list[int]`. Any other
-difference is an error: an `int` read as a `float`, a `list[int]` as a `list[str]`, a class
-as an unrelated class, another op's `%ptr` as a `str`. A [cast](#casts) makes the reading
-explicit instead.
+(`TYPE_VIEWS`): readings of the same bits that no op writes yet, such as an `int` read as a
+packed slot `*int` or a class read as its base. Any other difference is an error: an `int`
+read as a `float`, a `list[int]` as a `list[str]`, a class as an unrelated class, a `%ptr`
+as a `str`. A [cast](#casts) makes the reading explicit instead.
+Once a function is built, `Gen.settle` gives each value one type where the frontend left its
+type open before a later use decided it. An empty container's placeholder takes the type that
+the use which decided its hole gave it, so the list that `xs = []` makes is a `list[str]`
+where `xs.append(s)` decides that, and with it the slot of `xs` and its loads; a value that
+another position of its op's types column binds (`mem.load`'s `&$T` and `$T`, a runtime
+signature's variables) follows. A runtime call's word (`%ptr`, `%slot`) that an operand reads
+as a typed value is read through a `cast bits` right after the call, as a closure's `alloc`
+cell is read as `&int`; only a runtime signature's operand of a type variable reads the word
+itself. An empty container that a use reads at its placeholder is then an error.
 An address has a type of its own, `&T`, and a packed slot (an eight-byte word that holds a
 `T`) the type `*T`, so no view reads one as the other: a slot's register, `field.addr` and the
 identity result's `%idret` define addresses, which memory ops, compiled calls and phis read.
@@ -347,9 +355,10 @@ with `PYSTACHY_IRCHECK=1`: `opt[U]` read as `U`, which the closed-union proof mu
 that its value's class need not derive from, which the class proof must show to be of that
 class, as must a member cast's value wherever it is read; and a closed union read as a union
 without some of its members (see [reads at narrower classes](#reads-at-narrower-classes)).
-`bits` of a runtime call's word still takes the runtime's declared signature at its word: it
-is the cast that MLIR would write as an op, and the fourth table's `cast bits` writes another
-op's word so.
+A word is read as a typed value by the fourth table's `cast bits`, the cast that MLIR writes
+as an op. A `None` whose type a later use decides, the slot of a local first assigned `None`
+(`opt[None]`) or a `[None]` list's item (`opt[?]`), is still read as the reference it holds
+by the `instance` view, without a proof.
 
 Some result numbers only name an intermediate LLVM value of their operation's lowering:
 `ovf`'s `{i64, i1}` pair, the three addresses of `list.load`, the address of a `tuple.load`.
@@ -444,8 +453,8 @@ one, whatever block defines it.
 | Type view | An operand of type U reads a value of definition type D where |
 |---|---|
 | `machine` | U is D's machine type: %ptr for a reference, an address &T or None (null), %slot for a packed slot *T or an int, %addr for a slot's address |
-| `bits` | D is %ptr, read as a reference or an address &T, or %slot, read as an int, a packed slot *T or an rt op's bool, where an rt op defines it (its RUNTIME result type) or an rt op's operand of a runtime type variable (*T, S) reads it; another op's word is read through a bits cast |
-| `instance` | D or U holds an empty container's placeholder (list[?], or opt[None] for a local first assigned None) or a runtime type variable (T K V S U R) that no binding replaced (Gen.instantiate), in an rt op's result or operand or where no class has its name: each stands for one type |
+| `bits` | D is %ptr, read as a reference or an address &T, or %slot, read as an int, a packed slot *T or a bool, by an rt op's operand of a runtime type variable (*T, S), as the runtime reads it; any other op reads a word, an rt op's result too, through a bits cast (Gen.settle) |
+| `instance` | D or U holds a runtime type variable (T K V S U R) that nothing binds (Gen.instantiate, Gen.settle), in an rt op's result or operand or where no class has its name, or U an empty container's placeholder (list[?]), or D one that no use decided read by an rt op's variable, or a None's (opt[?], and opt[None] for a local first assigned None) read as the reference it holds: each stands for one type |
 | `alias` | one object by two types: a str and a bytes, an exc and its exctype, a recursive alias rec[A] and A's definition (or a union of fewer members stored in it), a set, a frozenset and an AbstractSet, a fixed tuple and a keyword record (kw[...]), a generator with and without its return type; inside brackets an int and an int+, and inside a tuple's a bool read as an int |
 | `int slot` | an int read as a packed slot *int, which holds its value, and back |
 | `optional` | D read as opt[D] of a reference D, None as any reference or opt[...], or opt[U] as U where the closed-union proof shows the value not None (ircheck.optional_reads) |
@@ -492,10 +501,12 @@ receiver binds only what the other operands leave, so an item or a container tha
 into it is checked against its items only for lists (`list_write_error`). A comparison's
 operands are `*T` and `*U`, and another container than the receiver is `U`, as they need not
 share a type. A variable still stands for any type where nothing binds it and in the rt ops that
-a pass adds later (`unionslots`' boxes, `dictfuse`'s lookups), and an empty container keeps its
-placeholder (`list[?]`) until the use that types it. A runtime function that may return what its
-type excludes keeps `%ptr`: iteration's `dyn.next` returns null at the end, and `exc.id` a user
-exception's object.
+a pass adds later (`dictfuse`'s lookups, the operands of `unionslots`' boxes). An empty
+container's placeholder (`list[?]`) takes, once the function is built, the type of the use
+that decided it (`Gen.settle`), which then binds the variables of the calls that read it: the
+`*V` of `d["a"] = 1` on a new dict is `*int`. A runtime function that may return what its
+type excludes keeps `%ptr`, which an operand reads through a `cast bits`: iteration's
+`dyn.next` returns null at the end, and `exc.id` a user exception's object.
 
 ### Casts
 
@@ -1460,13 +1471,12 @@ compiler's LLVM. It does not hold yet an extension module's entry points (`Gen.f
 `gen_pyext`), runtime.py's module (`Gen.rtdefs`) or the inputs of LLVM line tables
 (`PYSTACHY_DEBUG_LINES=1`), which `compile` refuses; its tables follow `Gen`'s, and its
 [version](#versions-and-grammar) changes with its form. Further backend neutrality needs shared compiler/runtime layout definitions and a
-clearer separation of frontend elaboration from machine contracts. Operands still read values
-through the views of
-`TYPE_VIEWS`: precise result types for empty containers and for runtime calls that return
-untyped memory (`alloc`), and a cast for the view that still narrows unproved (a runtime
-call's word read through `bits`) would leave each value one type, as MLIR's are; `opt[U]` read
-as `U`, a narrower class and a narrower union already need a proof (see
-[reads of optional values](#reads-of-optional-values)). WebAssembly GC, more general check elimination and a
+clearer separation of frontend elaboration from machine contracts. A value has one type, as
+MLIR's do, but where a view of `TYPE_VIEWS` reads it: empty containers and runtime calls'
+words take theirs by `Gen.settle` and `cast bits`, and `opt[U]` read as `U`, a narrower
+class and a narrower union need a proof (see [reads of optional values](#reads-of-optional-values)).
+A `None` whose type a later use decides (`opt[None]`, `opt[?]`) is still read as the
+reference it holds without one. WebAssembly GC, more general check elimination and a
 Python-object representation backend are design possibilities, not supported modes.
 
 CPython extension modules **are supported** through `pystachy ext` and boundary wrappers.

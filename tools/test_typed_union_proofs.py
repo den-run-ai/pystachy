@@ -1659,14 +1659,15 @@ class UnionProofTests(unittest.TestCase):
                 c.block("object")
                 bits = c.op("slot.pack", "%slot", a=[("%a0", "Item")])
                 if mode == "optional-box":
-                    box = c.op("rt", "%ptr", "ubox_opt", [(str(c.g.utags["Item"]), "int"), ("%a0", "%ptr"), ("0", "int")])
+                    raw = c.op("rt", "%ptr", "ubox_opt", [(str(c.g.utags["Item"]), "int"), ("%a0", "%ptr"), ("0", "int")])
+                    box = c.op("cast", mixed, "bits", [(raw, "%ptr")])  # (its word, read as the union: Gen.settle)
                 else:
-                    box = c.op("rt", "%ptr", "ubox", [(str(c.g.utags["Item"]), "int"), (bits, "*T")])
+                    box = c.op("rt", mixed, "ubox", [(str(c.g.utags["Item"]), "int"), (bits, "*T")])
                 absent = c.op("ptr.cmp", "bool", "==", [("%a0", "Item"), ("null", "None")])
                 chosen = c.op("select", mixed, a=[(absent, "bool"), ("null", mixed), ("%a3" if mode == "unknown" else box, mixed)])
                 c.op("br", b=["join"])
                 c.block("number")
-                number = c.op("rt", "%ptr", "ubox", [(str(c.g.utags["int"]), "int"), ("%a1", "*T")])
+                number = c.op("rt", mixed, "ubox", [(str(c.g.utags["int"]), "int"), ("%a1", "*T")])
                 c.op("br", b=["join"])
                 c.block("join")
                 value = c.op("phi", mixed, a=[(chosen, mixed), (number, mixed)], b=["object", "number"])
