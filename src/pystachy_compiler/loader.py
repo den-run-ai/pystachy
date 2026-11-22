@@ -5504,7 +5504,7 @@ class Loader:
                 exported = self.public(src)
                 added: list[str] = []
                 changes = 0
-                if src.done and not infn and src.pdir == "" and src.kinds.get("__all__", "") == "v":
+                if src.done and not infn and src.kinds.get("__all__", "") == "v" and (src.pdir == "" or has_all(src.body.kids)):
                     changes = self.export_changes(src.body.kids, added, False)
                 # Conditional assignment can remove a public name. A conditional extension
                 # only adds names to the unconditional exports.
@@ -5660,19 +5660,35 @@ class Loader:
                         if nested < 0:
                             return -1
                         changes = max(changes, nested)
-            elif (st.kind == "assign" or (st.kind == "augassign" and st.s == "+")) and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[0].s == "__all__":
+                continue
+            if not names_name(st, "__all__"):
+                continue
+            items: list[Node] = []
+            if (st.kind == "assign" or (st.kind == "augassign" and st.s == "+")) and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[0].s == "__all__":
                 seq = st.kids[1]
                 if seq.kind != "list" or len(seq.kids) == 0:
                     return -1
-                for item in seq.kids:
-                    if item.kind != "str":
-                        return -1
-                    if branch and item.s not in out:
-                        out.append(item.s)
-                if branch:
-                    changes = max(changes, 2 if st.kind == "assign" else 1)
-            elif names_name(st, "__all__"):
+                items = seq.kids
+            elif st.kind == "expr" and st.kids[0].kind == "call" and len(st.kids[0].kids) == 2:
+                call = st.kids[0]
+                method = call.kids[0]
+                if method.kind != "attr" or method.kids[0].kind != "name" or method.kids[0].s != "__all__":
+                    return -1
+                if method.s == "append":
+                    items = [call.kids[1]]
+                elif method.s == "extend" and call.kids[1].kind == "list":
+                    items = call.kids[1].kids
+                else:
+                    return -1
+            else:
                 return -1
+            for item in items:
+                if item.kind != "str":
+                    return -1
+                if branch and item.s not in out:
+                    out.append(item.s)
+            if branch:
+                changes = max(changes, 2 if st.kind == "assign" else 1)
         return changes
 
     def public(self, src: Mod) -> list[str]:
