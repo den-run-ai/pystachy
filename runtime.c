@@ -936,6 +936,11 @@ static int decint(const char *s) { return (int)decnum(s, 0); }   /* atoi(s) */
 static void gc_init(char *sb, I **roots, I nroots) {
   const char *e = getenv("PYSTACHY_GC");
   gc_bottom = sb + STACK_PAST;         /* sb is @main's frame address: include its frame record */
+#ifdef __wasi__
+  /* (wasm32 keeps a frame's locals above its frame address, so @main's own reach past sb: the
+     whole linear-memory stack above the caller's frame, wasm/README.md) */
+  { extern char __stack_high; gc_bottom = &__stack_high; }
+#endif
   gc_roots = roots; gc_nroots = nroots;
 #ifdef WASI_STATIC_HEAP
   pmap = wasi_tables;
@@ -2999,7 +3004,8 @@ Str *pys_refl_vars(ReflRec *r, char *o) {   /* repr(vars(o)): o's assigned field
     I v = 0, w[2];
     if (f->desc->s[0] == 'b') v = *(unsigned char *)(o + f->off) & 1;
     else if (f->desc->s[0] == 'J' && opt_in()) { memcpy(w, o + f->off, 16); if (w[1]) w[0] = INT64_MIN; v = (I)w; }   /* a promoting int's {lo, hi}: jbig's words */
-    else memcpy(&v, o + f->off, 8);
+    else if (f->desc->s[0] == 'i' || f->desc->s[0] == 'f') memcpy(&v, o + f->off, 8);
+    else v = (I)(uintptr_t)*(void **)(o + f->off);   /* a reference: a pointer, of 4 bytes on wasm32 */
     repr(&b, v, f->desc->s);
   }
   put(&b, "}", 1);
