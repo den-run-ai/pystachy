@@ -96,6 +96,10 @@ RETAINED = {
     # be mutated; ircheck verifies them after lowering.
     "ir.TMPNAMES": "process-lifetime memo of %t<n> value names; entry n is always '%t<n>'",
     "ir.ONENUMS": "process-lifetime memo of single-number lists; entry n is always [n], checked after lowering",
+    # The IR proofs' key strings, each a pure function of its entry's key like the fragments above.
+    "union_state.KEY_VALUES": "process-lifetime memo of proof keys' values; entry k is always k[k.find(':') + 1:]",
+    "union_state.CONSTANT_REPS": "process-lifetime memo of a join's constant representatives; entry n is always 'c:' + n",
+    "union_state.VALUE_REPS": "process-lifetime memo of a join's variable representatives; entry n is always 'v:' + n",
 }
 # Retained means observed policy, not proof that retaining semantic state is safe.
 # Keep #767 open for those contracts and for indirect mutation/alias effects.
@@ -136,6 +140,9 @@ WRITERS = {
     "specs.MODULES": {"driver.runtime_ir", "driver.prefer_program_ffi"},
     "ir.TMPNAMES": {"ir.tmpname"},
     "ir.ONENUMS": {"ir.one_num"},
+    "union_state.KEY_VALUES": {"union_state.key_value"},
+    "union_state.CONSTANT_REPS": {"union_state.join_rep"},
+    "union_state.VALUE_REPS": {"union_state.join_rep"},
 }
 # gen_verify borrows NOLABELS as out, then copies before append/extend.
 # The conservative alias scan cannot prove that control flow; this local is a
