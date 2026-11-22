@@ -745,6 +745,7 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
     ll = f"@cv.{self.ncv}"
     self.ncv += 1
     f = FnInfo("<interface>", ll, mk("def", "<interface>", line, []), "")
+    f.ikey = f"{tab.iface}|{tab.impl}|{op}"  # (its joins' own key, as the other entries made at its line have theirs: Gen.fnkey)
     f.params = ["_o"] + [f"_a{j}" for j in range(len(ps))]
     f.ptypes = [tab.impl] + ps
     for _ in f.params:
@@ -1391,6 +1392,7 @@ def gen_compare_helper(self, key: str, src: str, args: list[Val], ret: str) -> V
     if key not in self.dispatchers:
         line = self.line
         g = FnInfo("<compare>", f"@ce.{len(self.dispatchers)}", mk("def", "<compare>", line, []), "")
+        g.ikey = key  # (its joins' own key: Gen.fnkey)
         g.params = ["_a", "_b"]
         g.ptypes = [v.t for v in args]
         for _ in g.params:

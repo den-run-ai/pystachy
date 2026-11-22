@@ -1060,9 +1060,13 @@ def gen_stable(self, s: str) -> str:
 
 def gen_fnkey(self, f: FnInfo) -> str:
     # function f's key for joins: its module, its def's line, its class and name and, for a
-    # template's instance, its argument types (see stable)
+    # template's instance, its argument types (see stable); for a function that the compiler
+    # writes, of which one line may have several (an interface's entries, the comparisons of
+    # containers of values of object: interfaces.py), the key it gives it
     k = f"{f.mod}:{f.node.line}:{self.stable(f.cls)}.{f.name}"
-    return k + "(" + self.stable(f.ikey) + ")" if f.inst else k
+    if f.inst:
+        return k + "(" + self.stable(f.ikey) + ")"
+    return k + "<" + self.stable(f.ikey) + ">" if f.ikey != "" else k
 
 
 def field_home(self, ci: ClassInfo, name: str) -> ClassInfo:
