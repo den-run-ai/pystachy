@@ -53,8 +53,10 @@ LLVM is compiled at `-O2`, because the driver's time is LLVM's.
 
 What the archive leaves out limits three uses. It has no compiler-rt, so `PYSTACHY_CFLAGS`
 with `-fsanitize`, `PYSTACHY_PROFILE_GENERATE` and the UBSan stage of `make verify` need a
-distribution's LLVM. It cannot cross-compile. Without zlib, clang neither writes nor reads
-compressed debug sections. It also holds only the tools the driver runs: two of the
+distribution's LLVM. It cannot cross-compile: its libLLVM has the host's target alone, so the
+[WebAssembly backend](../wasm/README.md)'s route through LLVM, which also links with `wasm-ld`,
+needs a distribution's LLVM too. Without zlib, clang neither writes nor reads compressed debug
+sections. It also holds only the tools the driver runs: two of the
 repository's own checks call `llvm-ar` and `llvm-dis`.
 
 ## Build
@@ -166,19 +168,22 @@ without trusting the release.
 A pip or uv installation downloads its machine's archive at its first `run`, `build` or `ext`
 when all of these hold:
 
-- The host is x86-64 or ARM64 Linux with glibc 2.34 or later, other than Ubuntu 24.04.
+- The host is x86-64 or ARM64 Linux with glibc 2.28 or later, other than Ubuntu 24.04.
 - `PYSTACHY_LLVM` is not set.
 - The driver would find no complete LLVM: none of its versioned directories holds the five
   tools it looks for, and they are not all on `PATH`.
 
 A host with an LLVM of its own keeps using it, so no working installation changes or starts
-to need the network. Ubuntu 24.04 keeps its pinned packages, which include compiler-rt. Before
-glibc 2.34 the runtime does not link without `-pthread`, so an older host is left to
-`PYSTACHY_LLVM`.
+to need the network. Ubuntu 24.04 keeps its pinned packages, which include compiler-rt. The
+archives' tools are built for glibc 2.28, the oldest that
+[source builds are checked on](testing.md#older-glibc), so an older host, like one with musl, is
+left to `PYSTACHY_LLVM`.
 
 The download is checked against the pinned hash before anything is extracted, into
 [`PYSTACHY_LLVM_CACHE`](install.md#install-from-github-with-pip-or-uv), and each tool must
-report 18.1.8 before the directory is used.
+report 18.1.8 before the directory is used. On such a host
+[`pystachy doctor`](install.md#check-or-prepare-dependencies) reports
+`Managed LLVM 18.1.8` as cached, or as pending until the first compile downloads it.
 
 clang links with GCC's start files and `libgcc`, which it looks for under the names of the
 distributions it knows. LLVM 18 knows `x86_64-amazon-linux` and not `aarch64-amazon-linux`, so
@@ -263,17 +268,25 @@ reached the compiler's and the runtime's fixed points and `make test` passed all
 `tools/linux_abi.py --max-glibc 2.28` reports no violation.
 
 With the fourth archive selected, the PR profile of `tests/verify.sh` ran on Ubuntu 24.04 with
-CPython 3.13.16, at commit `c5789c70` on current `main`'s compiler: 40 of its 43 steps passed.
+CPython 3.13.16 on 20 November 2026, at commit `c5789c70`: 40 of its 43 steps passed.
 Among them are the bootstrap, the hosted compiler against stage 2 on 5,414 cases, every native
 JIT and AOT shard, the unoptimized, Python-free and GC-stressed samples, `runtime-cache` and
 `ffi`. The other three need what the archive leaves out: `ubsan-0` compiler-rt, one test of
-`jit-dead-code` `llvm-ar`, and `aot-dead-code` `llvm-dis`. The full profile has not run.
+`jit-dead-code` `llvm-ar`, and `aot-dead-code` `llvm-dis`. It ran again two days and 296
+commits of `main` later, at commit `3a04b3e1`: the same three failed, the JIT and AOT shards
+passed 5,890 cases each, and in `python-free-0` 8 of 145 runs failed because that host's `rm`
+was a wrapper, which does not run under the stage's own `PATH`. The full profile has not run.
 
-The toolchain's floor is lower than Pystachy's, whose [supported platforms](install.md) need
-glibc 2.39. On AlmaLinux 8.10 (glibc 2.28, GCC 8's `libgcc_s`) the check passes, and `make`
-reaches both fixed points only with `PYSTACHY_CFLAGS=-pthread`. Of 1,106 runs of a 559-case
-sample there, 24 failed: in 22 JIT runs an exception escaped a handler that catches it in
-AOT, and one case printed another last digit from `pow` in both modes.
+The archives also serve the oldest C library that
+[source builds are checked on](testing.md#older-glibc). In the `manylinux_2_28` image
+(AlmaLinux 8: glibc 2.28, GCC 8's `libgcc_s`), `tools/manylinux_check.sh` passed with the
+x86-64 archive at commit `3a04b3e1`: `make` reached both fixed points, the compiler and what it
+built needed no glibc symbol newer than 2.25, a handler caught its exception under both JIT
+launchers at both code generation levels, and the script's corpus areas passed all 734 JIT and
+AOT runs. The whole corpus passed 9,192 of 9,200 runs there; the other eight are the four
+cases that page names as the system's, in both modes. On GitHub's runners each pinned archive
+then gave these results again, the ARM64 one on `ubuntu-24.04-arm`. Pystachy's
+[supported platforms](install.md#platform-and-deployment-boundaries) still need glibc 2.39;
 [#998](https://github.com/den-run-ai/pystachy/issues/998) tracks an older baseline.
 
 On 20 November 2026 the [download](#download) ran in containers of seven distributions that
@@ -295,8 +308,7 @@ runs matched CPython:
 
 On Rocky Linux 9.9, the oldest C library of these, `make` with the archive also reached both
 fixed points without `-pthread`, and `make test` passed all 8,784 JIT and AOT runs. The other
-six ran the installation check alone. With glibc 2.28 and with musl nothing is downloaded:
-AlmaLinux 8.10 and Alpine were checked.
+six ran the installation check alone. With musl nothing is downloaded: Alpine was checked.
 
 The same check then ran on GitHub's runners in containers of those seven distributions for
 each architecture, with the provisioner as it is now and a server on the runner in place of the
@@ -307,3 +319,7 @@ before that was added a build there did not link; no other host needed one. On R
 for ARM64, `make` with the archive reached both fixed points and `make test` passed all 8,818
 JIT and AOT runs. A run that built both archives from cached objects also rehearsed their
 publication on a draft release, up to the step that publishes, and then deleted the draft.
+
+On 22 November 2026, with the download's floor at glibc 2.28, the check ran in the same way in
+AlmaLinux 8.10 and Rocky Linux 8.10 containers (glibc 2.28, GCC 8.5.0, Python 3.11.13) for each
+architecture. All four passed, and none needed a `clang.cfg`.

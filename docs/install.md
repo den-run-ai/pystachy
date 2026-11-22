@@ -90,12 +90,12 @@ archive (about 1.45 GB). Ubuntu needs the host C toolchain (`build-essential`)
 and shared libraries (`libedit2`, `libffi8`, `libxml2`). macOS needs the Xcode
 Command Line Tools.
 
-On other x86-64 or ARM64 Linux with glibc 2.34 or later, a host that has no complete LLVM
+On other x86-64 or ARM64 Linux with glibc 2.28 or later, a host that has no complete LLVM
 of its own downloads the [minimal LLVM 18.1.8 toolchain](llvm-toolchain.md#download) from this
 repository's releases instead (about 27 MB, or 24 MB on ARM64). It needs the host's C toolchain and
 `libstdc++`. A complete LLVM that [discovery](#check-or-prepare-dependencies) finds is
 used as before, whatever its release. These hosts are outside full verification:
-[measured](llvm-toolchain.md#measured) lists what ran on seven distributions.
+[measured](llvm-toolchain.md#measured) lists what ran on which distributions.
 
 The download is shared across pip and uv in `$XDG_CACHE_HOME/pystachy/toolchains`
 (default `~/.cache/pystachy/toolchains`). Use `PYSTACHY_LLVM_CACHE` to select a
