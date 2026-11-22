@@ -58,7 +58,7 @@ def gen_lower(self, fn: IFn) -> None:
             o.append(f"  store {lt(i.t)} zeroinitializer, ptr {r}")
     self.source_lines.mark(o, prologue, scope, 0)
     for b in fn.blocks:
-        if b.label != "entry" and b.label != "":
+        if b.label != "entry":
             o.append(b.label + ":")
         self.lowblk = b.label
         for i in b.code:

@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import globals_in, inert_input_sites, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends, targets
 from src.pystachy_compiler.diagnostics import Rejoin, int_program
-from src.pystachy_compiler.ir import Blk, IFn, Try, Val
+from src.pystachy_compiler.ir import IFn, Try, Val
 from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
@@ -437,12 +437,6 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             # (a template's function that ends without a return, or one returning T | None: None;
             # also C | None for a class C, whose type, C's, includes None without showing it)
             self.ret_(Val("null", f.ret))
-            if len(self.fn.cold) > 0:
-                # the jump to the first cold block that follows is a block of its own, which
-                # LLVM starts after a terminator, without a label
-                self.blk = Blk("")
-                self.fn.blocks.append(self.blk)
-                self.term = False
         else:
             self.raise_("RuntimeError", self.sconst(f"{short(f.name)}() ended without returning a value"))
     # One raise block serves every check of its message (guard). With line tables, one serves the
