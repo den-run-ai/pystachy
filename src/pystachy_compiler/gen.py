@@ -971,6 +971,7 @@ from src.pystachy_compiler.expressions import (
     gen_exc_kinds as expressions_exc_kinds,
     gen_cmp_kinds as expressions_cmp_kinds,
     gen_cmp_pick as expressions_cmp_pick,
+    gen_object_eq as expressions_object_eq,
     gen_may_decline as expressions_may_decline,
     gen_decl_flag as expressions_decl_flag,
     gen_cmp_cands as expressions_cmp_cands,
@@ -5370,6 +5371,9 @@ class Gen:
 
     def cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
         return expressions_cmp_pick(self, op, at, bt)
+
+    def object_eq(self, at: str, bt: str) -> bool:
+        return expressions_object_eq(self, at, bt)
 
     def may_decline(self, f: FnInfo) -> bool:
         return expressions_may_decline(self, f)

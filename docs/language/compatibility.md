@@ -552,9 +552,10 @@ See [object protocols](semantics.md#object-protocols) and
   narrow a base-typed receiver if only its subclass defines `__ipow__`. The other in-place
   operators call a subclass's method through a base-typed value only where its result and
   the base class's operator's result have a common type.
-- **Comparisons:** equality between unrelated ordinary classes outside inheritance
-  hierarchies when the left operand has no applicable comparison method; methods whose
-  parameter type excludes a possible operand. The method restriction covers direct
+- **Comparisons:** equality between an object of a library class or an exception class and
+  an unrelated object or builtin value when the left operand has no applicable comparison
+  method ([objects of the program's classes compare](semantics.md#object-protocols));
+  methods whose parameter type excludes a possible operand. The method restriction covers direct
   base-typed comparisons, container membership/equality/sorting, subclass overrides,
   and nested dataclass or NamedTuple fields. Printing these containers works.
 - **Tuples and slices:** constant out-of-range fixed-tuple indices; nonliteral fixed-tuple /
