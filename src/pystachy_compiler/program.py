@@ -132,6 +132,12 @@ def gen_subclass_problem(self, st: Node) -> str:
     # class declared before it, or one of the supported exception bases
     if st.kids[1].kind == "typeparams":
         return self.class_params(st)
+    if st.s in self.ifbad:
+        return self.ifbad[st.s]  # (a Protocol class that is no interface Pystachy compiles)
+    for pb in st.kids[1:]:
+        if (pb.kind == "name" and (pb.s in self.ifaces or pb.s in self.ifgeneric)) or self.protocol_base(pb) or (pb.kind == "index" and self.protocol_base(pb.kids[0])):
+            # (an interface's class has no objects of its own: interfaces.py)
+            return "a Protocol class as a base is supported only as class P(Protocol) of a stored interface; a class implements a Protocol by defining its methods, without naming it"
     if st.kids[1].kind == "call" and st.kids[1].kids[0].kind == "name" and st.kids[1].kids[0].s == "collections$namedtuple":
         return "inheritance from a namedtuple() class is not supported"
     if st.kids[1].kind == "index" and self.imported_ref(st.kids[1].kids[0]) == "typing.Generic":
@@ -469,6 +475,12 @@ def gen_inherit(self, ci: ClassInfo) -> None:
                 g.tvbparams = list(f.tvbparams)
                 g.tvbclass = list(f.tvbclass)
                 g.tvbpos = list(f.tvbpos)
+            if len(g.tvparams) == 0:
+                # Inherited classmethods retain the defining method's lexical
+                # generic signature, just as they retain its visitor result plan.
+                g.tvnames = list(f.tvnames)
+                g.tvparams = f.tvparams
+                g.tvresult = f.tvresult
             g.orig = f.orig
             g.clsuse = True
             g.pending = True
@@ -1883,6 +1895,16 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
             elif st.kind == "subclass" and len(st.kids) == 2 and len(self.generic_base(st.kids[1])) > 0:
                 m.body.kids[i] = st.kids[0]  # class C(Generic[T]): a class whose objects bind T (see bind)
                 self.tparams[st.s] = self.generic_base(st.kids[1])
+            elif st.kind == "subclass" and len(st.kids) == 2 and (self.protocol_base(st.kids[1]) or len(self.protocol_params(st.kids[1])) > 0):
+                # class P(Protocol), class P(Protocol[T]): an interface (interfaces.py); one that
+                # is not stays a subclass statement, rejected where it is used (subclass_problem)
+                ptvs = self.protocol_params(st.kids[1])
+                why = self.protocol_problem(st.s, st.kids[0], ptvs)
+                if why != "":
+                    self.ifbad[st.s] = why
+                else:
+                    self.protocol_class(st.s, st.kids[0], ptvs, m.name)
+                    m.body.kids[i] = st.kids[0] if len(ptvs) == 0 else mk("pass", "", st.line, [])
             elif st.kind == "subclass" and len(st.kids) > 2 and self.generic_traits(st) > 0:
                 # class N(Generic[T], A[T], B[T]): generic class N's other bases (generic_subclass)
                 gk = self.generic_traits(st)
@@ -2078,6 +2100,7 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
         if ci.tag != 0:
             tag += 1
             ci.tag = tag
+    self.iface_respec()  # (the interfaces of type arguments that earlier passes made: interfaces.py)
     self.cm_exits()  # (decided while the class templates are classes too: see cm_exits)
     # The classes for which a template is an error, as init_template's hier takes them: those of
     # a hierarchy, and the classes that the __init__ of one of these takes as a parameter
@@ -2370,7 +2393,8 @@ def gen_discover_program(self, prepared: PreparedProgram) -> None:
         for f in ci.methods.values():
             if f.cls != ci.name or (ci.name in self.tmpl and f.deco == ""):
                 continue  # (an exception class's base's; a class template's, but its static and class methods: its specializations')
-            if (ci.mod != "" or ci.init_only) and f.ll not in self.lazy:
+            if (ci.mod != "" or ci.init_only or ci.name in self.ifaces) and f.ll not in self.lazy:
+                # (an interface's methods too: a call through one compiles it, and uses its slot)
                 self.lazy[f.ll] = f
             elif f.ll not in self.lazy and f.ll not in self.compiled and not f.generic:
                 self.function(f, f.node.kids[2].kids)
@@ -2434,10 +2458,13 @@ def gen_discover_program(self, prepared: PreparedProgram) -> None:
                     self.function(lz[i], lz[i].node.kids[2].kids)
         for i in later:
             hpush(self.wake, i)
+        # (the entries of interfaces' tables that calls through them use: interfaces.py)
+        tabled = self.iface_finish()
         # (the dispatchers of dynamic values, compiled again while more classes are boxed: dynamic.py)
-        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(xed) + len(self.xctors) == before and not self.dyn_dispatchers():
+        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(xed) + len(self.xctors) == before and not tabled and not self.dyn_dispatchers():
             break
     self.exc_tables()
+    self.iface_tables()
     for nm in self.flagged:
         if nm not in self.gtypes and nm not in self.funcs and nm not in self.classes:
             self.global_var(f"@g.{nm}.def", "bool")  # (a variable no compiled code assigns)

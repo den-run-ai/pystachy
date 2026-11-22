@@ -258,6 +258,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         captured = Val(v.v, v.t).identity(v)
         captured.idfrom = self.dyn_id_box(v).v
         v = captured
+    if v.t == "dyn" and self.is_iface(t):
+        self.err(f"an Any value as a value of {typestr(t)}, an interface, is not supported yet (its table is chosen by its static type)")
     if v.t == "dyn":
         return self.dyn_unbox(v, t, what)  # (out of it, where a concrete type is expected)
     if is_vtuple(unopt(t)) and is_tuple(v.t):
@@ -310,6 +312,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
     if self.reboxes(v.t, t):
         # a tuple with an int where t holds an int | None (also deeper): a new tuple, of boxes
         return self.tuple_([self.coerce(self.tget(v, i), targs(t)[i], what) for i in range(len(targs(t)))])
+    if self.is_iface(t) and v.t != "None":
+        return self.to_iface(v, t)  # (a value as one of an interface: its box, interfaces.py)
     if self.join_hint(t, v.t):
         return Val("undef", t)  # (a store a join drops: the next pass compiles it, see join_hint)
     if is_opt(v.t) and self.widens(unopt(v.t), t):
@@ -443,6 +447,9 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         # of t) is an error here. The id has three digits or more, which runtime.c reads up to
         # the next descriptor's letter
         ms = self.classes[t].methods
+        if self.is_iface(t) and use != "repr":
+            # (a list's or tuple's search, comparison or sort of a protocol's values: interfaces.py)
+            self.err(f"comparing values of {typestr(t)} (in a list, tuple, in, count, index, sort, min or max) is not supported: their objects' classes are known only when the program runs (compare with 'is')")
         for op in use.split():
             m = "__repr__" if op == "repr" else DUNDER[op]
             m = DUNDER[REFL[op]] if m not in ms and op in REFL else m

@@ -19,6 +19,7 @@ from src.pystachy_compiler.analysis import (
     del_line,
     declares,
     deferred_use,
+    defines,
     deleted,
     false_flag,
     sole_binding,
@@ -2614,6 +2615,25 @@ def ascii_ident(s: str) -> bool:
     return s != ""
 
 
+
+def protocol_iterates(body: Node) -> bool:
+    # does module body declare a Protocol class whose methods iterate (an __iter__ or __next__,
+    # or an Iterator or Iterable annotation): the tables of its interface call iter() of builtin
+    # containers, whose iterators lib's module makes (interfaces.py)
+    for st in body.kids:
+        if st.kind != "subclass" or not any([protocol_named(b) for b in st.kids[1:]]):
+            continue
+        if defines(st.kids[0], "__iter__") or defines(st.kids[0], "__next__") or mentions(st.kids[0], ["Iterator", "Iterable"]):
+            return True
+    return False
+
+
+def protocol_named(b: Node) -> bool:
+    # does base b name Protocol, also subscripted (Protocol[T], typing.Protocol)
+    if b.kind == "index":
+        b = b.kids[0]
+    return (b.kind == "name" or b.kind == "attr") and b.s == "Protocol"
+
 class Loader:
     def __init__(self, dirs: list[str]):
         self.dirs = dirs  # the module search path
@@ -2712,8 +2732,8 @@ class Loader:
         self.starm: list[Mod] = []
         self.qdef = False  # is qstmts() in a function
         # the type parameters of the generic classes and defs (class C[T], def f[T]) it is in, by
-        # name: the names of their own that they are qualified to (<class's or def's name>$$T,
-        # unlike any other). A key prefixed by a space maps an original private spelling to its
+        # name: the names of their own that they are qualified to (class$$T or
+        # def$$source-location$$T, unlike any other). A key prefixed by a space maps an original private spelling to its
         # lexical name, only for quoted annotations; qexpr never consults these aliases.
         self.qren: dict[str, str] = {}
         self.sigtps: list[str] = []  # the type parameters of the def whose signature is being qualified, which qren names only in its body
@@ -2837,10 +2857,11 @@ class Loader:
             self.order = [self.order[-1]] + self.order[:-1]
             for x in users:
                 x.deps[COMPLEXS] = True
-        users = [x for x in self.order if module_reads(x.body, "iter")] if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods else []
+        users = [x for x in self.order if module_reads(x.body, "iter") or protocol_iterates(x.body)] if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods else []
         if len(users) > 0:
             # iter() makes iterator objects of builtin containers: of lib's classes, whose module
-            # nothing imports (it imports nothing either, so it comes first)
+            # nothing imports (it imports nothing either, so it comes first). A Protocol that
+            # iterates calls it in its tables (interfaces.py)
             self.load(ITERS, self.dirs[-1] + "/" + ITERS + ".py", "")
             self.order = [self.order[-1]] + self.order[:-1]
             for x in users:
@@ -4018,8 +4039,8 @@ class Loader:
             return implicit
         if g.kind == "name":
             k = m.kinds.get(g.s, "")
-            return k == "b:typing.Generic" or k == "b:typing_extensions.Generic"
-        if g.kind == "attr" and g.s == "Generic" and g.kids[0].kind == "name":
+            return k in ["b:typing.Generic", "b:typing_extensions.Generic", "b:typing.Protocol", "b:typing_extensions.Protocol"]  # (Protocol[T] too)
+        if g.kind == "attr" and (g.s == "Generic" or g.s == "Protocol") and g.kids[0].kind == "name":
             k = m.kinds.get(g.kids[0].s, "")
             return k == "b:typing" or k == "b:typing_extensions"
         return False
@@ -6109,6 +6130,31 @@ class Loader:
         for k in n.kids:
             self.quoted_types(k)
 
+    def def_typevar(self, f: Node, name: str) -> str:
+        # The encoded line includes the module. Same-named nested definitions and
+        # methods have distinct bindings; short() still shows the source name.
+        return f.s + "$$" + str(f.line) + "$$" + name
+
+    def qfnann(self, m: Mod, n: Node, loc: dict[str, bool], f: Node, late: bool) -> None:
+        # A PEP 695 signature is kept below noann for generic inference. Its own
+        # parameters have the same identities as in the body; defaults still use
+        # the enclosing scope. Retain the qualified annotation for lexical bindings.
+        params = f.kids[2].s.split()
+        if len(params) == 0:
+            self.qann(m, n, loc, late)
+            return
+        ren = self.qren
+        self.qren = dict(ren)
+        annotation_loc = dict(loc)
+        for name in params:
+            self.qren[name] = self.def_typevar(f, name)
+            annotation_loc.pop(name, False)
+        source = f.tpsource.split()
+        for i in range(len(source)):
+            self.qren[" " + source[i]] = params[i]
+        self.qann(m, n.kids[0] if n.kind == "noann" and len(n.kids) > 0 else n, annotation_loc, late)
+        self.qren = ren
+
     def fragile_chk(self, m: Mod, x: str, loc: dict[str, bool]) -> str:
         # the check (Node.mchk) of a read of name x in m, where an import in a try statement binds
         # it: its flag, x and whether it is a function's (L) or module code's (G); "" elsewhere
@@ -6246,9 +6292,9 @@ class Loader:
                 outertps = self.sigtps
                 self.sigtps = st.kids[2].s.split()
                 for p in st.kids[0].kids:
-                    self.qann(m, p.kids[0], loc, late)
+                    self.qfnann(m, p.kids[0], loc, st, late)
                     self.qexpr(m, p.kids[1], loc)
-                self.qann(m, st.kids[1], loc, late)
+                self.qfnann(m, st.kids[1], loc, st, late)
                 self.sigtps = outertps
                 # (a def in a function sees that function's names too: those it does not bind itself
                 # are the enclosing function's, which a closure reads)
@@ -6306,7 +6352,7 @@ class Loader:
                     # (a generic def's type parameters, in its body as a generic class's are in its
                     # methods: CPython's TypeVars, not the module's or an enclosing function's
                     # names, which they hide)
-                    self.qren[nm] = st.s + "$$" + nm
+                    self.qren[nm] = self.def_typevar(st, nm)
                     m.deftps.append(self.qren[nm])
                     if nm not in own:
                         inner.pop(nm, False)

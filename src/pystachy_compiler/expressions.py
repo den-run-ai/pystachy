@@ -523,6 +523,9 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return -1  # (its box's type decides: dynamic.py)
     if t == BIG:
         t = "int"  # (a promoting int is an int)
+    self.iface_reflect(unopt(t), "isinstance()")
+    if c.kind == "name" and c.s in self.ifaces:
+        self.err(f"isinstance() with Protocol {short(c.s)} is not supported (CPython checks a @runtime_checkable protocol's methods by name only when the program runs)")
     if c.kind == "binop" and c.s == "|":
         # (a union, where None is NoneType; None | None raises, and so does a tuple in it)
         if not self.puretype(c, False):
@@ -1533,7 +1536,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 v = self.big_tuple_narrow(v)  # (an item holds 64-bit ints, and is typed so: bigints.py)
             if et == "" and v.t != "None":
                 et = v.t
-            jt = v.t if jt == "" else self.join(jt, v.t) or "-"  # (the items' types together)
+            # (the items' types together; distinct iterators: their Iterator[T], interfaces.py, made
+            # only where the display has no expected item type, which would make its join unused,
+            # and in a module that does not compile Any dynamically, whose items stay Any values)
+            jt = v.t if jt == "" else self.join(jt, v.t) or (self.iter_join(jt, v.t) if not given and not self.dyn_policy(n.line) else "") or "-"
             items.append(v)
         if (returnctx or resultsoft) and given and len([v for v in items if not self.widens(v.t, et) and not self.boxes(v.t, et) and not (is_fn(v.t) and is_callable(unopt(et)))]) > 0:
             # A comparison's expected type is only a hint. Keep the display's
@@ -1543,8 +1549,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             for v in items:
                 if et == "" and v.t != "None":
                     et = v.t
-        if not given and (is_opt(jt) or is_tuple(jt) or is_clsval(jt)):
-            et = jt  # None among strings (or T | None among T): T | None (also as tuple items); class objects: of a base class in common
+        if not given and (is_opt(jt) or is_tuple(jt) or is_clsval(jt) or self.is_iface(jt)):
+            et = jt  # None among strings (or T | None among T): T | None (also as tuple items); class objects: of a base class in common; distinct iterators: their Iterator[T]
         if not given and self.class_join(et, jt, "") != "":
             et = jt  # (objects of classes of one hierarchy: of their nearest common base)
         if not given and jt == "-" and self.dyn_policy(n.line) and not self.dyn_callables([v.t for v in items]):
@@ -1628,7 +1634,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 b = self.big_tuple_narrow(b)
             if kv[1] == "" and b.t != "None":
                 kv[1] = b.t
-            jt = b.t if jt == "" else self.join(jt, b.t) or "-"
+            jt = b.t if jt == "" else self.join(jt, b.t) or (self.iter_join(jt, b.t) if not given and not self.dyn_policy(n.line) else "") or "-"  # (as a list's)
             kj = a.t if kj == "" else self.join(kj, a.t) or "-"
             ks.append(a)
             vs.append(b)
@@ -1641,8 +1647,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             for v in vs:
                 if kv[1] == "" and v.t != "None":
                     kv[1] = v.t
-        if not given and (is_opt(jt) or is_tuple(jt) or is_vtuple(jt) or is_clsval(jt)):
-            kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items; tuples of other lengths: tuple[T, ...]); class objects: of a base class in common
+        if not given and (is_opt(jt) or is_tuple(jt) or is_vtuple(jt) or is_clsval(jt) or self.is_iface(jt)):
+            kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items; tuples of other lengths: tuple[T, ...]); class objects: of a base class in common; distinct iterators: their Iterator[T]
         if not given and self.class_join(kv[1], jt, "") != "":
             kv[1] = jt  # (objects of classes of one hierarchy: of their nearest common base)
         if not kgiven and is_clsval(kj):
@@ -4123,6 +4129,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
         t = self.join(a.t, b.t)  # (tuples of other lengths: a runtime-length tuple, each made in its arm)
     if e1 != "" and e2 != "" and self.class_join(a.t, b.t, want) != "":
         t = self.class_join(a.t, b.t, want)  # (objects of two classes of one hierarchy: of their base)
+    if e1 != "" and e2 != "" and a.t != b.t and want == "" and self.is_iface(self.iter_join(a.t, b.t)):
+        t = self.iter_join(a.t, b.t)  # (distinct iterators: each boxed in its arm as their Iterator[T], interfaces.py)
     ph = Ins("phi", t, "")
     if e1 != "":
         a = self.convert_at(a, t, e1)  # (an int as an int | None: its box, made there)
@@ -6336,6 +6344,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":
             return dc
+    if (self.is_iface(a.t) or self.is_iface(b.t)) and op != "in" and op != "not in":
+        return self.iface_cmp(op, a, b)  # (a value of an interface: its object's identity, interfaces.py)
     if op in ["==", "!=", "<", "<=", ">", ">="] and (self.object_union(a.t) or self.object_union(b.t)):
         # A union that holds objects beside scalars: its member's own comparison, an object's by
         # its methods, selected by the tag before any rule below takes the box for an operand of
