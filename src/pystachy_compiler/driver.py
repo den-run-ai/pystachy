@@ -861,6 +861,7 @@ def print_usage(err: bool) -> None:
         "                    [--abi abi3t]      for CPython 3.15+, GIL and free-threaded",
         "       pystachy ir FILE.py [-o OUT.ll]  emit LLVM IR",
         "       pystachy check FILE.py           only parse it, with the checks CPython makes before running it",
+        "                    [--semantic]       also compile it as ir does, without LLVM, and report its first error",
         "       pystachy rt runtime.py [-o OUT.ll] emit the LLVM IR of the runtime's part written in the subset",
         "       pystachy doctor                  report the LLVM toolchain and runtime cache",
         "       pystachy --version               show version and source commit",
@@ -928,6 +929,12 @@ def main() -> None:
             return
         print("pystachy doctor: error: expected no arguments", file=sys.stderr)
         sys.exit(2)
+    # check --semantic FILE.py, as check FILE.py --semantic (where no file is named --semantic: before,
+    # that one was checked)
+    semantic = False
+    if len(argv) >= 3 and argv[1] == "check" and argv[2] == "--semantic" and not os.path.exists(argv[2]):
+        argv = argv[:2] + argv[3:]
+        semantic = True
     known = len(argv) >= 2 and (argv[1] == "run" or argv[1] == "build" or argv[1] == "ext" or argv[1] == "ir" or argv[1] == "check" or argv[1] == "rt")
     if known and len(argv) >= 3 and (argv[2] == "--help" or argv[2] == "-h") and not os.path.exists(argv[2]):
         print_usage(False)
@@ -983,12 +990,17 @@ def main() -> None:
         # entry at the next function's address. GCC 8's unwinder then misses its handler.
         jitflags = " -profile-guided-section-prefix=false -trap-unreachable"
     if cmd == "check":
-        f = open(diagnostics.SRC, "r", encoding=RAW)
-        Parser(Lexer(f.read(), 1).file()).module()
-        f.close()
-        ignored_arguments(cmd, argv[3:])
-        timing_end("driver.total", total)
-        return
+        extra = [a for a in argv[3:] if a != "--semantic"]
+        ignored_arguments(cmd, extra)
+        # --semantic: on to the frontend below, which stops once the program is compiled (#261);
+        # without it, only the parse, as CPython makes before running a file
+        semantic = semantic or len(extra) < len(argv) - 3
+        if not semantic:
+            f = open(diagnostics.SRC, "r", encoding=RAW)
+            Parser(Lexer(f.read(), 1).file()).module()
+            f.close()
+            timing_end("driver.total", total)
+            return
     if cmd == "rt":
         f = open(diagnostics.SRC, "r", encoding=RAW)
         frontend = timing_start()
@@ -1033,6 +1045,9 @@ def main() -> None:
     ir = compile_program(diagnostics.SRC, f.read(), dirs, ext)
     timing_end("program.frontend", frontend)
     f.close()
+    if cmd == "check":  # (--semantic: what ir would emit is valid; no LLVM, no output)
+        timing_end("driver.total", total)
+        return
     # a program that opts in to neither dynamic Any nor promoting ints: pys_plain, below (read now, as
     # building the runtime compiles runtime.py as a program of its own, which has no opt-in)
     plain = not diagnostics.dynamic_program() and not diagnostics.int_program()

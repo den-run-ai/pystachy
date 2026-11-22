@@ -78,8 +78,10 @@ the three-line `match` block with a supported conditional:
 Run the CPython, JIT and AOT commands again; each prints `285`. You can also call
 `sum_squares(0)` and check that all three return `0`. See
 [unsupported features](language.md#unsupported-features) when a diagnostic names
-a construct your program needs. `pystachy check` checks syntax only; compiling
-and executing the relevant path gives stronger evidence.
+a construct your program needs. `pystachy check` checks syntax only.
+`pystachy check FILE.py --semantic` also compiles the program and its imports as
+`ir` does, without LLVM or output, and reports the first error `run` or `build`
+would. Executing the relevant path gives stronger evidence.
 
 ## Check staged files with pre-commit
 
