@@ -958,6 +958,7 @@ from src.pystachy_compiler.expressions import (
     gen_conversion as expressions_conversion,
     gen_cvar as expressions_cvar,
     gen_cvar_stores as expressions_cvar_stores,
+    gen_class_stores as expressions_class_stores,
     gen_dunder as expressions_dunder,
     gen_eqcall as expressions_eqcall,
     gen_exc_eq as expressions_exc_eq,
@@ -1907,6 +1908,11 @@ class Gen:
         # "C.x": class attribute x of plain class C, which the program assigns through the class
         # (C.x = v, cls.x += 1): a global that objects read until they assign x (see cvar_stores)
         self.cvars: dict[str, bool] = {}
+        # "C.x": each attribute the program assigns through class C's name, found before the
+        # classes' fields are declared (class_stores): a class template's specialization made
+        # before cvar_stores takes its class variables from it (specialize), and cvar_stores
+        # then keeps those it found too; made per pass, as cvars
+        self.cstores: dict[str, bool] = {}
         self.typevars: list[str] = []  # module globals bound to typing.TypeVar(...) or TypeVarTuple(...), which only annotations may name
         self.tvtuples: dict[str, bool] = {}  # those bound to a TypeVarTuple, which an annotation unpacks (*Ts)
         self.tvdefaults: dict[str, bool] = {}  # and those with a default (TypeVar("T", default=...), class C[T = int])
@@ -4904,6 +4910,9 @@ class Gen:
 
     def cvar_stores(self, ns: list[Node]) -> None:
         return expressions_cvar_stores(self, ns)
+
+    def class_stores(self, ns: list[Node], cls: str, c: str) -> None:
+        return expressions_class_stores(self, ns, cls, c)
 
     def cvar(self, cn: Node, a: str) -> ClassInfo:
         return expressions_cvar(self, cn, a)

@@ -2028,6 +2028,13 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
         if ci.node.line in ORDERED:
             self.ordered_class(ci)  # (before the methods of the class bodies are declared)
     for m in mods:
+        self.class_stores(m.body.kids, "", "")  # (before an annotation makes a class template's specialization)
+    for ci in self.classes.values():
+        for d in ci.node.kids[0].kids:
+            # (a class method's cls.x = v, as declare_fn takes the method: its one decorator)
+            if d.kind == "def" and len(d.kids) == 4 and len(d.kids[3].kids) == 0 and d.kids[3].s == "classmethod" and len(d.kids[0].kids) > 0 and d.kids[0].kids[0].kind == "param":
+                self.class_stores(d.kids[2].kids, d.kids[0].kids[0].s, ci.name)
+    for m in mods:
         self.any_variables(m.body, False)
     # the sentinels, NAME = object() (also NAME: Final[Any] = object()), that nothing else binds,
     # in any module: constant_writes also counts global declarations and other modules' stores
@@ -2201,6 +2208,9 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
     comparison_storage(self)
     for m in mods:
         self.cvar_stores(m.body.kids)
+    for k in list(self.cstores):
+        if k not in self.cvars:
+            del self.cstores[k]  # (no class variable: a dataclass's, or no attribute of the class's body)
     for m in mods:
         imps: list[str] = []
         all_imports(m.body.kids, imps)
