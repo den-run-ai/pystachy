@@ -339,3 +339,77 @@ The [full Lean run for the measured compiler](https://github.com/den-run-ai/pyst
 covers all 3,169 programs in that checkout. Its 3,020 unproved obligations and
 the incomplete null check for `bytearray_methods.py` match the previous report.
 The pinned link keeps this result tied to the source used for the timings.
+
+## List and str operations
+
+The list header and item array code, and `str` concatenation and repetition, moved from
+`runtime.c` to `runtime.py` on its [machine-memory primitives](../../docs/runtime-in-subset.md#machine-memory).
+Their workload is [`lists.py`](lists.py), which `compare.py` selects for these cases:
+
+| Case | Default iterations | Work measured |
+|---|---:|---|
+| `list-append` | 200,000,000 | appends to a list of ints that is cleared every 4,096 items |
+| `list-append-str` | 100,000,000 | appends to a list of strs cleared every 48 items: inline items, then an array |
+| `list-short` | 40,000,000 | a list display of two ints, one append, a read and `len()` |
+| `list-stack` | 150,000,000 | two appends and two pops |
+| `list-pop-front` | 100,000,000 | `pop(0)` and an append on a queue of 64 ints |
+| `list-insert` | 60,000,000 | `insert` at index 0 or 1 of a list cleared every 64 items |
+| `list-slice` | 30,000,000 | a slice of 24 of 128 ints |
+| `list-slice-step` | 30,000,000 | a slice of every fifth of 128 ints |
+| `list-extend` | 20,000,000 | `extend` by 128 ints, the list cleared past 2,048 |
+| `list-reverse` | 10,000,000 | a copy of 128 ints, reversed |
+| `list-index` | 150,000,000 | checked reads and writes by a varying index, negative ones too |
+| `list-add` | 6,000,000 | `+` of two lists of 128 ints and of two of 256 strs |
+| `list-mul` | 8,000,000 | `*` of 128 ints by 3, and `*=` of 16 zeros by 2 |
+| `list-set-slice` | 15,000,000 | two slice assignments that shrink and grow the list, and a slice deletion |
+| `str-add` | 60,000,000 | `+` of two of 256 short strs |
+| `str-cat` | 30,000,000 | an f-string of three strs and two separators |
+| `str-mul` | 20,000,000 | a short str times 7, plus a one-byte str times 0 to 15 |
+
+```sh
+taskset -c "$BENCH_CPU" python3.13 bench/runtime_subset/compare.py \
+  --before "$BENCH_BASELINE" --after . --pairs 7 \
+  --cases list-append list-append-str list-short list-stack list-pop-front list-insert \
+          list-slice list-slice-step list-extend list-reverse list-index list-add list-mul \
+          list-set-slice str-add str-cat str-mul \
+  --json /tmp/lists.json
+```
+
+The [recorded report](lists.json) compares
+`4998521d28413c6e32506105f836b6db9afeb1d7` with
+`57b0b8b97e789d62d403db1e223d3831ce96f72c`, both from clean checkouts with freshly
+built compilers, on a Linux x86-64 host of four Intel Xeon cores with CPython 3.13.16 and
+LLVM 18.1.3. The run was pinned to CPU 2 and the load average was 0.35 when it began.
+Each workload produced the CPython checksum in both modes.
+
+| Case | AOT after / C | JIT after / C | AOT ns per iteration, C to after |
+|---|---:|---:|---:|
+| `list-append` | 0.999 | 1.035 | 1.34 to 1.34 |
+| `list-append-str` | 1.019 | 0.980 | 3.17 to 3.23 |
+| `list-short` | 1.008 | 0.947 | 8.38 to 8.42 |
+| `list-stack` | 1.006 | 0.974 | 7.69 to 7.63 |
+| `list-pop-front` | 0.975 | 0.982 | 11.07 to 10.80 |
+| `list-insert` | 0.967 | 1.011 | 9.32 to 8.87 |
+| `list-slice` | 1.003 | 1.001 | 24.10 to 23.93 |
+| `list-slice-step` | 0.853 | 1.061 | 31.08 to 26.02 |
+| `list-extend` | 1.014 | 1.096 | 99.53 to 100.39 |
+| `list-reverse` | 1.010 | 0.872 | 137 to 136 |
+| `list-index` | 0.994 | 1.023 | 2.99 to 2.95 |
+| `list-add` | 1.014 | 0.959 | 446 to 457 |
+| `list-mul` | 1.034 | 0.990 | 206 to 211 |
+| `list-set-slice` | 0.918 | 0.953 | 67.09 to 61.31 |
+| `str-add` | 0.981 | 0.959 | 14.55 to 14.27 |
+| `str-cat` | 1.020 | 1.018 | 29.11 to 29.48 |
+| `str-mul` | 1.009 | 1.018 | 51.37 to 51.53 |
+
+Ratios are medians of 7 alternating pairs. Single pairs range from 0.790 to 1.447, widest
+in the cases that allocate in every iteration, where collections fall differently from
+run to run. In AOT, where LLVM inlines these functions into the program, every case is
+within 4% of the C code or faster. Under the JIT, which calls them, the medians range
+from 0.87 to 1.10. The AOT executable of the workload is 154,384 bytes before and 159,056
+after.
+
+The first version of this code was up to 20% slower under the JIT. It kept a list's
+length in a local across the call that grows the list; `runtime.c` reads the field again
+after that call. A value that lives across a rarely made call costs the common path a
+saved register, so `runtime.py` now follows `runtime.c`'s statements there.
