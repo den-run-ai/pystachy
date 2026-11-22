@@ -1153,7 +1153,10 @@ and on relevant `main` pushes; no check requires it; [reading coverage](#reading
 does the [Variants workflow](../.github/workflows/variants.yml), which
 [configuration variants](#configuration-variants) describes, and the
 [Python versions workflow](../.github/workflows/python-versions.yml), which
-[other CPython versions](#other-cpython-versions) describes.
+[other CPython versions](#other-cpython-versions) describes. The
+[Wasm corpus workflow](../.github/workflows/wasm-corpus.yml) runs daily and manually, and no check
+requires it either: four shards compare every program in both Wasm modes with
+[the known differences](../wasm/README.md#checking-the-whole-corpus), where PR CI builds a few dozen.
 
 The [LLVM toolchain workflow](../.github/workflows/llvm-toolchain.yml) runs only when a person
 dispatches it, apart from PR CI; no check requires it. Compiling LLVM and clang

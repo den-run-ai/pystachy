@@ -1,0 +1,92 @@
+# Advisory: the whole corpus in tests/run.sh's Wasm modes, wasm and wasm-tir (wasm/README.md),
+# compared with wasm/known_differences.txt by wasm/check_corpus.py, which fails on a difference
+# the list does not name. CI's Wasm step builds only a few dozen programs per pull request; this
+# runs every program daily and on demand, in four shards (tools/shard_cases.sh). One same-run
+# producer verifies the compiler that every shard uses.
+name: Wasm corpus
+
+on:
+  schedule:
+    - cron: '41 5 * * *'   # daily, 05:41 UTC
+  workflow_dispatch:
+concurrency:
+  group: wasm-corpus-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    name: verified compiler producer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+      PYSTACHY_JOBS: '4'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version-file: .python-version
+      - name: LLVM 18 toolchain
+        run: tools/setup.sh --minimal
+      - name: Verify compiler and runtime fixed points
+        run: tests/verify.sh bootstrap
+      - name: Package verified bootstrap
+        run: python3 tools/verification_bootstrap.py export build/ci-bootstrap
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: verified-bootstrap-x86_64
+          path: build/ci-bootstrap/
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+
+  corpus:
+    needs: bootstrap
+    name: Wasm corpus (shard ${{ matrix.shard }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0/4, 1/4, 2/4, 3/4]
+    env:
+      PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+      PYSTACHY_JOBS: '4'
+      PYSTACHY_HOME: ${{ github.workspace }}
+      COMPILER: ${{ github.workspace }}/build/verify/pystachy2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false   # the tests run arbitrary programs: no token for them to read
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version-file: .python-version
+
+      - name: LLVM 18 toolchain
+        run: tools/setup.sh --minimal
+
+      # No run-id or token: only a producer in this workflow run can supply the compiler.
+      - name: Download verified bootstrap
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+        with:
+          name: verified-bootstrap-x86_64
+          path: build/ci-bootstrap
+      - name: Validate and restore the native compiler
+        run: python3 tools/verification_bootstrap.py restore build/ci-bootstrap
+
+      - name: WASI C library, linker and the native emitters
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y wasi-libc libclang-rt-18-dev-wasm32 lld-18
+          PYSTACHY="$COMPILER" wasm/build.sh emitter
+
+      - name: Compare the shard's programs with wasm/known_differences.txt
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: python3 wasm/check_corpus.py --compiler "$COMPILER" --shard "$SHARD"

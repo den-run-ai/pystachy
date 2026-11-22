@@ -227,10 +227,12 @@ covers a 2,000-container round trip and catching `RecursionError` on deeper inpu
 from CPython's recording, with its reason: one of the differences above, or the pull request
 that fixes it. `check_corpus.py` runs `tests/run.sh` in both modes and fails on any other
 difference, so a new one is a regression or needs a reason. It names entries that now match;
-remove them once their fix lands. The whole corpus takes about 15 minutes on four cores.
+remove them once their fix lands. The whole corpus takes about 15 minutes on four cores;
+the [Wasm corpus workflow](../.github/workflows/wasm-corpus.yml) runs it daily in four shards.
 
 ```sh
 python3 wasm/check_corpus.py                       # every program, both modes
+python3 wasm/check_corpus.py --shard 0/4           # tools/shard_cases.sh's first quarter
 python3 wasm/check_corpus.py --modes wasm tests/programs/io/*.py
 python3 wasm/check_corpus.py --log report.txt      # a tests/run.sh report of the same run
 ```
