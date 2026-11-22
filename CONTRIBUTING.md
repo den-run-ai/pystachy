@@ -4,6 +4,8 @@ Small fixes, tests, documentation and library ports are welcome. The same review
 standards apply to everyone; prior GitHub history is not required.
 Coding agents should also read [AGENTS.md](AGENTS.md) for detailed development
 workflow and regression-prevention guidance.
+Participation follows the [Code of Conduct](CODE_OF_CONDUCT.md). Report security
+vulnerabilities privately, as [SECURITY.md](SECURITY.md) describes.
 
 ## First contribution
 
