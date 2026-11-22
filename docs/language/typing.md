@@ -1118,7 +1118,9 @@ value's type ([tests](../../tests/programs/classes/object_storage_values.py)):
   which narrows `x` as an `if`, an early `return`, a `continue` or a `while` narrows a union: to
   the class, to `bool`, `float`, `str`, `bytes` or `type[object]`, and to `int | bool` for `int`,
   whose test a bool passes, keeping its own `repr()`
-  ([test](../../tests/programs/classes/object_storage_narrow.py)).
+  ([test](../../tests/programs/classes/object_storage_narrow.py)); where an `int` is expected,
+  `not isinstance(x, bool)` narrows that to `int`, or `int(x)` converts it
+  ([test](../../tests/programs/classes/object_storage_int.py)).
 
 Any other operation of a value that `isinstance()` has not narrowed is a compilation error that
 says so: arithmetic, attributes and methods, calls, indexing, iteration, `len()` and the other
