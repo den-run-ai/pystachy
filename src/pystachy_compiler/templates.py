@@ -58,6 +58,13 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         # ints are one class, keyed and laid out so, bigints.py)
         ts = [promoted(ts[i]) if i + 1 >= len(init.ptypes) or init.ptypes[i + 1] == "" else ts[i] for i in range(len(ts))]
         given = {x: promoted(given[x]) for x in given}
+    elif int_lists() and t.tag != 0:
+        # (so too for the root of a template hierarchy, also a tuple's items, *args': one class for
+        # an int argument, as a literal makes, and a promoting one, as a parameter annotated int
+        # passes, such as the one a subclass's super().__init__(...) gives where it is declared,
+        # program.py's template_bases; else the base's objects and the subclass's would not share
+        # one location)
+        ts = [promoted_items(self, ts[i]) if i + 1 >= len(init.ptypes) or init.ptypes[i + 1] == "" else ts[i] for i in range(len(ts))]
     doing = c + ("[" if named else "(") + ",".join(ts) + ")"
     doing += "".join([f";{x}={given[x]}" for x in self.tparams.get(c, []) if x in given])
     doing += "".join([f";{x}={lit_key(lits[x])}" for x in init.params if x in lits])  # (literal_class)
@@ -374,6 +381,13 @@ def promoted(t: str) -> str:
     # what a type variable bound to t is, in a program whose containers hold promoting ints
     # (int_lists): a promoting int for an int (specialize), else t
     return BIG if t == "int" else t
+
+def promoted_items(self, t: str) -> str:
+    # promoted, of an argument of type t of a template hierarchy's root (specialize): also of the
+    # items of a tuple, which hold promoting ints as they are (declarations.ctype)
+    if is_tuple(t):
+        return self.ctype("tuple", [promoted_items(self, x) for x in targs(t)])
+    return promoted(t)
 
 def gen_names_tv(self, a: Node, tvs: list[str]) -> bool:
     # does annotation a (also as a string) mention one of type variables tvs
