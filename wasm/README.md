@@ -207,7 +207,10 @@ covers a 2,000-container round trip and catching `RecursionError` on deeper inpu
 ## What differs from a native build
 
 - **The collector is off.** The conservative stack scan cannot see WebAssembly locals, so
-  `runtime.c` sets `PYSTACHY_GC=off` under WASI. The engine caps memory (4 GiB for wasm32).
+  `runtime.c` disables collection under WASI. Mid-run collection needs roots for live
+  guest and runtime locals, plus a table of program globals in the direct reactor.
+  The shared heap tracer scans complete four-byte pointer words on wasm32.
+  The engine caps memory (4 GiB for wasm32).
 - **LLVM/WASI commands use WebAssembly exception handling.** The adapter lowers native
   landing pads to Wasm catches for Pystachy's exception payload. A catch unwinds to the
   handler of the enclosing `try`, as clang's nested catches do: LLVM counts the handler's

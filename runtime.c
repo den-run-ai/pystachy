@@ -386,7 +386,7 @@ __attribute__((noinline, no_sanitize("address"))) static void scan(const W *p, c
     if (s->k & 1) continue;            /* atomic: nothing to scan */
     if (msp + 2 > mcap) mstk_grow();
     mstk[msp++] = (uintptr_t)s->start + i * s->size;
-    mstk[msp++] = (uintptr_t)(s->large ? s->size & ~7 : s->size);
+    mstk[msp++] = (uintptr_t)s->size & ~(sizeof(W) - 1);   /* whole pointer words, in bytes */
   }
 }
 __attribute__((noinline, no_sanitize("address"))) static void mark_roots(void) {
@@ -693,17 +693,17 @@ __attribute__((noinline)) static void collect(void) {
   while (msp || qc) {
     if (msp && qc < MQ) {
       I n = (I)mstk[msp - 1]; const W *p = (const W *)mstk[msp - 2];
-      if (n > 4096) { mstk[msp - 2] = (uintptr_t)(p + 512); mstk[msp - 1] = (uintptr_t)(n - 4096); n = 4096; }
+      if (n > 4096) { mstk[msp - 2] = (uintptr_t)p + 4096; mstk[msp - 1] = (uintptr_t)(n - 4096); n = 4096; }
       else msp -= 2;
       __builtin_prefetch(p);
-      if (n > 64) __builtin_prefetch(p + 8);
+      if (n > 64) __builtin_prefetch((const char *)p + 64);
       unsigned t = 2 * ((qh + qc++) & (MQ - 1));
       mq[t] = (uintptr_t)p; mq[t + 1] = (uintptr_t)n;
       continue;
     }
     const W *p = (const W *)mq[2 * qh]; I n = (I)mq[2 * qh + 1];
     qh = (qh + 1) & (MQ - 1); qc--;
-    scan(p, p + n / 8);
+    scan(p, p + n / sizeof *p);
   }
   weakrefs_sweep();                    /* clear weak targets before any memory is reclaimed */
   if (nfiles) files_sweep();

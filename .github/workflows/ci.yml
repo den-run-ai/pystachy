@@ -166,8 +166,11 @@ jobs:
           sudo apt-get install -y wasi-libc libclang-rt-18-dev-wasm32 lld-18
           export PYSTACHY_HOME="$PWD"
           wasm/build.sh runtime-wasm
+          wasm/build.sh gc-mark-probe build/wasm/gc-mark-probe.wasm
+          node --no-warnings wasm/run.mjs build/wasm/gc-mark-probe.wasm
           wasm/build.sh emitter
           python3 -m pip install --only-binary=:all: wasmtime==51.0.0
+          python3 wasm/run_wasmtime.py build/wasm/gc-mark-probe.wasm
           python3 -m unittest wasm.test_wasmtime wasm.test_wasmtime_codemode
           node --no-warnings --test wasm/test_codemode.mjs
           direct_cases=(tests/programs/apps/ouro2_*.py tests/programs/runtime/rt_float_hex.py
