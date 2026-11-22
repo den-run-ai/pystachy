@@ -1109,7 +1109,10 @@ program's classes, class objects, exceptions, `None` and `Any` values can be val
 functions and `Callable` values, exception classes, and values of a protocol (convert the object
 itself) cannot. A list, dict or set display stored as `object` that is empty, or whose items no
 one type or union holds, holds values of `object` (a dict's keys are strs where it has none)
-([test](../../tests/programs/classes/object_displays.py)). An exception narrows with a builtin
+([test](../../tests/programs/classes/object_displays.py)); in a module that opts in to
+[dynamic `Any`](../dynamic-any.md), an empty list or dict display holds `Any` values, as its
+displays of items of no one type do ([test](../../tests/programs/classes/object_storage_empty_dynamic.py)).
+An exception narrows with a builtin
 exception class to `BaseException`, or with one of the program's to its object, and can then be
 raised ([test](../../tests/programs/classes/object_exceptions.py)). Its operations are those of
 a protocol's value above, each by its value's type

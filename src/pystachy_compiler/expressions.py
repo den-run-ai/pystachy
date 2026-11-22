@@ -1563,6 +1563,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if given and soft:
             for v in items:
                 et = self.wider(et, v.t) or et
+        if not given and self.is_object(want) and self.dyn_policy(n.line) and (et == "" or et == "None"):
+            et = "dyn"  # (an empty display stored as object, in a module that compiles Any so: of dynamic values)
         if not given and self.is_object(want) and not self.dyn_policy(n.line) and (et == "" or et == "None" or (jt == "-" and union_hint(self, [v.t for v in items]) == "")):
             # (a display stored as object, empty or of items that no one type or union holds: a list
             # of values of object, which no other name changes, read through its view: interfaces.py)
@@ -1671,6 +1673,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 vh = self.list_hint_type(vh, b.t) if vh != "" else ""
             if vh != "":
                 kv[1] = vh  # (values of mixed scalar types: of their union, as if annotated)
+        if not given and self.is_object(want) and self.dyn_policy(n.line) and (len(ks) == 0 or kv[1] == ""):
+            kv = ["dyn", "dyn"]  # (an empty display stored as object, in a module that compiles Any so: of dynamic values)
         if not given and self.is_object(want) and not self.dyn_policy(n.line) and (len(ks) == 0 or kv[1] == "" or (jt == "-" and union_hint(self, [b.t for b in vs]) == "")):
             # (a display stored as object, empty or of values that no one type or union holds: a
             # dict of values of object, read through its view, and of str keys where it has none)
