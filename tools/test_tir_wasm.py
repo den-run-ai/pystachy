@@ -129,7 +129,7 @@ cold check -> cleanup
             with self.subTest(after=after), self.assertRaisesRegex(T.Refused, reason):
                 validate(valid.replace(before, after))
 
-    def test_plain_generator_refuses_unsaved_values_and_cleanup(self):
+    def test_plain_generator_saves_values_and_refuses_cleanup(self):
         source = """module complete plain=[gen[int]] {
   const @name kind=string text=gen
 }
@@ -148,13 +148,73 @@ final:
 }
 """
         self.assertIn(b"__indirect_function_table", emit(source))
+        self.assertIn(b"__indirect_function_table", emit(source.replace("gen.ret (%slot 4)", "gen.ret (%slot %t0)")))
         for before, after, reason in (
-            ("gen.ret (%slot 4)", "gen.ret (%slot %t0)", "live temporaries"),
+            ("gen.ret (%slot 4)", "gen.ret (%slot %t1)", "untyped result of gen.yield"),
             ("gen.yield (", "gen.yield cleanup=1 (", "yield with cleanup"),
             ("-> final", "-> missing", "unknown block missing"),
         ):
             with self.subTest(after=after), self.assertRaisesRegex(T.Refused, reason):
                 emit(source.replace(before, after))
+
+    @unittest.skipUnless(shutil.which("node"), "node runs the module")
+    def test_generator_resumes_at_the_yielding_phi_predecessor(self):
+        source = """module complete {
+  global @seed type=int
+  global @result type=float
+  const @name kind=string text=gen
+}
+function @main.init() -> None kind=block {
+entry:
+  %t0 = mem.load (&int @seed) : int
+  %t1 = call callee=@values (int %t0) : gen[int]
+  gen.resume (gen[int] %t1)
+  gen.resume (gen[int] %t1)
+  ret
+}
+function @values(seed: int) -> gen[int] coroutine {
+entry:
+  %t0 = scalar.bin add (int %a0, int 3) : int
+  gen.start (str @name) -> initial
+initial:
+  %t1 = num.cmp == (int %t0, int 4) : bool
+  %t2 = num.cast (int %t0) : float
+  cbr (bool %t1) -> yes, no
+yes:
+  %t3 = scalar.bin fadd (float %t2, float 0.25) : float
+  ~%t4 ~%t5 = gen.yield (%slot 1) -> shared
+no:
+  %t6 = scalar.bin fsub (float %t2, float 0.5) : float
+  ~%t7 ~%t8 = gen.yield (%slot 2) -> shared
+shared:
+  %t9 = phi (float %t3, float %t6) -> yes, no : float
+  %t10 = phi (float 10.0, float 20.0) -> yes, no : float
+  %t11 = scalar.bin fadd (float %t9, float %t10) : float
+  mem.store (&float @result, float %t11)
+  ~%t12 ~%t13 = gen.ret
+}
+"""
+        script = """
+const mod = new WebAssembly.Module(require("node:fs").readFileSync(process.argv[1]));
+const memory = new WebAssembly.Memory({initial: 1});
+const table = new WebAssembly.Table({initial: 1, element: "anyfunc"});
+let heap = 4096;
+const rt = {pys_recursion_state: 0, __indirect_function_table: table,
+  pys_alloc(size) { const base = heap; heap += Number(size); return base; }};
+const instance = new WebAssembly.Instance(mod, {env: {memory, data: 0}, rt});
+const view = new DataView(memory.buffer);
+for (const [seed, expected] of [[0n, 22.5], [1n, 14.25]]) {
+  view.setBigInt64(Number(process.argv[2]), seed, true);
+  instance.exports.init();
+  require("node:assert/strict").equal(view.getFloat64(Number(process.argv[3]), true), expected);
+}
+"""
+        emitter = T.Emitter(T.parse(source))
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "generator.wasm"
+            path.write_bytes(emitter.module())
+            subprocess.run(["node", "-e", script, str(path), str(emitter.addr["@seed"]), str(emitter.addr["@result"])],
+                           check=True, timeout=10)
 
     def test_legacy_container_header_allocation_is_refused(self):
         for kind, fields in (("list", 4), ("dict", 12)):
