@@ -1690,6 +1690,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             self.dict_put(Val(r, self.ctype("dict", kv)), ks[i], self.key_slot(ks[i]), vs[i], kv)
         return Val(r, self.ctype("dict", kv))
     if k == "tuple":
+        tms = [m for m in umembers(unopt(want)) if is_tuple(m) or is_vtuple(m)] if is_union(unopt(want)) else []
+        if len(tms) == 1:
+            want = tms[0]  # (where a union is expected: a display of its one tuple type, whose items type an empty list's)
         ws = targs(want) if is_tuple(want) else ["dyn"] * len(n.kids) if want == "dyn" else []  # (dynamic items: dynamic.py)
         if is_vtuple(unopt(want)) and targs(unopt(want))[0] == "dyn":
             # Box each fresh item while its numeric identity is still available;
