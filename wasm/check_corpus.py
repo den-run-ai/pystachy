@@ -20,7 +20,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KNOWN = os.path.join(ROOT, "wasm", "known_differences.txt")
 MODES = ("wasm", "wasm-tir")
 REASONS = ("errno", "dev-full", "process", "descriptors", "enosys", "signal", "select", "thread",
-           "closed-stdio", "gc", "stack", "libm", "nan-sign", "unexplained")
+           "closed-stdio", "gc", "stack", "libm", "unexplained")
 FAIL = re.compile(r"^FAIL (\S+) \((\S+)\)$")
 
 

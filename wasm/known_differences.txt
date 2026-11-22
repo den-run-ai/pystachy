@@ -14,7 +14,6 @@
 #   gc            the collector is off: weak references stay alive and dropped files stay open
 #   stack         V8's own stack limit ends deep recursion first
 #   libm          wasi-libc's libm differs from glibc's in the last place of some results
-#   nan-sign      float('-nan') has no sign bit
 #   unexplained   a difference not yet diagnosed
 #   #N            a bug that pull request #N fixes
 
@@ -117,12 +116,8 @@ lib_random_distributions libm
 math_funcs libm
 math_more libm
 port_sgp4_api libm
-upstream_math_fma libm
 upstream_math_functions libm
 upstream_math_testfiles libm
-
-float_span nan-sign
-upstream_float_parse nan-sign
 
 builtin_dict_basic #1675
 builtin_dict_bestrel #1675
@@ -152,3 +147,7 @@ bfile_basic #1705
 bfile_readlines_hint #1705
 bfile_stdio_sync #1705
 bfile_truncate_read #1705
+
+float_span #1708
+upstream_float_parse #1708
+upstream_math_fma #1708
