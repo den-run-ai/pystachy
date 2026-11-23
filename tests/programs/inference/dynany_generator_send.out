@@ -1,0 +1,13 @@
+got hi
+got there
+ready HI THERE
+0 1 2
+cleanup
+stopped
+TypeError can't send non-None value to a just-started generator
+TypeError generator.send() takes exactly one argument (0 given)
+TypeError generator.close() takes no arguments (1 given)
+0 1 2
+cleanup
+done
+[exit 0]
