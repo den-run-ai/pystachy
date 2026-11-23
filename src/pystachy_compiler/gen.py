@@ -133,6 +133,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_id_box as dynamic_dyn_id_box,
     gen_dyn_boxable as dynamic_dyn_boxable,
     gen_dyn_builtin as dynamic_dyn_builtin,
+    gen_dyn_builtin_arg as dynamic_dyn_builtin_arg,
     gen_dyn_builtin_methods as dynamic_dyn_builtin_methods,
     gen_dyn_builtin_takes as dynamic_dyn_builtin_takes,
     gen_dyn_call as dynamic_dyn_call,
@@ -2609,8 +2610,11 @@ class Gen:
     def dyn_dispatchers(self) -> bool:
         return dynamic_dyn_dispatchers(self)
 
-    def dyn_builtin(self, name: str, v: Val) -> Val:
-        return dynamic_dyn_builtin(self, name, v)
+    def dyn_builtin(self, name: str, vals: list[Val]) -> Val:
+        return dynamic_dyn_builtin(self, name, vals)
+
+    def dyn_builtin_arg(self, name: str, v: Val, none: str) -> Val:
+        return dynamic_dyn_builtin_arg(self, name, v, none)
 
     def dyn_getattr(self, o: Val, a: str) -> Val:
         return dynamic_dyn_getattr(self, o, a)

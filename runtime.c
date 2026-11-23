@@ -5588,9 +5588,15 @@ LOOKUP I pys_dict_find_int_nobox(Dict *d, I value) {
   }
 }
 
-/* arithmetic: op 0..11 = + - * / // % ** << >> & | ^ (the program runs a class's dunders first) */
+/* arithmetic: op 0..11 = + - * / // % ** << >> & | ^, and 12 = divmod() (the program runs a class's
+   dunders first) */
 /* GC_NO_ROOT(dops): operator names are C string literals. */
-static const char *const dops[] = {"+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"};
+static const char *const dops[] = {"+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^", "divmod()"};
+static Dyn *dyn_pair(Dyn *x, Dyn *y) {   /* the tuple (x, y), as divmod() returns its quotient and remainder */
+  VTuple *t = pys_alloc(sizeof(VTuple) + 2 * sizeof(I)); t->len = 2;
+  t->a[0] = (I)x; t->a[1] = (I)y;
+  return dtuple(t);
+}
 /* (CPython's text names an in-place operator by its own symbol, **= too, and ** as "** or pow()") */
 static _Noreturn NOMERGE void dyn_unsupported(Dyn *a, Dyn *b, I op, int inplace) {
   failf("TypeError: unsupported operand type(s) for %s%s: '%s' and '%s'", dops[op], inplace ? "=" : op == 6 ? " or pow()" : "", DNAME(a), DNAME(b));
@@ -5621,6 +5627,10 @@ static Dyn *dyn_binop(Dyn *a, Dyn *b, I op, int inplace, int promote) {   /* a O
   if (dnum(a) && dnum(b)) {
     if (promote || dwide(a) || dwide(b)) {
       Big x = dbigint(a), y = dbigint(b);
+      if (op == 12) {   /* (x // y first: its ZeroDivisionError is divmod()'s) */
+        Dyn *q = dboxbig(pys_big_op(x.lo, x.hi, y.lo, y.hi, 3));
+        return dyn_pair(q, dboxbig(pys_big_op(x.lo, x.hi, y.lo, y.hi, 4)));
+      }
       if (op == 3) return pys_dyn_float(pys_big_truediv(x.lo, x.hi, y.lo, y.hi));
       if (op == 6 && (y.hi ? ((Mpz *)y.hi)->size < 0 : y.lo < 0))
         return pys_dyn_float(pys_fpow(pys_big_float(x.lo, x.hi), pys_big_float(y.lo, y.hi)));
@@ -5645,9 +5655,10 @@ static Dyn *dyn_binop(Dyn *a, Dyn *b, I op, int inplace, int promote) {   /* a O
       r = op == 9 ? x & y : op == 10 ? x | y : x ^ y;
       return ka == DK_BOOL && kb == DK_BOOL ? dbool(r) : pys_dyn_int(r);   /* (True & False is a bool) */
     }
+    case 12: { Dyn *q = pys_dyn_int(pys_floordiv(x, y)); return dyn_pair(q, pys_dyn_int(pys_mod(x, y))); }
     }
   }
-  if ((ka == DK_FLOAT || dnum(a)) && (kb == DK_FLOAT || dnum(b)) && op <= 6) {
+  if ((ka == DK_FLOAT || dnum(a)) && (kb == DK_FLOAT || dnum(b)) && (op <= 6 || op == 12)) {
     Big ax = dbigint(a), bx = dbigint(b);
     double x = ka == DK_FLOAT ? dbl(a->v) : pys_big_float(ax.lo, ax.hi), y = kb == DK_FLOAT ? dbl(b->v) : pys_big_float(bx.lo, bx.hi);
     switch (op) {
@@ -5658,6 +5669,11 @@ static Dyn *dyn_binop(Dyn *a, Dyn *b, I op, int inplace, int promote) {   /* a O
     case 4: return pys_dyn_float(pys_ffloordiv(x, y));
     case 5: return pys_dyn_float(pys_fmod(x, y));
     case 6: return pys_dyn_float(pys_fpow(x, y));
+    case 12: {   /* (CPython's float_divmod, whose quotient and remainder // and % give) */
+      if (y == 0) pys_fail("ZeroDivisionError: float divmod()");
+      Dyn *q = pys_dyn_float(pys_ffloordiv(x, y));
+      return dyn_pair(q, pys_dyn_float(pys_fmod(x, y)));
+    }
     }
   }
   if (op == 0 && dseq(a)) {
@@ -5742,6 +5758,39 @@ static Dyn *dyn_unary(Dyn *a, I op, int promote) {   /* op 0..3: - + ~ abs */
 }
 Dyn *pys_dyn_unary(Dyn *a, I op) { return dyn_unary(a, op, 0); }
 Dyn *pys_dyn_unary_promote(Dyn *a, I op) { return dyn_unary(a, op, 1); }
+/* round(x, nd) of an int x past 64 bits, or in a module that promotes ints, for nd < 0: the
+   nearest multiple of m = 10**-nd, a tie to the even multiple, as CPython's _PyLong_DivmodNear
+   gives it; 0 where |x| < m / 2, without making m */
+static Dyn *dyn_round_big(Big x, I nd) {
+  if (nd < -pys_big_bit_length(x.lo, x.hi)) return pys_dyn_int(0);
+  Big m = pys_big_op(10, NULL, -nd, NULL, 10);
+  Big q = pys_big_op(x.lo, x.hi, m.lo, m.hi, 3), r = pys_big_op(x.lo, x.hi, m.lo, m.hi, 4);   /* (0 <= r < m) */
+  Big twice = pys_big_op(r.lo, r.hi, 2, NULL, 2);
+  I c = pys_big_cmp(twice.lo, twice.hi, m.lo, m.hi);
+  if (c > 0 || (c == 0 && pys_big_op(q.lo, q.hi, 1, NULL, 5).lo)) q = pys_big_op(q.lo, q.hi, 1, NULL, 0);
+  return dboxbig(pys_big_op(q.lo, q.hi, m.lo, m.hi, 2));
+}
+/* round(x) (n NULL) and round(x, n) of an int, a bool or a float, as int.__round__ and
+   float.__round__ give them; the program runs a class's own __round__ first, and passes the
+   __index__() of an object n. An exact int stays itself where no digits are dropped, as
+   CPython's does; a float rounds half to even, to an int, or with n to a float */
+static Dyn *dyn_round(Dyn *x, Dyn *n, int promote) {
+  int k = DKIND(x);
+  if (!dnum(x) && k != DK_FLOAT) failf("TypeError: type %s doesn't define __round__ method", DNAME(x));
+  if (n && !dnum(n)) failf("TypeError: '%s' object cannot be interpreted as an integer", DNAME(n));
+  /* (an n past 64 bits is clipped, as PyNumber_AsSsize_t clips it for float.__round__) */
+  I nd = !n ? 0 : !dwide(n) ? n->v : ((Mpz *)n->v)->size < 0 ? INT64_MIN : INT64_MAX;
+  if (k == DK_FLOAT) {
+    double d = dbl(x->v);
+    if (n) return pys_dyn_float(pys_round_n(d, nd));
+    return promote ? dboxbig(pys_big_from_float(nearbyint(d))) : pys_dyn_int(pys_round(d));
+  }
+  if (!n || nd >= 0) return k == DK_INT ? x : pys_dyn_int(x->v);   /* (round(True) is 1) */
+  if (promote || dwide(x)) return dyn_round_big(dbigint(x), nd);
+  return pys_dyn_int(pys_round_int(x->v, nd));
+}
+Dyn *pys_dyn_round(Dyn *x, Dyn *n) { return dyn_round(x, n, 0); }
+Dyn *pys_dyn_round_promote(Dyn *x, Dyn *n) { return dyn_round(x, n, 1); }
 
 /* len(), items, membership and iteration of the builtin containers and str */
 I pys_dyn_len(Dyn *x) {

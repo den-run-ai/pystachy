@@ -676,7 +676,7 @@ boundaries documented below and under [Deviations](#deviations).
 | --- | --- |
 | Operators | Arithmetic, comparisons, truth, `is`, `in` and augmented assignment |
 | Containers | Indexing; str/list/tuple slicing; item assignment and deletion; unpacking; `len()`; `list()`; `dict.update()` |
-| Conversion and formatting | `str()`, `repr()`, `int()`, `float()`, `bool()`, `abs()`, `hash()`, `id()`, f-strings and `format()` |
+| Conversion and formatting | `str()`, `repr()`, `int()`, `float()`, `bool()`, `abs()`, `round()`, `divmod()`, `chr()`, `ord()`, `hex()`, `oct()`, `bin()`, `hash()`, `id()`, f-strings and `format()` |
 | Reductions and ordering | `sum()`, `sorted()`, `min()` and `max()`, including streamed generators |
 | Iteration | `iter()`, `next()` with an optional default, and `reversed()`; see [Iteration](#iteration) |
 | Strings | `str.join()` and supported builtin methods |
@@ -741,6 +741,19 @@ explicit [fixed-width destinations](python-int.md#64-bit-boundaries) can still n
 A nonnegative typed `int` also retains its identity when `abs(x)` reaches an
 `Any` consumer such as `inspect.Parameter.default`. A negative input computes
 a new magnitude, subject to the small-integer cache.
+
+`divmod()` runs as a binary operator does: the left operand's `__divmod__`, else the right
+operand's `__rdivmod__` (a subclass's first), else the numbers' own quotient and remainder,
+with CPython's `ZeroDivisionError` text for ints and floats. `round()` calls a boxed object's
+`__round__`, with no argument where `ndigits` is `None`, as CPython calls it. An int keeps its
+identity where no digits are dropped, a float rounds half to even, and an `ndigits` is taken by
+its `__index__()`, once the rounded value's type is found to have `__round__`. `chr()`, `hex()`,
+`oct()` and `bin()` take an `Any` value by the index protocol, and `ord()` a `str`, each with
+CPython's `TypeError` for another value (`tests/programs/inference/dynany_divmod.py`,
+`dynany_round.py`, `dynany_chr_ord_hex.py`). The calling module's integer policy applies as
+for `abs()`: rounding a float past 64 bits raises `OverflowError` in a dynamic-only module and
+promotes with both opt-ins, where ints past 64 bits also round to a multiple of a power of ten
+and print in hexadecimal (`dynany_builtins_promote.py`).
 
 ### Dictionary union and updates
 
@@ -1150,9 +1163,9 @@ can still need an explicit `list[Any]` destination.
   mutable-container layouts remain unsupported except for the native `list[int]`
   boundary described in [The typed/dynamic contract](#the-typeddynamic-contract).
 
-- Rejected at compile time where an argument is an `Any` value: `divmod()`, `round()`,
-  `chr()`, `ord()`, `bin()`, `hex()`, `oct()`, `dict()`, `tuple()` (`tuple(list(x))` works),
-  `hasattr()`, `setattr()` and `del` of an attribute. Literal-name `getattr()` uses
+- Rejected at compile time where an argument is an `Any` value: `dict()`, `tuple()`
+  (`tuple(list(x))` works), `hasattr()`, `setattr()` of a name only the run time knows and
+  `del` of an attribute. Literal-name `getattr()` uses
   dynamic attribute lookup, including the default form described under
   [Literal-name attribute reads](#literal-name-attribute-reads); this
   does not establish general runtime-name reflection. The supported forms of

@@ -1,0 +1,97 @@
+argument x
+3
+argument x
+-3
+argument x
+1
+argument x
+2
+argument x
+4
+argument x
+0
+argument x
+1000000000000000
+argument x
+ValueError cannot convert float NaN to integer
+argument x
+OverflowError cannot convert float infinity to integer
+argument x
+TypeError type str doesn't define __round__ method
+argument x
+TypeError type NoneType doesn't define __round__ method
+argument x
+Price.__round__ None
+price
+argument x
+Whole.__round__
+7
+argument x
+argument n
+1200
+argument x
+argument n
+1200
+argument x
+argument n
+1400
+argument x
+argument n
+7
+argument x
+argument n
+7
+argument x
+argument n
+0
+argument x
+argument n
+2.67
+argument x
+argument n
+1200.0
+argument x
+argument n
+2
+argument x
+argument n
+TypeError 'float' object cannot be interpreted as an integer
+argument x
+argument n
+TypeError 'str' object cannot be interpreted as an integer
+argument x
+argument n
+TypeError type str doesn't define __round__ method
+argument x
+argument n
+TypeError type NoneType doesn't define __round__ method
+argument x
+argument n
+Digits.__index__
+2.5
+argument x
+argument n
+Digits.__index__
+17
+argument x
+argument n
+Price.__round__ 1
+2.5
+argument x
+argument n
+Price.__round__ None
+price
+argument x
+argument n
+TypeError Whole.__round__() takes 1 positional argument but 2 were given
+argument x
+argument n
+Whole.__round__
+7
+argument x
+argument n
+2.5
+True True False
+1 int
+2.2 20 3
+[exit 0]

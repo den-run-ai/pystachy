@@ -1113,6 +1113,7 @@ RUNTIME: dict[str, str] = {
     "dyn.eq": "bool:%ptr,%ptr|R A I U|", "dyn.ne": "bool:%ptr,%ptr|R A I U|", "dyn.cmp": "bool:%ptr,%ptr,int|R A I U|", "dyn.hash": "int:%ptr|R A I U|",
     "dyn.binop": "dyn:%ptr,%ptr,int|R A I U|", "dyn.inplace": "dyn:%ptr,%ptr,int|R A I U|", "dyn.unary": "dyn:%ptr,int|R A|",
     "dyn.binop_promote": "dyn:%ptr,%ptr,int|R A I U|", "dyn.inplace_promote": "dyn:%ptr,%ptr,int|R A I U|", "dyn.unary_promote": "dyn:%ptr,int|R A|",
+    "dyn.round": "dyn:%ptr,%ptr|R A|", "dyn.round_promote": "dyn:%ptr,%ptr|R A|",
     "dyn.len": "int:%ptr|R rL rD|", "dyn.getitem": "dyn:%ptr,%ptr|R A I U|", "dyn.setitem": "None:%ptr,%ptr,%ptr|R A I U|",
     "dyn.delitem": "None:%ptr,%ptr|R A I U|", "dyn.contains": "bool:%ptr,%ptr|R A I U|",
     "dyn.list_method": "dyn:%ptr,int,%ptr,%ptr,%ptr|R A I U rL wL|",
