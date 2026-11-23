@@ -1,20 +1,16 @@
 ## Native runtime coverage
 
-Commit `e124b71e1ef13dde1afad24bb747bb1621285262`: lines **94.5%** (8273 of 8755) and branches **83.2%** (8742 of 10502) of `runtime.c` (with the `ryu/` and `mpz/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 96.0%, regions 90.8%. `pys_init` ran 6790 times: the program runs whose profiles were written.
+Commit `c0f7d7f6753b2c3c7b282feb81e520924d566813`: lines **94.5%** (8273 of 8755) and branches **83.2%** (8742 of 10502) of `runtime.c` (with the `ryu/` and `mpz/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 96.0%, regions 90.8%. `pys_init` ran 6802 times: the program runs whose profiles were written.
 Programs built by the native compiler against an instrumented runtime; `runtime.py`, compiled by Pystachy, is not measured, nor are the C probes. The compiler's own coverage is the [hosted compiler coverage](https://github.com/den-run-ai/pystachy/blob/badges/coverage.md).
 
 | Suite | Runs | Checks | Time |
 |---|---|---|---:|
-| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 9348 passed, 0 failed | 2888 s |
-| ffi | `tests/ffi/run.sh`, AOT and extension modules | 149 passed, 0 failed | 135 s |
+| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 9360 passed, 0 failed | 2879 s |
+| ffi | `tests/ffi/run.sh`, AOT and extension modules | 149 passed, 0 failed | 185 s |
 
-### Changed since 4998521d28413c6e32506105f836b6db9afeb1d7 (merge base `4998521d2841`)
+### Changed since e124b71e1ef13dde1afad24bb747bb1621285262 (merge base `e124b71e1ef1`)
 
-Changed lines of code: 371 of 388 run (95.6%); their branches: 357 of 478 taken (74.7%).
-
-| File | Lines not run | Branches not taken |
-|---|---|---|
-| `runtime.c` | 168, 6903, 7012, 7747, 8854-8855, 8857, 8862-8865, 8868, 8908-8910, 8996, 9005 | 6924 (1 of 4), 8803 (1 of 2), 8809 (2 of 6), 8814 (2 of 6), 8815 (1 of 4), 8820 (1 of 2), 8821 (1 of 2), 8835 (1 of 2), 8839 (1 of 2), 8842 (1 of 4), 8847 (1 of 4), 8848 (1 of 2), 8850 (3 of 8), 8851 (2 of 6), 8852 (1 of 4), 8853 (1 of 8), 8854 (1 of 2), 8855 (2 of 4), 8857 (1 of 2), 8860 (1 of 2), 8863 (1 of 2), 8864 (1 of 2), 8865 (1 of 2), 8866 (1 of 4), 8867 (1 of 2), 8868 (1 of 2), 8875 (1 of 4), 8876 (1 of 2), 8888 (1 of 2), 8889 (1 of 2), 8892 (1 of 2), 8893 (1 of 6), 8897 (3 of 12), 8902 (1 of 2), 8905 (2 of 4), 8907 (5 of 10), 8915 (2 of 4), 8917 (1 of 2), 8918 (3 of 4), 8929 (2 of 4), 8931 (5 of 12), 8933 (1 of 2), 8935 (1 of 4), 8937 (1 of 6), 8938 (1 of 4), 8939 (1 of 2), 8940 (1 of 4), 8946 (1 of 2), 8953 (1 of 2), 8956 (2 of 4), 8960 (3 of 6), 8963 (1 of 2), 8966 (3 of 6), 8969 (1 of 4), 8978 (1 of 2), 8986 (1 of 2), 8988 (1 of 2), 8996 (1 of 2), 8997 (1 of 4), 9000 (1 of 8), 9011 (1 of 2), 9013 (1 of 2), 9018 (2 of 4), 9020 (1 of 2), 9023 (1 of 2), 9024 (1 of 4), 9033 (1 of 2), 9034 (2 of 4), 9036 (1 of 2), 9043 (3 of 6), 9044 (3 of 6), 9046 (2 of 4), 9049 (3 of 8), 9050 (1 of 2), 9059 (2 of 6), 9064 (1 of 4), 9072 (1 of 2), 9073 (1 of 2), 9076 (1 of 2), 9077 (1 of 2), 9078 (1 of 2), 9086 (1 of 4), 9112 (1 of 4), 9121 (1 of 6), 9126 (1 of 4) |
+Changed lines of code: 0 of 0 run (-); their branches: 0 of 0 taken (-).
 
 | File | Lines | Missed | Lines % | Branches | Missed | Branches % | Functions % | Regions % |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
