@@ -1,0 +1,11 @@
+hi 0 base False False True False
+hi 1 base False False True False
+hi 1 t:a True False True False
+hi 1 t:7 True False True False
+hi 1 u:t:u True True True False
+hi 1 t:v True False True False
+hi 1 t:w True False True False
+hi 1 s2.5 False False True True
+a 3 8 lvl 0 v 9 [1, 2] 2.5
+2 ['f', 'g'] ['h'] ['f'] True
+[exit 0]

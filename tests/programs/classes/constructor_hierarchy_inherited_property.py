@@ -1,4 +1,5 @@
-# error: inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)
+# A class template under an ordinary class (#962) whose __init__ assigns through its base's
+# property: the setter runs (stored is set), and value is no field of its own.
 class Base:
     def __init__(self) -> None:
         self.stored = 0
@@ -17,4 +18,7 @@ class Child(Base):
         self.value: int = value
 
 
-print(Child(3).value)
+c = Child(3)
+print(c.value, c.stored)
+c.value = 4
+print(c.value, c.stored, isinstance(c, Base))

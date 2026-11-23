@@ -989,7 +989,7 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
             # (what its class's __getattr__ returns, called: found before the arguments are evaluated)
             return self.obj_call(hook_read(self, o, m), args, want, resultsoft)
         if m not in ci.methods and not ((m == "_replace" or m == "_asdict" or m == "_make" or m == "index" or m == "count") and o.t in self.nts):
-            self.err(f"'{shown(o.t)}' object has no method '{m}'")  # (a specialization's is its class's)
+            self.err(f"'{shown(o.t)}' object has no method '{m}'" + self.tmpl_hint(o.t, m))  # (a specialization's is its class's)
         self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
         if m == "_asdict" and m not in ci.methods:
             return self.asdict(o, args)

@@ -1324,7 +1324,8 @@ determines the callable's result type.
 
 A class may derive from a class template that has no base of its own
 ([#962](https://github.com/den-run-ai/pystachy/issues/962)). Each specialization of the
-template is a class of its own and the root of a hierarchy of its own:
+template is a class of its own and the root of a hierarchy of its own (a template under an
+ordinary class, [below](#class-templates-under-an-ordinary-class), is not):
 
 - A subclass without an `__init__` of its own runs the template's and is a class template
   too. Each specialization of the template is made together with one specialization of each
@@ -1379,13 +1380,59 @@ The compiler rejects, with a message that names the limit: a subclass with a sec
 decorator; an `__init__` that calls `super().__init__(...)` other than once at its top level, or
 with arguments whose types only compiled code tells
 ([error test](../../tests/errors/classes/template_subclass_template_init_args.py)); a template
-with a base of its own, such as `logging`'s `Logger`, whose base `Filterer` is an ordinary class
-([error test](../../tests/errors/classes/template_fixed_base.py)); a template whose `__init__`
-makes an object of its subclass without an `__init__`; and `class C(Box[T])`, which passes a
-type variable on. An imported module's subclass of a class template is compiled where the
-program uses it, as an imported subclass of a fixed-layout class is, and left out otherwise
-([test](../../tests/programs/classes/template_subclass_imported.py),
+whose `__init__` makes an object of its subclass without an `__init__`; and `class C(Box[T])`,
+which passes a type variable on. An imported module's subclass of a class template is compiled
+where the program uses it, as an imported subclass of a fixed-layout class is, and left out
+otherwise ([test](../../tests/programs/classes/template_subclass_imported.py),
 [test](../../tests/programs/classes/template_subclass_imported_template_init.py)).
+
+#### Class templates under an ordinary class
+
+A class template may derive from an ordinary class, as `class T(Base)` whose `__init__` has
+unannotated parameters does under a `Base` with an annotated one (#962). Each specialization of
+`T` derives from `Base`: it has `Base`'s fields and methods, a call through a value of `Base`
+selects its override, and a variable, field, parameter or list typed `Base` holds objects of
+`Base` and of every specialization of every template under it
+([test](../../tests/programs/classes/template_under_base.py)), also where `Base` derives from
+another class ([test](../../tests/programs/classes/template_under_chain.py)). Its objects read
+the class attributes of `Base` and of the classes it derives from, with their current values,
+where `T`, a member or a subclass does not bind them again, as an ordinary subclass's objects do
+([test](../../tests/programs/classes/template_under_class_attrs.py),
+[test](../../tests/programs/classes/template_under_siblings.py),
+[test](../../tests/programs/classes/template_under_nested_attrs.py)), and so does `T.attr`
+([test](../../tests/programs/classes/template_under_class_attr.py)); assigning one through `T` is
+an error, as through an ordinary subclass
+([error test](../../tests/errors/classes/template_under_class_store.py)). Where `T`, a member or
+a subclass does bind one again, its objects read their own class's value, also after the
+program assigns the base's (`Base.y = 7`)
+([test](../../tests/programs/classes/template_under_class_variable.py),
+[with stores through the subclasses](../../tests/programs/classes/template_under_class_variable_stores.py)).
+`type(self)` of such
+an object is `T`, a class template, which is no value
+([error test](../../tests/errors/classes/template_under_type_attr.py)). `isinstance(x, T)`
+holds for an object of any specialization of `T` or of a class that derives from one, also those
+that code makes after the test is compiled, and `isinstance(x, Base)` for all of them
+([test](../../tests/programs/classes/template_under_isinstance.py)); it narrows `x` to no one
+type, so a method or field of `T`'s own is read through a value of `Base` only where `Base` has
+it ([error test](../../tests/errors/classes/template_under_narrow.py)). An annotation that names
+`T` types nothing, as for any class template, and `Base` types a location that holds them all.
+`T`'s own subclasses are those of a class template above
+([test](../../tests/programs/classes/template_fixed_base.py)). The
+specializations are made before any code is compiled: one that code makes first is made in turn,
+and the program is compiled again, so its arguments may not be objects of a class template's
+specialization, lambdas, nested functions or bound methods
+([error test](../../tests/errors/classes/template_under_lambda.py)). An imported module's template
+under an ordinary class is compiled where the program uses it
+([test](../../tests/programs/classes/template_under_imported.py)).
+
+The base and every class it derives from must be ordinary classes: not a dataclass
+([error test](../../tests/errors/classes/template_under_dataclass.py)), a `NamedTuple`
+([error test](../../tests/errors/classes/template_under_namedtuple.py)), an exception class, a
+builtin type's subclass or a generic class, and with no `__slots__`
+([error test](../../tests/errors/classes/template_under_slots.py)), secondary base,
+`__init_subclass__`, `__class_getitem__` or `__init__` whose parameters make it a template; the
+template has one base and no decorator. A template whose own fields all have annotations keeps
+one class ([fixed-layout constructors](#class-templates-and-generic-classes)).
 
 ### Explicit generic classes
 

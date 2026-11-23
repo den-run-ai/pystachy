@@ -1,0 +1,4 @@
+rex! rex! True
+cat False
+max True
+[exit 0]

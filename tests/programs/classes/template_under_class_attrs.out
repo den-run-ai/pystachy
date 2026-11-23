@@ -1,0 +1,16 @@
+Root ra ra 1
+Mid ra ra 1
+Base ra ra 1
+T ra ra 1
+U ra ra 1
+W wa wa 1
+ra/mb/bc Base mb bc
+ra/mb/tc T mb tc
+ra/mb/tc T mb tc
+ra/ub/tc U ub tc
+wa/mb/tc W mb tc
+4 20 20 6 8 cm tc 10 ra ub wa
+5 10 10 10
+5 20 40 20
+['t', 'u'] True 2
+[exit 0]

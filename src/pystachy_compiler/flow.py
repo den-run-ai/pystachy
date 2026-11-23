@@ -582,8 +582,12 @@ def gen_default_home(self, ci: ClassInfo, fl: str) -> ClassInfo:
     # the class whose class body binds class attribute fl of ci: ci's, or the base's that an
     # exception class inherits it from (the same default, which declare_fields copies down;
     # a class body that binds fl again has a default of its own)
-    while fl in ci.fdefault and ci.base in self.classes and fl in self.classes[ci.base].fdefault and self.classes[ci.base].fdefault[fl] is ci.fdefault[fl]:
-        ci = self.classes[ci.base]
+    # (a class template under an ordinary class derives from no class, but its class attributes are
+    # its base's where its body does not bind them again: program.py's template_under)
+    b = ci.base if ci.base != "" else self.tbases.get(ci.name, "")
+    while fl in ci.fdefault and b in self.classes and fl in self.classes[b].fdefault and self.classes[b].fdefault[fl] is ci.fdefault[fl]:
+        ci = self.classes[b]
+        b = ci.base if ci.base != "" else self.tbases.get(ci.name, "")
     return ci
 
 def gen_exc_shadows(self, ci: ClassInfo, fl: str) -> list[ClassInfo]:

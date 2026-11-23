@@ -59,6 +59,7 @@ NOT_RESET = {
 # pipeline belongs to the compilation attempt; nested functions never advance or restore it.
 # tlate keeps the specializations that compiled code made of subclasses whose own __init__ is a
 # template, which each later pass makes before code compiles; newlate says this pass added one.
+# tbases maps each class template under an ordinary class to that class, as declarations find it.
 # ntag is the greatest class tag: a template hierarchy's specialization that a nested compile or
 # dry() makes keeps its class, and so its tag, as classes does (templates.new_tag).
 # bsubn and bsub are each builtin subclass's base and its type (builtin_bases.py): a nested compile
@@ -69,7 +70,7 @@ PROGRAM = """
     consts fieldnames bconsts tconsts tconstdata lconsts strs bstrs strvals vnodes cmexit rtfns opfxs out source_lines fns fll callsites summaries xcls xvals
     xmods xsigs xctors xtypes exctree eh ntboxes nttests opts reds lazy lazyat wake called gflag ocls ocmp hcls one
     xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx xwant newwant ncand retseen
-    template_instances template_retained retainers unsupported hierarchies deferred_hierarchies tlate newlate ntag cnodes hooks chooks flagged unraised
+    template_instances template_retained retainers unsupported hierarchies deferred_hierarchies tlate newlate tbases ntag cnodes hooks chooks flagged unraised
     noneglobals intglobals rangeused objectused abcsets declflag complexused intat strglobals globanns strtuples abstracts abcmeta
     constflags late ext libdir prefix moddirs csyms csymline cdirect extvars rtmode rtdefs
     rtcache externs deps comp flowctx closures clokeys adapters adrets ncv dispatchers cacheforms decorated
