@@ -21,8 +21,9 @@
 # WASI_SYSROOT, a wasi-libc sysroot (default: Ubuntu's wasi-libc package, whose headers and
 # libraries lie in /usr/include/wasm32-wasi and /usr/lib/wasm32-wasi); WASM_RUNTIME, the
 # runtime's directory (default build/wasm); WASM_OPT, the -O level of programs (default 2); PY,
-# the Python that runs wasm/wasm32_ir.py (default python3). WASM_EH=standard targets try_table;
-# linking LLVM programs with catches then requires Binaryen wasm-opt with --emit-exnref.
+# the Python that runs wasm/wasm32_ir.py and wasm/spill_roots.py (default python3).
+# WASM_EH=standard targets try_table; linking LLVM programs with catches then requires Binaryen
+# wasm-opt with --emit-exnref.
 set -eu
 cd "$(dirname "$0")/.."
 PYSTACHY=${PYSTACHY:-./pystachy}
@@ -124,8 +125,11 @@ program() ( # source|ir INPUT OUTPUT (a dash streams IR input or Wasm output)
   "${LLVM}clang" --target=$TARGET -O"$OPT" ${ehflag:+"$ehflag"} -c -x ir "$t/prog-wasi.ll" -o "$t/prog.o" -Wno-override-module
   # --fatal-warnings: a call whose signature differs from its definition's (which would trap)
   # shellcheck disable=SC2086
-  "${LLVM}clang" --target=$TARGET --sysroot="$SYS" "$t/prog.o" "$@" -o "$output" \
+  "${LLVM}clang" --target=$TARGET --sysroot="$SYS" "$t/prog.o" "$@" -o "$t/linked.wasm" \
     -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
+  # the references in WebAssembly locals, where the collector's scan finds them; this turns it on
+  # (WASM_SPILL_CONTROL=1 turns it on without them: CI's control, which must then fail)
+  "$PY" wasm/spill_roots.py ${WASM_SPILL_CONTROL:+--no-spill} "$t/linked.wasm" "$output"
   if [ "$standard_command" = true ]; then
     # (an exnref block type needs reference types, which LLVM 18's target features lack)
     wasm-opt --enable-exception-handling --enable-reference-types --emit-exnref "$output" -o "$t/standard.wasm"

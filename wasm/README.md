@@ -33,6 +33,7 @@ caller's thread and its stack.
 `wasm/build.sh program` runs `pystachy ir`, adapts the IR to wasm32 (`wasm32_ir.py`),
 compiles it with `clang --target=wasm32-wasi -O2` and links it with `wasm-ld` against the
 runtime. The link treats a signature mismatch as an error, because a mismatched call traps.
+`spill_roots.py` then rewrites the linked command so the collector can find its references.
 
 ## Without LLVM: the typed IR emitter
 
@@ -233,15 +234,22 @@ covers a 2,000-container round trip and catching `RecursionError` on deeper inpu
 
 ## What differs from a native build
 
-- **The collector is off.** The conservative stack scan cannot see WebAssembly locals, so
-  `runtime.c` disables collection under WASI. The direct reactor registers the program’s global pointer slots before execution.
+- **The collector runs only in LLVM/WASI commands.** It scans the stack conservatively,
+  but WebAssembly keeps values in locals and on the operand stack, where no scan reaches.
+  Around each call that may reach the collector, `spill_roots.py`'s rewrite reserves a frame
+  on the linear-memory stack. The frame holds the `i32` and `i64` locals live after the call,
+  and such values beneath its arguments. A callee that collects only on its way to an
+  exception or exit, as `pys_fail` does, needs only what a catch reads. The collector scans
+  that stack up to `__stack_high`. `runtime.c` turns collection on only in a module the pass
+  rewrote, so `runtime.wasm` and directly emitted programs keep it off.
+  The direct reactor registers the program's global pointer slots before execution.
   For collector testing, compile a direct program with `WASM_GUEST_ROOTS=1`. The emitter
   mirrors its named i32 and i64 locals, including packed references, on the runtime's linear
   stack. Its conservative scan can retain dead temporaries until their activation returns
   or unwinds. The setting increases stack usage and code size. Automatic collection stays
-  disabled because active runtime C and compiled runtime.py locals can still hide references.
-  The shared heap tracer scans complete four-byte pointer words on wasm32.
-  The engine caps memory (4 GiB for wasm32).
+  disabled there because active runtime C and compiled runtime.py locals can still hide references.
+  The shared heap tracer scans complete four-byte pointer words on wasm32. Freed memory is
+  reused, never returned: linear memory cannot shrink. The engine caps it (4 GiB for wasm32).
 - **LLVM/WASI commands use WebAssembly exception handling.** The adapter lowers native
   landing pads to Wasm catches for Pystachy's exception payload. A catch unwinds to the
   handler of the enclosing `try`, as clang's nested catches do: LLVM counts the handler's
@@ -297,6 +305,7 @@ python3 wasm/check_corpus.py --log report.txt      # a tests/run.sh report of th
 | `tir_wasm.py` | Typed IR module text to a WebAssembly module, without LLVM |
 | `reactor.c` | `runtime.wasm`'s entry: arguments, `pys_init`, the program's code, `pys_finish` |
 | `wasm32_ir.py` | Adapts constants, command entry, exception landing pads and libc calls to wasm32 |
+| `spill_roots.py` | Stores references held in a linked command's locals where the collector's stack scan finds them |
 | `command_eh.c` | Transfers exception payloads to LLVM/WASI command handlers and resumes uncaught reporting |
 | `wasi_stubs.c` | Missing POSIX functions, unwinder stubs, working directory |
 | `include/` | Headers that `wasi-libc` lacks (`dlfcn.h`, `pthread.h`, `pwd.h`, `sys/wait.h`) and declarations `runtime.c` needs (`pystachy_wasi.h`) |

@@ -402,6 +402,13 @@ __attribute__((noinline, no_sanitize("address"))) static void scan(const W *p, c
     mstk[msp++] = (uintptr_t)s->size & ~(sizeof(W) - 1);   /* whole pointer words, in bytes */
   }
 }
+#ifdef __wasi__
+/* 1 in a module wasm/spill_roots.py rewrote: around each call that may collect, it stores the
+   references that WebAssembly locals and operand stacks hold in a frame on the linear-memory
+   stack, which the scan reads (wasm/README.md). The pass replaces this body; the volatile read
+   keeps callers from folding it */
+__attribute__((noinline)) static int wasi_roots_spilled(void) { static volatile int spilled; return spilled; }
+#endif
 __attribute__((noinline, no_sanitize("address"))) static void mark_roots(void) {
   scan((const W *)((uintptr_t)__builtin_frame_address(0) & ~(uintptr_t)7), (const W *)gc_bottom);
   for (I i = 0; i < gc_nroots; i++) scan((const W *)gc_roots[i], (const W *)gc_roots[i] + 1);
@@ -962,7 +969,7 @@ static void gc_init(char *sb, I **roots, I nroots) {
 #endif
   gc_off = e && !strcmp(e, "off");
 #ifdef __wasi__
-  gc_off = 1;                          /* (WASI, wasm/README.md: the stack scan cannot see WebAssembly's locals) */
+  if (!wasi_roots_spilled()) gc_off = 1;   /* (WASI: the stack scan cannot see WebAssembly's locals without it) */
 #endif
   gc_stats = e && !strcmp(e, "stats");
   if (!gc_off && (e = getenv("PYSTACHY_GC_STRESS")) && decnum(e, 0) > 0) gc_stress = decnum(e, 0);
