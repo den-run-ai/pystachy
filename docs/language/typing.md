@@ -1225,7 +1225,9 @@ literal default. The instance decides its tests of the selector: truth, `==`, `!
 `False`. An optional parameter given a value holds only that value's type, so
 `if key is None: return xs` leaves `key` an `int` after it for the call `find(xs, 5)`. A call
 inside such an instance that passes its own selector on (`return repair(s, logging)`) makes
-the caller compiled for each literal too.
+the caller compiled for each literal too. Calls through the function as a value, as
+`map(repair, xs)` and a `Callable` parameter make them, leave a selector they do not pass to
+its literal default.
 
 This applies to module-level and nested functions and to instance methods of classes that
 take part in no inheritance, also in modules that opt in to dynamic `Any` (where `-> Any`
