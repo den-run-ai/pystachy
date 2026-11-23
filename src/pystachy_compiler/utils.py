@@ -7,7 +7,7 @@ from src.pystachy_compiler.diagnostics import FILES, LINES, dynamic_program, fai
 from src.pystachy_compiler.ir import Ins
 from src.pystachy_compiler.symbols import ClassInfo, Closure, FnInfo
 from src.pystachy_compiler.llvm_abi import llvm_decl
-from src.pystachy_compiler.names import own_name, short
+from src.pystachy_compiler.names import VIEWSHOW, own_name, short
 from src.pystachy_compiler.specs import (
     BIG,
     BIGOPT,
@@ -439,6 +439,8 @@ def tname(t: str) -> str:
         return "builtin_function_or_method" if t.startswith("fn[b:") or t.startswith("fn[d:") else "method" if t.startswith("fn[m:") else "function"
     if is_callable(t):
         return "function"
+    if t in VIEWSHOW:
+        return VIEWSHOW[t]  # (a view of a container that a value of object holds: interfaces.py)
     b = t.find("[")
     return t[:b] if b >= 0 else own_name(t)  # (a nested class's __name__, Outer.Inner's Inner: as CPython's messages)
 

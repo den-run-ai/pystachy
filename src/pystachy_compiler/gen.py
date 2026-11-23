@@ -296,6 +296,13 @@ from src.pystachy_compiler.interfaces import (
     gen_iface_narrowed as interfaces_iface_narrowed,
     gen_object_iface as interfaces_object_iface,
     gen_is_object as interfaces_is_object,
+    gen_is_view as interfaces_is_view,
+    gen_view_join as interfaces_view_join,
+    gen_object_convert as interfaces_object_convert,
+    gen_holds_object as interfaces_holds_object,
+    gen_container_eq as interfaces_container_eq,
+    gen_container_find as interfaces_container_find,
+    gen_compare_helper as interfaces_compare_helper,
     gen_object_impl as interfaces_object_impl,
     gen_to_object as interfaces_to_object,
     gen_union_object as interfaces_union_object,
@@ -689,6 +696,7 @@ from src.pystachy_compiler.conversions import (
     gen_as_float as conversions_as_float,
     gen_as_int as conversions_as_int,
     gen_index_of as conversions_index_of,
+    gen_bool_int as conversions_bool_int,
     gen_method_index as conversions_method_index,
     gen_coerce as conversions_coerce,
     gen_desc as conversions_desc,
@@ -1093,6 +1101,7 @@ from src.pystachy_compiler.expressions import (
     gen_percent as expressions_percent,
     gen_percent_map as expressions_percent_map,
     gen_percent_opt as expressions_percent_opt,
+    gen_percent_object as expressions_percent_object,
     gen_pformat as expressions_pformat,
     gen_str_field as expressions_str_field,
     gen_str_fields as expressions_str_fields,
@@ -3225,6 +3234,9 @@ class Gen:
     def index_of(self, v: Val, none: str) -> Val:
         return conversions_index_of(self, v, none)
 
+    def bool_int(self, v: Val) -> Val:
+        return conversions_bool_int(self, v)
+
     def method_index(self, v: Val, dflt: str, none: str) -> Val:
         return conversions_method_index(self, v, dflt, none)
 
@@ -3849,8 +3861,8 @@ class Gen:
     def iface_isinst(self, v: Val, c: Node) -> Val:
         return interfaces_iface_isinst(self, v, c)
 
-    def iface_narrow(self, c: Node) -> str:
-        return interfaces_iface_narrow(self, c)
+    def iface_narrow(self, c: Node, t: str) -> str:
+        return interfaces_iface_narrow(self, c, t)
 
     def iface_narrowed(self, v: Val, nt: str) -> Val:
         return interfaces_iface_narrowed(self, v, nt)
@@ -3860,6 +3872,27 @@ class Gen:
 
     def is_object(self, t: str) -> bool:
         return interfaces_is_object(self, t)
+
+    def is_view(self, t: str) -> bool:
+        return interfaces_is_view(self, t)
+
+    def view_join(self, a: str, b: str) -> str:
+        return interfaces_view_join(self, a, b)
+
+    def object_convert(self, v: Val, kind: str) -> Val:
+        return interfaces_object_convert(self, v, kind)
+
+    def holds_object(self, t: str) -> bool:
+        return interfaces_holds_object(self, t)
+
+    def container_eq(self, op: str, a: Val, b: Val) -> Val:
+        return interfaces_container_eq(self, op, a, b)
+
+    def container_find(self, what: str, x: Val, xs: Val) -> Val:
+        return interfaces_container_find(self, what, x, xs)
+
+    def compare_helper(self, key: str, src: str, args: list[Val], ret: str) -> Val:
+        return interfaces_compare_helper(self, key, src, args, ret)
 
     def object_impl(self, t: str) -> str:
         return interfaces_object_impl(self, t)
@@ -5238,6 +5271,9 @@ class Gen:
 
     def percent_opt(self, fmt: str, v: Val) -> Val:
         return expressions_percent_opt(self, fmt, v)
+
+    def percent_object(self, fmt: str, v: Val) -> Val:
+        return expressions_percent_object(self, fmt, v)
 
     def pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node], vt: Val | None = None) -> Val:
         return expressions_pformat(self, fmt, items, rtnone, lazy, vt)

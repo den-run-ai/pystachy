@@ -701,9 +701,10 @@ class UnionProof:
         receiver = self.native.get(i.a[0].v, "")
         if t == "S":
             return receiver if receiver != "" else t
-        if receiver.startswith("list[") and (i.op == "list.load" or (i.op == "rt" and i.s == "list.get")):
+        if receiver.startswith("list[") and (i.op == "list.load" or (i.op == "rt" and i.s == "list.get")) and at == 0:
             # The packed result still carries the receiver definition's semantic
-            # element, independently of narrowed operand or result annotations.
+            # element, independently of narrowed operand or result annotations
+            # (its index operand is an int, which a union's payload may be).
             return targs(receiver)[0]
         if receiver.startswith("dict[") and (t == "*K" or t == "*V"):
             return targs(receiver)[0 if t == "*K" else 1]

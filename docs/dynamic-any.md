@@ -284,7 +284,8 @@ in either direction yet: the box of a protocol value is not its object, and the 
 table is chosen from the static type it converts from. Typed protocol storage remains
 separate from dynamic `Any` storage. [Values of `object`](language/typing.md#object) cross both
 ways: the value one holds becomes an `Any` value as a value of its type does (`None` the `None`
-box), and an `Any` value becomes one that holds its box, whose operations are `Any`'s
+box), as does a view of the container one holds, and an `Any` value becomes one that holds its
+box, whose operations are `Any`'s (a view of an `Any` container reads it by them too)
 (`tests/programs/classes/object_storage_from_dynamic.py`,
 `tests/programs/classes/object_storage_to_dynamic.py`). A list or dict display of distinct
 iterators keeps `Any` items, as other mixed displays do; the other locations where they meet hold
@@ -1146,7 +1147,9 @@ can still need an explicit `list[Any]` destination.
   (`tests/programs/inference/dynany_namedtuple.py`), and `isinstance(x, tuple)` is true for it
   (`tests/programs/inference/dynany_isinstance_namedtuple.py`), but it is no sequence there: `len()`,
   indexing and iteration raise `TypeError`, and an object of another NamedTuple class compares
-  with it by identity (an ordering raises `TypeError`), where CPython compares their fields.
+  with it by identity (an ordering raises `TypeError`), where CPython compares their fields. A
+  value of `object` that holds such an `Any` value is no sequence either, also where a tuple test
+  narrowed it to a view (`tests/deviations/object_view_dynamic_namedtuple.py`).
 
 - A static or class method read through an object held in `Any` without a call raises `AttributeError`
   (typed code rejects a static method as a value at compile time), and so does a call of a

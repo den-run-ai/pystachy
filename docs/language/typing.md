@@ -539,7 +539,14 @@ exception behavior. Each operand evaluates once, left to right, before dispatch;
 `None` raises `TypeError`. Results remain `int` or `float` according to the actual
 operands; when both are possible the result is `int | float`, including when all
 current calls happen to pass integers. Declare that result bound explicitly in
-returns and mutable storage. Power and bitwise operations still require narrowing.
+returns and mutable storage. Power and bitwise operations still require narrowing, but a
+`bool | int` (as `isinstance(x, int)` narrows a value of [`object`](#object) to) is the int it
+is wherever CPython reads a bool as its int and the result is an `int` either way: an index, a
+slice bound, a repetition count, `range()`, `hex()`, `oct()`, `bin()`, `%d` and `%x`, a builtin
+method's index or count, `**`, `<<` and `>>`, and `&`, `|` and `^` with an `int`
+([test](../../tests/programs/classes/object_storage_bool_int.py)). A variable, a parameter or a
+field of type `int` takes no `bool | int`, which would hold the bool itself: `int(x)` converts
+it ([error test](../../tests/errors/classes/object_storage_int_param.py)).
 A union that also holds a str, a list or a dict takes the same operators by each
 pair of member types ([operations on closed unions](#operations-on-closed-unions)).
 
@@ -1145,10 +1152,18 @@ values: list[object] = [1, 2.5, True, "s", b"b", [1], Point(0, 0), int, None]
 It is the stored interface that every type implements, with no method of its own: a value of
 `object` holds the value it was given, not a copy, so a list stored as `object` and changed
 through its typed name shows the change. Numbers, strs, bytes, containers, objects of the
-program's classes, class objects, `None` and `Any` values can be values of `object`; functions
-and `Callable` values, exceptions and their classes, and values of a protocol (convert the object
-itself) cannot. Its operations are those of a protocol's value above, each by its
-value's type ([tests](../../tests/programs/classes/object_storage_values.py)):
+program's classes, class objects, exceptions, `None` and `Any` values can be values of `object`;
+functions and `Callable` values, exception classes, and values of a protocol (convert the object
+itself) cannot. A list, dict or set display stored as `object` that is empty, or whose items no
+one type or union holds, holds values of `object` (a dict's keys are strs where it has none)
+([test](../../tests/programs/classes/object_displays.py)); in a module that opts in to
+[dynamic `Any`](../dynamic-any.md), an empty list or dict display holds `Any` values, as its
+displays of items of no one type do ([test](../../tests/programs/classes/object_storage_empty_dynamic.py)).
+An exception narrows with a builtin
+exception class to `BaseException`, or with one of the program's to its object, and can then be
+raised ([test](../../tests/programs/classes/object_exceptions.py)). Its operations are those of
+a protocol's value above, each by its value's type
+([tests](../../tests/programs/classes/object_storage_values.py)):
 
 - `str()`, `repr()`, printing, f-strings, `format()`, `%s`, `%r` and `%a`, and truth tests;
 - `==` and `!=` with a value of any type: numbers by their values (`1 == 1.0`, `True == 1`),
@@ -1165,17 +1180,44 @@ value's type ([tests](../../tests/programs/classes/object_storage_values.py)):
   which narrows `x` as an `if`, an early `return`, a `continue` or a `while` narrows a union: to
   the class, to `bool`, `float`, `str`, `bytes` or `type[object]`, and to `int | bool` for `int`,
   whose test a bool passes, keeping its own `repr()`
-  ([test](../../tests/programs/classes/object_storage_narrow.py)); where an `int` is expected,
-  `not isinstance(x, bool)` narrows that to `int`, or `int(x)` converts it
+  ([test](../../tests/programs/classes/object_storage_narrow.py)), which indexes, counts and
+  shifts as its int ([`bool | int`](#closed-scalar-unions)); where an `int` variable or
+  parameter takes it, `not isinstance(x, bool)` narrows that to `int`, or `int(x)` converts it
   ([test](../../tests/programs/classes/object_storage_int.py)).
 
-Any other operation of a value that `isinstance()` has not narrowed is a compilation error that
-says so: arithmetic, attributes and methods, calls, indexing, iteration, `len()` and the other
-builtins, orderings, `%d` and the other numeric conversions, `type(x)` as a value and `id()`
-([error tests](../../tests/errors/classes/object_storage_arith.py)). A test of a container type
-narrows nothing, as its items' types are not known. Values of `object` are not dict keys or set
-elements, and the runtime's searches and sorts of their lists and tuples (`in`, `count()`,
-`index()`, `sort()`, `min()`, `max()`) and comparisons of such containers are compilation errors.
+A test of a container type narrows `x` to a read-only view of the container it holds, whose
+items' types are not known: `list` or `tuple` (or both) to `Sequence[object]`, `set` or
+`frozenset` to `AbstractSet[object]`, and `dict` to `Mapping[object, object]`
+([test](../../tests/programs/classes/object_views.py),
+[`Any` containers](../../tests/programs/classes/object_views_dynamic.py)). A view takes the
+operations of `object` and `len()`, iteration (`list(x)` too) and `in`; a sequence's `x[i]`,
+`index()` and `count()`; a mapping's `x[key]`, `get()`, `keys()`, `values()` and `items()`. Each
+item is a value of `object`, and the errors are CPython's (`IndexError`, `ValueError`,
+`KeyError`, and `TypeError` for an unhashable key). A look-up finds the item that is the value
+looked for or equal to it, whatever its type: `1.0` and `True` find a dict's key `1`. The view
+is the container itself, whose changes through its own name it shows, and a value of `object`
+again where one is expected; a change through the view (`append()`, `x[k] = v`, `del x[i]`) is
+a compilation error ([error test](../../tests/errors/classes/object_view_append.py)), as are
+slices and sorts.
+
+One rule decides what a value that `isinstance()` has not narrowed takes besides: an operation
+whose result has one type whatever the value holds is answered by the type it holds, with
+CPython's `TypeError` where that type lacks it (as for `None`): `len()`, `int()`, `float()`, and
+`%d`, `%x`, `%f`, `%c` and the other numeric conversions of `%` formatting, where a tuple held is
+the arguments and a dict the mapping, as CPython takes them when it runs
+([tests](../../tests/programs/classes/object_conversions.py),
+[`%` arguments](../../tests/programs/classes/object_percent_args.py)). An operation whose result's
+type depends on what is held needs `isinstance()` first (or an `Any` value): arithmetic,
+attributes and methods, calls, indexing, iteration, orderings, the other builtins, `type(x)` as a
+value and `id()` are compilation errors that say so
+([error tests](../../tests/errors/classes/object_storage_arith.py)).
+
+Lists, tuples and dicts of values of `object` (also nested in other containers) compare as
+CPython's do, item by item, each pair by identity, then `==` of what it holds: `==` and `!=`
+with containers of any item types, `in`, `index()` and `count()`, and a dataclass's `==` of
+such a field ([test](../../tests/programs/classes/object_containers_eq.py)). Each pair of
+container types compiles one function that does so. Values of `object` are not dict keys or set
+elements, and sorts, `min()` and `max()` of them are compilation errors.
 
 A promoting int of a module that opts in to [promoting ints](../python-int.md) is held as it is
 ([test](../../tests/programs/numbers/python_int_object_storage.py)). There, `isinstance(x, int)`
@@ -1191,7 +1233,11 @@ stores as `object` must be able to become one: a `bytes` value or a dict of type
 `object` is then a compilation error.
 
 A value of `object` is a protocol value's box: a number in it is held by the immutable box of its
-`T | None`, which a conversion allocates where the number has none, and `None` is a null box.
+`T | None`, which a conversion allocates where the number has none, and `None` is a null box. A
+view is the same box, read through entries of its table that each type stored as `object` has
+for the view's operations (one that holds no such container raises `SystemError`, which its
+type test keeps unreached); a dict's look-up through a view compares keys one by one, but a
+`str` key of a `dict[str, V]`.
 
 ## Function and method templates
 

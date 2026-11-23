@@ -594,8 +594,8 @@ def gen_refl_type_attr(self, x: Node, what: str) -> Val:
     # type decides it, else the name in the record of its exact class (refl_class_of)
     v = self.expr(x, "")
     known = self.knownobj(x)
-    if self.is_object(v.t):
-        return self.object_type_attr(v, what)  # (its object's type's: interfaces.py)
+    if self.is_object(v.t) or self.is_view(v.t):
+        return self.object_type_attr(self.to_object(v), what)  # (its object's type's: interfaces.py)
     if v.t == "dyn" and what == "__qualname__":
         return self.dyn_call(self.dyn_dispatcher("qualname", ["dyn"], "str", "__qualname__"), [v])
     if v.t == "dyn" and what == "__name__":

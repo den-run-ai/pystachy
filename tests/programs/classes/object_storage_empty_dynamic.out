@@ -1,0 +1,5 @@
+[] {} [None]
+0 False [] True
+0 None [] False
+1 None 1
+[exit 0]

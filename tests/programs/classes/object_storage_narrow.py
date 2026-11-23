@@ -1,7 +1,8 @@
 # isinstance() of a value of object with a class of the program or a builtin type, which narrows it
 # as an if, an early return, a continue or a while narrows a union: to the class, to bool, int
 # (whose test a bool passes too, keeping its own repr), float, str, bytes or type; a container's
-# test (list, dict, tuple, set) narrows nothing, as its items' types are not known
+# test (list, dict, tuple, set) to a read-only view of the container, whose items' types are not
+# known (object_views.py)
 class Animal:
     def __init__(self, name: str) -> None:
         self.name = name

@@ -208,7 +208,24 @@ applies. Bytes case methods remain ASCII-only.
   holds a number and another number compares their types and values (a float's bits), as PyPy
   does. CPython agrees for a number stored from another value, small ints, bools and a module's
   equal constants; equal numbers it computes apart are two objects there
-  ([deviation](../../tests/deviations/object_number_identity.py)).
+  ([deviation](../../tests/deviations/object_number_identity.py)). A search or comparison of
+  containers of values of `object` tests each pair so first, as CPython tests identity: a list
+  that holds a NaN equals another that holds a NaN of the same bits.
+- **Views of containers stored as `object`:** a [view's](typing.md#object) look-up finds a
+  dict's key, or a set's element, equal to the one looked for after hashing it as CPython does,
+  by comparing them one by one: a key of a class whose `__hash__` disagrees with its `__eq__` can
+  be found where CPython's hash table misses it. Its `keys()`, `values()` and `items()` are new
+  lists, as a dict's are. A NamedTuple's object that an `Any` value holds passes a tuple test,
+  but its view is no sequence, as the [`Any` value](../dynamic-any.md#deviations) is not: `len()`,
+  indexing and iteration raise `TypeError`
+  ([deviation](../../tests/deviations/object_view_dynamic_namedtuple.py)).
+- **Exceptions stored as `object`:** an exception object of a class of the program, and the
+  `BaseException` that an `except` clause of a builtin exception class binds when it is raised,
+  are two values here: a value of `object` that holds the one is neither `is` nor `==` one that
+  holds the other, where CPython has one object.
+- **`%` formatting of a value of `object`:** a format that names keys (`%(name)s`) reads a dict,
+  a list or bytes that the value holds as CPython does, but raises `TypeError: format requires a
+  mapping` for an object of a class with `__getitem__`, which CPython also reads as a mapping.
 
 ### Errors and control flow
 

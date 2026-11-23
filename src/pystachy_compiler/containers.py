@@ -603,6 +603,8 @@ def gen_set_new(self, name: str, args: list[Node], want: str, resultsoft: bool =
             # AbstractSet[T] of any T where one is expected (coerce); its table is an int's,
             # whose lookups hash any slot
             return Val(self.rt("pys_set_new", "ptr", ["i64 0"]), EMPTYFS)
+        if w == "" and self.is_object(want):
+            w = self.ctype(name, ["str"])  # (stored as object, which no other name changes: empty for good, of any element type)
         if w == "":
             self.err(f"cannot infer the type of an empty {name}; add a type annotation ({'s: set[T] = set()' if not fz else 'f: frozenset[T] = frozenset()'})")
         return Val(self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(w))}"], t=self.ctype("set", [selem(w)])), w)
@@ -927,7 +929,7 @@ def gen_key_problem(self, t: str) -> str:
     # why t cannot be a dict's key type, or "" (utils.key_problem): objects too, and dynamic values
     # (hashed by their types at run time: TypeError: unhashable type)
     t = narrow_type(t)  # (a promoting int, also a tuple's, is a key as a 64-bit int: bigints.py)
-    if self.is_object(unopt(t)):
+    if self.is_object(unopt(t)) or self.is_view(unopt(t)):
         return "dict keys cannot be values of object: what each holds hashes and compares as its type does, which only the run time knows (narrow them with isinstance() first)"
     if self.is_iface(unopt(t)):
         return f"dict keys cannot be values of {typestr(unopt(t))}: an interface's objects hash and compare as their classes do, which only the run time knows"

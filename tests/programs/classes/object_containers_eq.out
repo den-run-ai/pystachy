@@ -1,0 +1,14 @@
+True False False True True False
+True True False False True
+True True
+True False True False
+True False True False
+False True False True True True True True
+1 1 1 2 1
+ValueError 'zz' is not in list
+True True 1 2 False
+True 1 0 True
+True False False
+True False False True False
+False True False
+[exit 0]

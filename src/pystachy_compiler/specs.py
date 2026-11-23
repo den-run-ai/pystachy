@@ -841,6 +841,7 @@ CAST_KINDS: dict[str, str] = {
     "object": "a %ptr as a closed union of classes: the object that a box of the union holds (Gen.cmp_object's phi), which only a ptr.cmp, a mach.load of its class word (an int or a %ptr) and member casts read",
     "member": "an object cast's value as one of its union's classes or a class derived from one: Gen.cmp_alts makes one for each class it tells apart, beside the object cast, and only code that a test of the object's class leads to reads it",
     "opaque": "a reference as a str, and back, in lib/_pystachy_copy.py, whose deep-copy memo keeps any reference as a str",
+    "view": "a value of object as a view of the container it holds (Sequence[object], AbstractSet[object], Mapping[object, object]: Gen.iface_narrowed), and a view as that value of object: one box, whose table's entry for each operation of a view raises SystemError where the box holds no such container",
 }
 
 # How an operand may read its value at a type other than the one the value's definition gives it

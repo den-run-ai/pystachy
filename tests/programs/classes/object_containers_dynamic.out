@@ -1,0 +1,7 @@
+True 0 2 True 2
+True 1 1 True True 2
+False 0 False False
+True 0 1 True True
+True 1 1 True
+ValueError P(2) is not in list
+[exit 0]

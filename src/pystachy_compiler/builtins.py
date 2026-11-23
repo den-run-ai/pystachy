@@ -331,6 +331,15 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.num_cmp('!=', Val(r, "int"), Val('0', "int")) if name.endswith("enter") else Val("null", "None")
     if name.startswith("__pys_dict_") or name.startswith("__pys_set_"):
         return self.walk(name, args)
+    if name == "__pys_exc_obj" and self.curfn.name == "<interface>" and len(args) == 1 and self.curfn.ret in self.classes:
+        # (an entry of object's table: the object of a class of the program that a caught exception
+        # raises, which isinstance() proved it holds, as an except clause binds it: interfaces.py)
+        caught = self.expr(args[0], "exc")
+        return Val(self.rt("pys_exc_obj", "ptr", [f"ptr {caught.v}"], t=self.curfn.ret), self.curfn.ret)
+    if name == "__pys_exc_user" and self.curfn.name == "<interface>" and len(args) == 1:
+        # (and the exception that such an object raises, as a builtin exception class's test
+        # narrows it to BaseException: interfaces.py)
+        return self.exc_of(self.expr(args[0], ""))
     if name.startswith("__pys_text_"):
         # The builtin string iterator keeps a byte cursor, just like for_seq. These are
         # internal primitives, so ordinary code cannot confuse byte and character offsets.
@@ -1012,6 +1021,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         vals[0] = self.class_value_builtin(vals[0])  # (a builtin class named: its class object)
     if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id", "abs"]:
         return self.dyn_builtin(name, vals[0])  # (by its box's type: dynamic.py)
+    if len(vals) == 1 and len(kws) == 0 and (self.is_object(vals[0].t) or (self.is_view(vals[0].t) and name != "len")) and name in ["len", "int", "float"]:
+        return self.object_convert(vals[0], name)  # (by the type it holds, whatever it is: interfaces.py)
     if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):
         # A boxed accumulator accepts a wide start without narrowing it to int64.
         return self.dyn_sum(vals[0] if vals[0].t == "dyn" else self.as_list(vals[0], name), vals[1] if len(vals) == 2 else Val("0", "int"))
@@ -1219,6 +1230,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.rres(self.rt(spec[0], rtt(r), [self.rarg(v) for v in vals], "", r if spec[0] == "pys_getenv" else ""), r)
     if len(vals) == 0:
         self.err(f"unsupported call {name}()")
+    if (name == "hex" or name == "oct" or name == "bin") and len(vals) == 1:
+        vals[0] = self.bool_int(vals[0])  # (a bool | int as the int it is, which they ask for: conversions.py)
     v = vals[0]
     t = v.t
     if name == "abs" and len(vals) == 1 and t in self.classes and "__abs__" in self.classes[t].methods:
@@ -3008,6 +3021,21 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     dropped = mc is not None and mc is self.stmtexpr and len(args) == 1 and len(mc.kids) == 2 and args[0] is mc.kids[1]
     if is_set(o.t):
         return self.smethod(o, m, args)
+    if (is_list(o.t) or is_vtuple(o.t)) and (m == "index" or m == "count") and len(args) == 1 and args[0].kind != "kw" and args[0].kind != "starred" and (self.holds_object(o.t) or (args[0].kind == "name" and self.whole == 0 and self.holds_object(self.static_type(args[0])))):
+        # (a search of values of an interface, or for one, a variable's: item is x or item == x,
+        # as CPython's, in a function compiled for their types, interfaces.py)
+        needle = self.expr(args[0], "")
+        found = self.container_find("find" if m == "index" else "count", needle, o)
+        if m == "count":
+            return found
+        absent = self.label()
+        present = self.label()
+        self.cbr(self.num_cmp("<", found, Val("0", "int")).v, absent, present)
+        self.place(absent)
+        missing = self.concat([self.repr(needle), Val(self.sconst(" is not in list"), "str")]) if is_list(o.t) else Val(self.sconst("tuple.index(x): x not in tuple"), "str")
+        self.raise_("ValueError", missing.v)
+        self.place(present)
+        return found
     if is_dict(o.t) and targs(o.t)[0] == "int" and m in ["get", "pop", "setdefault"]:
         dm = self.dict_any_method(o, m, args)
         if dm.t != "":
@@ -3287,7 +3315,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 i += 1
                 continue
             if p == "int":
-                v = self.as_int(v)  # an index or a count may be a bool, as in CPython
+                v = self.as_int(self.bool_int(v))  # an index or a count may be a bool, as in CPython (a bool | int too)
             if base == "dict" and i == 0 and v.t == BIG and self.dict_bigkey(o.t) and (m == "get" or m == "pop" or m == "setdefault"):
                 bigkey = v  # (its {lo, m}, which the runtime functions BKEY names take: bigints.py)
                 av += self.dict_key_args(v, "")

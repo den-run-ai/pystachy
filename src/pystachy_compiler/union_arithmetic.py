@@ -15,6 +15,11 @@ def unarith(op: str, t: str) -> bool:
     return len([m for m in umembers(unopt(t)) if m not in ["int", "float", "bool", "None", COMPLEXC]]) > 0
 
 
+def bool_int(t: str) -> bool:
+    # is t a bool | int (Gen.bool_int reads it as the int it is)
+    return is_union(t) and sorted(umembers(t)) == ["bool", "int"]
+
+
 def none_call_error(name: str, ts: list[str], i: int) -> str:
     # CPython's TypeError message for builtin name called with None as argument i (the others
     # of types ts), where usplit knows it; "" where the call is compiled for None as it is
@@ -50,6 +55,11 @@ def gen_unumeric(self, op: str, a: Val, b: Val, shown: str, unary: bool) -> Val:
         members = umembers(unopt(v.t)) if is_union(unopt(v.t)) else [unopt(v.t)]
         if self.object_union(v.t) and len([m for m in members if m == "str" or m == "file"]) == 0:
             objects = True
+    ab = [bool_int(a.t), not unary and bool_int(b.t)]
+    if not unary and (ab[0] or ab[1]) and (ab[0] or a.t in ["int", "bool", BIG]) and (ab[1] or b.t in ["int", "bool", BIG]) and (op in ["**", "<<", ">>"] or (op in ["&", "|", "^"] and not (ab[0] and ab[1]) and (a.t if ab[1] else b.t) in ["int", BIG])):
+        # (a bool | int, as isinstance(x, int) narrows a value of object to, where the result is an
+        # int whatever it holds, as a bool is an int there: x ** n, x << n, x & 7, ... of its int)
+        return self.arith(op, self.bool_int(a), self.bool_int(b), shown)
     if not objects and op not in (["+", "-"] if unary else ["+", "-", "*", "/", "//", "%"] + (["**"] if cx else [])):
         self.err("closed numeric union arithmetic supports +, -, *, /, //, % and unary + or -; narrow other operations first")
     # A closed value union's (numbers beside a str, a list or a dict, as json.JSONValue is):
