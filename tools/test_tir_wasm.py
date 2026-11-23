@@ -2,6 +2,7 @@
 does not lower (wasm/README.md). Node validates the module where it is installed."""
 import importlib.util
 from pathlib import Path
+import json
 import shutil
 import struct
 import subprocess
@@ -155,7 +156,7 @@ cold check -> cleanup
             with self.subTest(after=after), self.assertRaisesRegex(T.Refused, reason):
                 validate(valid.replace(before, after))
 
-    def test_plain_generator_saves_values_and_refuses_cleanup(self):
+    def test_plain_generator_saves_values(self):
         source = """module complete plain=[gen[int]] {
   const @name kind=string text=gen
 }
@@ -177,13 +178,13 @@ final:
         self.assertIn(b"__indirect_function_table", emit(source.replace("gen.ret (%slot 4)", "gen.ret (%slot %t0)")))
         for before, after, reason in (
             ("gen.ret (%slot 4)", "gen.ret (%slot %t1)", "untyped result of gen.yield"),
-            ("gen.yield (", "gen.yield cleanup=1 (", "yield with cleanup"),
+            ("gen.yield (", "gen.yield (%slot 1, %ptr null, ", "extended promise"),
             ("-> final", "-> missing", "unknown block missing"),
         ):
             with self.subTest(after=after), self.assertRaisesRegex(T.Refused, reason):
                 emit(source.replace(before, after))
 
-    def test_counted_generator_drop_requires_a_cleanup_free_constructor(self):
+    def test_generator_drops_call_a_closing_helper_where_cleanup_can_run(self):
         producer = """function @left() -> gen[int] coroutine {
 entry:
   gen.start (str @name) -> first
@@ -193,33 +194,189 @@ last:
   ~%t2 ~%t3 = gen.ret
 }
 """
-        consumer = """module complete {
+        consumer = """module complete exceptions {
   const @name kind=string text=g
 }
 function @main.init() -> None kind=block {
 entry:
   %t0 = call callee=@left : gen[int]
-  gen.drop (gen[int] %t0)
+  %t1 = cast (gen[int] %t0) : gen[int]
+  gen.drop (gen[int] %t1)
   ret
 }
 """
-        clean = consumer + producer
-        self.assertIn(b"__indirect_function_table", emit(clean))
-        forwarded = clean.replace("  gen.drop (gen[int] %t0)",
-                                  "  %t1 = cast (gen[int] %t0) : gen[int]\n  gen.drop (gen[int] %t1)")
-        with self.assertRaisesRegex(T.Refused, "counted generator drop"):
-            emit(forwarded)
 
-        # Even if a future emitter handles cleanup yields, a second producer of
-        # the same handle type must not inherit the first one's simple drop.
+        def drops(source):
+            emitter = T.Emitter(T.parse(source))
+            emitter.module()
+            main = [fn for fn in emitter.funcs if fn.name == "@main.init"][0]
+            return ([i.op + i.fields.get("callee", "") for b in main.blocks for i in b.code if i.op in ("gen.drop", "call")],
+                    sorted(fn.name for fn in emitter.funcs if fn.name.startswith("@wasm.gen.drop")))
+
+        # No generator suspends where closing runs its code: a drop only marks it finished.
+        clean = consumer + producer
+        self.assertEqual(drops(clean), (["call@left", "gen.drop"], []))
+        # A second producer of the same handle type that does: every drop reads the state it
+        # left, through the helper, counted where a generator's body can recur.
         mixed = clean + producer.replace("@left", "@right").replace("gen.yield (", "gen.yield cleanup=1 (")
-        T.check_generator_drops(T.parse(mixed))
-        dirty = mixed.replace("call callee=@left", "call callee=@right")
-        for source in (dirty, dirty.replace("module complete", "module complete plain=[gen[int]]")):
-            with self.subTest(source=source), self.assertRaisesRegex(T.Refused, "counted generator drop"):
-                T.check_generator_drops(T.parse(source))
-        with self.assertRaisesRegex(T.Refused, "yield with cleanup"):
-            emit(mixed)
+        self.assertEqual(drops(mixed), (["call@left", "call@wasm.gen.drop.counted"], ["@wasm.gen.drop.counted"]))
+        plain = mixed.replace("module complete exceptions", "module complete exceptions plain=[gen[int]]")
+        self.assertEqual(drops(plain), (["call@left", "call@wasm.gen.drop"], ["@wasm.gen.drop"]))
+        with self.assertRaisesRegex(T.Refused, "counted generator drop without exceptions"):
+            emit(mixed.replace("module complete exceptions", "module complete"))
+
+    @unittest.skipUnless(shutil.which("node"), "node runs the module")
+    def test_generator_drops_close_generators_suspended_where_cleanup_runs(self):
+        # pys.gen.drop's semantics (lower_module.gen_gen_module): resume with the close command
+        # (promise word 3) only where the state says closing runs code; report a yield after
+        # GeneratorExit; counted, run the cleanup one frame deeper and report what escapes it.
+        dropped = """module complete exceptions plain=[gen[int]] {
+  global @closed type=int
+  const @name kind=string text=gen
+}
+function @main.init() -> None kind=block {
+entry:
+  %t0 = call callee=@values : gen[int]
+  gen.resume (gen[int] %t0)
+  gen.drop (gen[int] %t0)
+  ret
+}
+function @values() -> gen[int] coroutine {
+entry:
+  gen.start (str @name) -> initial
+initial:
+  ~%t1 ~%t2 = gen.yield cleanup=1 (%slot 7) -> after
+after:
+  %t3 = gen.promise : %ptr
+  %t4 = mach.addr element=int (%ptr %t3, int 3) : %ptr
+  %t5 = mach.load (%ptr %t4) : int
+  %t6 = rt entry=recursion.depth : int
+  %t7 = scalar.bin mul (int %t6, int 10) : int
+  %t8 = scalar.bin add (int %t5, int %t7) : int
+  mem.store (&int @closed, int %t8)
+  ~%t9 ~%t10 = gen.ret
+}
+"""
+        script = r"""
+const mod = new WebAssembly.Module(require('node:fs').readFileSync(process.argv[1]));
+const memory = new WebAssembly.Memory({initial: 1});
+const tag = new WebAssembly.Tag({parameters: ['i32']});
+const view = new DataView(memory.buffer);
+const state = 3072;
+view.setBigInt64(state, 5n, true);
+view.setBigInt64(state + 8, BigInt(process.argv[3]), true);
+let heap = 4096;
+const calls = [];
+const rt = {
+  __stack_pointer: new WebAssembly.Global({value: 'i32', mutable: true}, 2048),
+  __indirect_function_table: new WebAssembly.Table({initial: 1, element: 'anyfunc'}),
+  pys_recursion_state: state,
+  pys_alloc(size) { const base = heap; heap += Number(size); return base; },
+  pys_exc_handled() { calls.push('handled'); return 11; },
+  pys_exc_restore(x) { calls.push(`restore ${x}`); },
+  pys_gen_ignored() { calls.push('ignored'); },
+  pys_try_mark() { return 3n; },
+  pys_exc_begin(e, mark) { calls.push(`begin ${e} ${mark}`); return e + 1; },
+  pys_gen_unraisable(e) { calls.push(`unraisable ${e}`); },
+  pys_recursion_error() { throw new WebAssembly.Exception(tag, [99]); },
+  pys_recursion_stack_error() { throw new WebAssembly.Exception(tag, [98]); },
+  pys_list_get() { throw new WebAssembly.Exception(tag, [73]); },
+};
+const instance = new WebAssembly.Instance(mod, {env: {memory, data: 0, pystachy_exception: tag}, rt});
+instance.exports.init();
+console.log(JSON.stringify([Number(view.getBigInt64(Number(process.argv[2]), true)), calls,
+                            Number(view.getBigInt64(state, true))]));
+"""
+        counted = dropped.replace(" plain=[gen[int]]", "")
+        raising = "  mem.store (&int @closed, int %t8)\n  rt entry=list.get (list[int] null, int 0) : *int"
+        closed = ["handled", "restore 11"]
+        for name, source, limit, expected in (
+            ("closed", dropped, 1000, [51, closed, 5]),
+            ("plain yield", dropped.replace("cleanup=1 ", ""), 1000, [0, [], 5]),
+            ("yields again", dropped.replace("  ~%t9 ~%t10 = gen.ret", "  ~%t11 ~%t12 = gen.yield (%slot 8) -> last\nlast:\n  ~%t9 ~%t10 = gen.ret"),
+             1000, [51, closed + ["ignored"], 5]),
+            ("counted", counted, 1000, [61, closed, 5]),
+            ("counted raises", counted.replace("  mem.store (&int @closed, int %t8)", raising), 1000,
+             [61, ["handled", "begin 73 3", "unraisable 74", "restore 11"], 5]),
+            ("counted at the limit", counted, 5, [0, ["handled", "begin 99 3", "unraisable 100", "restore 11"], 5]),
+        ):
+            emitter = T.Emitter(T.parse(source))
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as d:
+                path = Path(d) / "drop.wasm"
+                path.write_bytes(emitter.module())
+                out = subprocess.run(["node", "-e", script, str(path), str(emitter.addr["@closed"]), str(limit)],
+                                     check=True, capture_output=True, text=True, timeout=10)
+                self.assertEqual(json.loads(out.stdout), expected)
+
+    @unittest.skipUnless(shutil.which("node"), "node runs the module")
+    def test_generator_tuple_slots_live_in_its_heap_frame(self):
+        # A tuple an ordinary function keeps in its linear-memory stack frame outlives each of a
+        # generator's suspensions: the frame that pys_alloc gives the generator holds it. A call
+        # between the resumes reuses the linear stack below the generator's caller.
+        source = """module complete {
+  global @result type=int
+  const @name kind=string text=gen
+}
+function @main.init() -> None kind=block {
+entry:
+  %t0 = call callee=@values (int 41) : gen[int]
+  gen.resume (gen[int] %t0)
+  call callee=@clobber : None
+  gen.resume (gen[int] %t0)
+  ret
+}
+function @clobber() -> None {
+  %stk.1 = slot kind=2 : tuple[int,int,int,int]
+entry:
+  ~%t0 = tuple.store item=int (tuple[int,int,int,int] %stk.1, *int 7)
+  ~%t1 = tuple.store item=int index=1 (tuple[int,int,int,int] %stk.1, *int 7)
+  ~%t2 = tuple.store item=int index=2 (tuple[int,int,int,int] %stk.1, *int 7)
+  ~%t3 = tuple.store item=int index=3 (tuple[int,int,int,int] %stk.1, *int 7)
+  ret.none
+}
+function @values(seed: int) -> gen[int] coroutine {
+  %stk.1 = slot kind=2 : tuple[int,int]
+entry:
+  %t0 = scalar.bin mul (int %a0, int 2) : int
+  ~%t1 = tuple.store item=int (tuple[int,int] %stk.1, *int %a0)
+  ~%t2 = tuple.store item=int index=1 (tuple[int,int] %stk.1, *int %t0)
+  %t3 = scalar.bin add (int %a0, int 100) : int
+  gen.start (str @name) -> initial
+initial:
+  ~%t4 ~%t5 = gen.yield (%slot 1) -> after
+after:
+  ~%t6 %t7 = tuple.load item=int (tuple[int,int] %stk.1) : *int
+  ~%t8 %t9 = tuple.load item=int index=1 (tuple[int,int] %stk.1) : *int
+  %t10 = scalar.bin mul (int %t7, int 1000000) : int
+  %t11 = scalar.bin mul (int %t9, int 1000) : int
+  %t12 = scalar.bin add (int %t10, int %t11) : int
+  %t13 = scalar.bin add (int %t12, int %t3) : int
+  mem.store (&int @result, int %t13)
+  ~%t14 ~%t15 = gen.ret
+}
+"""
+        script = """
+const mod = new WebAssembly.Module(require("node:fs").readFileSync(process.argv[1]));
+const memory = new WebAssembly.Memory({initial: 1});
+let heap = 4096;
+const rt = {__stack_pointer: new WebAssembly.Global({value: "i32", mutable: true}, 2048), pys_recursion_state: 0,
+  __indirect_function_table: new WebAssembly.Table({initial: 1, element: "anyfunc"}),
+  pys_recursion_stack_error() { throw Error("stack floor"); },
+  pys_alloc(size) { const base = heap; heap += Number(size); return base; }};
+const instance = new WebAssembly.Instance(mod, {env: {memory, data: 0}, rt});
+instance.exports.init();
+console.log(Number(new DataView(memory.buffer).getBigInt64(Number(process.argv[2]), true)));
+"""
+        emitter = T.Emitter(T.parse(source))
+        out = emitter.module()
+        generator = [fn for fn in emitter.funcs if fn.name == "@values"][0]
+        self.assertEqual(generator.frame_bytes, 0)
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "frame.wasm"
+            path.write_bytes(out)
+            run = subprocess.run(["node", "-e", script, str(path), str(emitter.addr["@result"])],
+                                 check=True, capture_output=True, text=True, timeout=10)
+        self.assertEqual(run.stdout.strip(), "41082141")  # (41, 82 and the saved 141)
 
     @unittest.skipUnless(shutil.which("node"), "node runs the module")
     def test_generator_resumes_at_the_yielding_phi_predecessor(self):
@@ -279,6 +436,37 @@ for (const [seed, expected] of [[0n, 22.5], [1n, 14.25]]) {
             path.write_bytes(emitter.module())
             subprocess.run(["node", "-e", script, str(path), str(emitter.addr["@seed"]), str(emitter.addr["@result"])],
                            check=True, timeout=10)
+
+    def test_class_name_and_field_tables_use_wasm32_layouts(self):
+        # runtime.c's ReflName {Str *name; I kind;} and ReflField {Str *name, *desc; I off, flag;}:
+        # a field's byte offset in wasm32's layout of the class (an int at 8, a str at 16 and the
+        # flags after it at 20 and 21), not LP64's
+        text = """module complete {
+  class Point tag=1 fields=[" class":int x:int y:str] flags=[x:3 y:4]
+  const @s.0 kind=string text=x
+  const @s.1 kind=string text=y
+  const @names kind=classnames refs=[@s.0 @s.1] items=(int 1, int 3)
+  const @fields kind=classfields text=%C.Point refs=[@s.0 @s.1 @s.1 @s.0] items=(int 1, int 3, int 2, int -1)
+}
+function @main.init() -> None kind=block {
+entry:
+  ret
+}
+"""
+        emitter = T.Emitter(T.parse(text))
+        emitter.module()
+        x, y = emitter.addr["@s.0"], emitter.addr["@s.1"]
+        names = emitter.addr["@names"]
+        self.assertEqual(struct.unpack_from("<IIqIIq", emitter.data, names), (x, 0, 1, y, 0, 3))
+        fields = emitter.addr["@fields"]
+        self.assertEqual(struct.unpack_from("<IIqqIIqq", emitter.data, fields), (x, y, 8, 20, y, x, 16, -1))
+        self.assertEqual(emitter.addr["@fields"] - names, 32)
+        for before, after, reason in (
+            ("text=%C.Point", "text=%C.Missing", "layout of Missing"),
+            ("int 2, int -1", "int 9, int -1", "field 9 of Point"),
+        ):
+            with self.subTest(after=after), self.assertRaisesRegex(T.Refused, reason):
+                emit(text.replace(before, after))
 
     def test_legacy_container_header_allocation_is_refused(self):
         for kind, fields in (("list", 4), ("dict", 12)):

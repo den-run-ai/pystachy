@@ -80,8 +80,9 @@ class WasmSourceTests(unittest.TestCase):
             program = work / "test.py"
             wasm = work / "out.wasm"
             fallback = work / "fallback.ll"
-            program.write_text('def numbers():\n    try:\n        yield "é雪🌲"\n    finally:\n        print("", end="")\n'
-                               'for n in numbers():\n    print(n)\n', encoding="utf-8")
+            # (the emitter refuses a module that opts in to dynamic Any, #1746)
+            program.write_text('# pystachy: dynamic-any\ndef numbers():\n    try:\n        yield "é雪🌲"\n'
+                               '    finally:\n        print("", end="")\nfor n in numbers():\n    print(n)\n', encoding="utf-8")
             result = source_command(program, wasm, fallback)
             self.assertEqual(result.returncode, 3, result.stderr)
             self.assertIn(b"refused:", result.stderr)
