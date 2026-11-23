@@ -1395,7 +1395,10 @@ copy of its own (a class in another module than the method's; a method with a de
 evaluated when its def runs): calls of class methods are not dispatched on the object's class,
 and the copy of the location's class is not the object's. Such a program still passes list and
 dict subclass objects to comparison methods as themselves
-([test](../../tests/programs/classes/template_subclass_class_method_objects.py)). Through a
+([test](../../tests/programs/classes/template_subclass_class_method_objects.py)), and one whose
+comparisons cannot take such objects still has the copies, whichever of the two its code reaches
+first ([test](../../tests/programs/classes/template_subclass_class_method_copy_first.py),
+[test](../../tests/programs/classes/template_subclass_class_method_cmp_first.py)). Through a
 location typed by the template itself, `cls` is the template also for an object of a deriving
 class. A class method that a class under a template defines itself is called as any other
 class's ([error test](../../tests/errors/classes/template_subclass_own_class_method.py)).

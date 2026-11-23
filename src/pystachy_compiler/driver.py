@@ -150,11 +150,17 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
     # what cls(...) makes and what its __init__ takes are the class's, and code that compiled
     # with the template's may not. A trial that made copies is given up for a compilation
     # without them (Gen.copies), which may be a trial of the comparisons alone; one that made
-    # none, for the compilation without either, the one before both.
+    # none, for the compilation without the comparisons' objects (Gen.trials), which may make
+    # copies. Where a trial that did both fails, and then the one of the comparisons alone, the
+    # copies are tried again alone (regain): which comparison or copy a program's code reaches
+    # first does not decide what it is compiled with. Each switch is turned off once and the
+    # copies back on once, so at most four compilations are made, the last the one before both.
     trials = True
     copies = True
+    regain = False
     diagnostics.TRYING = False
     diagnostics.COPIED = False
+    diagnostics.HANDED = False
     keeps: dict[str, bool] = {}
     nokeep = False
     hints: dict[str, str] = {}
@@ -226,16 +232,21 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
             diagnostics.TRIAL = False
             diagnostics.TRYING = False
             diagnostics.COPIED = False
+            diagnostics.HANDED = False
             return result
         except Rejoin as retry:
             if diagnostics.TRYING and len([k for k in g.newx if k not in xnot]) > 0:
                 # (from the start, as below for a failure, without what was on trial)
                 if diagnostics.COPIED:
                     copies = False
+                    regain = diagnostics.HANDED
                 else:
                     trials = False
+                    copies = copies or regain
+                    regain = False
                 diagnostics.TRYING = False
                 diagnostics.COPIED = False
+                diagnostics.HANDED = False
                 diagnostics.TRIAL = False
                 keeps = {}
                 hints = {}
@@ -304,12 +315,16 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
             # clauses as before)
             if diagnostics.TRYING and diagnostics.COPIED:
                 copies = False
+                regain = diagnostics.HANDED
             elif diagnostics.TRYING:
                 trials = False
+                copies = copies or regain
+                regain = False
             else:
                 nokeep = True
             diagnostics.TRYING = False
             diagnostics.COPIED = False
+            diagnostics.HANDED = False
             diagnostics.TRIAL = False
             keeps = {}
             hints = {}

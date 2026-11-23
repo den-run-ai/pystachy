@@ -173,6 +173,7 @@ TRIAL = False
 # reports what it finds
 TRYING = False
 COPIED = False  # (a trial that has made such a copy: the compilation after it is without the copies first)
+HANDED = False  # (and one that has passed such an object: see driver.compile_program for the order)
 
 
 class Untried(Exception):
