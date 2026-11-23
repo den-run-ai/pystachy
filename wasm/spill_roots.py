@@ -873,8 +873,8 @@ def collectors(m: Module, funcs: list) -> tuple:
     return c_ret, c_any
 
 
-def rewrite(data: bytes, spill: bool = True) -> bytes:
-    m = Module(data)
+def bodies_and_stack(m: Module) -> tuple:
+    # the code section's function bodies, and the index of the global the name section calls __stack_pointer
     code = [pay for sid, pay in m.sections if sid == 10]
     if len(code) != 1:
         raise Unsupported("no code section")
@@ -887,7 +887,27 @@ def rewrite(data: bytes, spill: bool = True) -> bytes:
     sps = [i for i in m.global_names if m.global_names[i] == "__stack_pointer"]
     if len(sps) != 1:
         raise Unsupported("the name section does not name __stack_pointer")
-    sp = sps[0]
+    return bodies, sps[0]
+
+
+def returning_collectors(data: bytes) -> dict:
+    """{name: whether a call to it may collect and then return normally} for each function the
+    module's name section names (wasm/check_no_collect.py)."""
+    m = Module(data)
+    bodies, sp = bodies_and_stack(m)
+    nimp = len(m.func_imports)
+    funcs: list = []
+    for k in range(len(bodies)):
+        f = Function(m, nimp + k, bodies[k], sp)
+        f.walk()
+        funcs.append(f)
+    c_ret, _ = collectors(m, funcs)
+    return {m.func_names[i]: c_ret[i] for i in m.func_names}
+
+
+def rewrite(data: bytes, spill: bool = True) -> bytes:
+    m = Module(data)
+    bodies, sp = bodies_and_stack(m)
     nimp = len(m.func_imports)
     flags = [i for i in range(nimp, len(m.func_types)) if m.func_names.get(i) == FLAG]
     if len(flags) != 1 or m.types[m.func_types[flags[0]]] != ([], [I32]):

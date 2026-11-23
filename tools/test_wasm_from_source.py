@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def source_command(*args, stdin=None, cwd=ROOT, eh="legacy"):
     env = dict(os.environ, PYTHONPATH=str(ROOT), PYSTACHY_HOME=str(ROOT), PYTHONIOENCODING="utf-8", WASM_EH=eh)
+    env.pop("WASM_GUEST_ROOTS", None)   # (the default: guest roots, which the expected modules below name)
     return subprocess.run([sys.executable, str(ROOT / "tools/wasm_from_source.py"), *args],
                           cwd=cwd, env=env, input=stdin, capture_output=True, timeout=30)
 
@@ -32,7 +33,7 @@ class WasmSourceTests(unittest.TestCase):
                     report, snapshot, _ = typed_ir_text.inspected(program, work)
                     self.assertEqual(report["status"], "ok")
                     printed = typed_ir_text.format_module(typed_ir_text.module_from_snapshot(snapshot))
-                    expected = bytes(Emitter(parse(printed)).module())
+                    expected = bytes(Emitter(parse(printed), False, True).module())
                     result = source_command(program, "-")
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertEqual(result.stdout, expected)
@@ -45,7 +46,7 @@ class WasmSourceTests(unittest.TestCase):
             printed = typed_ir_text.format_module(typed_ir_text.module_from_snapshot(snapshot))
             outputs = []
             for encoding in ("legacy", "standard"):
-                expected = bytes(Emitter(parse(printed), encoding == "standard").module())
+                expected = bytes(Emitter(parse(printed), encoding == "standard", True).module())
                 result = source_command(program, "-", eh=encoding)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout, expected)

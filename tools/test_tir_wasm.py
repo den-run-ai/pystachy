@@ -277,6 +277,34 @@ entry:
             check = "new WebAssembly.Module(require('fs').readFileSync(process.argv[1]))"
             subprocess.run(["node", "-e", check, str(path)], check=True)
 
+    def test_guest_root_frames_keep_live_references_across_collecting_calls(self):
+        text = """module complete {
+}
+function @make() -> list[int] {
+entry:
+  %t0 = rt entry=list.new_atomic (int 3) : list[int]
+  ret (list[int] %t0)
+}
+function @main.init() -> None kind=block {
+entry:
+  %t0 = call callee=@make : list[int]
+  %t1 = call callee=@make : list[int]
+  %t2 = rt entry=list.get (list[int] %t0, int 0) : *int
+  %t3 = call callee=@make : list[int]
+  rt entry=list.clear (list[int] %t1) : None
+  ret
+}
+"""
+        for roots, kept in ((True, [[], ["%t0"], [], ["%t1"], [], []]), (False, [[]] * 6)):
+            with self.subTest(roots=roots):
+                emitter = T.Emitter(T.parse(text), False, roots)
+                out = emitter.module()
+                self.assertEqual(b"pys_wasi_set_guest_roots" in out, roots)
+                main = [fn for fn in emitter.funcs if fn.name == "@main.init"][0]
+                # (list.get and list.clear collect only as they raise; the allocation's frame is empty)
+                self.assertEqual([i.keep for i in main.blocks[0].code], kept)
+                self.assertEqual(emitter.rooted, {"@make", "@main.init"})   # (both may allocate and return)
+
     def test_global_root_slots_are_pointer_typed_and_relocated(self):
         decls = "  global @n type=int\n  global @items type=list[int]\n  root @items"
         text = HELLO.replace("  runtime ovf.smul", decls + "\n  runtime ovf.smul")

@@ -91,7 +91,9 @@ def module(tests: list) -> bytes:
     for k in range(len(tests)):
         exports.append(name(tests[k][0]) + b"\x00" + uleb(2 + len(funcs) - len(tests) + k))
     exports.append(name(spill_roots.FLAG) + b"\x00" + uleb(FLAG))
-    names = vec([uleb(MARK) + name(spill_roots.COLLECTOR), uleb(FLAG) + name(spill_roots.FLAG)])
+    names = vec([uleb(MARK) + name(spill_roots.COLLECTOR), uleb(FLAG) + name(spill_roots.FLAG),
+                 uleb(HELPER) + name("helper"), uleb(RAISER) + name("raiser")]
+                + [uleb(2 + len(funcs) - len(tests) + k) + name(tests[k][0]) for k in range(len(tests))])
     return (b"\0asm\1\0\0\0" + section(1, vec(TYPES)) + section(2, imports)
             + section(3, vec([uleb(t) for t, _, _ in funcs]))
             + section(4, vec([b"\x70\x00\x01"])) + section(5, vec([b"\x00\x01"]))
@@ -213,6 +215,34 @@ class StaticTest(unittest.TestCase):
         simd = ("simd", 1, [], b"\xfd\x0c" + bytes(16) + b"\xfd\x1b\x00" + CALL_SCAN + b"\x6a")
         with self.assertRaisesRegex(spill_roots.Unsupported, "opcode 0xfd"):
             spill_roots.rewrite(module([simd]))
+
+    def test_returning_collectors(self):
+        # whether a call may collect and then return: wasm/check_no_collect.py's question
+        data = module([("calls_raiser", 1, [], b"\x10" + uleb(RAISER) + i32c(0)),
+                       ("calls_helper", 1, [], b"\x10" + uleb(HELPER)),
+                       ("catches_raiser", 1, [], b"\x06\x40\x10" + uleb(RAISER) + b"\x19\x0b" + i32c(0)),
+                       ("wasi_only", 1, [], i32c(3) + b"\x10" + uleb(FD_CLOSE))])
+        self.assertEqual(spill_roots.returning_collectors(data),
+                         {spill_roots.COLLECTOR: True, spill_roots.FLAG: False, "helper": True, "raiser": False,
+                          "calls_raiser": False, "calls_helper": True, "catches_raiser": True, "wasi_only": False})
+
+
+class NoCollectTest(unittest.TestCase):
+    def test_check_names_each_wrong_entry(self):
+        import sys
+        sys.path.insert(0, str(ROOT))
+        from src.pystachy_compiler.utils import rtsym
+        from wasm import check_no_collect
+        from wasm.tir_wasm import RETURNS_UNCOLLECTED
+        from wasm.wasi_abi import LIBC_WRAPPERS
+        syms = [LIBC_WRAPPERS.get(rtsym(k), rtsym(k)) for k in RETURNS_UNCOLLECTED]
+        collects = {sym: False for sym in syms}
+        self.assertEqual(check_no_collect.wrong(collects), [])
+        collects[syms[0]] = True
+        del collects[syms[1]]
+        self.assertEqual(check_no_collect.wrong(collects),
+                         [f"{RETURNS_UNCOLLECTED[0]}: {syms[0]} may collect and then return",
+                          f"{RETURNS_UNCOLLECTED[1]}: runtime.wasm has no function {syms[1]}"])
 
 
 if __name__ == "__main__":

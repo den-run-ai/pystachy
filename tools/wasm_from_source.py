@@ -130,7 +130,7 @@ class WasmBackend:
     def __init__(self, fallback: bool):
         self.fallback = fallback
         self.standard_exceptions = standard_eh()
-        self.guest_roots = os.getenv("WASM_GUEST_ROOTS") == "1"
+        self.guest_roots = os.getenv("WASM_GUEST_ROOTS") != "0"
 
     def lower(self, gen: Gen) -> bytearray | WasmRefusal:
         try:

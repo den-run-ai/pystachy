@@ -49,7 +49,7 @@ Each typed IR value is a WebAssembly local, and so is a slot that only loads and
 read. In a recursion-counted function, values of one type whose lifetimes do not overlap
 share a local. Fixed-size tuple temporaries use the reactor's 16-byte-aligned stack. A
 callee can recognize and copy a `*args` tuple before it escapes its caller.
-Modules with tuple frames or exception landing pads import the stack pointer.
+Modules import the stack pointer for these frames, their landing pads and their roots (below).
 
 A function's blocks lie in order inside nested `block`s. A forward branch is a `br` to its
 target's label, or falls through to the next block. A function with a backward branch also
@@ -227,20 +227,20 @@ covers a 2,000-container round trip and catching `RecursionError` on deeper inpu
 
 ## What differs from a native build
 
-- **The collector runs only in LLVM/WASI commands.** It scans the stack conservatively,
+- **The collector needs help to find references.** It scans the stack conservatively,
   but WebAssembly keeps values in locals and on the operand stack, where no scan reaches.
   Around each call that may reach the collector, `spill_roots.py`'s rewrite reserves a frame
   on the linear-memory stack. The frame holds the `i32` and `i64` locals live after the call,
   and such values beneath its arguments. A callee that collects only on its way to an
-  exception or exit, as `pys_fail` does, needs only what a catch reads. The collector scans
-  that stack up to `__stack_high`. `runtime.c` turns collection on only in a module the pass
-  rewrote, so `runtime.wasm` and directly emitted programs keep it off.
-  The direct reactor registers the program's global pointer slots before execution.
-  For collector testing, compile a direct program with `WASM_GUEST_ROOTS=1`. The emitter
-  mirrors its named i32 and i64 locals, including packed references, on the runtime's linear
-  stack. Its conservative scan can retain dead temporaries until their activation returns
-  or unwinds. The setting increases stack usage and code size. Automatic collection stays
-  disabled there because active runtime C and compiled runtime.py locals can still hide references.
+  exception or exit, as `pys_fail` does, needs only what a catch reads. The pass rewrites
+  each LLVM/WASI command and `runtime.wasm`. The direct emitter gives its programs the same
+  frames from typed IR liveness, leaving out `int`, `bool` and `float` values. It counts a
+  runtime call as collecting and returning unless `tir_wasm.py`'s `RETURNS_UNCOLLECTED`
+  names it. `check_no_collect.py` checks that list against the code of each `runtime.wasm`
+  the build links. The reactor registers the program's global pointer slots.
+  The collector scans the stack up to `__stack_high`. `runtime.c` collects only in a module
+  the pass rewrote and, under the reactor, only when the program's start function reports
+  its roots: `WASM_GUEST_ROOTS=0` emits a program without them, which runs without collection.
   The shared heap tracer scans complete four-byte pointer words on wasm32. Freed memory is
   reused, never returned: linear memory cannot shrink. The engine caps it (4 GiB for wasm32).
 - **LLVM/WASI commands use WebAssembly exception handling.** The adapter lowers native
@@ -298,7 +298,7 @@ python3 wasm/check_corpus.py --log report.txt      # a tests/run.sh report of th
 | `tir_wasm.py` | Typed IR module text to a WebAssembly module, without LLVM |
 | `reactor.c` | `runtime.wasm`'s entry: arguments, `pys_init`, the program's code, `pys_finish` |
 | `wasm32_ir.py` | Adapts constants, command entry, exception landing pads and libc calls to wasm32 |
-| `spill_roots.py` | Stores references held in a linked command's locals where the collector's stack scan finds them |
+| `spill_roots.py`, `check_no_collect.py` | Store references held in the locals of a linked command or `runtime.wasm` where the collector's stack scan finds them; check the runtime calls the direct emitter's frames skip |
 | `command_eh.c` | Transfers exception payloads to LLVM/WASI command handlers and resumes uncaught reporting |
 | `wasi_stubs.c` | Missing POSIX functions, unwinder stubs, working directory |
 | `include/` | Headers that `wasi-libc` lacks (`dlfcn.h`, `pthread.h`, `pwd.h`, `sys/wait.h`) and declarations `runtime.c` needs (`pystachy_wasi.h`) |

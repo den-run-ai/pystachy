@@ -7,6 +7,15 @@
 
 static int local_collections;
 
+/* Zero the dead stack below the caller. Frames that have returned, the runtime's root frames
+   among them (wasm/spill_roots.py), leave words a conservative scan would take for references,
+   and these probes ask what the roots alone retain. Each probe entry calls it from a frameless
+   wrapper, so it also clears what lay where the probe's own frames now lie. */
+__attribute__((noinline)) static void clear_dead_stack(void) {
+  volatile char dead[65536];
+  for (size_t i = 0; i < sizeof dead; i++) dead[i] = 0;
+}
+
 static uintptr_t caller_stack;
 
 /* The arrays' sizes identify them independently of unrelated runtime objects.
@@ -23,8 +32,8 @@ static void check_local_arrays(int required) {
   }
 }
 
-void pys_gc_collect(void) {
-  if (!gc_off) exit(1);
+__attribute__((noinline)) static void probe_collect(void) {
+  if (gc_off != wasi_guest_unrooted) exit(1);   /* (automatic collection runs exactly in a rooted guest) */
   if (!gc_nroots) {   /* Textual IR probe: the only reference is packed in i64. */
     if (local_collections++) exit(1);
     check_local_arrays(8);
@@ -43,7 +52,7 @@ void pys_gc_collect(void) {
   check_local_arrays(required[local_collections++]);
 }
 
-void pys_finish(void) {
+__attribute__((noinline)) static void probe_finish(void) {
   if (local_collections) {
     if (local_collections != (gc_nroots ? 5 : 1)) exit(1);
     finish_without_probe();
@@ -75,3 +84,6 @@ void pys_finish(void) {
   }
   finish_without_probe();
 }
+
+void pys_gc_collect(void) { clear_dead_stack(); probe_collect(); }
+void pys_finish(void) { clear_dead_stack(); probe_finish(); }
