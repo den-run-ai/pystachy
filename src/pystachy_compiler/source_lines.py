@@ -64,6 +64,9 @@ class SourceLines:
         self.types = ""
         self.empty = ""
         self.flags: list[str] = []
+        # the directory each file's node names, its paths' base: the compiler's working directory,
+        # or the one a module text records (tools/typed_ir_text.py)
+        self.directory = ""
 
     def node(self, body: str) -> str:
         ref = f"!pysdi{len(self.nodes)}"
@@ -75,7 +78,8 @@ class SourceLines:
         path = diagnostics.FILES[index] if index < len(diagnostics.FILES) else diagnostics.SRC
         if path not in self.files:
             # (normalized: lib/'s files are build/../lib/... to a compiler run from build/, as in make)
-            self.files[path] = self.node(f'!DIFile(filename: "{file_quote(os.path.normpath(path))}", directory: "{file_quote(os.getcwd())}")')
+            directory = self.directory if self.directory != "" else os.getcwd()
+            self.files[path] = self.node(f'!DIFile(filename: "{file_quote(os.path.normpath(path))}", directory: "{file_quote(directory)}")')
         return self.files[path]
 
     def function(self, name: str, symbol: str, line: int) -> str:

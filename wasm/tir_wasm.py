@@ -54,6 +54,10 @@ def standard_eh() -> bool:
     return encoding == "standard"
 
 
+# the version of tools/typed_ir_text.py's module text (its TEXT_VERSION) that this emitter reads
+TEXT_VERSION = "2"
+
+
 class Refused(Exception):
     def __init__(self, what: str):
         super().__init__(what)
@@ -2302,7 +2306,10 @@ class Emitter:
         attrs = self.m.attrs
         if "complete" not in attrs:
             raise Refused("a module that does not declare lowering's state (complete)")
-        for flag in ("dynamic", "promoting", "rtmode", "extension"):
+        if attrs.get("version", TEXT_VERSION) != TEXT_VERSION:
+            # (a text written for another version may mean something else: tools/typed_ir_text.py)
+            raise Refused(f"a module text of version {attrs['version']}, where this emitter reads version {TEXT_VERSION}")
+        for flag in ("dynamic", "promoting", "rtmode", "extension", "debuglines"):
             if flag in attrs:
                 raise Refused(f"module attribute {flag}")
         for table in ("unequal", "crossed", "unsupported"):

@@ -51,7 +51,7 @@ LOCATED = (WRITTEN.replace("  %left.1 = slot name=left : int\n", "  %left.1 = sl
            .replace("(tuple[int,str] %stk.2) : %slot\n", "(tuple[int,str] %stk.2) : %slot loc(8)\n")
            .replace("  ret.none\n", "  ret.none loc(12)\n")
            .replace("-> L8, L5, L8\n", "-> L8, L5, L8 loc(9999999)\n"))
-MODULE = """module version=1 {
+MODULE = """module version=2 {
   class Base tag=1
   class Error base=Exception fields=[" cls":str " str":str " args":str]
   class Node base=Base roles=[Reader] tag=2 fields=[" class":int value:int "a:b":"odd type" next:opt[Node]] flags=[value:4 "a:b":5] boxes=[value:6]
@@ -294,7 +294,7 @@ class ModuleTests(unittest.TestCase):
         self.assertEqual(text.format_module(module), MODULE)
         self.assertEqual(text.module_roundtrip_errors(module), [])
         self.assertEqual(list(module), text.MODULE_KEYS)
-        self.assertEqual(module["attributes"], dict({key: default for key, _, default in text.MODULE_ATTRIBUTES}, version=1))
+        self.assertEqual(module["attributes"], dict({key: default for key, _, default in text.MODULE_ATTRIBUTES}, version=2))
         self.assertEqual(module["dynamic_types"][0], {"symbol": "@dt.Node", "kind": 8, "cls": 1, "flags": 256, "base": "@dt.Base",
                                                       "role": "@dt.Reader", "payload": "Node"})
         self.assertEqual(module["dynamic_layouts"][0]["llvm"], ["i64", "{i64, ptr}", "ptr"])
@@ -328,7 +328,7 @@ class ModuleTests(unittest.TestCase):
         with self.assertRaisesRegex(text.TextError, "expected a module, found functions alone"):
             text.parse_module(WRITTEN)
         # (a module without declarations or functions)
-        self.assertEqual(text.format_module(text.parse_module("; empty\nmodule version=1 {\n}\n")), "module version=1 {\n}\n")
+        self.assertEqual(text.format_module(text.parse_module("; empty\nmodule version=2 {\n}\n")), "module version=2 {\n}\n")
 
     def test_malformed_module_is_rejected_with_its_line(self):
         for old, new, expected in (
@@ -367,9 +367,9 @@ class ModuleTests(unittest.TestCase):
                 ("flags=[boxid]", "flags=[boxid eq]", "line 8: flags=[ names each flag once, in the order eq cmp hash"),
                 ("flags=[boxid]", "flags=[boxid boxid]", "line 8: flags=[ names each flag once"),
                 ("dyn]\n", "dyn] llvm=[i64 \"{i64, ptr}\" ptr]\n", "line 10: layout field llvm is derived from the others, not written"),
-                ("module version=1 {", "module {", "line 1: module needs version="),
-                ("module version=1 {", "module version=2 {", "line 1: a module text of version 2, where this one reads version 1"),
-                ("module version=1 {", "module complete version=1 {", "line 1: module field version must come before complete"),
+                ("module version=2 {", "module {", "line 1: module needs version="),
+                ("module version=2 {", "module version=3 {", "line 1: a module text of version 3, where this one reads version 2"),
+                ("module version=2 {", "module complete version=2 {", "line 1: module field version must come before complete"),
                 ("cls=-1", "cls=-01", "line 8: cls= needs an integer"),
                 ("number=0\n", "number=x\n", "line 11: number= needs an integer"),
                 ("dyn]\n", "dyn\n", "line 10: members=[ has no closing ']'"),
@@ -379,15 +379,15 @@ class ModuleTests(unittest.TestCase):
                 ("  dyntype @dt.Base kind=obj cls=0\n", "  dyntype @dt.Base kind=obj cls=0\n  dyntype @dt.Node kind=obj cls=1\n",
                  "line 10: dyntype @dt.Node is declared twice"),
                 ("}\n\nfunction", "\nfunction", "line 13: expected a declaration, indented by two spaces"),
-                ("function @written", "module version=1 {\n}\nfunction @written", "line 14: a module's declarations come once, before its functions")):
+                ("function @written", "module version=2 {\n}\nfunction @written", "line 14: a module's declarations come once, before its functions")):
             with self.subTest(expected=expected):
                 changed = MODULE.replace(old, new, 1)
                 self.assertNotEqual(changed, MODULE)
                 with self.assertRaises(text.TextError) as raised:
                     text.parse(changed)
                 self.assertIn(expected, str(raised.exception))
-        for source, expected in (("module version=1 {\n  class A\n", "the module's declarations have no closing brace"),
-                                 (WRITTEN + "module version=1 {\n}\n", "line 21: a module's declarations come once, before its functions")):
+        for source, expected in (("module version=2 {\n  class A\n", "the module's declarations have no closing brace"),
+                                 (WRITTEN + "module version=2 {\n}\n", "line 21: a module's declarations come once, before its functions")):
             with self.subTest(expected=expected), self.assertRaisesRegex(text.TextError, expected):
                 text.parse(source)
 
@@ -830,7 +830,7 @@ L4:
         admitted = [r["symbol"] for r, e in zip(text.parse_functions(source), expected, strict=True) if not e]
         self.assertEqual((len(admitted), len(expected) - len(admitted)), (6, 2))
         # (as functions alone the verifier knows no class: each reading the view admits is an error)
-        alone = re.sub(r"(?ms)^module version=1 \{$.*?^\}$\n", "", source)
+        alone = re.sub(r"(?ms)^module version=2 \{$.*?^\}$\n", "", source)
         self.assertIsInstance(text.parse(alone), list)
         problems = text.verify_errors(alone)
         self.assertEqual([p.split(":")[0] for p in problems], admitted)
@@ -892,11 +892,11 @@ L4:
                                         "class A: the box of 'x' is at 1, field ' B.0' of type bool, where a base's box is a dyn field")):
             with self.subTest(expected=expected):
                 with self.assertRaises(text.TextError) as raised:
-                    text.verify_errors("module version=1 {\n" + declarations + "}\n\n" + self.CASE)
+                    text.verify_errors("module version=2 {\n" + declarations + "}\n\n" + self.CASE)
                 self.assertEqual(str(raised.exception), expected)
-        self.assertEqual(text.verify_errors("module version=1 {\n  class A base=KeyError\n  class B base=A\n}\n\n" + self.CASE), [])
+        self.assertEqual(text.verify_errors("module version=2 {\n  class A base=KeyError\n  class B base=A\n}\n\n" + self.CASE), [])
         # (a base's flag and box, at its hidden fields, and the derived class's own after its fields)
-        self.assertEqual(text.verify_errors('module version=1 {\n  class A fields=[x:int " B.0":bool " B.box.0":dyn y:int] '
+        self.assertEqual(text.verify_errors('module version=2 {\n  class A fields=[x:int " B.0":bool " B.box.0":dyn y:int] '
                                             'flags=[x:1 y:4] boxes=[x:2 y:5]\n}\n\n' + self.CASE), [])
 
 

@@ -10,11 +10,13 @@ recursion, the key kinds of empty dicts and sets, object dispatchers and C exter
 Run with python3 -m unittest discover -s tools -p test_typed_ir_compile.py.
 """
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -123,6 +125,37 @@ class RoundTripTests(unittest.TestCase):
             printed = subprocess.run(TOOL + ["compile", str(listing)], capture_output=True, timeout=120)
             self.assertEqual(printed.stdout, llvm.encode("latin-1"))
 
+    def test_a_module_with_line_tables_compiles_to_the_compilers_llvm(self):
+        # (PYSTACHY_DEBUG_LINES=1: its files, their directory and each definition's line, with each
+        # instruction's location, which the text then prints; a program that imports a package,
+        # whose files the line tables name too)
+        program = ROOT / "tests/programs/classes/class_nested_import.py"
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {"PYSTACHY_DEBUG_LINES": "1"}):
+            report, snapshot, llvm = text.inspected(program, Path(directory))
+        self.assertEqual(report["status"], "ok", report["diagnostics"])
+        module = text.module_from_snapshot(snapshot)
+        self.assertEqual(text.refusals(module), [])
+        self.assertEqual((module["attributes"]["debuglines"], module["attributes"]["directory"]), (True, str(ROOT)))  # (inspected runs it there)
+        self.assertGreater(len(module["source_files"]), 1)
+        self.assertEqual(module["source_files"][0]["path"], str(program))
+        written = text.format_module(module)
+        self.assertIn(" loc(", written)
+        self.assertIn("!DISubprogram", llvm)
+        parsed = text.parse_module(written)
+        self.assertEqual(text.format_module(parsed), written)
+        lowered = text.compile_module(parsed)
+        self.assertTrue(lowered == llvm, text.first_difference(llvm, lowered) if lowered != llvm else "")
+        # (each of them is read: a definition's line, a file's path, the directory)
+        for change in (lambda m: m["functions"][0]["attributes"].update(line=m["functions"][0]["attributes"]["line"] + 1),
+                       lambda m: m["source_files"][0].update(path="other.py"),
+                       lambda m: m["attributes"].update(directory="/elsewhere")):
+            changed = json.loads(json.dumps(parsed))
+            change(changed)
+            self.assertNotEqual(text.compile_module(changed), llvm)
+        dropped = json.loads(json.dumps(parsed))
+        dropped["attributes"]["directory"] = ""
+        self.assertIn("but no files or directory for them to name", text.refusals(dropped)[0])
+
     def test_state_left_out_of_the_text_changes_the_llvm(self):
         # (each of these is state lowering reads: without it, the module compiles to other LLVM,
         # which the round trip finds, or is refused)
@@ -150,7 +183,7 @@ class RoundTripTests(unittest.TestCase):
                 (lambda a: a.update(complete=False), "does not declare the state that lowering reads"),
                 (lambda a: a.update(extension="fast"), "extension module fast (pystachy ext"),
                 (lambda a: a.update(rtmode=True), "runtime.py's module (pystachy rt"),
-                (lambda a: a.update(debuglines=True), "LLVM line tables (PYSTACHY_DEBUG_LINES=1"),
+                (lambda a: a.update(debuglines=True), "but no files or directory for them to name"),
                 (lambda a: a["unsupported"].append("something new"), "something new")):
             with self.subTest(expected=expected):
                 changed = json.loads(json.dumps(module))
@@ -161,7 +194,7 @@ class RoundTripTests(unittest.TestCase):
         # (a module written by hand declares none of lowering's state: a module's functions alone
         # print, but do not compile)
         with self.assertRaisesRegex(text.TextError, "does not declare the state that lowering reads"):
-            text.compile_module(text.parse_module("module version=1 {\n}\n"))
+            text.compile_module(text.parse_module("module version=2 {\n}\n"))
         # (a snapshot of some functions, --function, compiles none of them)
         report, snapshot, _ = self.inspections["tests/programs/exceptions/exc_as_rebind.py"]
         some = dict(snapshot, functions=snapshot["functions"][:1])
@@ -182,7 +215,7 @@ class RoundTripTests(unittest.TestCase):
 class LoweringTextTests(unittest.TestCase):
     """The declarations and attributes that hold lowering's state print and read back."""
 
-    MODULE = """module version=1 complete opts=[fieldtbaa tupleret] exceptions protocol dynamic promoting plain=[gen[int]] untracked=[m] objects=[Point:0 "odd name":1] compared=[Point] hashed=[Point] unequal=[Point] crossed=["odd name"] {
+    MODULE = """module version=2 complete opts=[fieldtbaa tupleret] exceptions protocol dynamic promoting debuglines directory=/work plain=[gen[int]] untracked=[m] objects=[Point:0 "odd name":1] compared=[Point] hashed=[Point] unequal=[Point] crossed=["odd name"] {
   class Point tag=1 fields=[" class":int x:int] module=m
   class Box template exception=ValueError
   class "odd name"
@@ -203,9 +236,11 @@ class LoweringTextTests(unittest.TestCase):
   extern @f.provided symbol=@f.provided params=[int int] result=None provided
   keykind dict[str,int] kind=1
   keykind set[tuple[int,int]] kind="ptrtoint (ptr @s.1 to i64)" built="ptrtoint (ptr getelementptr (i8, ptr @s.1, i64 2) to i64)"
+  file 0 path=m.py
+  file 1 path="lib/odd name.py"
 }
 
-function @f.go(n: int) -> int effects=R name=go class=Point decorator=staticmethod nullable module=m home=n kind=lambda export pyexport extern gret=dyn rdepth=%t3 casts=[4 9] closed tupleret=2 tupleconst tuplecalls=[%t5 %t7] {
+function @f.go(n: int) -> int effects=R name=go class=Point decorator=staticmethod nullable module=m home=n kind=lambda export pyexport extern gret=dyn rdepth=%t3 casts=[4 9] closed tupleret=2 tupleconst tuplecalls=[%t5 %t7] line=12 {
 entry:
   ret(int %a0)
 }
@@ -231,11 +266,14 @@ entry:
         self.assertEqual(attributes, {"name": "go", "class": "Point", "decorator": "staticmethod", "nullable": True, "module": "m",
                                       "home": "n", "kind": "lambda", "export": True, "pyexport": True, "extern": True, "gret": "dyn",
                                       "rdepth": "%t3", "casts": [4, 9], "closed": True, "tupleret": 2, "tupleconst": True,
-                                      "tuplecalls": ["%t5", "%t7"]})
+                                      "tuplecalls": ["%t5", "%t7"], "line": 12})
+        self.assertEqual(module["source_files"], [{"number": "0", "path": "m.py"}, {"number": "1", "path": "lib/odd name.py"}])
+        self.assertEqual((module["attributes"]["debuglines"], module["attributes"]["directory"]), (True, "/work"))
         # (the function's FnInfo and IFn hold its attributes, and give them back)
         fn = text.to_ifn(module["functions"][0])
-        self.assertEqual((fn.f.name, fn.f.cls, fn.f.deco, fn.f.node.kind, fn.rdepth, fn.casts, fn.n), ("go", "Point", "staticmethod", "lambda", "%t3", [4, 9], 9))
-        self.assertEqual(text.function_attributes(fn), dict(attributes, closed=False, tupleret=0, tupleconst=False, tuplecalls=[]))
+        self.assertEqual((fn.f.name, fn.f.cls, fn.f.deco, fn.f.node.kind, fn.f.node.line, fn.rdepth, fn.casts, fn.n), ("go", "Point", "staticmethod", "lambda", 12, "%t3", [4, 9], 9))
+        # (a generator's tables, and its line tables' definition lines: function_attributes gives none without it)
+        self.assertEqual(text.function_attributes(fn), dict(attributes, closed=False, tupleret=0, tupleconst=False, tuplecalls=[], line=0))
         # (each string a constant may hold: its characters are its bytes)
         every = {"name": "@s.9", "kind": "string", "text": "".join(chr(c) for c in range(256)), "refs": [], "items": []}
         line = text.declaration_text("const", "@s.9", every)
@@ -251,10 +289,10 @@ entry:
                 (" c csym=@puts", " c=1 csym=@puts", "line 18: extern field c is a flag, written bare"),
                 ("  runtime write\n", "  runtime write\n  runtime write\n", "line 17: runtime write is declared twice"),
                 ("  global @g.p type=Point\n", "  global @g.p type=Point\n  hole 3\n", "line 8: a hole after the globals"),
-                ("version=1 complete opts", "version=1 complete complete opts", "line 1: module field complete is repeated"),
-                ("version=1 complete opts", "version=1 opts=[x] complete opts", "line 1: module field complete must come before opts"),
-                ("version=1 complete opts", "version=1 sort=1 opts", "line 1: unknown module field 'sort'"),
-                ("version=1 complete opts", "version=1 complete=1 opts", "line 1: module field complete is a flag, written bare"),
+                ("version=2 complete opts", "version=2 complete complete opts", "line 1: module field complete is repeated"),
+                ("version=2 complete opts", "version=2 opts=[x] complete opts", "line 1: module field complete must come before opts"),
+                ("version=2 complete opts", "version=2 sort=1 opts", "line 1: unknown module field 'sort'"),
+                ("version=2 complete opts", "version=2 complete=1 opts", "line 1: module field complete is a flag, written bare"),
                 ("objects=[Point:0", "objects=[Point:x", "line 1: objects=[ needs an integer after Point:")):
             with self.subTest(expected=expected):
                 changed = self.MODULE.replace(old, new, 1)

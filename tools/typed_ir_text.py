@@ -25,7 +25,7 @@ module or functions alone. A module gives its attributes on its `module` line, a
 give their fields, the first its text's version (TEXT_VERSION), its declarations, one a line,
 before its `}`, and then its functions:
 
-    module version=1 complete opts=[fieldtbaa tupleret] exceptions {
+    module version=2 complete opts=[fieldtbaa tupleret] exceptions {
       class Both base=Storage roles=[Reader] tag=1 fields=[" class":int value:int " Storage.0":bool " Storage.box.0":dyn] flags=[value:2] boxes=[value:3]
       class Reader overlaps=[Storage] tag=2 fields=[" class":int]
       dyntype @dt.Both kind=obj cls=1 flags=[role] base=@dt.Storage role=@dt.Reader payload=Both
@@ -58,7 +58,9 @@ lowering_state takes from the code generator once finalize_program has run (docs
 lists them by what lowering reads). A class also says whether it is a class template, the
 builtin exception class it derives from and its module; then come the holes' types (by number,
 from 1), globals, GC roots, module data (ir.Data), runtime functions and data, extern plans
-(lower_module.ExternDecl) and the key kinds of holes' dicts and sets, in the compiler's order:
+(lower_module.ExternDecl), the key kinds of holes' dicts and sets, in the compiler's order, and,
+where the module has LLVM line tables (debuglines), the program's files (diagnostics.FILES, by
+number from 0), which its instructions' locations and its functions' `line` attributes name:
 
     hole N [type=TYPE]
     global SYMBOL type=TYPE
@@ -68,13 +70,17 @@ from 1), globals, GC roots, module data (ir.Data), runtime functions and data, e
     rtdata SYMBOL
     extern KEY symbol=SYMBOL [params=[TYPE ...]] result=TYPE [provided] [c] [csym=SYMBOL] ...
     keykind TYPE [kind=KIND] [built=KIND]
+    file N path=PATH
+
+A module with line tables also gives the directory its files' nodes name (`directory`, the
+compiler's working directory), and the text prints each instruction's location.
 
 `compile` builds a code generator that holds a module's state (gen_for_module) and runs the
 compiler's own lowering on it (compile_module): a module printed from a typed-after snapshot
 compiles to the LLVM module that the compiler emitted, byte for byte. It refuses (refusals) a
 module that does not declare lowering's state (complete), one whose printer named what it could
-not hold (unsupported), an extension module's entry points, runtime.py's module and LLVM line
-tables. `roundtrip` inspects programs (tools/inspect_compiler.py), prints each one's module,
+not hold (unsupported), an extension module's entry points and runtime.py's module.
+`roundtrip` inspects programs (tools/inspect_compiler.py), prints each one's module,
 compiles it and compares the LLVM with what the compiler emitted.
 
 One instruction is one line:
@@ -132,11 +138,11 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# The version of the text form, a module's first attribute (version=1): what a module text means
+# The version of the text form, a module's first attribute (version=2): what a module text means
 # changes only with it, so that a reader of module texts other than this one (the WebAssembly
 # emitter, wasm/tir_wasm.py) can tell a text it was not written for. parse refuses another
 # version; test_typed_ir_text.py's golden module holds the form, and changing that changes this.
-TEXT_VERSION = 1
+TEXT_VERSION = 2
 # runtime.c's DynType kinds (its DK_* enum, in order: a kind is its index) and flags (DF_*), by
 # the names a dyntype declaration writes them with (kind=obj, flags=[eq hash])
 DYN_KINDS = ("none", "bool", "int", "float", "str", "list", "dict", "tuple", "obj", "func", "iter", "gen", "type")
@@ -177,6 +183,7 @@ DECLARATIONS = {
                                   ("at", "flag", False), ("direct", "flag", False), ("declare", "flag", False),
                                   ("dynamic", "flag", False), ("narrow", "flag", False))),
     "keykind": ("key_kinds", "type", (("kind", "atom", ""), ("built", "atom", ""))),
+    "file": ("source_files", "number", (("path", "atom", None),)),
 }
 # The tables a typed-after snapshot holds for the verifier (inspect_compiler.py): a snapshot with
 # them is printed as a module, whose other tables come from its "lowering" record, if any
@@ -187,7 +194,7 @@ SNAPSHOT_TABLES = ("classes", "dynamic_types", "dynamic_layouts")
 # boundary), which compile requires; unsupported: what the printer found it cannot serialize yet
 MODULE_ATTRIBUTES = (("version", "int", None), ("complete", "flag", False), ("opts", "list", []), ("exceptions", "flag", False),
                      ("protocol", "flag", False), ("dynamic", "flag", False), ("promoting", "flag", False),
-                     ("extension", "atom", ""), ("rtmode", "flag", False), ("debuglines", "flag", False),
+                     ("extension", "atom", ""), ("rtmode", "flag", False), ("debuglines", "flag", False), ("directory", "atom", ""),
                      ("plain", "list", []), ("untracked", "list", []), ("objects", "indexed", {}),
                      ("compared", "list", []), ("hashed", "list", []), ("unequal", "list", []),
                      ("crossed", "list", []), ("unsupported", "list", []))
@@ -198,7 +205,7 @@ FUNCTION_ATTRIBUTES = (("name", "atom", ""), ("class", "atom", ""), ("decorator"
                        ("kind", "atom", "def"), ("export", "flag", False), ("pyexport", "flag", False),
                        ("extern", "flag", False), ("gret", "atom", ""), ("rdepth", "atom", ""),
                        ("casts", "ints", []), ("closed", "flag", False), ("tupleret", "int", 0),
-                       ("tupleconst", "flag", False), ("tuplecalls", "list", []))
+                       ("tupleconst", "flag", False), ("tuplecalls", "list", []), ("line", "int", 0))
 MODULE_KEYS = ["attributes"] + [table for table, _, _ in DECLARATIONS.values()] + ["functions"]
 # the tables of a module's declarations that a typed-after snapshot's lowering record holds
 LOWERING_TABLES = tuple(table for table, _, _ in DECLARATIONS.values() if table not in SNAPSHOT_TABLES)
@@ -780,7 +787,7 @@ def read_declaration(text):
 
 def format_module(module, locations=False):
     """The text of a module record: its declarations, then its functions, with each instruction's
-    location where locations."""
+    location where locations or the module has line tables (debuglines), which read them."""
     require(isinstance(module, dict) and sorted(module) == sorted(MODULE_KEYS), f"a module record holds {', '.join(MODULE_KEYS)}")
     attributes = module["attributes"]
     require(isinstance(attributes, dict) and sorted(attributes) == sorted(key for key, _, _ in MODULE_ATTRIBUTES),
@@ -792,7 +799,8 @@ def format_module(module, locations=False):
         for name, record in ([(r.get(named) if isinstance(r, dict) else None, r) for r in entries] if named else entries.items()):
             lines.append("  " + declaration_text(keyword, name, record))
     lines.append("}")
-    return "\n".join(["\n".join(lines) + "\n"] + [format_function(r, locations) for r in module["functions"]])
+    located = locations or attributes["debuglines"]
+    return "\n".join(["\n".join(lines) + "\n"] + [format_function(r, located) for r in module["functions"]])
 
 
 def parse(text):
@@ -1018,7 +1026,7 @@ def to_ifn(record):
     tuplecalls) are a module's to give the generator (gen_for_module)."""
     ir, specs, symbols, syntax, utils = compiler()
     a = record["attributes"]
-    f = symbols.FnInfo(a["name"], record["symbol"], syntax.Node(a["kind"], a["name"], 1), a["class"])
+    f = symbols.FnInfo(a["name"], record["symbol"], syntax.Node(a["kind"], a["name"], a["line"] if a["line"] != 0 else 1), a["class"])
     f.params = [p["name"] for p in record["parameters"]]
     f.ptypes = [p["type"] for p in record["parameters"]]
     f.ret = record["return"]
@@ -1090,6 +1098,8 @@ def function_attributes(fn, gen=None):
         prefix = f.ll + " "
         attributes.update({"closed": f.ll in gen.rdpass, "tupleret": gen.vrets.get(f.ll, 0), "tupleconst": f.ll in gen.vconst,
                            "tuplecalls": [key[len(prefix):] for key in gen.vcalls if key.startswith(prefix)]})
+        if gen.source_lines.enabled:
+            attributes["line"] = f.node.line  # (its definition's, which its line table's scope names)
     return attributes
 
 
@@ -1235,6 +1245,7 @@ def lowering_state(gen):
         "complete": True, "opts": list(gen.opts), "exceptions": gen.eh, "protocol": gen.gproto,
         "dynamic": diagnostics.dynamic_program(), "promoting": diagnostics.int_program(), "extension": gen.ext,
         "rtmode": gen.rtmode, "debuglines": gen.source_lines.enabled, "plain": list(gen.genplain),
+        "directory": os.getcwd() if gen.source_lines.enabled else "",
         "untracked": list(gen.idoff), "objects": dict(gen.ocls), "compared": list(gen.ocmp), "hashed": list(gen.hcls),
         "unequal": list(gen.one), "crossed": list(gen.xobj), "unsupported": unsupported,
     }
@@ -1243,6 +1254,7 @@ def lowering_state(gen):
         "attributes": attributes,
         "class_order": list(gen.classes),
         "classes": {name: {"template": name in gen.tmpl, "exception": ci.exc, "module": ci.mod, "tag": ci.tag} for name, ci in gen.classes.items()},
+        "source_files": [{"number": str(k), "path": path} for k, path in enumerate(diagnostics.FILES)] if gen.source_lines.enabled else [],
         "holes": [{"number": str(k), "type": gen.holes[k]} for k in range(1, len(gen.holes))],
         "globals": [{"symbol": g.v, "type": g.t} for g in gen.globs],
         "roots": [{"value": r} for r in gen.gcroots],
@@ -1272,8 +1284,8 @@ def refusals(module):
         found.append(f"the entry points of extension module {a['extension']} (pystachy ext: Gen.funcs, gen_pyext) are not serializable yet")
     if a["rtmode"]:
         found.append("runtime.py's module (pystachy rt: Gen.rtdefs) is not serializable yet")
-    if a["debuglines"]:
-        found.append("LLVM line tables (PYSTACHY_DEBUG_LINES=1: the program's files, its definitions' lines) are not serializable yet")
+    if a["debuglines"] and (len(module["source_files"]) == 0 or a["directory"] == ""):
+        found.append("the module has LLVM line tables (PYSTACHY_DEBUG_LINES), but no files or directory for them to name")
     return found + list(a["unsupported"])
 
 
@@ -1289,7 +1301,12 @@ def gen_for_module(module):
     from src.pystachy_compiler.source_lines import SourceLines
     a = module["attributes"]
     g = Gen()
-    g.source_lines = SourceLines(False)  # (whatever PYSTACHY_DEBUG_LINES says: the module has none)
+    # (whatever PYSTACHY_DEBUG_LINES says: the module's line tables, if it has them, name its files
+    # in its directory, which compile_module gives diagnostics.FILES)
+    g.source_lines = SourceLines(a["debuglines"])
+    g.source_lines.directory = a["directory"]
+    require([x["number"] for x in module["source_files"]] == [str(k) for k in range(len(module["source_files"]))],
+            "files are numbered from 0, in order")
     g.opts = {o: True for o in a["opts"]}
     g.eh = a["exceptions"]
     g.gproto = a["protocol"]
@@ -1367,7 +1384,8 @@ def compile_module(module):
     from src.pystachy_compiler import diagnostics
     g = gen_for_module(module)
     a = module["attributes"]
-    saved = (dict(diagnostics.DYNFILES), dict(diagnostics.INTFILES))
+    saved = (dict(diagnostics.DYNFILES), dict(diagnostics.INTFILES), list(diagnostics.FILES))
+    diagnostics.FILES[:] = [x["path"] for x in module["source_files"]]  # (the files its line tables name)
     diagnostics.DYNFILES.clear()
     diagnostics.INTFILES.clear()
     if a["dynamic"]:
@@ -1388,6 +1406,7 @@ def compile_module(module):
         diagnostics.DYNFILES.update(saved[0])
         diagnostics.INTFILES.clear()
         diagnostics.INTFILES.update(saved[1])
+        diagnostics.FILES[:] = saved[2]
     sys.stderr.write(errors.getvalue())
     return lowered
 
