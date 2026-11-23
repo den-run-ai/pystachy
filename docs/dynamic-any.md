@@ -1114,9 +1114,11 @@ can still need an explicit `list[Any]` destination.
   `int.as_integer_ratio()`) raises `AttributeError` where it is called through an `Any` value;
   typed code rejects it at compile time. Supported builtin methods evaluate their arguments
   before raising CPython's positional arity `TypeError`, while missing attributes fail before
-  argument evaluation (`tests/programs/inference/dynany_builtin_arity.py`). The typed subset
-  still lacks three-argument `str.replace()` and one-argument `dict.setdefault()`; those shapes
-  raise an explicit unsupported-call `TypeError` after evaluating their arguments. Static
+  argument evaluation (`tests/programs/inference/dynany_builtin_arity.py`). A str's
+  `replace()` takes its count and a dict's `setdefault()` a key alone, as CPython's do
+  (`dynany_replace_setdefault.py`); typed code rejects the latter at compile time. A str's
+  `split()`, `rsplit()` and `strip()` methods take `None`, and `startswith()` and `endswith()` a
+  tuple of affixes (`dynany_str_method_args.py`). Static
   unpacking uses the direct-call error wording: a bool's unpacked `bit_count()`/`bit_length()`
   arity error names `int` where CPython names `bool`
   (`tests/deviations/dynany_builtin_star_error.py`).

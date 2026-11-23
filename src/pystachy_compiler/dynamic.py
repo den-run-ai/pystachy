@@ -4357,9 +4357,72 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
             self.dyn_return(f, dynamic_list_method(self, o, m, args))
         else:
             x = self.dyn_payload(o, BIG if bt == "int" and int_program() else "int" if bt == "bool" else bt)
-            r = self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(x)])] + self.dyn_call_args(key, args)), "")
+            an = self.dyn_call_args(key, args)
+            if is_dict(bt) and m == "setdefault" and n == 1:
+                an.append(mk("None", "", line, []))  # (CPython's default, which typed code takes given)
+            if bt == "str" and n > 0 and m in ["split", "rsplit", "strip", "lstrip", "rstrip"]:
+                # (None as the separator or the characters to strip: whitespace, as typed code takes
+                # None where it is given so)
+                given = self.label()
+                other = self.label()
+                self.cbr(self.dyn_test(args[0], ["None"]), given, other)
+                self.place(given)
+                r = self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(x)]), mk("None", "", line, [])] + an[1:]), "")
+                self.dyn_return(f, self.dyn_fresh(r))
+                self.place(other)
+            if bt == "str" and n > 0 and len(ks) == 0 and (m == "startswith" or m == "endswith"):
+                # (a tuple of prefixes or suffixes: dyn_affix_any)
+                tup = self.label()
+                other = self.label()
+                self.cbr(self.dyn_test(args[0], ["vtuple[dyn]"]), tup, other)
+                self.place(tup)
+                self.dyn_return(f, dyn_affix_any(self, x, m, args[0], an[1:]))
+                self.place(other)
+            r = self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(x)])] + an), "")
             self.dyn_return(f, self.dyn_fresh(r))
         self.place(nxt)
+
+
+def dyn_affix_any(self, x: Val, m: str, tup: Val, rest: list[Node]) -> Val:
+    # x.m(t, ...) of a str x and a tuple t held in Any, m startswith or endswith: whether one of
+    # t's items is such an affix, tried in turn, as CPython's tailmatch loop answers, with its
+    # TypeError for an item that is no str where the loop reaches it (an earlier match answers
+    # first). Each try is typed code's m of x and the item, with the call's other arguments
+    tv = self.dyn_payload(tup, "vtuple[dyn]")
+    count = Val(self.mload("int", tv.v), "int")
+    entry = self.cur
+    head = self.label()
+    body = self.label()
+    check = self.label()
+    bad = self.label()
+    hit = self.label()
+    miss = self.label()
+    end = self.label()
+    self.br(head)
+    self.place(head)
+    index = Ins("phi", "int", "")
+    self.incoming(index, "0", entry)
+    i = Val(self.phi(index), "int")
+    self.cbr(self.num_cmp("<", i, count).v, body, miss)
+    self.place(body)
+    item = self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {tv.v}", f"i64 {i.v}"]), DYN)
+    self.cbr(self.dyn_test(item, ["str"]), check, bad)
+    self.place(bad)
+    self.raise_("TypeError", self.concat([Val(self.sconst(f"tuple for {m} must only contain str, not "), "str"), self.dyn_type_name(item)]).v)
+    self.place(check)
+    affix = self.dyn_payload(item, "str")
+    found = self.truth(self.expr(mk("call", "", self.line, [mk("attr", m, self.line, [self.vnode(x)]), self.vnode(affix)] + rest), ""))
+    self.incoming(index, self.scalar("add", [i, Val("1", "int")]), self.cur)
+    self.cbr(found, hit, head)
+    self.place(hit)
+    self.br(end)
+    self.place(miss)
+    self.br(end)
+    self.place(end)
+    ph = Ins("phi", "bool", "")
+    self.incoming(ph, "true", hit)
+    self.incoming(ph, "false", miss)
+    return Val(self.phi(ph), "bool")
 
 
 def dynamic_list_method(self, o: Val, method: str, args: list[Val]) -> Val:
@@ -4388,7 +4451,7 @@ def dynamic_list_method(self, o: Val, method: str, args: list[Val]) -> Val:
 def builtin_limits(bt: str, m: str) -> list[int]:
     # Positional bounds of a supported boxed builtin method; -1 marks a missing method.
     base = "list" if is_list(bt) else "dict" if is_dict(bt) else "vtuple" if is_vtuple(bt) else "int" if bt == "bool" else bt
-    special = {"list.sort": "0 0", "dict.update": "0 1", "dict.pop": "1 2", "dict.setdefault": "2 2", "str.join": "1 1"}
+    special = {"list.sort": "0 0", "dict.update": "0 1", "dict.pop": "1 2", "dict.setdefault": "1 2", "str.join": "1 1", "str.replace": "2 3"}
     k = base + "." + m
     if k in special:
         return [int(special[k].split(" ")[0]), int(special[k].split(" ")[1])]
@@ -4406,14 +4469,11 @@ def gen_dyn_builtin_takes(self, bt: str, m: str, n: int) -> bool:
 
 
 def builtin_arity(bt: str, m: str, n: int) -> str:
-    # CPython's positional binding error. Two shapes remain outside typed-code support even
-    # though CPython accepts them; name that limitation rather than claiming invalid arity.
+    # CPython's positional binding error
     bounds = builtin_limits(bt, m)
     lo = bounds[0]
     hi = bounds[1]
     base = tname("int" if bt == "bool" else bt)
-    if (bt == "str" and m == "replace" and n == 3) or (is_dict(bt) and m == "setdefault" and n == 1):
-        return f"{base}.{m}() with {n} positional argument{'s' if n != 1 else ''} is not supported"
     if is_list(bt) and m == "sort":
         return "sort() takes no positional arguments"
     if bt == "str" and m == "replace":
