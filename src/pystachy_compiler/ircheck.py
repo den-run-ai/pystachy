@@ -10,7 +10,7 @@ from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.union_proof import UnionProof, private_optional_reads, simple_union_proof
 from src.pystachy_compiler.specs import BIG, CAST_KINDS, EMPTYFS, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME, TYPE_CLASSES
 from src.pystachy_compiler.specs import OPS, OP_ENTRY, OP_FIELDS, OP_INVOKE, OP_K, OP_LABELS, OP_MAX, OP_MIN, OP_OPERAND_TYPES, OP_PER_OPERAND, OP_RESULT_TYPE, OP_S, OP_T, OP_TEMPS, OP_X, RESULT_NUMBERS
-from src.pystachy_compiler.utils import RT_VARS, gelem, generator_identity, is_dict, is_gen, is_list, is_opt, is_set, is_tuple, is_union, list_read_error, list_receiver_error, list_write_error, lt, packed_item, rt_generic, rt_instance_error, same_kind, targs, tslots, umembers, unopt
+from src.pystachy_compiler.utils import RT_VARS, gelem, generator_identity, identity_abi, is_dict, is_gen, is_list, is_opt, is_set, is_tuple, is_union, list_read_error, list_receiver_error, list_write_error, lt, numeric_identity, packed_item, rt_generic, rt_instance_error, same_kind, targs, tslots, umembers, unopt
 
 class EffectSummaries:
     # One compilation's completed function contexts. FnInfo retains each context's parameter
@@ -625,6 +625,44 @@ def class_union(self, t: str) -> bool:
     return len(ms) > 0 and all(m in self.classes for m in ms)
 
 
+def call_error(i: Ins, c: IFn) -> str:
+    # Why call op i does not have the type of c, the compiled function it calls, or "": as an
+    # MLIR func.call has its callee's function type, it passes the parameters that are not typed
+    # None (IFn.ps) at their types, then, under the identity ABI, a dyn for each that may hold a
+    # number's identity and the &dyn of the result's (calls.py, as gen_lower declares them), and
+    # has the callee's return type. A template's empty result whose type each call decides
+    # (Gen.typed_empty) is the container of that kind that its caller decided, and a call cycle's
+    # call built before its callee's return was decided (Gen.adopt) reads it at the placeholder
+    # of that kind its own open result keeps.
+    # (no list of the operand types: the verifier runs after each pass, also under GC stress)
+    f = c.f
+    ids = identity_abi(f)
+    n = len(c.ps)
+    if ids:
+        for j in c.ps:
+            if numeric_identity(f.ptypes[j]):
+                n += 1
+        if numeric_identity(f.ret):
+            n += 1
+    if len(i.a) != n:
+        return f"a call of {i.s} passes {len(i.a)} operands, where it takes {n}"
+    k = 0
+    for j in c.ps:
+        if i.a[k].t != f.ptypes[j]:
+            return f"a call of {i.s} passes operand {k} as {i.a[k].t}, where it takes {f.ptypes[j]}"
+        k += 1
+    for j in c.ps if ids else []:
+        if numeric_identity(f.ptypes[j]):
+            if i.a[k].t != "dyn":
+                return f"a call of {i.s} passes operand {k} as {i.a[k].t}, where it takes dyn"
+            k += 1
+    if ids and numeric_identity(f.ret) and i.a[k].t != "&dyn":
+        return f"a call of {i.s} passes operand {k} as {i.a[k].t}, where it takes &dyn"
+    if i.t != f.ret and not (("?" in f.ret or "?" in i.t) and same_kind(f.ret, i.t)):
+        return f"a call of {i.s} has type {i.t}, where it returns {f.ret}"
+    return ""
+
+
 def cast_error(self, fn: IFn, i: Ins, objects: dict[str, bool], types: dict[str, str]) -> str:
     # What the rule of cast i's kind (specs.CAST_KINDS) says of its operand and its result, or "".
     # Every kind keeps the operand's LLVM type, since lowering erases the cast and its uses read
@@ -788,7 +826,8 @@ def verify_dynamic_raw(self, fn: IFn) -> None:
 def gen_verify(self, fn: IFn, eh: bool) -> None:
     # PYSTACHY_IRCHECK=1: fn is well formed. Every op is in IROPS, an rt op's key in RUNTIME;
     # call and init ops call compiled
-    # functions (or, in runtime mode, runtime.c's functions that runtime.py declares); every block
+    # functions (or, in runtime mode, runtime.c's functions that runtime.py declares), a call of
+    # a compiled function at its type (call_error); every block
     # has a label of its own, the first block's being entry; every block ends with its one
     # terminator; branches go to blocks of fn, and the flow is structured (check_structure); a phi
     # starts its block, and its predecessors branch there; each op holds exactly the numbers
@@ -1008,6 +1047,10 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     self.bad_ir(fn, b, f"{i.op} {i.s} numbered {x}, above IFn.n ({fn.n})")
             if (i.op == "call" and i.s not in self.fll and i.s not in self.externs) or (i.op == "init" and "@init." + i.s not in self.fll):
                 self.bad_ir(fn, b, f"a call of {i.s}, which is not compiled")
+            if i.op == "call" and i.s in self.fll:
+                error = call_error(i, self.fns[self.fll[i.s]])
+                if error != "":
+                    self.bad_ir(fn, b, error)
             if i.op != "phi" and len(i.b) > 0:
                 if len(out) == 0:
                     out = i.b

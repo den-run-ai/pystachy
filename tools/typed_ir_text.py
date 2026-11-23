@@ -1189,13 +1189,16 @@ def class_infos(module):
     return infos
 
 
-def gen_for(fn, classes=None):
+def gen_for(fn, classes=None, functions=()):
     """A fresh code generator that has declared the runtime functions fn calls and knows the
-    classes of its module (class_infos), if any."""
+    classes of its module (class_infos), if any, and its functions, which its calls call."""
     ir, specs, symbols, syntax, utils = compiler()
     from src.pystachy_compiler.gen import Gen
     g = Gen()
     g.classes.update(classes or {})
+    for other in functions:
+        g.fll[other.f.ll] = len(g.fns)
+        g.fns.append(other)
     for block in fn.blocks:
         for i in block.code:
             if i.op == "rt":
@@ -1420,10 +1423,11 @@ def expectations(text):
 
 def verify_errors(text, eh=False):
     """Why the functions of a text do not verify as their expected errors say, or []. A module's
-    are verified with its classes."""
+    are verified with its classes, and with its functions, which their calls may call."""
     parsed = parse(text)
     records = parsed["functions"] if isinstance(parsed, dict) else parsed
     classes = class_infos(parsed) if isinstance(parsed, dict) else {}
+    functions = [to_ifn(r) for r in records] if isinstance(parsed, dict) else []
     problems = []
     for record, expected in zip(records, expectations(text), strict=True):
         name = record["symbol"]
@@ -1434,7 +1438,7 @@ def verify_errors(text, eh=False):
         errors = StringIO()
         try:
             with redirect_stderr(errors):
-                gen_for(fn, classes).verify(fn, eh)
+                gen_for(fn, classes, functions).verify(fn, eh)
             reported = None
         except SystemExit:
             reported = REPORTED.search(errors.getvalue())
