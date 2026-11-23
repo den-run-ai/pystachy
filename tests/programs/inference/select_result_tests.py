@@ -1,6 +1,6 @@
-# The tests a literal decides: an int's truth, a negative int, not, and and or beside a test of
-# another value, while and assert, and a comprehension's variable or a lambda's parameter that shadows
-# the selector's name.
+# The tests a literal decides: an int's truth (also of -0, 00 and 0_0, which are 0), a negative
+# int, not, and and or beside a test of another value, while and assert, and a comprehension's
+# variable or a lambda's parameter that shadows the selector's name.
 def sign(n: int, mode: int = 1):
     if mode < 0:
         return -n
@@ -39,6 +39,7 @@ def shadow(xs: list[bool], flag=False):
 
 
 print(sign(5), sign(5, -1), sign(5, 0), sign(5, mode=2), sign(5, -0))
+print(sign(6, 00), sign(7, 0_0), sign(8, -00), sign(9, 0x0))
 print(pick([0, 2, 3]), pick([0, 2], True), pick([0, 2], strict=False))
 print(count(3), count(3, True))
 print(shadow([True, False]), shadow([False, True], True))

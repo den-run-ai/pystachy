@@ -937,7 +937,8 @@ def lit_type(t: str) -> bool:
 def scalar_literal(n: Node | None) -> Node | None:
     # n where it is a literal that a selector takes: True, False, None, a str of ASCII characters
     # (the compiler holds a str as its UTF-8 bytes, whose count const_of's len() would give), or an
-    # int that fits in 64 bits (negated or not: -0 is 0, whose truth is false); else None
+    # int that fits in 64 bits, negated or not, spelled in decimal (00 and -0 are 0, whose truth is
+    # false, as static() reads an int literal's); else None
     if n is None:
         return None
     if n.kind == "True" or n.kind == "False" or n.kind == "None":
@@ -945,9 +946,10 @@ def scalar_literal(n: Node | None) -> Node | None:
     if n.kind == "str":
         return n if ascii_strs(n) else None
     if n.kind == "int" and int_fits(n.s):
-        return n
-    if n.kind == "unary" and n.s == "-" and len(n.kids) == 1 and n.kids[0].kind == "int" and int_fits("-" + n.kids[0].s):
-        return n.kids[0] if n.kids[0].s == "0" else n
+        return mk("int", str(int(n.s)), n.line, [])
+    if n.kind == "unary" and n.s == "-" and len(n.kids) == 1 and n.kids[0].kind == "int" and int_fits(n.kids[0].s):
+        v = int(n.kids[0].s)  # (fits: -9223372036854775808 is none, whose int() of 9223372036854775808 would not)
+        return mk("int", "0", n.line, []) if v == 0 else mk("unary", "-", n.line, [mk("int", str(v), n.line, [])])
     return None
 
 
@@ -1146,7 +1148,10 @@ def gen_selector_const(self, n: Node) -> Node | None:
         if x is None or y is None or (x.kind not in one and y.kind not in one):
             return None  # (the identity of ints and strs is CPython's to decide)
         return mk("True" if (x.kind == y.kind) == (n.s == "is") else "False", "", n.line, [])
-    return self.const_of(n, env, False)
+    c = self.const_of(n, env, False)
+    if c is not None and (c.kind == "int" or c.kind == "unary"):
+        return scalar_literal(c)  # (in decimal, whose truth static() reads: (00, mode)[0] is 0)
+    return c
 
 
 # ---- classes that specialize on literal arguments
