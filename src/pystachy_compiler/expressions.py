@@ -4334,7 +4334,7 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         bm = self.classes[b.t].methods
         if m in bm and self.cmp_method(b.t, m, "None") != "":
             return self.eqcall(bm[m], op == "==", b, a)
-        if op == "!=" and b.t not in self.nts and self.cmp_method(b.t, "__eq__", "None") != "":
+        if op == "!=" and b.t not in self.nts and self.bkind(b.t) == "" and self.cmp_method(b.t, "__eq__", "None") != "":
             # (not a NamedTuple's: its __ne__ is tuple's, which never calls its __eq__)
             return Val(self.scalar('xor', [Val(self.eqcall(bm['__eq__'], True, b, a).v, 'bool'), Val('true', 'bool')]), "bool")
         return Val("", "")
@@ -4345,7 +4345,7 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         bm = self.classes[b.t].methods
         if m in bm and self.cmp_method(b.t, m, a.t) != "":
             return self.eqcall(bm[m], op == "==", b, a)
-        if op == "!=" and m not in bm and b.t not in self.nts and self.cmp_method(b.t, "__eq__", a.t) != "":
+        if op == "!=" and m not in bm and b.t not in self.nts and self.bkind(b.t) == "" and self.cmp_method(b.t, "__eq__", a.t) != "":
             return Val(self.scalar('xor', [Val(self.eqcall(bm['__eq__'], True, b, a).v, 'bool'), Val('true', 'bool')]), "bool")
         return Val("", "")
     # (two specializations of one class template are one class to CPython)
@@ -4435,7 +4435,7 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
     if m in ms:
         self.none_operand(shown if shown != "" else op, a, b)
         return self.call_fn(ms[m], [a, b], [])
-    if op == "!=" and "__eq__" in ms and a.t not in self.nts:
+    if op == "!=" and "__eq__" in ms and a.t not in self.nts and self.bkind(a.t) == "":
         # (object's __ne__, which inverts __eq__; a NamedTuple's is tuple's, which declines what
         # is no tuple, and cmp2 goes on to the other operand's method, else to identity)
         return Val(self.scalar('xor', [Val(self.dunder('==', a, b).v, 'bool'), Val('true', 'bool')]), "bool")
@@ -4717,7 +4717,7 @@ def gen_cmp_cands(self, op: str, at: str, bt: str) -> list[list[str]]:
             continue
         if lt in self.classes:
             ms = self.classes[lt].methods
-            if op == "!=" and m not in ms and "__eq__" in ms and lt not in self.nts:
+            if op == "!=" and m not in ms and "__eq__" in ms and lt not in self.nts and self.bkind(lt) == "":
                 m = "__eq__"
                 inv = "!"
             if m in ms and ms[m].synthetic and self.is_dc(ms[m].cls) and lt != rt:
@@ -4742,7 +4742,7 @@ def gen_cmp_declining(self, op: str, at: str, bt: str) -> bool:
         m = DUNDER[op] if side == 0 or op not in REFL else DUNDER[REFL[op]]
         if t in self.classes:
             ms = self.classes[t].methods
-            if op == "!=" and m not in ms and "__eq__" in ms and t not in self.nts:
+            if op == "!=" and m not in ms and "__eq__" in ms and t not in self.nts and self.bkind(t) == "":
                 m = "__eq__"
             if m in ms and self.may_decline(ms[m]):
                 return True
@@ -4794,7 +4794,7 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
             return [sides[i], "@scalar", ""]
         if lt in self.classes:
             ms = self.classes[lt].methods
-            if op == "!=" and m not in ms and "__eq__" in ms and lt not in self.nts:
+            if op == "!=" and m not in ms and "__eq__" in ms and lt not in self.nts and self.bkind(lt) == "":
                 # (object's __ne__ inverts __eq__; a NamedTuple's is tuple's, which declines what
                 # is no tuple)
                 m = "__eq__"
@@ -6370,9 +6370,19 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         if op == "in" or op == "not in":
             b = self.bdecay(b, BIN)
         else:
+            attempt = self.bkeeps(op, a, b)
+            if attempt != "" and attempt not in self.xnot:
+                # (the program's method takes such an object as itself, where that compiles)
+                return self.bkept(op, a, b, attempt)
             ab = self.bcompared(op, a, b)
             a = ab[0]
             b = ab[1]
+    return self.cmp3(op, a, b)
+
+
+def gen_cmp3(self, op: str, a: Val, b: Val) -> Val:
+    # a op b, cmp2's comparison of the operands it prepared (an object of a class deriving from
+    # a builtin container as that container, or as it is: builtin_bases.py)
     if a.t == "dyn" or b.t == "dyn":
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":
