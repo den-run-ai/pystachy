@@ -91,12 +91,12 @@ two values that may both be lists requires narrowing, and so does `==` on a unio
 recursive alias beside members holding objects or sets. These are bounded
 builtin-value operations, not general user-defined dynamic dispatch.
 
-Recursive aliases are nominal: two aliases with the same members are different
-types, so a program's own JSON alias does not exchange values with
-`json.JSONValue`. A runtime signature that builds a tuple around a recursive
-value (`list(d.items())` for `d: dict[str, JSONValue]`) can also spell its type
-differently from an annotation; both are rejected at compile time, not
-miscompiled.
+Two recursive aliases with the same members are one type, so a program's own JSON
+alias exchanges values with `json.JSONValue`
+([cases](../tests/programs/inference/recursive_alias_same_shape.py)). A runtime
+signature that builds a tuple around a recursive value (`list(d.items())` for
+`d: dict[str, JSONValue]`) can spell its type differently from an annotation; that is
+rejected at compile time, not miscompiled.
 
 Only a recursive alias's edge lets a value nest without bound, so only a
 descriptor that holds one can reach those depth guards. The runtime operations

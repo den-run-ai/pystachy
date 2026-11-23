@@ -42,6 +42,7 @@
 #include <sys/random.h>
 #endif
 #ifdef __linux__
+#include <elf.h>
 #include <sys/auxv.h>
 #include <sys/file.h>
 #include <sys/syscall.h>
@@ -108,6 +109,17 @@ __attribute__((unused)) static char *d2s(double f);
 #undef NDEBUG
 #include <assert.h>
 #endif
+/* A function that does not return (_Noreturn: most end the program with an error) is NOMERGE:
+   LLVM keeps each call of it apart rather than merging the calls that pass the same arguments, so
+   the call's return address gives the line that failed (see tracebacks). */
+#if defined(__has_attribute)
+#if __has_attribute(nomerge)
+#define NOMERGE __attribute__((nomerge))
+#endif
+#endif
+#ifndef NOMERGE
+#define NOMERGE
+#endif
 
 typedef int64_t I;
 typedef struct { I len; uint64_t dict_hash; I chars1; char s[]; } Str; /* UTF-8 bytes, NUL-terminated; lazy hash and code-point count + 1 (0: unset) */
@@ -153,7 +165,7 @@ static TextHint text_hints[64];
    definition's 0 holds, and opt_in() costs a load where such a value was found. A plain program
    that reached the trap would show a compiler bug, not its own: it aborts */
 __attribute__((weak)) const I pys_plain = 0;
-static _Noreturn __attribute__((noinline, cold)) void opt_in_trap(void) {
+static _Noreturn NOMERGE __attribute__((noinline, cold)) void opt_in_trap(void) {
   fputs("pystachy: internal error: a value of a feature the program does not opt in to\n", stderr);
   abort();
 }
@@ -322,10 +334,11 @@ static List *warnopts;                 /* sys.warnoptions, made by its first rea
 static void **wr_fired;                /* the fire functions of weak references whose referents died, */
 static I wr_head, wr_nfired, wr_cap;   /* [wr_head, wr_nfired) to run: roots (see weak references) */
 /* GC_ROOT(xr): active exception state outlives the frame that created it. */
-static struct { Exc *cur, *handled, *shown, *pend, *closed; } xr;   /* the exception raised last, the one being
-                                     handled, the uncaught one whose str() is being shown, the one a with-file's
-                                     close raised while unwinding (see exceptions), the one a generator raised
-                                     as close() closed it (see generators) */
+static struct { Exc *cur, *handled, *shown, *pend, *closed, *tb; } xr;   /* the exception raised last, the one
+                                     being handled, the uncaught one whose str() is being shown, the one a
+                                     with-file's close raised while unwinding (see exceptions), the one a
+                                     generator raised as close() closed it (see generators), the one whose
+                                     frames tracebacks holds */
 static int eh;                         /* the program has try or with: stored by pys_eh_on alone (see exceptions) */
 typedef void Thrower(Exc *);
 /* GC_NO_ROOT(xthrow): native code address, never a heap object. */
@@ -341,7 +354,7 @@ static I nprotos, cprotos;
 
 static void out_flush(void);           /* stdout, before an error message (see I/O) */
 void pys_finish(void);                 /* every way out of the program runs it (lli skips atexit handlers) */
-static _Noreturn void oom(void) {
+static _Noreturn NOMERGE void oom(void) {
   if (gc_busy) gc_off = 1, gc_stress = 0;   /* (the collection it stops has marked part of the heap: none may start
                                                while pys_finish runs atexit's callbacks, #1585) */
   out_flush(); fputs("MemoryError\n", stderr); pys_finish(); exit(1);
@@ -386,7 +399,7 @@ __attribute__((noinline, no_sanitize("address"))) static void scan(const W *p, c
     if (s->k & 1) continue;            /* atomic: nothing to scan */
     if (msp + 2 > mcap) mstk_grow();
     mstk[msp++] = (uintptr_t)s->start + i * s->size;
-    mstk[msp++] = (uintptr_t)(s->large ? s->size & ~7 : s->size);
+    mstk[msp++] = (uintptr_t)s->size & ~(sizeof(W) - 1);   /* whole pointer words, in bytes */
   }
 }
 __attribute__((noinline, no_sanitize("address"))) static void mark_roots(void) {
@@ -693,17 +706,17 @@ __attribute__((noinline)) static void collect(void) {
   while (msp || qc) {
     if (msp && qc < MQ) {
       I n = (I)mstk[msp - 1]; const W *p = (const W *)mstk[msp - 2];
-      if (n > 4096) { mstk[msp - 2] = (uintptr_t)(p + 512); mstk[msp - 1] = (uintptr_t)(n - 4096); n = 4096; }
+      if (n > 4096) { mstk[msp - 2] = (uintptr_t)p + 4096; mstk[msp - 1] = (uintptr_t)(n - 4096); n = 4096; }
       else msp -= 2;
       __builtin_prefetch(p);
-      if (n > 64) __builtin_prefetch(p + 8);
+      if (n > 64) __builtin_prefetch((const char *)p + 64);
       unsigned t = 2 * ((qh + qc++) & (MQ - 1));
       mq[t] = (uintptr_t)p; mq[t + 1] = (uintptr_t)n;
       continue;
     }
     const W *p = (const W *)mq[2 * qh]; I n = (I)mq[2 * qh + 1];
     qh = (qh + 1) & (MQ - 1); qc--;
-    scan(p, p + n / 8);
+    scan(p, p + n / sizeof *p);
   }
   weakrefs_sweep();                    /* clear weak targets before any memory is reclaimed */
   if (nfiles) files_sweep();
@@ -936,6 +949,11 @@ static int decint(const char *s) { return (int)decnum(s, 0); }   /* atoi(s) */
 static void gc_init(char *sb, I **roots, I nroots) {
   const char *e = getenv("PYSTACHY_GC");
   gc_bottom = sb + STACK_PAST;         /* sb is @main's frame address: include its frame record */
+#ifdef __wasi__
+  /* (wasm32 keeps a frame's locals above its frame address, so @main's own reach past sb: the
+     whole linear-memory stack above the caller's frame, wasm/README.md) */
+  { extern char __stack_high; gc_bottom = &__stack_high; }
+#endif
   gc_roots = roots; gc_nroots = nroots;
 #ifdef WASI_STATIC_HEAP
   pmap = wasi_tables;
@@ -960,7 +978,7 @@ static void gc_init(char *sb, I **roots, I nroots) {
    uncaught exception stores: a program without try or with links neither, so LLVM folds xthrow to
    NULL and keeps none of it, and the funnels compile to the code they had before. */
 static volatile sig_atomic_t io_intr;  /* a Ctrl-C waiting for the I/O layer to finish a call (see I/O) */
-static _Noreturn void kbint_exit(void);
+static _Noreturn NOMERGE void kbint_exit(void);
 static int kbint;                      /* the program ends with KeyboardInterrupt: pys_finish dies by SIGINT */
 static Exc *exc_new(Str *kind, Str *msg, Str *args);
 static Exc *exc_raise(Str *kind, Str *msg);
@@ -972,6 +990,12 @@ Str *pys_exc_type(Exc *e);
 void *pys_exc_id(Exc *e);
 static void unwind_push(void (*fn)(void *), void *arg);
 static void unwind_pop(void);
+static void traceback(Exc *e);
+/* the RecursionErrors of a function's entry check (pys_recursion_error), whose frame is that
+   function's innermost one, which CPython's traceback does not show (pys_fail: tb_entry) */
+#define RECURSION "RecursionError: maximum recursion depth exceeded"
+#define RECURSION_STACK RECURSION " (the native stack is nearly full)"
+static int tb_entry;
 static void ewrite(const char *s, I n) {   /* text to stderr, whose errors="backslashreplace" (CPython's
                                              sys.stderr) writes a surrogate, held in its three-byte form, as \udcff */
   I i = 0, j = 0;
@@ -984,14 +1008,15 @@ static void ewrite(const char *s, I n) {   /* text to stderr, whose errors="back
     }
   fwrite(s + j, 1, n - j, stderr);
 }
-_Noreturn void pys_fail(const char *m) {           /* m: "Kind: message", or "Kind" */
+_Noreturn NOMERGE void pys_fail(const char *m) {           /* m: "Kind: message", or "Kind" */
   if (io_intr) kbint_exit();
+  tb_entry = !strcmp(m, RECURSION) || !strcmp(m, RECURSION_STACK);
   if (xthrow) xthrow(exc_line(m));
-  out_flush(); ewrite(m, strlen(m)); fputc('\n', stderr); pys_finish(); exit(1);
+  out_flush(); traceback(0); ewrite(m, strlen(m)); fputc('\n', stderr); pys_finish(); exit(1);
 }
-_Noreturn void pys_raise(Str *kind, Str *msg) {     /* raise kind(msg): CPython's last traceback line */
+_Noreturn NOMERGE void pys_raise(Str *kind, Str *msg) {     /* raise kind(msg): CPython's last traceback line */
   if (xthrow) xthrow(exc_raise(kind, msg));
-  out_flush();
+  out_flush(); traceback(0);
   fwrite(kind->s, 1, kind->len, stderr);
   if (msg->len) { fputs(": ", stderr); ewrite(msg->s, msg->len); }
   fputc('\n', stderr);
@@ -999,8 +1024,8 @@ _Noreturn void pys_raise(Str *kind, Str *msg) {     /* raise kind(msg): CPython'
   pys_finish();
   exit(1);
 }
-_Noreturn void pys_exit(I c) { if (xthrow) xthrow(exc_exit(c, 0)); pys_finish(); exit((int)c); }   /* sys.exit(c): status c */
-_Noreturn void pys_exit_msg(Str *msg) {          /* sys.exit(msg): msg to stderr, status 1 */
+_Noreturn NOMERGE void pys_exit(I c) { if (xthrow) xthrow(exc_exit(c, 0)); pys_finish(); exit((int)c); }   /* sys.exit(c): status c */
+_Noreturn NOMERGE void pys_exit_msg(Str *msg) {          /* sys.exit(msg): msg to stderr, status 1 */
   if (xthrow) xthrow(exc_exit(0, msg));
   out_flush(); ewrite(msg->s, msg->len); fputc('\n', stderr); pys_finish(); exit(1);
 }
@@ -1556,9 +1581,9 @@ I pys_float_is_integer(double d) {          /* below 2**52 in magnitude, d is wh
 /* int() and float() of a string follow Python's grammar (whitespace around the number, a sign,
    digits with single underscores between them, 0x/0o/0b prefixes), not strtoll/strtod's */
 static void repr_str(Buf *b, Str *s);
-static _Noreturn void failf(const char *f, ...);
+static _Noreturn NOMERGE void failf(const char *f, ...);
 I pys_f2i(double d);
-static _Noreturn void badlit(const char *what, I base, Str *s) {   /* int() (base >= 0) shows at most 200 */
+static _Noreturn NOMERGE void badlit(const char *what, I base, Str *s) {   /* int() (base >= 0) shows at most 200 */
   Buf b = {0}; char t[64]; I r, k = 0, cp;                          /* characters of the repr (%.200R) */
   put(&b, what, strlen(what));
   if (base >= 0) put(&b, t, snprintf(t, 64, " with base %lld", (long long)base));
@@ -1605,7 +1630,7 @@ static Str *asciinum(Str *s) {         /* CPython's first step for int()/float()
    form of a str that has other characters, and for the error of a str that is no int, whose
    message holds the str's repr */
 Str *pys_num_ascii(Str *s) { return asciinum(s); }
-_Noreturn void pys_int_badlit(Str *s, I base) { badlit("ValueError: invalid literal for int()", base, s); }
+_Noreturn NOMERGE void pys_int_badlit(Str *s, I base) { badlit("ValueError: invalid literal for int()", base, s); }
 I pys_int_str(Str *s, I base);
 /* Explicit arbitrary-precision integers; ordinary int keeps its checked i64 ABI. */
 #include "mpz/mpz.c"
@@ -1654,6 +1679,8 @@ double pys_float_str(Str *s) {
      validated above; Str owns that terminator even for embedded/sliced text. */
   char *end; double v = fstrtod(parse, &end);
   if (end != limit) badlit("ValueError: could not convert string to float", -1, s);
+  if (special && *p == '-') v = copysign(v, -1.0);   /* (musl's strtod, WASI's C library, drops the sign of "-nan"
+                                                     that CPython and glibc keep) */
   return v;
 }
 
@@ -2004,7 +2031,7 @@ double pys_big_float(I lo, void *hi) {         /* rounded once, to nearest even,
    libm's: no_builtin("pow") keeps LLVM from rewriting it, and from inlining it into a function
    without the attribute (-fno-builtin-pow over all of runtime.c would keep every runtime.c helper out
    of runtime.py's code and the program's) */
-static _Noreturn __attribute__((noinline, cold)) void pow_fail(int kind) {
+static _Noreturn NOMERGE __attribute__((noinline, cold)) void pow_fail(int kind) {
   pys_fail(kind == 0 ? "ZeroDivisionError: 0.0 cannot be raised to a negative power"
            : kind == 1 ? "ValueError: a negative number to a fractional power has a complex result (not supported)"
            : kind == 2 ? "OverflowError: (34, 'Numerical result out of range')"
@@ -2730,12 +2757,12 @@ static const char *recdesc(const char *d) {
    repr_depth and eqpair_depth count the edges they follow and raise here past 512. Nothing else
    calls it: tools/check_runtime.py gives what reaches it R?, which the compiler makes R where the
    op's descriptor holds an R (Gen.opfx); other descriptors never get here */
-static _Noreturn void rec_deep(const char *m) { pys_fail(m); }
+static _Noreturn NOMERGE void rec_deep(const char *m) { pys_fail(m); }
 /* a list's int past 64 bits (BIGIDS), a set's (sbig) or a dict's (dbig), with more digits than
    CPython's limit for an int's text, in repr_depth: its ValueError, which the compiler's RUNTIME
    counts as rec_deep's (R?: Gen.opfx makes it R where a descriptor holds a list, set or dict of ints,
    in a program whose lists, sets and dicts hold promoting ints) */
-static _Noreturn void digits_deep(void) { pys_fail(DIGITS_LIMIT); }
+static _Noreturn NOMERGE void digits_deep(void) { pys_fail(DIGITS_LIMIT); }
 static const char *utype(I tag, const char *d) {
   d++;
   for (I n = unum(&d); n > 0; n--) { if (unum(&d) == tag) return d; d = skip(d); }
@@ -2999,7 +3026,8 @@ Str *pys_refl_vars(ReflRec *r, char *o) {   /* repr(vars(o)): o's assigned field
     I v = 0, w[2];
     if (f->desc->s[0] == 'b') v = *(unsigned char *)(o + f->off) & 1;
     else if (f->desc->s[0] == 'J' && opt_in()) { memcpy(w, o + f->off, 16); if (w[1]) w[0] = INT64_MIN; v = (I)w; }   /* a promoting int's {lo, hi}: jbig's words */
-    else memcpy(&v, o + f->off, 8);
+    else if (f->desc->s[0] == 'i' || f->desc->s[0] == 'f') memcpy(&v, o + f->off, 8);
+    else v = (I)(uintptr_t)*(void **)(o + f->off);   /* a reference: a pointer, of 4 bytes on wasm32 */
     repr(&b, v, f->desc->s);
   }
   put(&b, "}", 1);
@@ -3820,7 +3848,7 @@ static I index_in(List *l, I v, const char *d, I st, I en) {   /* the first i in
   for (I j = st; j < en && j < l->len; j++) if (!lbig(l, j) && eqitem(l->a[j], v, d)) return j;
   return -1;
 }
-static _Noreturn void not_in_list(I x, const char *xd) {
+static _Noreturn NOMERGE void not_in_list(I x, const char *xd) {
   Buf b = {0}; put(&b, "ValueError: ", 12); repr(&b, x, xd); put(&b, " is not in list", 16); pys_fail(b.p);
 }
 I pys_list_index(List *l, I v, Str *d, I st, I en) {   /* list.index(v, start, stop) */
@@ -4668,7 +4696,7 @@ Dict *pys_dict_new(I kind, I n) { return dict_new(kind, n, 0); }
    are atomic, and so are those of its copies (dict.copy(), dict(d)); dict.fromkeys and the
    empty dicts that a template returns while their type is open are made by pys_dict_new */
 Dict *pys_dict_new_atomic(I kind, I n) { return dict_new(kind, n, 1); }
-static _Noreturn void keyerr(Dict *d, I k) {
+static _Noreturn NOMERGE void keyerr(Dict *d, I k) {
   Buf b = {0}; put(&b, "KeyError: ", 10); repr(&b, k, d->kind > 1 ? kdesc(d->kind) : d->kind ? "s" : "i"); put(&b, "", 1); pys_fail(b.p);
 }
 /* The entry points that hash a key stay calls in a program's AOT build (LOOKUP). runtime.py's string
@@ -4851,7 +4879,7 @@ void pys_dict_clear(Dict *d) { d->len = d->n = d->cut = d->size = 0; d->keys = d
 /* the entry of key {lo, m} of a dict of int keys, a promoting int (past 64 bits, its Mpz m: kbig):
    find's, or -1; entry's, or KeyError; put's, which adds the key with the value 0 where d has none
    (the compiler stores the value next: pys_dict_entry_set); and del d[k] */
-static _Noreturn void bkeyerr(Mpz *m) {   /* the KeyError of a dict's key or a set's element m, past 64 bits */
+static _Noreturn NOMERGE void bkeyerr(Mpz *m) {   /* the KeyError of a dict's key or a set's element m, past 64 bits */
   Str *t = mpz_digits(m);   /* (past CPython's 4300 digits: what its traceback prints, which cannot write it) */
   Buf b = {0}; put(&b, "KeyError: ", 10);
   if (t) put(&b, t->s, t->len); else put(&b, "<exception str() failed>", 24);
@@ -5495,7 +5523,7 @@ static int dyn_keyeq(Dyn *a, Dyn *b) {
   if (dwide(a)) return pys_mpz_cmp((Mpz *)a->v, (Mpz *)b->v) == 0;
   return k == DK_STR ? a->v == b->v || pys_str_eq((Str *)a->v, (Str *)b->v) : k == DK_INT || k == DK_BOOL ? a->v == b->v : 2;
 }
-static _Noreturn void dyn_noorder(Dyn *a, Dyn *b, I op) {
+static _Noreturn NOMERGE void dyn_noorder(Dyn *a, Dyn *b, I op) {
   failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=", DNAME(a), DNAME(b));
 }
 I pys_dyn_cmp(Dyn *a, Dyn *b, I op) {   /* a OP b, op 0..3: < <= > >= */
@@ -5564,7 +5592,7 @@ LOOKUP I pys_dict_find_int_nobox(Dict *d, I value) {
 /* GC_NO_ROOT(dops): operator names are C string literals. */
 static const char *const dops[] = {"+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"};
 /* (CPython's text names an in-place operator by its own symbol, **= too, and ** as "** or pow()") */
-static _Noreturn void dyn_unsupported(Dyn *a, Dyn *b, I op, int inplace) {
+static _Noreturn NOMERGE void dyn_unsupported(Dyn *a, Dyn *b, I op, int inplace) {
   failf("TypeError: unsupported operand type(s) for %s%s: '%s' and '%s'", dops[op], inplace ? "=" : op == 6 ? " or pow()" : "", DNAME(a), DNAME(b));
 }
 static Dyn *dyn_repeat(Dyn *seq, Dyn *n) {   /* seq * n, for a str, list or tuple and an int (or bool) */
@@ -6083,7 +6111,7 @@ void pys_dyn_update(Dict *d, Dyn *x) {
    materialized after keyword merges by the compiler. Calling an object's __str__ to name
    an unpacking error must happen only when the error is known, after argument evaluation. */
 static Str *dyn_call_text(Dyn *value, Str *(*convert)(Dyn *)) { return convert(value); }
-static _Noreturn void dyn_call_error(Buf *b) {
+static _Noreturn NOMERGE void dyn_call_error(Buf *b) {
   /* Keyword names and an object's __str__ may contain NUL; retain their byte lengths. */
   pys_raise(cstr("TypeError"), pys_str(b->p, b->n));
 }
@@ -6110,7 +6138,7 @@ void pys_dyn_star_extend(List *dest, Dyn *source, Dyn *callee, Str *(*name)(Dyn 
   if (source->t->len && dyn_user_len(source) > INT64_MAX / (I)sizeof(I)) pys_fail("MemoryError");
   for (Dyn *x; (x = pys_dyn_next(it));) pys_list_append(dest, (I)x);
 }
-static _Noreturn void dyn_kw_duplicate(Dyn *callee, Str *(*name)(Dyn *), Dyn *key, Str *(*stringify)(Dyn *)) {
+static _Noreturn NOMERGE void dyn_kw_duplicate(Dyn *callee, Str *(*name)(Dyn *), Dyn *key, Str *(*stringify)(Dyn *)) {
   /* CPython formats the callable before the key; either conversion can itself raise. */
   Str *who = dyn_call_text(callee, name);
   Str *keyname = DKIND(key) == DK_STR ? (Str *)key->v : dyn_call_text(key, stringify);
@@ -6728,7 +6756,7 @@ List *pys_set_list(Set *s) {
 /* CPython's format-spec mini-language for int (and bool), float and str:
    [[fill]align][sign][z][#][0][width][grouping][.precision][type]. Widths count code points;
    other types accept only an empty spec, which the compiler turns into str(). */
-static _Noreturn void failf(const char *f, ...) {
+static _Noreturn NOMERGE void failf(const char *f, ...) {
   char b[512]; va_list a; va_start(a, f); vsnprintf(b, sizeof b, f, a); va_end(a); pys_fail(b);
 }
 static I u8enc(char *o, I c) {
@@ -6847,7 +6875,7 @@ static const char *errcls(int e) {     /* CPython's OSError subclass for an errn
 static inline __attribute__((always_inline)) const char *ioerr_line(char *b, int e) {   /* b[160] = "Kind: [Errno e] strerror" */
   snprintf(b, 160, "%s: [Errno %d] %s", errcls(e), e, strerror(e)); return b;
 }
-static _Noreturn void ioerr(int e) { char b[160]; pys_fail(ioerr_line(b, e)); }   /* a failed write, flush or close raises, as in CPython */
+static _Noreturn NOMERGE void ioerr(int e) { char b[160]; pys_fail(ioerr_line(b, e)); }   /* a failed write, flush or close raises, as in CPython */
 
 /* Ctrl-C. CPython's handler only notes the signal; KeyboardInterrupt is raised between two
    bytecodes, and the program ends as for an uncaught exception, then by SIGINT. Here the handler
@@ -6872,7 +6900,7 @@ static void on_sigint(int s) {
   raise(s); _exit(130);
 }
 static void leaving(void) { if (sigint_on) signal(SIGINT, SIG_DFL); sigint_on = 0; }
-static _Noreturn void die_sigint(void) {   /* CPython's exit_sigint: killed by SIGINT, or status 130 if it is blocked */
+static _Noreturn NOMERGE void die_sigint(void) {   /* CPython's exit_sigint: killed by SIGINT, or status 130 if it is blocked */
   signal(SIGINT, SIG_DFL); raise(SIGINT); exit(130);
 }
 
@@ -6885,11 +6913,17 @@ static int osflush(File *f, int keep) {   /* stdio writes what it holds: 0, or t
   if (keep && !f->kept) f->kept = e;
   return e;
 }
+static void fput(File *f, const char *s, I n) {   /* stdio's write of n bytes, and none of no bytes: musl's fwrite
+                                                     (WASI's C library) of none still turns a stream that reads
+                                                     to writing, which drops its read-ahead where the descriptor
+                                                     stays past it, and fails a read-only one (wasm/README.md) */
+  if (n) fwrite(s, 1, n, f->f);
+}
 static int bput(File *f, const char *a, I na, const char *b, I nb) {   /* BufferedWriter.write() of a then b */
   I p = na + nb; int e;
-  if (p <= f->bs - f->bn && p < f->bs) { fwrite(a, 1, na, f->f); fwrite(b, 1, nb, f->f); f->bn += p; return 0; }
+  if (p <= f->bs - f->bn && p < f->bs) { fput(f, a, na); fput(f, b, nb); f->bn += p; return 0; }
   if (f->bn && (e = osflush(f, 1))) return e;   /* what it holds is written first (and kept if that fails), */
-  fwrite(a, 1, na, f->f); fwrite(b, 1, nb, f->f);
+  fput(f, a, na); fput(f, b, nb);
   f->bn = p < f->bs ? p : 0;                   /* then a piece below its size is kept, a bigger one written */
   return f->bn ? 0 : osflush(f, 0);
 }
@@ -6975,7 +7009,7 @@ static void out_flush(void) {          /* CPython's flush_io() when the program'
   leaving();
   if (!std_out.closed) flush1(&std_out);
 }
-static _Noreturn void kbint_exit(void) {   /* a Ctrl-C noted during a stdio call: an uncaught KeyboardInterrupt */
+static _Noreturn NOMERGE void kbint_exit(void) {   /* a Ctrl-C noted during a stdio call: an uncaught KeyboardInterrupt */
   io_intr = 0;
   clearerr(stdout);                    /* the call it cut short failed with EINTR */
   for (I i = 0; i < nfiles; i++) if (!files[i]->closed) clearerr(files[i]->f);
@@ -7050,8 +7084,8 @@ static void files_sweep(void) {        /* after marking: close the open files no
   nfiles = j;
   io_out();
 }
-static _Noreturn void oserr(const char *path);
-static _Noreturn void closed_err(void) { pys_fail("ValueError: I/O operation on closed file."); }
+static _Noreturn NOMERGE void oserr(const char *path);
+static _Noreturn NOMERGE void closed_err(void) { pys_fail("ValueError: I/O operation on closed file."); }
 /* CPython in the process (pyembed.c: lib/pyobj.py embedding it, or an extension module's host): std_hook
    sees each write to sys.stdout or sys.stderr (n < 0: a flush) first, and takes it (1) when it goes
    through Python's sys.stdout or sys.stderr; in_hook reads sys.stdin through Python's (kind 0 input(),
@@ -7430,7 +7464,7 @@ List *pys_file_readlines(File *f) {
   for (Str *s; (s = pys_file_readline(f))->len;) pys_list_append(l, (I)s);
   return l;
 }
-static _Noreturn void unencodable(const char *p, I n, I c, I start, I end) {   /* CPython's UnicodeEncodeError of
+static _Noreturn NOMERGE void unencodable(const char *p, I n, I c, I start, I end) {   /* CPython's UnicodeEncodeError of
                                                     characters [start, end) of the text p[0, n), the first one c */
   char m[160]; int h = snprintf(m, sizeof m, "UnicodeEncodeError: ");
   if (end > start + 1)
@@ -7705,12 +7739,12 @@ Str *pys_io_locenc(void) {
   }
   return cstr(e);
 }
-_Noreturn void pys_io_unsupported(Str *msg) { failf("io.UnsupportedOperation: %s", msg->s); }
+_Noreturn NOMERGE void pys_io_unsupported(Str *msg) { failf("io.UnsupportedOperation: %s", msg->s); }
 I pys_system(Str *c) {
   if (nul(c)) pys_fail("ValueError: embedded null byte");
   return system(c->s);                 /* like CPython, without flushing stdout first */
 }
-_Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process becomes path's program (its buffered output is
+_Noreturn NOMERGE void pys_execv(Str *path, List *args) {   /* os.execv: the process becomes path's program (its buffered output is
                                             lost, as CPython's); the runtime's SIGINT handler is not inherited */
   if (nul(path)) pys_fail("ValueError: execv: embedded null character in path");
   if (!args->len) pys_fail("ValueError: execv() arg 2 must not be empty");
@@ -7823,7 +7857,7 @@ static void proc_close_from3(int keep, const int *fds, I n, long maxfd) {   /* n
    other descriptors, then the first of execs that the system runs. A failure goes to the parent
    through errpipe, which a successful exec closes: its errno, and 0 for an exec's, 1 for chdir()'s,
    2 for another's (CPython's "", "noexec:chdir" and "noexec"). */
-static _Noreturn void proc_child(char **argv, char **execs, char **envp, const char *cwd, int p2cread, int c2pwrite,
+static _Noreturn NOMERGE void proc_child(char **argv, char **execs, char **envp, const char *cwd, int p2cread, int c2pwrite,
                                  int errwrite, int errpipe, I flags, const int *fds, I nfds, long maxfd) {
   int msg[2] = {0, 2};
   /* a descriptor to put on 1 or 2 that is 0 or 1 itself would be overwritten first: a copy of it */
@@ -8104,10 +8138,8 @@ I pys_thread_stack_valid(I size) {
 __attribute__((aligned(32))) I pys_recursion_state[3] = {1, 1000, 0};
 _Static_assert(sizeof(I) == 8 && sizeof(pys_recursion_state) == 24,
                "Recursion ABI: three i64 words, active depth, requested limit, then stack floor");
-_Noreturn void pys_recursion_error(void) { pys_fail("RecursionError: maximum recursion depth exceeded"); }
-_Noreturn void pys_recursion_stack_error(void) {
-  pys_fail("RecursionError: maximum recursion depth exceeded (the native stack is nearly full)");
-}
+_Noreturn NOMERGE void pys_recursion_error(void) { pys_fail(RECURSION); }
+_Noreturn NOMERGE void pys_recursion_stack_error(void) { pys_fail(RECURSION_STACK); }
 /* The native stack's floor (#1015), the state's third word: an entry that finds the stack pointer
    below it raises RecursionError as one past the limit does, however high sys.setrecursionlimit()
    is set, so that handlers and finally blocks run where the thread's stack would otherwise run out
@@ -8352,7 +8384,7 @@ void pys_environ_set(Str *k, Str *v) {
   if (strchr(k->s, '=')) pys_fail("ValueError: illegal environment variable name");
   if (setenv(k->s, v->s, 1)) ioerr(errno);
 }
-static _Noreturn void environ_missing(Str *k) {   /* KeyError(k), as os.environ raises it for a name it has not */
+static _Noreturn NOMERGE void environ_missing(Str *k) {   /* KeyError(k), as os.environ raises it for a name it has not */
   Buf b = {0}; put(&b, "KeyError: ", 10); repr_str(&b, k); put(&b, "", 1); pys_fail(b.p);
 }
 Str *pys_environ_get(Str *k) {                    /* os.environ[k] */
@@ -8474,7 +8506,7 @@ struct Exc {                           /* GC-allocated, 16-byte aligned (exc_all
 _Static_assert(offsetof(Exc, ue) == 0, "a landing pad's pointer is the Exc");
 #define PYS_EXC 0x5059535441434859ULL  /* the header's exception_class: "PYSTACHY" */
 #define XCLS(e) (*(ExcClass **)(e)->obj)
-static _Noreturn void throw_(Exc *e);
+static _Noreturn NOMERGE void throw_(Exc *e);
 static Thrower *hide(Thrower *f) {     /* f, stored where the funnels find it: were its value seen, LLVM */
   __asm__("" : "+r"(f));               /* would call throw_ directly there, and every program would link it */
   return f;
@@ -8731,8 +8763,383 @@ Exc *pys_exc_begin(void *ue, I mark) { /* a landing starts: put right what the r
   xr.handled = e;
   return e;
 }
-static _Noreturn void exc_report(Exc *e, Str *m) {   /* "kind: m" ("kind" when m is empty), status 1 */
+/* Tracebacks. An uncaught exception's report starts, as CPython's does, with "Traceback (most
+   recent call last):" and its frames, outermost first: each one's file, line and function, then
+   that line of the file, stripped, where it can be read. They come from the line tables (DWARF 4)
+   the compiler gives a program's functions (PYSTACHY_DEBUG_LINES) and the executable keeps: a
+   frame's return address, in /proc/self/exe, is found in .debug_info (its function and those
+   inlined there, outermost first, each called at a line of the one before) and .debug_line (the
+   innermost one's line). The calls that raise are kept apart (NOMERGE), so each return address
+   is one line. Code without line tables (the runtime's, its generated wrappers) shows no frame;
+   where none is found (JIT code, macOS, an executable built with PYSTACHY_DEBUG_LINES=0) the
+   report is its last line alone, as before. Nothing is read until the report. A program without
+   try or with ends with its stack as it was, so its frames are read then (traceback); in one with
+   them, an exception that a handler catches and raises again (a bare raise, a finally) left the
+   frames below the handler when it was caught, so each raise notes the frames its forced unwind
+   passes (tb_frame), which the frames past the handler's continue when the same exception is
+   raised again: the handler's own frame keeps the line where the exception reached it, as
+   CPython's traceback does. */
+#if defined(__linux__) && defined(__LP64__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+enum { TBMAX = 4096 };                 /* the frames kept, the innermost (a RecursionError has about 1,000) */
+static uintptr_t tb_ip[TBMAX];         /* their return addresses, less one (in the call), innermost first */
+static int tb_n;
+static uintptr_t tb_top, tb_skip;      /* the outermost frame's CFA; frames at or below tb_skip are left out */
+static int tb_drop;                    /* tb_entry, for the exception whose frames these are */
+static void tb_frame(struct _Unwind_Context *ctx) {   /* note ctx's frame, unless it is skipped */
+  int before = 0;
+  uintptr_t cfa = _Unwind_GetCFA(ctx), ip = _Unwind_GetIPInfo(ctx, &before);
+  if (cfa <= tb_skip || !ip) return;
+  tb_top = cfa;
+  if (tb_n < TBMAX) tb_ip[tb_n++] = ip - !before;
+}
+static void tb_begin(Exc *e) {         /* e is raised: its frames start, or continue past its handler's */
+  if (e != xr.tb) { xr.tb = e; tb_n = 0; tb_skip = 0; tb_drop = tb_entry; tb_entry = 0; }
+  else tb_skip = tb_top;
+}
+static _Unwind_Reason_Code tb_walk(struct _Unwind_Context *ctx, void *arg) { (void)arg; tb_frame(ctx); return _URC_NO_REASON; }
+typedef struct { const uint8_t *p, *e; } Rd;   /* a cursor in a section, which no read passes */
+static uint64_t rd_n(Rd *r, int n) {   /* an n-byte number */
+  uint64_t v = 0;
+  if (r->e - r->p < n) { r->p = r->e; return 0; }
+  memcpy(&v, r->p, n); r->p += n;
+  return v;
+}
+static uint64_t rd_u(Rd *r) {          /* an unsigned LEB128 */
+  uint64_t v = 0; unsigned s = 0;
+  while (r->p < r->e) { uint8_t b = *r->p++; if (s < 64) v |= (uint64_t)(b & 127) << s; s += 7; if (!(b & 128)) break; }
+  return v;
+}
+static int64_t rd_s(Rd *r) {           /* a signed LEB128 */
+  uint64_t v = 0; unsigned s = 0; uint8_t b = 0;
+  while (r->p < r->e) { b = *r->p++; if (s < 64) v |= (uint64_t)(b & 127) << s; s += 7; if (!(b & 128)) break; }
+  if (s < 64 && b & 64) v |= ~(uint64_t)0 << s;
+  return (int64_t)v;
+}
+static const char *rd_z(Rd *r) {       /* a NUL-terminated string ("" past the end) */
+  const uint8_t *s = r->p, *z = memchr(s, 0, (size_t)(r->e - s));
+  r->p = z ? z + 1 : r->e;
+  return z ? (const char *)s : "";
+}
+typedef struct { Rd info, abbrev, line, str, ranges; } Dw;   /* the executable's DWARF sections */
+typedef struct {                       /* a debugging information entry: what tracebacks reads of it */
+  uint64_t tag, low, high, ranges, origin, file, line, stmt;
+  int kids, has_low, has_high, high_off, has_ranges, has_origin;
+  const char *name, *dir;
+} Die;
+static int dw_die(const Dw *d, Rd *r, uint64_t abbrev, uint64_t unit, Die *x) {   /* the entry at r, of a
+                                                                                  unit at unit; tag 0: a null entry */
+  uint64_t code = rd_u(r), name, form, v;
+  memset(x, 0, sizeof *x);
+  if (!code) return r->p < r->e;
+  Rd a = d->abbrev;
+  if (abbrev >= (uint64_t)(a.e - a.p)) return 0;
+  a.p += abbrev;
+  for (;;) {                           /* its abbreviation: code, tag, children, then (attribute, form) pairs */
+    uint64_t c = rd_u(&a);
+    if (!c) return 0;
+    x->tag = rd_u(&a); x->kids = (int)rd_n(&a, 1);
+    if (c == code) break;
+    for (;;) { uint64_t n = rd_u(&a), f = rd_u(&a); if (!n && !f) break; }
+  }
+  for (;;) {
+    const char *s = 0;
+    name = rd_u(&a); form = rd_u(&a);
+    if (!name && !form) return 1;
+    if (form == 0x16) form = rd_u(r);  /* indirect */
+    switch (form) {
+    case 0x01: case 0x07: case 0x14: case 0x20: v = rd_n(r, 8); break;   /* addr, data8, ref8, ref_sig8 */
+    case 0x0b: case 0x11: case 0x0c: v = rd_n(r, 1); break;              /* data1, ref1, flag */
+    case 0x05: case 0x12: v = rd_n(r, 2); break;                         /* data2, ref2 */
+    case 0x06: case 0x13: case 0x10: case 0x17: v = rd_n(r, 4); break;   /* data4, ref4, ref_addr, sec_offset */
+    case 0x0d: v = (uint64_t)rd_s(r); break;                             /* sdata */
+    case 0x0f: case 0x15: v = rd_u(r); break;                            /* udata, ref_udata */
+    case 0x19: v = 1; break;                                             /* flag_present */
+    case 0x08: v = 0; s = rd_z(r); break;                                /* string */
+    case 0x0e: {                                                         /* strp */
+      Rd t = d->str; v = rd_n(r, 4);
+      if (v < (uint64_t)(t.e - t.p)) { t.p += v; s = rd_z(&t); }
+      break;
+    }
+    case 0x0a: v = rd_n(r, 1); goto block;                               /* block1, block2, block4, block, exprloc */
+    case 0x03: v = rd_n(r, 2); goto block;
+    case 0x04: v = rd_n(r, 4); goto block;
+    case 0x09: case 0x18: v = rd_u(r);
+    block: r->p = v < (uint64_t)(r->e - r->p) ? r->p + v : r->e; break;
+    default: return 0;
+    }
+    switch (name) {
+    case 0x03: x->name = s; break;                                       /* name */
+    case 0x11: x->low = v; x->has_low = 1; break;                        /* low_pc */
+    case 0x12: x->high = v; x->has_high = 1; x->high_off = form != 0x01; break;   /* high_pc: an address or a size */
+    case 0x55: x->ranges = v; x->has_ranges = 1; break;                  /* ranges */
+    case 0x31: case 0x47:                                                /* abstract_origin, specification */
+      x->origin = form == 0x10 ? v : unit + v; x->has_origin = 1; break;
+    case 0x58: x->file = v; break;                                       /* call_file */
+    case 0x59: x->line = v; break;                                       /* call_line */
+    case 0x10: x->stmt = v; break;                                       /* stmt_list */
+    case 0x1b: x->dir = s; break;                                        /* comp_dir */
+    }
+  }
+}
+static int dw_has(const Dw *d, const Die *x, uint64_t base, uint64_t a) {   /* x's code holds address a; base: its
+                                                                              unit's low_pc (none at 0: discarded) */
+  if (x->has_ranges) {
+    Rd r = d->ranges;
+    if (x->ranges >= (uint64_t)(r.e - r.p)) return 0;
+    for (r.p += x->ranges; r.p < r.e;) {
+      uint64_t b = rd_n(&r, 8), e = rd_n(&r, 8);
+      if (!b && !e) break;
+      if (b == UINT64_MAX) base = e;
+      else if (base + b && base + b <= a && a < base + e) return 1;
+    }
+    return 0;
+  }
+  return x->has_low && x->has_high && x->low && x->low <= a && a < (x->high_off ? x->low + x->high : x->high);
+}
+static int dw_unit(const Dw *d, uint64_t off, uint64_t *start, uint64_t *end, uint64_t *abbrev) {   /* the unit
+                                                         that holds offset off of .debug_info (DWARF 2 to 4) */
+  uint64_t n = (uint64_t)(d->info.e - d->info.p);
+  for (uint64_t u = 0; u + 11 <= n;) {
+    Rd r = {d->info.p + u, d->info.e};
+    uint64_t len = rd_n(&r, 4), ver = rd_n(&r, 2);
+    if (len >= 0xfffffff0 || len > n - u - 4) return 0;
+    *start = u; *end = u + 4 + len; *abbrev = rd_n(&r, 4);
+    if (off < *end) return ver >= 2 && ver <= 4 && rd_n(&r, 1) == 8 && off >= u + 11;
+    u = *end;
+  }
+  return 0;
+}
+static const char *dw_name(const Dw *d, uint64_t off, int depth) {   /* the name of the entry at off */
+  uint64_t start, end, abbrev;
+  Die x;
+  if (depth > 4 || !dw_unit(d, off, &start, &end, &abbrev)) return "?";
+  Rd r = {d->info.p + off, d->info.p + end};
+  if (!dw_die(d, &r, abbrev, start, &x)) return "?";
+  return x.name ? x.name : x.has_origin ? dw_name(d, x.origin, depth + 1) : "?";
+}
+typedef struct { const char *name; uint64_t file, line; } Fr;   /* a function, and where its caller calls it */
+static int dw_find(const Dw *d, uint64_t a, Fr *fs, uint64_t *stmt, const char **dir) {   /* the functions whose
+                    code holds a, outermost first (how many, 32 at most); its unit's line program and directory */
+  uint64_t n = (uint64_t)(d->info.e - d->info.p), end;
+  for (uint64_t u = 0; u + 11 <= n; u = end) {   /* each unit: its header, then its entries */
+    Rd r = {d->info.p + u, d->info.e};
+    uint64_t len = rd_n(&r, 4), ver = rd_n(&r, 2), abbrev = rd_n(&r, 4), size = rd_n(&r, 1);
+    Die x;
+    int k = 0, depth, at[32];
+    if (len >= 0xfffffff0 || len > n - u - 4) return 0;
+    end = u + 4 + len; r.e = d->info.p + end;
+    if (ver < 2 || ver > 4 || size != 8 || !dw_die(d, &r, abbrev, u, &x) || x.tag != 0x11 || !dw_has(d, &x, x.low, a))
+      continue;
+    *stmt = x.stmt; *dir = x.dir ? x.dir : "";
+    uint64_t base = x.low;
+    for (depth = x.kids; depth > 0 && dw_die(d, &r, abbrev, u, &x);) {
+      if (!x.tag) { depth--; continue; }
+      if ((x.tag == 0x2e || x.tag == 0x1d) && dw_has(d, &x, base, a)) {   /* subprogram, inlined_subroutine */
+        while (k && at[k - 1] >= depth) k--;
+        if (k < 32) {
+          fs[k] = (Fr){x.name ? x.name : x.has_origin ? dw_name(d, x.origin, 0) : "?", x.file, x.line};
+          at[k++] = depth;
+        }
+      }
+      depth += x.kids;
+    }
+    if (k) return k;
+  }
+  return 0;
+}
+typedef struct { Rd prog, dirs, files; int minlen, base, range, opbase; const uint8_t *lens; } Lines;
+static int dw_lines(const Dw *d, uint64_t off, Lines *h) {   /* the line program at off (DWARF 2 to 4) */
+  Rd r = d->line;
+  if (off >= (uint64_t)(r.e - r.p)) return 0;
+  r.p += off;
+  uint64_t len = rd_n(&r, 4), ver;
+  if (len >= 0xfffffff0 || len > (uint64_t)(r.e - r.p)) return 0;
+  r.e = r.p + len;
+  ver = rd_n(&r, 2);
+  uint64_t hl = rd_n(&r, 4);
+  if (ver < 2 || ver > 4 || hl > (uint64_t)(r.e - r.p)) return 0;
+  h->prog = (Rd){r.p + hl, r.e};
+  h->minlen = (int)rd_n(&r, 1);
+  if (ver >= 4) rd_n(&r, 1);           /* maximum_operations_per_instruction */
+  rd_n(&r, 1);                         /* default_is_stmt */
+  h->base = (int8_t)rd_n(&r, 1); h->range = (int)rd_n(&r, 1); h->opbase = (int)rd_n(&r, 1);
+  if (!h->range || !h->opbase || r.e - r.p < h->opbase - 1) return 0;
+  h->lens = r.p; r.p += h->opbase - 1;
+  h->dirs = r;
+  while (r.p < r.e && *rd_z(&r)) {}
+  h->files = r;
+  return 1;
+}
+static uint64_t dw_row(const Lines *h, uint64_t a, uint64_t *file) {   /* the line of address a (0: none) */
+  Rd r = h->prog;
+  uint64_t addr = 0, f = 1, pa = 0, pf = 0, pl = 0;
+  int64_t l = 1;
+  int have = 0, dead = 0;
+  while (r.p < r.e) {
+    int op = (int)rd_n(&r, 1), row = 0, end = 0;
+    if (op >= h->opbase) {             /* special: advance address and line, add a row */
+      int adj = op - h->opbase;
+      addr += (uint64_t)(adj / h->range * h->minlen); l += h->base + adj % h->range; row = 1;
+    } else if (!op) {                  /* extended: end_sequence, set_address, others skipped */
+      uint64_t n = rd_u(&r);
+      const uint8_t *next = n < (uint64_t)(r.e - r.p) ? r.p + n : r.e;
+      int sub = n ? (int)rd_n(&r, 1) : 0;
+      if (sub == 1) row = end = 1;
+      else if (sub == 2) { addr = rd_n(&r, 8); dead = !addr; }   /* (0: a discarded function's) */
+      r.p = next;
+    } else switch (op) {
+      case 1: row = 1; break;                                   /* copy */
+      case 2: addr += rd_u(&r) * (uint64_t)h->minlen; break;    /* advance_pc */
+      case 3: l += rd_s(&r); break;                             /* advance_line */
+      case 4: f = rd_u(&r); break;                              /* set_file */
+      case 8: addr += (uint64_t)((255 - h->opbase) / h->range * h->minlen); break;   /* const_add_pc */
+      case 9: addr += rd_n(&r, 2); break;                       /* fixed_advance_pc */
+      default: for (int i = 0; i < h->lens[op - 1]; i++) rd_u(&r);   /* the others' operands */
+    }
+    if (row) {
+      if (have && !dead && pa <= a && a < addr) { *file = pf; return pl; }
+      pa = addr; pf = f; pl = (uint64_t)l; have = 1;
+      if (end) { addr = 0; f = 1; l = 1; have = dead = 0; }
+    }
+  }
+  return 0;
+}
+static void dw_path(const Lines *h, uint64_t i, const char *comp, char *out, size_t n) {   /* file i's path, as
+                                                                  CPython shows it: the directory joined to it */
+  Rd f = h->files;
+  *out = 0;
+  for (uint64_t j = 1; f.p < f.e; j++) {
+    const char *name = rd_z(&f), *dir = comp;
+    if (!*name) return;
+    uint64_t di = rd_u(&f);
+    rd_u(&f); rd_u(&f);                /* its time and size */
+    if (j != i) continue;
+    Rd ds = h->dirs;
+    for (uint64_t k = 1; di && ds.p < ds.e; k++) {
+      const char *s = rd_z(&ds);
+      if (!*s) break;
+      if (k == di) { dir = s; break; }
+    }
+    if (*name == '/') snprintf(out, n, "%s", name);
+    else if (*dir == '/' || !*comp) snprintf(out, n, "%s/%s", dir, name);
+    else snprintf(out, n, "%s/%s/%s", comp, dir, name);
+    return;
+  }
+}
+static int dw_open(Dw *d) {            /* the executable's sections (mapped until the program ends) */
+  int fd = open("/proc/self/exe", O_RDONLY | O_CLOEXEC);
+  struct stat st;
+  void *m = MAP_FAILED;
+  if (fd < 0) return 0;
+  if (!fstat(fd, &st) && st.st_size > (off_t)sizeof(Elf64_Ehdr)) m = mmap(0, (size_t)st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+  close(fd);
+  if (m == MAP_FAILED) return 0;
+  const uint8_t *b = m;
+  size_t n = (size_t)st.st_size;
+  Elf64_Ehdr eh;
+  Elf64_Shdr sh, ss;
+  memset(d, 0, sizeof *d);
+  memcpy(&eh, b, sizeof eh);
+  if (memcmp(eh.e_ident, ELFMAG, SELFMAG) || eh.e_ident[EI_CLASS] != ELFCLASS64 || eh.e_shentsize != sizeof sh ||
+      eh.e_shoff > n || eh.e_shnum > (n - eh.e_shoff) / sizeof sh || eh.e_shstrndx >= eh.e_shnum) return 0;
+  memcpy(&ss, b + eh.e_shoff + eh.e_shstrndx * sizeof sh, sizeof ss);
+  if (ss.sh_offset > n || ss.sh_size > n - ss.sh_offset) return 0;
+  for (size_t i = 0; i < eh.e_shnum; i++) {
+    memcpy(&sh, b + eh.e_shoff + i * sizeof sh, sizeof sh);
+    if (sh.sh_type != SHT_PROGBITS || sh.sh_flags & SHF_COMPRESSED || sh.sh_offset > n || sh.sh_size > n - sh.sh_offset ||
+        sh.sh_name >= ss.sh_size) continue;
+    const char *name = (const char *)b + ss.sh_offset + sh.sh_name;
+    size_t room = ss.sh_size - sh.sh_name;
+    Rd sec = {b + sh.sh_offset, b + sh.sh_offset + sh.sh_size};
+#define DW_SECTION(s, f) if (room > sizeof s - 1 && !memcmp(name, s, sizeof s)) d->f = sec;
+    DW_SECTION(".debug_info", info) DW_SECTION(".debug_abbrev", abbrev) DW_SECTION(".debug_line", line)
+    DW_SECTION(".debug_str", str) DW_SECTION(".debug_ranges", ranges)
+#undef DW_SECTION
+  }
+  return d->info.p && d->abbrev.p && d->line.p;
+}
+typedef struct { uintptr_t bias; const Elf64_Phdr *ph; int n; } Image;
+static void tb_image(Image *m) {       /* the executable's segments, where the kernel put them (its auxiliary vector) */
+  m->ph = (const Elf64_Phdr *)getauxval(AT_PHDR); m->n = (int)getauxval(AT_PHNUM); m->bias = 0;
+  for (int i = 0; m->ph && i < m->n; i++)
+    if (m->ph[i].p_type == PT_PHDR) m->bias = (uintptr_t)m->ph - m->ph[i].p_vaddr;   /* (none: not position-independent) */
+}
+static void tb_source(const char *path, uint64_t line) {   /* that line of the file, stripped, as CPython shows it */
+  FILE *f = fopen(path, "r");
+  char *s = 0;
+  size_t cap = 0;
+  ssize_t len;
+  if (!f) return;
+  for (uint64_t i = 1; (len = getline(&s, &cap, f)) >= 0; i++)
+    if (i == line) {
+      char *p = s, *e = s + len;
+      while (p < e && isspace((unsigned char)*p)) p++;
+      while (e > p && isspace((unsigned char)e[-1])) e--;
+      if (e > p) { fputs("    ", stderr); fwrite(p, 1, (size_t)(e - p), stderr); fputc('\n', stderr); }
+      break;
+    }
+  free(s);
+  fclose(f);
+}
+typedef struct { char path[4096]; uint64_t line; const char *name; long count; int any; } Shown;   /* the last frame */
+static void tb_repeated(const Shown *s) {   /* CPython's recursion cutoff: a frame's fourth and later repetitions */
+  if (s->count > 3) fprintf(stderr, "  [Previous line repeated %ld more time%s]\n", s->count - 3, s->count > 4 ? "s" : "");
+}
+static void tb_show(Shown *s, const char *path, uint64_t line, const char *name) {
+  if (strcmp(path, s->path) || line != s->line || strcmp(name, s->name)) {
+    tb_repeated(s);
+    snprintf(s->path, sizeof s->path, "%s", path); s->line = line; s->name = name; s->count = 0;
+  }
+  if (++s->count > 3) return;
+  if (!s->any) fputs("Traceback (most recent call last):\n", stderr);
+  s->any = 1;
+  const char *own = strrchr(name, '.');   /* its own name, as CPython's co_name, not the qualified one */
+  fprintf(stderr, "  File \"%s\", line %llu, in %s\n", path, (unsigned long long)line, own ? own + 1 : name);
+  tb_source(path, line);
+}
+static void traceback(Exc *e) {        /* "Traceback (most recent call last):" and e's frames (a program without
+                                          try or with: the frames now), where line tables give some */
+  Shown shown = {0}, held = {0};       /* (held: the frame before it is shown, the innermost one perhaps never) */
+  int drop = e && e == xr.tb ? tb_drop : tb_entry, have = 0, k = 0;
+  uint64_t prev = 0, stmt = 0, file = 0, line = 0;
+  const char *comp = "";
+  char path[4096];
+  Image m = {0};
+  Fr fs[32];
+  Lines h;
+  Dw d;
+  if (!e || e != xr.tb) { tb_n = 0; tb_skip = 0; _Unwind_Backtrace(tb_walk, 0); }
+  if (!tb_n || !dw_open(&d)) return;
+  tb_image(&m);
+  for (int i = tb_n - 1; i >= 0; i--) {
+    uint64_t a = tb_ip[i] - m.bias;
+    if (a != prev) {                   /* (a recursion's frames repeat their addresses: found once) */
+      int mine = 0;
+      for (int j = 0; j < m.n; j++)
+        mine |= m.ph[j].p_type == PT_LOAD && a - m.ph[j].p_vaddr < m.ph[j].p_memsz;
+      prev = a; k = 0;
+      if (!mine || !(k = dw_find(&d, a, fs, &stmt, &comp)) || !dw_lines(&d, stmt, &h)) { k = 0; continue; }
+      line = dw_row(&h, a, &file);
+    }
+    for (int j = 0; j < k; j++) {
+      uint64_t f = j + 1 < k ? fs[j + 1].file : file, n = j + 1 < k ? fs[j + 1].line : line;
+      if (!n || !strncmp(fs[j].name, "<generated", 10)) continue;   /* (the compiler's wrappers: no line) */
+      dw_path(&h, f, comp, path, sizeof path);
+      if (have) tb_show(&shown, held.path, held.line, held.name);
+      snprintf(held.path, sizeof held.path, "%s", path); held.line = n; held.name = fs[j].name; have = 1;
+    }
+  }
+  if (have && !drop) tb_show(&shown, held.path, held.line, held.name);   /* (drop: a RecursionError's entry check) */
+  tb_repeated(&shown);
+}
+#else                                  /* (elsewhere: the last line alone) */
+static void tb_frame(struct _Unwind_Context *ctx) { (void)ctx; }
+static void tb_begin(Exc *e) { (void)e; }
+static void traceback(Exc *e) { (void)e; }
+#endif
+static _Noreturn NOMERGE void exc_report(Exc *e, Str *m) {   /* "kind: m" ("kind" when m is empty), status 1 */
   Str *k = e->obj ? XCLS(e)->disp : e->kind;
+  traceback(e);
   fwrite(k->s, 1, k->len, stderr);
   if (m->len || e->detail) { fputs(": ", stderr); ewrite(m->s, m->len); }
   fputc('\n', stderr);
@@ -8740,7 +9147,7 @@ static _Noreturn void exc_report(Exc *e, Str *m) {   /* "kind: m" ("kind" when m
   pys_finish();
   exit(1);
 }
-static _Noreturn void uncaught(Exc *e) {   /* as pys_raise, pys_exit and pys_exit_msg end the program */
+static _Noreturn NOMERGE void uncaught(Exc *e) {   /* as pys_raise, pys_exit and pys_exit_msg end the program */
   if (e->obj) {                        /* compiled code runs: what it raises and nothing catches ends in throw_ */
     xr.shown = e; xthrow = hide(throw_);
     if (XCLS(e)->exit) e = XCLS(e)->exit(e->obj);   /* SystemExit's subclasses end the program as it does */
@@ -8754,12 +9161,14 @@ static _Noreturn void uncaught(Exc *e) {   /* as pys_raise, pys_exit and pys_exi
 }
 static _Unwind_Reason_Code stop_none(int v, _Unwind_Action a, _Unwind_Exception_Class c, struct _Unwind_Exception *ue,
                                      struct _Unwind_Context *ctx, void *arg) {   /* the forced unwind goes on to the end */
-  (void)v; (void)a; (void)c; (void)ue; (void)ctx; (void)arg;
+  (void)v; (void)c; (void)ue; (void)arg;
+  if (!(a & _UA_END_OF_STACK)) tb_frame(ctx);   /* the frames it passes (see tracebacks) */
   return _URC_NO_REASON;
 }
-static _Noreturn void throw_(Exc *e) {
+static _Noreturn NOMERGE void throw_(Exc *e) {
   xr.cur = e;
   if (eh) {
+    tb_begin(e);
     e->ue.exception_class = PYS_EXC;
     _Unwind_ForcedUnwind(&e->ue, stop_none, 0);   /* comes back only if nothing catches e: the stack is as it was */
   }
@@ -8768,8 +9177,8 @@ static _Noreturn void throw_(Exc *e) {
   if (xr.shown) exc_report(xr.shown, cstr("<exception str() failed>"));   /* raised by its __str__, as CPython */
   uncaught(e);
 }
-_Noreturn void pys_throw(Exc *e) { throw_(e); }
-_Noreturn void pys_reraise(void) {     /* a bare raise */
+_Noreturn NOMERGE void pys_throw(Exc *e) { throw_(e); }
+_Noreturn NOMERGE void pys_reraise(void) {     /* a bare raise */
   if (!xr.handled) pys_raise(cstr("RuntimeError"), cstr("No active exception to reraise"));
   throw_(xr.handled);
 }
@@ -9282,7 +9691,7 @@ I pys_errno(Str *name) {
 }
 
 /* ---------- temporary directories: tempfile.mkdtemp, os.remove, os.rmdir ---------- */
-static _Noreturn void oserr(const char *path) {         /* raise CPython's OSError subclass for errno */
+static _Noreturn NOMERGE void oserr(const char *path) {         /* raise CPython's OSError subclass for errno */
   int e = errno; Buf b = {0}; char t[32];
   const char *k = errcls(e), *m = strerror(e);
   put(&b, k, strlen(k)); put(&b, t, snprintf(t, sizeof t, ": [Errno %d] ", e)); put(&b, m, strlen(m)); put(&b, ": ", 2);
@@ -9344,7 +9753,7 @@ static void makedirs(Str *name, I mode, I exist_ok, int top) {
   }
 }
 void pys_makedirs(Str *name, I mode, I exist_ok) { makedirs(name, mode, exist_ok, 1); }
-static _Noreturn void oserr2(const char *a, const char *b) {   /* the OSError of a call of two paths: 'a' -> 'b' */
+static _Noreturn NOMERGE void oserr2(const char *a, const char *b) {   /* the OSError of a call of two paths: 'a' -> 'b' */
   int e = errno; Buf bf = {0}; char t[32];
   const char *k = errcls(e), *m = strerror(e);
   put(&bf, k, strlen(k)); put(&bf, t, snprintf(t, sizeof t, ": [Errno %d] ", e)); put(&bf, m, strlen(m)); put(&bf, ": ", 2);
@@ -9428,7 +9837,7 @@ static void rm_push(RmWalk *w, int op, int dirfd, int top, char *path, char *nam
   w->a[w->n++] = (RmStep){op, dirfd, top, path, name};
 }
 static void rm_entries_free(RmWalk *w) { for (I i = 0; i < w->nn; i++) free(w->names[i]); w->nn = 0; }
-static _Noreturn void rm_raise(RmWalk *w, int e) {   /* onexc's raise, then rmtree's finally: close what is open */
+static _Noreturn NOMERGE void rm_raise(RmWalk *w, int e) {   /* onexc's raise, then rmtree's finally: close what is open */
   Buf b = {0};
   if (e) {
     char t[32]; const char *k = errcls(e), *m = strerror(e);

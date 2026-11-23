@@ -36,6 +36,8 @@ class Wasm32Ir(unittest.TestCase):
     def test_main_and_sized_calls(self):
         self.assertEqual(W.line_of("define i32 @main(i32 %argc, ptr %argv) {"), "define i32 @__main_argc_argv(i32 %argc, ptr %argv) {")
         self.assertEqual(W.line_of("declare i32 @memcmp(ptr, ptr, i64)"), "declare i32 @pys_wasi_memcmp(ptr, ptr, i64)")
+        self.assertEqual(W.line_of("  %r = call double @llvm.fma.f64(double %a, double %b, double 0.0)"),
+                         "  %r = call double @pys_wasi_fma(double %a, double %b, double 0.0)")
 
     def test_retarget_only_exception_instructions(self):
         literal = '@s = private constant [49 x i8] c"  invoke void @f() to label %ok unwind label %pad"'
@@ -53,6 +55,46 @@ class Wasm32Ir(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unsupported WASI landing pad"):
             W.adapt_module(src.replace("catch ptr null", "cleanup"))
         self.assertEqual(W.adapt_module(literal), literal)
+
+    MAIN = ["define i32 @main(i32 %argc, ptr %argv) {", "  call void @pys_eh_on()", "  ret i32 0", "}"]
+
+    @staticmethod
+    def landing(label: str, begin: str) -> list:
+        return [f"{label}:", f"  %{label}.p = landingpad {{ ptr, i32 }} catch ptr null",
+                f"  %{label}.e = extractvalue {{ ptr, i32 }} %{label}.p, 0", f"  br label %{label}.body",
+                f"{label}.body:", begin]
+
+    def test_nested_catch_unwinds_to_its_enclosing_handler(self):
+        # A try inside a try: what the inner handler's code raises goes to the outer handler,
+        # whose landing pad the inner landing's pys_exc_begin invokes. LLVM 18 and 19 otherwise
+        # sent the inner handler's invokes to the caller past the outer except clause.
+        fn = (["define void @f() personality ptr @pys_personality {", "entry:",
+               "  invoke void @g() to label %ok unwind label %outer", "ok:",
+               "  invoke void @g() to label %done unwind label %inner"]
+              + self.landing("inner", "  %x = invoke ptr @pys_exc_begin(ptr %inner.e, i64 0) to label %h unwind label %outer")
+              + ["h:", "  invoke void @g() to label %done unwind label %outer"]
+              + self.landing("outer", "  %y = call ptr @pys_exc_begin(ptr %outer.e, i64 0)")
+              + ["  br label %done", "done:", "  ret void", "}"])
+        result = W.adapt_module("\n".join(self.MAIN + fn))
+        self.assertIn("catchswitch within none [label %pys.wasi.pad.inner] unwind label %pys.wasi.dispatch.outer", result)
+        self.assertIn("catchswitch within none [label %pys.wasi.pad.outer] unwind to caller", result)
+
+    def test_landing_without_begin_takes_the_handler_its_code_invokes(self):
+        fn = (["define void @f() personality ptr @pys_personality {", "entry:",
+               "  invoke void @g() to label %ok unwind label %outer", "ok:",
+               "  invoke void @g() to label %done unwind label %inner"]
+              + self.landing("inner", "  invoke void @g() to label %done unwind label %outer")
+              + self.landing("outer", "  br label %done") + ["done:", "  ret void", "}"])
+        src = "\n".join(self.MAIN + fn)
+        self.assertIn("[label %pys.wasi.pad.inner] unwind label %pys.wasi.dispatch.outer", W.adapt_module(src))
+        # (code that only the handler reaches invoking two handlers outside it: none is chosen)
+        other = src.replace("entry:\n", "entry:\n  invoke void @g() to label %more unwind label %third\nmore:\n")
+        other = other.replace("  invoke void @g() to label %done unwind label %outer\nouter:",
+                              "  invoke void @g() to label %x unwind label %outer\nx:\n"
+                              "  invoke void @g() to label %done unwind label %third\nouter:")
+        other = other.replace("done:\n", "\n".join(self.landing("third", "  br label %done")) + "\ndone:\n")
+        with self.assertRaisesRegex(ValueError, "WASI landing pad inner has handlers"):
+            W.adapt_module(other)
 
     def test_wasi_symbols_preserve_literal_bytes_and_comments(self):
         literal = r'@s.0 = private constant [10 x i8] c"\22@memcmp(\00"'

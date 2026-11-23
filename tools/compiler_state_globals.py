@@ -18,7 +18,7 @@ LOOKUP = set("""
 analysis.BINDERS analysis.READS_ONLY_FNS builtins.FSPRIMS
 ctypes_schema.SCALARS ctypes_schema.MARKERS
 bigints.BIGOPS bigints.BKEY bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
-builtin_bases.BWORDS builtin_bases.BITER builtin_bases.BREV builtin_bases.BITEM builtin_bases.BSTORE
+specs.CONTAINER_HEADERS builtin_bases.BITER builtin_bases.BREV builtin_bases.BITEM builtin_bases.BSTORE
 builtin_bases.BDEL builtin_bases.BLEN builtin_bases.BTRUTH builtin_bases.BIN builtin_bases.BSHOW
 builtin_bases.BREPR builtin_bases.BARITH builtin_bases.BCMP builtin_bases.BITERATE
 cached_run.BUILD_ENV cached_run.CPU_FIELDS cached_run.KEYED_ENV
@@ -91,11 +91,16 @@ RETAINED = {
     "specs.GLUE": "loader public-name discoveries; currently retained across restarts",
     "specs.SPECSHOW": "specialization display names; currently retained across restarts",
     "specs.MODULES": "driver builtin-module configuration; runtime_ir restores its temporary _rt entry on every exit",
+    "source_lines.PROGRAM": "driver command configuration: main sets once, before compiling, whether the program's functions get line tables",
     # Interned IR fragments: each entry is a pure function of its index, so retaining them across
     # dry runs, retries and compilations changes no output. one_num's lists are shared and must not
     # be mutated; ircheck verifies them after lowering.
     "ir.TMPNAMES": "process-lifetime memo of %t<n> value names; entry n is always '%t<n>'",
     "ir.ONENUMS": "process-lifetime memo of single-number lists; entry n is always [n], checked after lowering",
+    # The IR proofs' key strings, each a pure function of its entry's key like the fragments above.
+    "union_state.KEY_VALUES": "process-lifetime memo of proof keys' values; entry k is always k[k.find(':') + 1:]",
+    "union_state.CONSTANT_REPS": "process-lifetime memo of a join's constant representatives; entry n is always 'c:' + n",
+    "union_state.VALUE_REPS": "process-lifetime memo of a join's variable representatives; entry n is always 'v:' + n",
 }
 # Retained means observed policy, not proof that retaining semantic state is safe.
 # Keep #767 open for those contracts and for indirect mutation/alias effects.
@@ -134,8 +139,12 @@ WRITERS = {
     "specs.GLUE": {"loader.Loader.load"},
     "specs.SPECSHOW": {"templates.gen_specialize", "templates.gen_member_spec"},
     "specs.MODULES": {"driver.runtime_ir", "driver.prefer_program_ffi"},
+    "source_lines.PROGRAM": {"driver.main"},
     "ir.TMPNAMES": {"ir.tmpname"},
     "ir.ONENUMS": {"ir.one_num"},
+    "union_state.KEY_VALUES": {"union_state.key_value"},
+    "union_state.CONSTANT_REPS": {"union_state.join_rep"},
+    "union_state.VALUE_REPS": {"union_state.join_rep"},
 }
 # gen_verify borrows NOLABELS as out, then copies before append/extend.
 # The conservative alias scan cannot prove that control flow; this local is a

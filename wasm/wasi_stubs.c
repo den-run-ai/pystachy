@@ -89,6 +89,10 @@ void _Unwind_SetIP(struct _Unwind_Context *c, _Unwind_Word v) { (void)c; (void)v
 int pys_wasi_memcmp(const void *a, const void *b, int64_t n) { return memcmp(a, b, (size_t)n); }
 void *pys_wasi_memchr(const void *s, int c, int64_t n) { return memchr(s, c, (size_t)n); }
 void *pys_wasi_memmem(const void *h, int64_t hn, const void *n, int64_t nn) { return memmem(h, (size_t)hn, n, (size_t)nn); }
+/* runtime.py's llvm.fma.f64 is renamed too: wasi-libc's fma (musl's) returns x * y + z for a zero z,
+   so a negative product that rounds to -0.0 takes +0.0's sign. The product is the result rounded once */
+#include <math.h>
+double pys_wasi_fma(double x, double y, double z) { return z == 0 && x != 0 && y != 0 ? x * y : fma(x, y, z); }
 
 /* memory: runtime.c's page heap takes its regions from aligned_alloc (map_pages) and gives each
    back whole */

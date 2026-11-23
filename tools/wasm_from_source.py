@@ -42,11 +42,10 @@ def instruction(i: Ins) -> Inst:
 
 def function(fn: IFn, closed: bool, exceptions: bool) -> Func:
     f = fn.f
-    if fn.coro:
-        raise Refused(f"{f.ll} is a generator")
     if fn.ps != [j for j in range(len(f.ptypes)) if f.ptypes[j] != "None"]:
         raise Refused(f"parameter ABI of {f.ll}")
     out = Func(f.ll)
+    out.coroutine = fn.coro
     out.ptypes = f.ptypes
     out.ret = f.ret
     out.attrs["kind"] = f.node.kind
@@ -77,16 +76,18 @@ def wasm_module(gen: Gen) -> Module:
         raise Refused("module attribute dynamic")
     if diagnostics.int_program():
         raise Refused("module attribute promoting")
-    if gen.gproto or gen.ext != "" or gen.rtmode:
-        raise Refused("module requires generators, extension exports or runtime mode")
-    if len(gen.ocls) + len(gen.ocmp) + len(gen.hcls) + len(gen.one) + len(gen.xobj) != 0:
-        raise Refused("module requires object dispatch")
+    if gen.ext != "" or gen.rtmode:
+        raise Refused("module requires extension exports or runtime mode")
+    if gen.one or gen.xobj:
+        raise Refused("module requires dynamic object comparisons")
     if len(gen.rtdatas) != 0:
         raise Refused("module declaration rtdata")
     if len(gen.externs) != 0:
         raise Refused("module declaration extern")
     m = Module()
     m.attrs["complete"] = ""
+    if gen.gproto:
+        m.attrs["protocol"] = ""
     if gen.eh:
         m.attrs["exceptions"] = ""
     m.attrs["opts"] = "[" + " ".join(gen.opts) + "]"
@@ -94,11 +95,15 @@ def wasm_module(gen: Gen) -> Module:
         ci = gen.classes[name]
         cd = ClassDecl(name)
         cd.ftypes = [ci.ftypes[field] for field in ci.fields]
+        cd.legacy_header = ci.ftypes.get(" list.0", "") == "str" or ci.ftypes.get(" dict.0", "") == "str"
         cd.nflag = ci.nflag
         cd.nbox = ci.nbox
         m.classes[name] = cd
+    m.set_object_tables(gen.ocls, gen.ocmp, gen.hcls)
+    m.plain_generators = {t: 1 for t in gen.genplain}
     for k in range(1, len(gen.holes)):
         m.holes[k] = gen.holes[k]
+    m.roots = gen.gcroots
     for g in gen.globs:
         m.globals[g.v] = g.t
         m.order.append(g.v)
@@ -125,10 +130,11 @@ class WasmBackend:
     def __init__(self, fallback: bool):
         self.fallback = fallback
         self.standard_exceptions = standard_eh()
+        self.guest_roots = os.getenv("WASM_GUEST_ROOTS") == "1"
 
     def lower(self, gen: Gen) -> bytearray | WasmRefusal:
         try:
-            return Emitter(wasm_module(gen), self.standard_exceptions).module()
+            return Emitter(wasm_module(gen), self.standard_exceptions, self.guest_roots).module()
         except Refused as exc:
             return WasmRefusal(exc.what, gen.lower_program() if self.fallback else "")
 

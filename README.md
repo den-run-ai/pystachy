@@ -24,8 +24,8 @@ data repair.
   on Linux x86-64.
 - Source stays ordinary Python that CPython also runs, with dataclasses, generators,
   closures, generics and [much of the standard library](https://github.com/den-run-ai/pystachy/blob/main/docs/stdlib.md#library-support-at-a-glance).
-- More than 2,900 test programs must match CPython 3.13's output in both JIT and AOT
-  modes, and more than 2,200 others must be rejected with the expected diagnostic
+- More than 3,100 test programs must match CPython 3.13's output in both JIT and AOT
+  modes, and more than 2,300 others must be rejected with the expected diagnostic
   ([testing](https://github.com/den-run-ai/pystachy/blob/main/docs/testing.md)).
 - The compiler is written in the subset it compiles. Each build checks that
   successive self-compilations emit [identical LLVM IR](https://github.com/den-run-ai/pystachy/blob/main/docs/internals.md#bootstrap-validation).
@@ -124,9 +124,11 @@ has the full table, startup and memory costs, and reproduction commands.
 
 ## How it works
 
-The experimental [WebAssembly backend](wasm/README.md) can compile typed Python
-snippets directly from typed IR and run them with named tool callbacks in a Node host.
-Python handlers can catch built-in exceptions raised by the snippet or its runtime calls.
+The experimental [WebAssembly backend](wasm/README.md) compiles supported typed Python
+snippets directly from typed IR for Node and Wasmtime. Typed containers can call a
+class's comparison, hash and representation methods. The same function table handles
+typed callbacks, closures, bound methods and plain generator resumes. Python
+handlers can catch exceptions across these calls.
 
 Pystachy compiles the whole program before it runs, including the library modules
 it imports; there is no interpreter fallback. The frontend checks and infers types,
@@ -157,7 +159,7 @@ behavioral differences are listed as [deviations from CPython](https://github.co
 |---|---|---|
 | Values | `int`, `float`, `complex`, `bool`, `str`, `bytes`, `list`, `dict`, `set`, `frozenset`, `tuple`, `bytearray` | `memoryview` |
 | Functions | Closures, lambdas, decorators, `*args` and `**kwargs`, generators | `async` and `await` |
-| Classes | Single inheritance, dataclasses, `NamedTuple`, properties, operator methods, `list` and `dict` as a base | General multiple inheritance, metaclasses, subclasses of other builtin types |
+| Classes | Single inheritance, dataclasses, `NamedTuple`, enum class attributes, properties, operator methods, `list` and `dict` as a base | General multiple inheritance, metaclasses, subclasses of other builtin types |
 | Typing | Inferred locals and returns, generics, closed unions, `T \| None` narrowing | General object unions |
 | Syntax | Comprehensions, f-strings, `with`, `try`/`except`/`finally`, `:=`, bounded `match` | Mapping patterns and class patterns beyond dataclass fields; `except*` |
 | Runtime | Modules and packages, automatic memory management | Native threads, `__del__` finalizers, `eval` and `exec` |

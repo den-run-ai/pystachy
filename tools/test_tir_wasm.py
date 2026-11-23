@@ -67,6 +67,28 @@ def emit(text):
 
 
 class TirWasm(unittest.TestCase):
+    def test_object_dispatch_metadata_uses_ids_and_quoted_names(self):
+        module = T.parse('module complete objects=["odd: name":1 C:0] compared=[C] hashed=["odd: name"] {\n'
+                         '  class "odd: name"\n  class C\n}')
+        self.assertEqual(module.objects, ["C", "odd: name"])
+        self.assertEqual(module.compared, {"C": True})
+        self.assertEqual(module.hashed, {"odd: name": True})
+
+    def test_object_dispatch_metadata_rejects_ambiguous_rows(self):
+        for attrs, reason in [
+            ("objects=[C:0 C:1]", "duplicate class"),
+            ("objects=[C:0 D:0]", "distinct and dense"),
+            ("objects=[C:1]", "distinct and dense"),
+            ("objects=[C:-1]", "invalid object dispatch ID"),
+            ("objects=[C:0] objects=[D:0]", "duplicate module attribute"),
+            ("objects=[C:0D:1]", "invalid separator"),
+            ("objects=[E:0]", "unknown object dispatch class"),
+            ("compared=[C]", "no object dispatch ID"),
+            ("objects=[C:0] hashed=[D]", "no object dispatch ID"),
+        ]:
+            with self.subTest(attrs=attrs), self.assertRaisesRegex(T.Refused, reason):
+                T.parse(f"module complete {attrs} {{\n  class C\n  class D\n}}")
+
     def test_module(self):
         out = emit(HELLO)
         self.assertEqual(out[:8], b"\x00asm\x01\x00\x00\x00")
@@ -75,6 +97,178 @@ class TirWasm(unittest.TestCase):
         # the strings' Str headers: byte length, hash 0, characters + 1, then the bytes
         self.assertIn((12).to_bytes(8, "little") + bytes(8) + (13).to_bytes(8, "little") + b"hello, world\x00", out)
 
+    def test_bad_cfg_edges_are_named_refusals(self):
+        valid = """module complete {
+}
+function @main.init() -> None kind=block {
+entry:
+  rt entry=recursion.enter -> next, cleanup : int
+next:
+  check key=check (bool 0) -> done
+cleanup:
+  br -> done
+done:
+  %t0 = phi (int 1, int 2) -> next, cleanup : int
+  ret
+cold check -> cleanup
+}
+"""
+        # Exercise exactly the graph a suspension analysis or register packer receives.
+        def validate(source):
+            return T.parse(source).funcs[0].block_indices()
+        self.assertEqual(validate(valid), {"entry": 0, "next": 1, "cleanup": 2, "done": 3})
+        for before, after, reason in (
+            ("-> next, cleanup :", "-> next, missing :", "unknown block missing"),
+            ("br -> done", "br -> missing", "unknown block missing"),
+            ("-> next, cleanup : int\n  ret", "-> missing, cleanup : int\n  ret", "from unknown block missing"),
+            ("(int 1, int 2)", "(int 1)", "unequal input"),
+            ("cold check -> cleanup", "cold other -> cleanup", "without a cold block"),
+            ("cold check -> cleanup", "cold check -> missing", "unknown block missing"),
+            ("cleanup:\n", "entry:\n", "duplicate block entry"),
+        ):
+            with self.subTest(after=after), self.assertRaisesRegex(T.Refused, reason):
+                validate(valid.replace(before, after))
+
+    def test_plain_generator_saves_values_and_refuses_cleanup(self):
+        source = """module complete plain=[gen[int]] {
+  const @name kind=string text=gen
+}
+function @main.init() -> None kind=block {
+entry:
+  ret
+}
+function @generator() -> gen[int] coroutine {
+entry:
+  gen.start (str @name) -> initial
+initial:
+  %t0 = scalar.bin add (int 4, int 5) : int
+  ~%t1 ~%t2 = gen.yield (%slot %t0) -> final
+final:
+  ~%t3 ~%t4 = gen.ret (%slot 4)
+}
+"""
+        self.assertIn(b"__indirect_function_table", emit(source))
+        self.assertIn(b"__indirect_function_table", emit(source.replace("gen.ret (%slot 4)", "gen.ret (%slot %t0)")))
+        for before, after, reason in (
+            ("gen.ret (%slot 4)", "gen.ret (%slot %t1)", "untyped result of gen.yield"),
+            ("gen.yield (", "gen.yield cleanup=1 (", "yield with cleanup"),
+            ("-> final", "-> missing", "unknown block missing"),
+        ):
+            with self.subTest(after=after), self.assertRaisesRegex(T.Refused, reason):
+                emit(source.replace(before, after))
+
+    def test_counted_generator_drop_requires_a_cleanup_free_constructor(self):
+        producer = """function @left() -> gen[int] coroutine {
+entry:
+  gen.start (str @name) -> first
+first:
+  ~%t0 ~%t1 = gen.yield (%slot 1) -> last
+last:
+  ~%t2 ~%t3 = gen.ret
+}
+"""
+        consumer = """module complete {
+  const @name kind=string text=g
+}
+function @main.init() -> None kind=block {
+entry:
+  %t0 = call callee=@left : gen[int]
+  gen.drop (gen[int] %t0)
+  ret
+}
+"""
+        clean = consumer + producer
+        self.assertIn(b"__indirect_function_table", emit(clean))
+        forwarded = clean.replace("  gen.drop (gen[int] %t0)",
+                                  "  %t1 = cast (gen[int] %t0) : gen[int]\n  gen.drop (gen[int] %t1)")
+        with self.assertRaisesRegex(T.Refused, "counted generator drop"):
+            emit(forwarded)
+
+        # Even if a future emitter handles cleanup yields, a second producer of
+        # the same handle type must not inherit the first one's simple drop.
+        mixed = clean + producer.replace("@left", "@right").replace("gen.yield (", "gen.yield cleanup=1 (")
+        T.check_generator_drops(T.parse(mixed))
+        dirty = mixed.replace("call callee=@left", "call callee=@right")
+        for source in (dirty, dirty.replace("module complete", "module complete plain=[gen[int]]")):
+            with self.subTest(source=source), self.assertRaisesRegex(T.Refused, "counted generator drop"):
+                T.check_generator_drops(T.parse(source))
+        with self.assertRaisesRegex(T.Refused, "yield with cleanup"):
+            emit(mixed)
+
+    @unittest.skipUnless(shutil.which("node"), "node runs the module")
+    def test_generator_resumes_at_the_yielding_phi_predecessor(self):
+        source = """module complete {
+  global @seed type=int
+  global @result type=float
+  const @name kind=string text=gen
+}
+function @main.init() -> None kind=block {
+entry:
+  %t0 = mem.load (&int @seed) : int
+  %t1 = call callee=@values (int %t0) : gen[int]
+  gen.resume (gen[int] %t1)
+  gen.resume (gen[int] %t1)
+  ret
+}
+function @values(seed: int) -> gen[int] coroutine {
+entry:
+  %t0 = scalar.bin add (int %a0, int 3) : int
+  gen.start (str @name) -> initial
+initial:
+  %t1 = num.cmp == (int %t0, int 4) : bool
+  %t2 = num.cast (int %t0) : float
+  cbr (bool %t1) -> yes, no
+yes:
+  %t3 = scalar.bin fadd (float %t2, float 0.25) : float
+  ~%t4 ~%t5 = gen.yield (%slot 1) -> shared
+no:
+  %t6 = scalar.bin fsub (float %t2, float 0.5) : float
+  ~%t7 ~%t8 = gen.yield (%slot 2) -> shared
+shared:
+  %t9 = phi (float %t3, float %t6) -> yes, no : float
+  %t10 = phi (float 10.0, float 20.0) -> yes, no : float
+  %t11 = scalar.bin fadd (float %t9, float %t10) : float
+  mem.store (&float @result, float %t11)
+  ~%t12 ~%t13 = gen.ret
+}
+"""
+        script = """
+const mod = new WebAssembly.Module(require("node:fs").readFileSync(process.argv[1]));
+const memory = new WebAssembly.Memory({initial: 1});
+const table = new WebAssembly.Table({initial: 1, element: "anyfunc"});
+let heap = 4096;
+const rt = {pys_recursion_state: 0, __indirect_function_table: table,
+  pys_alloc(size) { const base = heap; heap += Number(size); return base; }};
+const instance = new WebAssembly.Instance(mod, {env: {memory, data: 0}, rt});
+const view = new DataView(memory.buffer);
+for (const [seed, expected] of [[0n, 22.5], [1n, 14.25]]) {
+  view.setBigInt64(Number(process.argv[2]), seed, true);
+  instance.exports.init();
+  require("node:assert/strict").equal(view.getFloat64(Number(process.argv[3]), true), expected);
+}
+"""
+        emitter = T.Emitter(T.parse(source))
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "generator.wasm"
+            path.write_bytes(emitter.module())
+            subprocess.run(["node", "-e", script, str(path), str(emitter.addr["@seed"]), str(emitter.addr["@result"])],
+                           check=True, timeout=10)
+
+    def test_legacy_container_header_allocation_is_refused(self):
+        for kind, fields in (("list", 4), ("dict", 12)):
+            prefix = " ".join(f'" {kind}.{k}":str' for k in range(fields))
+            text = f"""module complete {{
+  class C fields=[{prefix} tail:int]
+}}
+function @main.init() -> None kind=block {{
+entry:
+  %instance = alloc.fixed : C
+  ret
+}}
+"""
+            with self.subTest(kind=kind), self.assertRaisesRegex(T.Refused, "legacy container header of C"):
+                emit(text)
+
     @unittest.skipUnless(shutil.which("node"), "node validates the module")
     def test_node_validates(self):
         with tempfile.TemporaryDirectory() as d:
@@ -82,6 +276,17 @@ class TirWasm(unittest.TestCase):
             path.write_bytes(emit(HELLO))
             check = "new WebAssembly.Module(require('fs').readFileSync(process.argv[1]))"
             subprocess.run(["node", "-e", check, str(path)], check=True)
+
+    def test_global_root_slots_are_pointer_typed_and_relocated(self):
+        decls = "  global @n type=int\n  global @items type=list[int]\n  root @items"
+        text = HELLO.replace("  runtime ovf.smul", decls + "\n  runtime ovf.smul")
+        emitter = T.Emitter(T.parse(text))
+        self.assertIn(b"pys_wasi_set_global_roots", emitter.module())
+        self.assertIn(emitter.root_table, emitter.relocs)
+        self.assertEqual(struct.unpack_from("<I", emitter.data, emitter.root_table)[0], emitter.addr["@items"])
+        for name in ("@n", "@missing", "@items extra"):
+            with self.subTest(name=name), self.assertRaisesRegex(T.Refused, "global root"):
+                emit(text.replace("root @items", "root " + name))
 
     def test_constant_fields_and_float_slots(self):
         text = HELLO.replace('text="hello, world"', 'text=" items=(str @s.1)"')
@@ -336,6 +541,38 @@ assert.equal(sp.value, 512);
             with self.subTest(after=after), self.assertRaisesRegex(T.Refused, reason):
                 emit(program.replace(before, after))
 
+    def test_callable_indices_match_the_reactor_table(self):
+        program = """module complete {
+  const @cvo kind=callable refs=[@code null]
+}
+function @code(env: env, v: int) -> int kind=def {
+entry:
+  ret (int %a1)
+}
+function @main.init() -> None kind=block {
+entry:
+  %ptr1 = mach.load (callable[int,int] @cvo) : %ptr
+  %answer = icall (%ptr %ptr1, env null, int 42) : int
+  ret
+}
+"""
+        output = emit(program)
+        self.assertIn(b"__indirect_function_table", output)
+        # A caller can receive its target as an argument without contributing
+        # any local entries to the imported function table.
+        external = program.replace("  const @cvo kind=callable refs=[@code null]\n", "")
+        external = external.replace("  %ptr1 = mach.load (callable[int,int] @cvo) : %ptr\n", "")
+        external = external.replace("%ptr %ptr1", "%ptr null")
+        self.assertIn(b"__indirect_function_table", emit(external))
+        for old, new, reason in (
+            ("refs=[@code null]", "refs=[@unknown null]", "invalid callable constant"),
+            ("refs=[@code null]", "refs=[@code @cvo]", "invalid callable constant"),
+            ("@cvo kind=callable refs=[@code null]", "@x.mk.0 kind=callable refs=[null]", "invalid exception constructor table"),
+            ("icall (%ptr %ptr1", "icall (int %ptr1", "invalid indirect call signature"),
+        ):
+            with self.subTest(new=new), self.assertRaisesRegex(T.Refused, reason):
+                emit(program.replace(old, new))
+
     def test_exception_callback_signatures(self):
         self.assertIn(b"__indirect_function_table", emit(EXCEPTION))
         with self.assertRaisesRegex(T.Refused, "requires string names"):
@@ -376,6 +613,62 @@ assert.throws(() => load(384, fixed), WebAssembly.RuntimeError);
             path = Path(directory) / "callback.wasm"
             path.write_bytes(emit(EXCEPTION))
             subprocess.run(["node", "-e", script, str(path)], check=True, timeout=10)
+
+    @unittest.skipUnless(shutil.which("node"), "node runs the module")
+    def test_empty_key_kinds_relocate_and_preserve_the_tag(self):
+        # A fresh dict takes the untagged descriptor; after a forwarded result
+        # was populated its built kind must preserve the runtime's tag bit.
+        program = """module complete {
+  const @padding kind=tuple
+  const @desc kind=string text=H0
+  hole 1 type=dict[K,str]
+  hole 2 type=set[int]
+  keykind dict[K,str] kind="ptrtoint (ptr @desc to i64)" built="ptrtoint (ptr getelementptr (i8, ptr @desc, i64 2) to i64)"
+  keykind set[K] built="ptrtoint (ptr @desc to i64)"
+  keykind set[int] kind=-7 built=-7
+}
+function @main.init() -> None kind=block {
+entry:
+  %d = rt entry=dict.new hole=1 (int 0, int 0) : dict[K,str]
+  %p = empty.kind hole=1 (dict[K,str] %d)
+  %s = rt entry=set.new (int 0) : set[K]
+  %q = empty.kind (set[K] %s)
+  %n = rt entry=set.new hole=2 (int 0) : set[int]
+  %r = empty.kind (set[int] %n)
+  ret
+}
+"""
+        script = """
+const assert = require("node:assert/strict");
+const bytes = require("node:fs").readFileSync(process.argv[1]);
+const module = new WebAssembly.Module(bytes);
+for (const data of [64, 128]) {
+  const memory = new WebAssembly.Memory({initial: 1});
+  const descriptor = BigInt(data + 8); // after the padding tuple
+  const rt = {pys_recursion_state: 0, pys_dict_new(kind) {
+    assert.equal(kind, descriptor);
+    return 512;
+  }, pys_set_new(kind) {
+    assert.ok(kind === 0n || kind === -7n);
+    return kind === 0n ? 544 : 560;
+  }};
+  new WebAssembly.Instance(module, {env: {memory, data}, rt}).exports.init();
+  const view = new DataView(memory.buffer);
+  assert.equal(view.getBigInt64(520, true), descriptor + 2n);
+  assert.equal(view.getBigInt64(552, true), descriptor);
+  assert.equal(view.getBigInt64(568, true), -7n);
+}
+"""
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "kinds.wasm"
+            path.write_bytes(emit(program))
+            subprocess.run(["node", "-e", script, str(path)], check=True, timeout=10)
+        for bad_tag in ("i64 3)", "i32 2)"):
+            with self.subTest(bad_tag=bad_tag), self.assertRaisesRegex(T.Refused, "symbol"):
+                emit(program.replace("i64 2)", bad_tag))
+        for invalid in ("--7", "²"):
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(T.Refused, "dict/set key kind"):
+                emit(program.replace("built=-7", f"built={invalid}"))
 
     def test_refusals_name_what(self):
         cases = {
