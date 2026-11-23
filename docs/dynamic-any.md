@@ -642,8 +642,14 @@ ordinary typed `len()` rules unchanged.
 
 Legacy iteration through `__getitem__` and the `__len__`/`__getitem__` reverse
 fallback remain unsupported, as in typed code. This prototype does not add
-`__length_hint__`, generator `send`/`throw`/`close` through `Any`, or generator
-`StopIteration.value`.
+`__length_hint__`, generator `throw()` through `Any` (an exception cannot become an `Any`
+value), or generator `StopIteration.value`.
+
+A generator held in `Any` takes `send()` and `close()` as typed code compiles them: a sent
+value reaches the yield where the generator is suspended, unboxed to its send type with the
+annotation `TypeError` of another boundary; `send(None)` is `next()`; a just-started generator
+takes only `None`; a generator that reads no sent value drops one, as CPython's does; and other
+arguments raise CPython's `TypeError` (`tests/programs/inference/dynany_generator_send.py`).
 
 A generator cannot box an aliased mutable container whose native layout is
 unsupported, such as `list[float]` or a typed dict. Choose a boxable yield channel,
