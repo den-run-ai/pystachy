@@ -1225,7 +1225,8 @@ selector: truth, `==`, `!=`, `<`, `<=`, `>`, `>=`, `in`, `not`, `and`, `or`, and
 `is not` with `None`, `True` or `False`. An optional parameter given a value holds only that
 value's type, so `if key is None: return xs` leaves `key` an `int` after it for the call
 `find(xs, 5)`. A call inside such an instance that passes its own selector on
-(`return repair(s, logging)`) makes the caller compiled for each literal too. Calls through
+(`return repair(s, logging)`) makes the caller compiled for each literal too, and its caller
+where that passes on its own parameter in turn. Calls through
 the function as a value, as `map(repair, xs)` and a `Callable` parameter make them, leave a
 selector they do not pass to its literal default.
 

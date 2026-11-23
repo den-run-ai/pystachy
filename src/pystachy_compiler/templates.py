@@ -851,6 +851,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     if fwd is not None:
         g.selfwd = fwd
         g.selfrom = frm
+        g.selcaller = self.curfn if frm != "" else None  # (the calling instance: selector_fail)
     if cmpfields != "":
         g.node = clone(f.node)
         actual = self.classes[ts[1]]
@@ -1098,7 +1099,9 @@ def gen_selector_fail(self, a: str, b: str, marks: dict[str, str]) -> str:
     # it (unless that error comes of a join or another retry). Where this instance's call gave a
     # selector no literal, the message says so; where it passed the calling instance's own
     # parameter instead, marks gets the caller's key and its selectors with that parameter, as
-    # forwarding (loads(s, logging) calling repair(s, logging))
+    # forwarding (loads(s, logging) calling repair(s, logging)); and where the caller has that
+    # selector already, but its own call passed it its caller's parameter, that caller's, and so
+    # on up the calls (api(s, verbose) calling loads(s, logging=verbose))
     g = self.curfn
     msg = f"{short(g.name)}() returns both {typestr(a)} and {typestr(b)} (each function has one return type)"
     if not selector_fn(self, g):
@@ -1115,15 +1118,28 @@ def gen_selector_fail(self, a: str, b: str, marks: dict[str, str]) -> str:
     missing = [p for p in have if p not in g.lits and p in g.params and g.params.index(p) < len(g.ptypes) and lit_type(g.ptypes[g.params.index(p)])]
     if len(missing) == 0:
         return msg
-    if g.selfrom != "" and all([p in g.selfwd for p in missing]):
-        theirs = self.selectors.get(g.selfrom, "").split()
-        more = [g.selfwd[p] for p in missing if g.selfwd[p] not in theirs]
+    cur = g
+    ps = missing
+    depth = 0
+    while cur.selfrom != "" and all([p in cur.selfwd for p in ps]) and depth < 100:
+        qs = [cur.selfwd[p] for p in ps]
+        theirs = self.selectors.get(cur.selfrom, "").split()
+        more = [q for q in qs if q not in theirs]
         if len(more) > 0:
-            for p in more:
-                if p not in theirs:
-                    theirs.append(p)
-            marks[g.selfrom] = " ".join(theirs)
+            for q in more:
+                if q not in theirs:
+                    theirs.append(q)
+            marks[cur.selfrom] = " ".join(theirs)
             return msg
+        # (the caller has them as selectors already: its own call gave them no literals)
+        up = cur.selcaller
+        if up is None:
+            break
+        ps = [q for q in qs if q not in up.lits]
+        if len(ps) == 0:
+            break
+        cur = up
+        depth += 1
     which = " and ".join([f"'{p}'" for p in missing])
     if len(missing) == 1:
         return msg + f": its parameter {which} chooses which, and this call gives it no literal: pass a literal or annotate the result"

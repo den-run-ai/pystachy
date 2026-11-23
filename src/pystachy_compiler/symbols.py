@@ -77,10 +77,12 @@ class FnInfo:
         # an instance of a template whose literal arguments choose its result (Gen.selectors): the
         # literal argument of each selector its call gave one, which decides its tests of it
         # (Gen.selector_const); the parameter of the calling instance its call passed for a
-        # selector instead (forwarding), and that caller's template's key (Gen.selector_args)
+        # selector instead (forwarding), that caller's template's key (Gen.selector_args) and
+        # the calling instance itself, whose own call a failure follows further (selector_fail)
         self.lits: dict[str, Node] = {}
         self.selfwd: dict[str, str] = {}
         self.selfrom = ""
+        self.selcaller: FnInfo | None = None
         # a template that returns its own TypeVar (def accept(self, v: Visitor[T]) -> T): that
         # TypeVar, and the parameters whose annotation G[..., T, ...] names it (their indexes, G,
         # and T's position), which an argument of a class deriving from G[X, ...] binds (tv_bound)
