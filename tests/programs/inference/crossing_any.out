@@ -1,0 +1,109 @@
+None
+None False
+True False
+True False
+False
+True
+True True
+True False
+True False
+False
+False
+41
+41 True
+True False
+True False
+False
+42
+2.5
+2.5 True
+True False
+True False
+False
+5.0
+(1+2j)
+(1+2j) True
+True False
+True False
+False
+1.0
+text
+'text' True
+True False
+True False
+False
+TEXT
+[1, 2]
+[1, 2] True
+True False
+True False
+False
+2 1
+[1, 2, 9]
+(1, 's')
+(1, 's') True
+True False
+True False
+False
+2 1
+range(0, 3)
+range(0, 3) True
+True False
+True False
+False
+3
+P(1)
+P(1) True
+True False
+True False
+False
+1 P1
+P(2)
+P(2) True
+True False
+True False
+False
+2 Q2
+D(a=1, b='b')
+D(a=1, b='b') True
+True False
+True False
+False
+1 D1
+N(a=1, b='b')
+N(a=1, b='b') True
+True False
+True False
+False
+1 N1
+Color.RED
+<Color.RED: 1> True
+True False
+True False
+False
+RED Color1
+T('s')
+T('s') True
+True False
+True False
+False
+T's'
+<class '__main__.P'>
+<class '__main__.P'> True
+True False
+True False
+True
+P
+True False
+True False
+True
+True False
+True False
+True
+True False
+True False
+True
+True False
+True False
+False
+[exit 0]
