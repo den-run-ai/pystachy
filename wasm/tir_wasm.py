@@ -57,6 +57,7 @@ SCALARS = ("int", "bool", "float")
 RETURNS_UNCOLLECTED = (
     "ceil", "exc.in", "f2i", "fdiv", "ffloordiv", "floor", "floordiv", "fmod", "fpow", "idiv", "mod", "ord", "pow",
     "powmod", "round", "round_int", "shl", "shr",
+    "exc.handled", "exc.restore", "try_mark",
     "dict.key", "dict.next", "dict.val", "list.clear", "list.del", "list.get", "list.pop", "list.reverse",
     "list.set", "range.has", "range.len", "set.key", "set.next", "vtuple.get",
     "str.contains", "str.count", "str.endswith", "str.find", "str.index", "str.rfind", "str.rindex",
@@ -208,6 +209,11 @@ def live_after_blocks(fn: Func, labels: dict[str, int], values: dict[str, int]) 
                 changed = True
 
     return live_out
+
+
+def reference_type(t: str) -> bool:
+    # a type whose value is a pointer the collector may need: not a number, None or a machine scalar
+    return t not in SCALARS and t != "None" and (not t.startswith("%") or t == "%ptr")
 
 
 def register_colors(fn: Func, labels: dict[str, int], locals_: dict[str, int], types: list[int]) -> tuple[list[int], list[int]]:
@@ -1646,6 +1652,18 @@ class Emitter:
                 if before != live_in[bi]:
                     live_in[bi] = before
                     changed = True
+        # A pointer into an object that another kept value or a reference parameter (which no code
+        # writes) also points into needs no root of its own: the collector moves nothing and finds an
+        # object from any pointer into it (runtime.c's page map). A word's address, a generator's
+        # promise and a cast of a reference point into their operand's object.
+        bases: dict[str, str] = {}
+        for blk in fn.blocks:
+            for i in blk.code:
+                if (len(i.res) == 1 and i.args and i.args[0].v in values and i.args[0].v not in fn.slots
+                        and (i.op in ("mach.addr", "gen.promise") or (i.op == "cast" and reference_type(i.args[0].t)
+                                                                      and reference_type(i.t)))):
+                    bases[i.res[0]] = i.args[0].v
+        params = {f"%a{j}" for j in range(len(fn.ptypes)) if reference_type(fn.ptypes[j])}
         for bi in range(count):
             live = live_out[bi].copy()
             code = fn.blocks[bi].code
@@ -1655,7 +1673,18 @@ class Emitter:
                     continue
                 written = self.writes(i, values)
                 if self.collects(i):
-                    i.keep = [names[v] for v in sorted(live) if v not in written]
+                    i.keep = []
+                    for v in sorted(live):
+                        if v in written:
+                            continue
+                        name = names[v]
+                        at = name
+                        while at in bases:
+                            at = bases[at]
+                            if at in params or (values[at] in live and values[at] not in written):
+                                name = at
+                        if name not in i.keep:
+                            i.keep.append(name)
                     if i.op == "vtuple.make":
                         i.keep += [a.v for a in i.args if a.v in values]
                     out = True
