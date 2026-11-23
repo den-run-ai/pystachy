@@ -1,0 +1,42 @@
+P(1)
+P(1) True
+True False
+True False
+False
+1 P1
+P(2)
+P(2) True
+True False
+True False
+False
+2 Q2
+D(a=1, b='b')
+D(a=1, b='b') True
+True False
+True False
+False
+1 D1
+N(a=1, b='b')
+N(a=1, b='b') True
+True False
+True False
+False
+1 N1
+Color.RED
+<Color.RED: 1> True
+True False
+True False
+False
+RED Color1
+bad
+Oops('bad') True
+True False
+True False
+False
+Oops bad
+T('s')
+T('s') True
+True False
+True False
+False
+[exit 0]

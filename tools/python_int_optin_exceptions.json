@@ -1120,6 +1120,86 @@
       "diagnostic": "tests/programs/classes/object_storage_dynamic_narrow.py:79: error: unsupported operand type(s) for +: 'object' and 'int' (narrow a value of object with isinstance() to float, bool, str, bytes, list, tuple, dict, set, frozenset, type, complex, range or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), len(), int(), float(), % formatting, ==, !=, is, isinstance() and a truth test otherwise) (compiling use(object) for the call at tests/programs/classes/object_storage_dynamic_narrow.py:119)",
       "reason": "isinstance(x, int) narrows a value of object to nothing in a module that opts in to promoting ints: a bool passes the test, which a promoting int cannot hold, so the narrowed value's int operations are rejected.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/crossing_any_to_object.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/crossing_any_to_object.py:109: error: unsupported operand type(s) for +: 'object' and 'int' (narrow a value of object with isinstance() to float, bool, str, bytes, list, tuple, dict, set, frozenset, type, complex, range or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), len(), int(), float(), % formatting, ==, !=, is, isinstance() and a truth test otherwise)",
+      "reason": "isinstance(x, int) narrows a value of object to nothing in a module that opts in to promoting ints: a bool passes the test, which a promoting int cannot hold, so the narrowed value's int operations are rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/crossing_any_to_object.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/crossing_any_to_object.py:109: error: unsupported operand type(s) for +: 'object' and 'int' (narrow a value of object with isinstance() to float, bool, str, bytes, list, tuple, dict, set, frozenset, type, complex, range or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), len(), int(), float(), % formatting, ==, !=, is, isinstance() and a truth test otherwise)",
+      "reason": "isinstance(x, int) narrows a value of object to nothing in a module that opts in to promoting ints: a bool passes the test, which a promoting int cannot hold, so the narrowed value's int operations are rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/crossing_object.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/crossing_object.py:105: error: unsupported operand type(s) for +: 'object' and 'int' (narrow a value of object with isinstance() to float, bool, str, bytes, list, tuple, dict, set, frozenset, type, complex, range or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), len(), int(), float(), % formatting, ==, !=, is, isinstance() and a truth test otherwise)",
+      "reason": "isinstance(x, int) narrows a value of object to nothing in a module that opts in to promoting ints: a bool passes the test, which a promoting int cannot hold, so the narrowed value's int operations are rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/crossing_object.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/crossing_object.py:105: error: unsupported operand type(s) for +: 'object' and 'int' (narrow a value of object with isinstance() to float, bool, str, bytes, list, tuple, dict, set, frozenset, type, complex, range or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), len(), int(), float(), % formatting, ==, !=, is, isinstance() and a truth test otherwise)",
+      "reason": "isinstance(x, int) narrows a value of object to nothing in a module that opts in to promoting ints: a bool passes the test, which a promoting int cannot hold, so the narrowed value's int operations are rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/crossing_union.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/crossing_union.py:86: error: tuple[int,str] of promoting ints in a closed union is not supported (a union's box holds 64-bit ints)",
+      "reason": "A closed union's box holds 64-bit ints, so a tuple of promoting ints is no member of it; the program is rejected where the union would hold the tuple.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/crossing_union.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/crossing_union.py:86: error: tuple[int,str] of promoting ints in a closed union is not supported (a union's box holds 64-bit ints)",
+      "reason": "A closed union's box holds 64-bit ints, so a tuple of promoting ints is no member of it; the program is rejected where the union would hold the tuple.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/crossing_union_to_any.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/crossing_union_to_any.py:84: error: tuple[int,str] of promoting ints in a closed union is not supported (a union's box holds 64-bit ints)",
+      "reason": "A closed union's box holds 64-bit ints, so a tuple of promoting ints is no member of it; the program is rejected where the union would hold the tuple.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/crossing_union_to_any.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/crossing_union_to_any.py:84: error: tuple[int,str] of promoting ints in a closed union is not supported (a union's box holds 64-bit ints)",
+      "reason": "A closed union's box holds 64-bit ints, so a tuple of promoting ints is no member of it; the program is rejected where the union would hold the tuple.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/crossing_union_to_object.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/crossing_union_to_object.py:86: error: tuple[int,str] of promoting ints in a closed union is not supported (a union's box holds 64-bit ints)",
+      "reason": "A closed union's box holds 64-bit ints, so a tuple of promoting ints is no member of it; the program is rejected where the union would hold the tuple.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/crossing_union_to_object.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/crossing_union_to_object.py:86: error: tuple[int,str] of promoting ints in a closed union is not supported (a union's box holds 64-bit ints)",
+      "reason": "A closed union's box holds 64-bit ints, so a tuple of promoting ints is no member of it; the program is rejected where the union would hold the tuple.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     }
   ]
 }
