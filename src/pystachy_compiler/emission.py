@@ -4,11 +4,15 @@ from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.bigints import narrows
 from src.pystachy_compiler.diagnostics import ClassBoxes, NeedHierarchy, Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
+from src.pystachy_compiler.ircheck import CONSTRAINT_PARTS, native_type, ref_type, value_view
+from src.pystachy_compiler.ir import slot_register
+from src.pystachy_compiler.specs import NONEVAR, OP_OPERAND_TYPES, OP_RESULT_TYPE, OP_TEMPS
 from src.pystachy_compiler.frames import Frame
 from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, tmpname, one_num, value_definitions
 from src.pystachy_compiler.specs import BIGOPT, CHECKED, EMPTYFS, LIST_READS, LIST_WRITES, NARROWED, PATH_OPS, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS
 from src.pystachy_compiler.unions import FLOATAT, MEMBERAT
 from src.pystachy_compiler.utils import (
+    RT_VARS,
     RtFn,
     elem,
     identity_abi,
@@ -24,9 +28,12 @@ from src.pystachy_compiler.utils import (
     runtime_decl,
     rt_bind,
     rt_generic,
+    rt_open,
     rt_operand_order,
     rt_subst,
+    rt_words,
     rtsym,
+    same_kind,
     selem,
     targs,
     typestr,
@@ -488,6 +495,370 @@ def gen_instantiate(self, fn: IFn) -> None:
         for v in lates:
             if v not in pending:
                 again = True  # (a value an op read too late has its type now)
+
+
+def makes_hole(i: Ins) -> bool:
+    # does op i make an empty list, dict or set whose type a later use decides (Gen.hole): the
+    # type that use gives its hole (Gen.holes) is its result's
+    return i.op == "rt" and (i.s == "list.new" or i.s == "dict.new" or i.s == "set.new")
+
+
+def open_type(t: str, rt: bool, classes: dict[str, bool]) -> bool:
+    # does type t leave a part open: an empty container's placeholder (?), or a runtime type
+    # variable (RT_VARS) that names no class or, in an rt op's result (rt), any
+    if "?" in t:
+        return True
+    if not rt_generic(t):
+        return False
+    for w in rt_words(t):
+        if w in RT_VARS and (rt or w not in classes):
+            return True
+    return False
+
+
+def fills(pattern: str, t: str, rt: bool, classes: dict[str, bool]) -> bool:
+    # is type t, which leaves no part open (open_type: a variable's name in t is a class's),
+    # pattern with a type in each open part (rt: as an rt op's result type leaves them)
+    if open_type(t, False, classes) or t == "" or t.startswith("%"):
+        return False
+    if pattern == t:
+        return True
+    if pattern == "?" or (pattern in RT_VARS and (rt or pattern not in classes)):
+        return True
+    if pattern[:1] == "*" or pattern[:1] == "&":
+        return t[:1] == pattern[:1] and fills(pattern[1:], t[1:], rt, classes)
+    h = pattern.find("[")
+    if h <= 0 or not pattern.endswith("]") or not t.startswith(pattern[: h + 1]) or not t.endswith("]"):
+        return False
+    xs = targs(pattern)
+    ys = targs(t)
+    if len(xs) != len(ys):
+        return False
+    for j in range(len(xs)):
+        if not fills(xs[j], ys[j], rt, classes):
+            return False
+    return True
+
+
+def tie_part(i: Ins, j: int) -> list[str]:
+    # the parts (ircheck.constraint_parts) of the constraint that the types column of op i's row
+    # puts on its operand j (on its result where j < 0), or [] where the row puts none
+    if i.op not in OP_OPERAND_TYPES:
+        return []
+    if j < 0:
+        return CONSTRAINT_PARTS[OP_RESULT_TYPE[i.op]] if OP_RESULT_TYPE[i.op] != "" else []
+    cs = OP_OPERAND_TYPES[i.op]
+    if len(cs) == 0:
+        return []
+    return CONSTRAINT_PARTS[cs[j] if j < len(cs) else cs[len(cs) - 1]]
+
+
+def retyped(a: Val, t: str) -> Val:
+    # operand a, read at type t
+    x = Val(a.v, t)
+    x.identity(a)
+    x.lit = a.lit
+    x.infer_from = a.infer_from
+    return x
+
+
+class Settling:
+    # Gen.settle of one function: each value's type and what defines it (ir.value_definitions),
+    # the op or slot that does, the ops that read it, the values whose types changed and whose
+    # operands are still to follow them, and the open values still to decide
+    def __init__(self, fn: IFn, holes: list[str], classes: dict[str, bool], rtfns: dict[str, RtFn], late: bool):
+        self.fn = fn
+        self.rtfns = rtfns
+        self.holes = holes
+        self.classes = classes
+        self.late = late
+        # (only the values whose definitions leave their types open, as ir.value_definitions types
+        # them: no other value's type changes, nor is read here. A placeholder's, and once
+        # Gen.instantiate has run an rt op's result's variable: a value another op copies one to
+        # keeps it, as the instance view reads it)
+        self.types: dict[str, str] = {}
+        self.makers: dict[str, str] = {}
+        self.defs: dict[str, Ins] = {}
+        self.readers: dict[str, list[Ins]] = {}
+        for i in fn.slots:
+            if "?" in i.t:
+                reg = slot_register(i)
+                self.types[reg] = i.t if i.k == 2 else "&" + i.t
+                self.makers[reg] = "slot"
+                self.defs[reg] = i
+        for b in fn.blocks:
+            for i in b.code:
+                if len(i.r) > 0 and ("?" in i.t or (late and i.op == "rt" and rt_generic(i.t))):
+                    named: list[int] = []
+                    for j in range(len(i.r)):
+                        if not (i.op in OP_TEMPS and j in OP_TEMPS[i.op]):
+                            named.append(i.r[j])
+                    if len(named) == 1:
+                        v = tmpname(named[0])
+                        self.types[v] = i.t
+                        self.makers[v] = i.op
+                        self.defs[v] = i
+        for b in fn.blocks:
+            for i in b.code:
+                for a in i.a:
+                    if a.v in self.defs:
+                        if a.v not in self.readers:
+                            self.readers[a.v] = []
+                        if len(self.readers[a.v]) == 0 or self.readers[a.v][len(self.readers[a.v]) - 1] is not i:
+                            self.readers[a.v].append(i)
+        self.follow: list[str] = []
+
+    def rt(self, v: str) -> bool:
+        return self.makers[v] == "rt"
+
+    def unsettled(self, v: str) -> bool:
+        # is v's type open where this settling may decide it: not a local's first None (whose
+        # slot keeps NONEVAR: specs.TYPE_VIEWS' instance), nor, before Gen.instantiate, an rt
+        # op's result whose type is still its signature's
+        d = self.types[v]
+        if NONEVAR in d or v not in self.defs or not open_type(d, self.rt(v), self.classes):
+            return False
+        return self.late or "?" in d or not self.rt(v)
+
+    def hole(self, i: Ins, d: str, tries: list[str]) -> None:
+        # the type that a use gave the hole of op i (Gen.holes), which makes or reads a value of
+        # type d, as the first of tries
+        if i.k > 0 and i.k < len(self.holes):
+            h = self.holes[i.k]
+            if h != "" and same_kind(h, d) and h not in tries:
+                tries.append(h)
+
+    def define(self, v: str, t: str) -> None:
+        # give v type t where it is defined, and the positions of its op that bind it so
+        self.types[v] = t
+        i = self.defs[v]
+        if self.makers[v] == "slot":
+            i.t = t if i.k == 2 else t[1:]
+        else:
+            i.t = t
+            self.tie(i, -1, t)
+        self.follow.append(v)
+
+    def operand(self, i: Ins, j: int, t: str) -> None:
+        # op i reads its operand j at type t, and the positions that bind it so take what t gives
+        i.a[j] = retyped(i.a[j], t)
+        self.tie(i, j, t)
+
+    def tie(self, i: Ins, j: int, t: str) -> None:
+        # The positions of op i that its row's types column binds by the variable that position j
+        # binds (mem.load's &$T and $T), now that j has type t: each that leaves open what t
+        # gives it takes that. An rt op's are its runtime signature's (tie_rt)
+        if i.op == "rt":
+            self.tie_rt(i)
+            return
+        p = tie_part(i, j)
+        if len(p) == 0 or p[1] == "" or len(t) <= len(p[0]) + len(p[3]) or not t.startswith(p[0]) or not t.endswith(p[3]):
+            return
+        bound = t[len(p[0]) : len(t) - len(p[3])]
+        for k in range(len(i.a)):
+            q = tie_part(i, k)
+            if k != j and len(q) > 0 and q[1] == p[1]:
+                want = q[0] + bound + q[3]
+                if i.a[k].t != want and open_type(i.a[k].t, i.op == "rt", self.classes) and fills(i.a[k].t, want, i.op == "rt", self.classes):
+                    self.operand(i, k, want)
+        q = tie_part(i, -1)
+        if j >= 0 and len(q) > 0 and q[1] == p[1]:
+            want = q[0] + bound + q[3]
+            for n in i.r:
+                v = tmpname(n)
+                if v in self.defs and self.defs[v] is i and self.types[v] == i.t and i.t != want and open_type(i.t, i.op == "rt", self.classes) and fills(i.t, want, i.op == "rt", self.classes):
+                    self.define(v, want)
+
+    def tie_rt(self, i: Ins) -> None:
+        # The variables of rt op i's runtime signature (RT_VARS), bound as Gen.instantiate binds
+        # them (instantiate_op) by its result and its operands whose types leave nothing open,
+        # the receiver's last (rt_bind), give each operand and the result whose type leaves open
+        # what they make it that type (a [None] list's None, *opt[?], once the list is a
+        # list[opt[str]]); one that still has the signature's own type is instantiate's
+        if i.s not in self.rtfns or not self.rtfns[i.s].generic:
+            return
+        sig = self.rtfns[i.s].sig
+        n = min(len(i.a), len(sig) - 1)
+        bound: dict[str, str] = {}
+        if i.t != sig[0] and not i.t.startswith("%") and not open_type(i.t, True, self.classes):
+            rt_bind(sig[0], i.t, bound, False)
+        for j in rt_operand_order(sig):
+            if j <= n:
+                u = i.a[j - 1].t
+                if u != sig[j] and not u.startswith("%") and not open_type(u, True, self.classes):
+                    rt_bind(sig[j], u, bound, False)
+        for j in range(n):
+            s = sig[j + 1]
+            a = i.a[j]
+            if not rt_generic(s) or rt_open(s, bound):
+                continue
+            want = rt_subst(s, bound)
+            if a.t != want and "?" in a.t and fills(a.t, want, True, self.classes):
+                self.operand(i, j, want)
+        if len(i.r) > 0 and rt_generic(sig[0]) and not rt_open(sig[0], bound) and "?" in i.t:
+            want = rt_subst(sig[0], bound)
+            v = tmpname(i.r[0])
+            if i.t != want and v in self.defs and fills(i.t, want, True, self.classes):
+                self.define(v, want)
+
+
+def settle_decide(self, s: Settling, v: str) -> str:
+    # The one type that v's open type leaves to give it, or "" for none: the type that the
+    # use which decided an empty container's hole gave it (Gen.holes), where that is the
+    # container's op, else that of the first operand that reads v at a type which leaves
+    # nothing open and is more than a machine word, but a runtime signature's operand. Each
+    # other such operand must read it at that type or by a view (ircheck.value_view): the
+    # runtime reads a bytes as a str
+    d = s.types[v]
+    rt = s.rt(v)
+    reads: list[str] = []
+    by_rt: list[bool] = []
+    tries: list[str] = []
+    i = s.defs[v]
+    if makes_hole(i):
+        s.hole(i, d, tries)
+    for r in s.readers.get(v, []):
+        if r.op == "empty.kind":
+            s.hole(r, d, tries)  # (what a template's call returns: Gen.typed_empty)
+        for a in r.a:
+            if a.v == v and not a.t.startswith("%") and not open_type(a.t, r.op == "rt", s.classes):
+                reads.append(a.t)
+                by_rt.append(r.op == "rt")
+    for t in reads:
+        if t not in tries:
+            tries.append(t)
+    for t in reads:
+        if is_opt(t) and unopt(t) not in tries:
+            tries.append(unopt(t))  # (an operand that reads it as opt[T]: optional's view)
+    for t in tries:
+        if not fills(d, t, rt, s.classes):
+            continue
+        ok = True
+        for j in range(len(reads)):
+            if reads[j] != t and value_view(self, t, reads[j], rt, by_rt[j]) == "":
+                ok = False
+                break
+        if ok:
+            return t
+    return ""
+
+
+def settle_run(self, s: Settling) -> None:
+    # decide the open values until none is left that a round can decide, each round after
+    # the operands that read the values it gave types follow them
+    pending: list[str] = []
+    for v in s.types:
+        if s.unsettled(v):
+            pending.append(v)
+    progress = True
+    while progress:
+        while len(s.follow) > 0:
+            v = s.follow.pop()
+            t = s.types[v]
+            for r in s.readers.get(v, []):
+                for j in range(len(r.a)):
+                    a = r.a[j]
+                    if a.v == v and a.t != t and open_type(a.t, r.op == "rt", s.classes) and fills(a.t, t, r.op == "rt", s.classes):
+                        s.operand(r, j, t)
+        progress = False
+        rest: list[str] = []
+        for v in pending:
+            if not s.unsettled(v):
+                continue
+            t = settle_decide(self, s, v)
+            if t == "" or t == s.types[v]:
+                rest.append(v)  # (or a class's name that an rt op's variable spells)
+            else:
+                s.define(v, t)
+                progress = True
+        pending = rest
+
+
+def words_cast(self, fn: IFn, words: dict[str, str]) -> None:
+    # A bits cast for each type an operand reads an rt op's machine word at (words: each rt op's
+    # result of %ptr or %slot, as RUNTIME gives it): the cast reads the word as that type, right
+    # after the op, and the operands read the cast (gen_cast: lowering erases it). A runtime
+    # signature's operand of a type variable reads the word itself, as the runtime does; a type
+    # that no bits cast reads a word as is left to the verifier.
+    casts: dict[str, dict[str, str]] = {}
+    after: dict[str, list[Ins]] = {}
+    for b in fn.blocks:
+        for i in b.code:
+            for j in range(len(i.a)):
+                a = i.a[j]
+                if a.v not in words:
+                    continue
+                d = words[a.v]
+                u = a.t
+                if u.startswith("%") or (i.op == "rt" and rt_generic(u)):
+                    continue
+                if not ((d == "%ptr" and (ref_type(u) or (u.startswith("&") and native_type(u[1:], self.classes)))) or (d == "%slot" and (u == "int" or (u.startswith("*") and native_type(u[1:], self.classes))))):
+                    continue
+                if a.v not in casts:
+                    casts[a.v] = {}
+                if u not in casts[a.v]:
+                    c = Ins("cast", u, "bits")
+                    c.a = [Val(a.v, d)]
+                    self.n += 1
+                    c.r = one_num(self.n)
+                    fn.casts.append(self.n)
+                    casts[a.v][u] = tmpname(self.n)
+                    if a.v not in after:
+                        after[a.v] = []
+                    after[a.v].append(c)
+                i.a[j] = retyped(a, u)
+                i.a[j].v = casts[a.v][u]
+    if len(after) == 0:
+        return
+    for lp in fn.loops:
+        # (a loop record's values, as its operands read them: new Vals, as another op may hold these)
+        if lp.stop.v in casts and lp.stop.t in casts[lp.stop.v]:
+            lp.stop = Val(casts[lp.stop.v][lp.stop.t], lp.stop.t)
+        for k in range(len(lp.seqs)):
+            x = lp.seqs[k]
+            if x.v in casts and x.t in casts[x.v]:
+                lp.seqs[k] = Val(casts[x.v][x.t], x.t)
+    for b in fn.blocks:
+        code: list[Ins] = []
+        for i in b.code:
+            code.append(i)
+            if len(i.r) > 0 and i.op == "rt" and tmpname(i.r[0]) in after:
+                for c in after[tmpname(i.r[0])]:
+                    c.line = i.line
+                    code.append(c)
+        b.code = code
+
+
+def gen_settle(self, fn: IFn, late: bool) -> None:
+    # Give each value of fn, once it is built, one type (docs/typed-ir.md#operation-reference), as an MLIR
+    # value has one: an open type (open_type) the frontend gave it before a later use decided
+    # it, an empty container's placeholder (list[?]: Gen.hole) or a runtime type variable that
+    # Gen.instantiate bound to nothing, takes the one type its uses read it at (Settling), and,
+    # once instantiate has run (late), an rt op's machine word that an operand reads as a typed
+    # value is read through a bits cast (words_cast). Before instantiate, the rt ops' operands
+    # bind their variables to what is decided here: the values that empty containers hold. Most
+    # functions hold neither, which one look at their ops' types tells
+    open_ = False
+    words: dict[str, str] = {}
+    for i in fn.slots:
+        if "?" in i.t:
+            open_ = True
+    for b in fn.blocks:
+        for i in b.code:
+            if "?" in i.t:
+                open_ = True
+            elif late and i.op == "rt" and len(i.r) > 0:
+                if i.t == "%ptr" or i.t == "%slot":
+                    words[tmpname(i.r[0])] = i.t
+                elif rt_generic(i.t):
+                    open_ = True
+    if open_:
+        classes: dict[str, bool] = {}
+        for c in self.classes:
+            classes[c] = True
+        settle_run(self, Settling(fn, self.holes, classes, self.rtfns, late))
+    if len(words) > 0:
+        words_cast(self, fn, words)
 
 
 def instantiate_op(i: Ins, sig: list[str], types: dict[str, str], pending: dict[str, bool], lates: list[str]) -> bool:

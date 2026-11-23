@@ -1572,8 +1572,8 @@ def gen_unionslots(self, fn: IFn) -> int:
                         packs.append(tmpname(o.r[1]))
                         repl[f"{w[0]}:{w[1]}"] = [p, c]
             if self.uleaves(fn, uses, i, split):  # (a copy to a slot that splits stores the parts)
-                # (the box that leaves, as the value it replaces)
-                box = Ins("rt", "%ptr", "ubox")
+                # (the box that leaves, as the value it replaces, of its type: ubox's R)
+                box = Ins("rt", i.t, "ubox")
                 box.line = i.line
                 box.a = [Val(parts[v][0], "int"), Val(parts[v][1], "*T")]
                 box.r = one_num(i.r[0])

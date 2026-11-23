@@ -691,11 +691,17 @@ def value_types(self, fn: IFn, types: dict[str, str] | None = None, makers: dict
                 elif u == "%addr":
                     ok = d.startswith("&")
                 elif d == "%ptr" or d == "%slot":
-                    # bits, of an rt op's result, whose type is its RUNTIME signature's, or read by an
-                    # rt op's operand of a runtime type variable (*T, S), which only the rt ops that
-                    # passes add after Gen.instantiate keep (unionslots' boxes): other ops state their
-                    # results' types, and a cast reads a machine word as a typed value
-                    ok = (rt or (i.op == "rt" and rt_generic(u))) and ((u.startswith("&") or ref_type(u)) if d == "%ptr" else (u == "int" or u.startswith("*") or (i.op == "rt" and u == "bool")))
+                    # bits, read by an rt op's operand of a runtime type variable (*T, S), as the
+                    # runtime reads the word: Gen.instantiate leaves the variables of the rt ops that
+                    # passes add after it (unionslots' boxes, dictfuse's lookups). Any other op reads
+                    # a machine word, an rt op's result too (its RUNTIME result type), through a bits
+                    # cast (Gen.settle)
+                    ok = i.op == "rt" and rt_generic(u) and ((u.startswith("&") or ref_type(u)) if d == "%ptr" else (u == "int" or u.startswith("*") or u == "bool"))
+                elif "?" in d and "?" not in u and not (i.op == "rt" and rt_generic(u)) and "opt[?]" not in d:
+                    # (an empty container's placeholder that a use decided is the type its uses read
+                    # it at: Gen.settle; a runtime signature's variable reads one that none did, and
+                    # a None's, opt[?], may be read as the reference it holds: instance)
+                    ok = False
                 else:
                     key = d + "|" + u + ("|1" if rt else "|0") + ("1" if i.op == "rt" else "0")
                     if key not in decided:

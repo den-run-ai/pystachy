@@ -172,17 +172,25 @@ class ArrayKindTests(unittest.TestCase):
                     if f"%t{op['results'][0] if op['results'] else -1}" == store["operands"][1]["value"])
 
     def test_atomic_list_stored_by_an_open_view_is_rejected(self):
-        # (queue's store views it as list[?], a later load as list[str]: a store holds for every view)
-        snapshot = self.sample()
-        self.assertEqual({op["operands"][0]["type"] for op in self.accesses(snapshot, "@g.queue")}, {"&list[?]", "&list[str]"})
-        made = self.stored_list(snapshot, "@g.queue")
-        self.assertEqual(snapshot["holes"][made["immediate"]], "list[str]")
-        snapshot["holes"][made["immediate"]] = "list[int]"
-        report, _ = gc.check_all(snapshot, CHECKER)
-        record = next(r for r in report["records"] if r["function"] == "@main.init")
-        self.assertEqual(record["status"], "rejected")
-        self.assertIn("mem.store at", record["error"])
-        self.assertIn(f"%t{made['results'][0]} in", record["error"])
+        # (a store holds for every view of what it writes: queue's later load views it as list[str].
+        # Gen.settle gives the new list and its store the type queue's hole got, so the open view the
+        # frontend wrote, list[?], is opened again here; the settled store is rejected too)
+        for opened in (False, True):
+            with self.subTest(opened=opened):
+                snapshot = self.sample()
+                self.assertEqual({op["operands"][0]["type"] for op in self.accesses(snapshot, "@g.queue")}, {"&list[str]"})
+                store = next(op for op in self.accesses(snapshot, "@g.queue") if op["op"] == "mem.store")
+                made = self.stored_list(snapshot, "@g.queue")
+                self.assertEqual((made["type"], snapshot["holes"][made["immediate"]]), ("list[str]", "list[str]"))
+                if opened:
+                    store["operands"] = [dict(store["operands"][0], type="&list[?]"), dict(store["operands"][1], type="list[?]")]
+                    made["type"] = "list[?]"
+                snapshot["holes"][made["immediate"]] = "list[int]"
+                report, _ = gc.check_all(snapshot, CHECKER)
+                record = next(r for r in report["records"] if r["function"] == "@main.init")
+                self.assertEqual(record["status"], "rejected")
+                self.assertIn("mem.store at", record["error"])
+                self.assertIn(f"%t{made['results'][0]} in", record["error"])
 
     def test_atomic_open_result_is_rejected(self):
         # (fresh() returns list[?], which its caller types as a list of strs: open items are scanned)

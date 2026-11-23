@@ -272,10 +272,12 @@ class ValueTypeTests(unittest.TestCase):
         for view, code, params, slots in (
                 ("machine", [typed("mach.load", "int", [("%a0", "%ptr")])], ["str"], ()),
                 ("machine", [typed("mach.store", "", [("%x.1", "%ptr"), ("0", "int")])], (), [slot("x", "int", 1)]),
-                ("bits", [made("rt", "%ptr", 1, [("%a0", "*T")], "box"), typed("ret", "", [("%t1", "opt[int]")])], ["int"], ()),
-                ("bits", [made("rt", "%ptr", 1, [], "x"), typed("mem.load", "int", [("%t1", "&int")])], (), ()),
+                # (a runtime signature's operand of a type variable reads a word as the runtime does)
+                ("bits", [made("slot.pack", "%slot", 1, [("%a0", "int")]), typed("rt", "opt[int]", [("%t1", "*T")], "box")], ["int"], ()),
+                ("bits", [made("rt", "%ptr", 1, [], "x"), typed("rt", "vtuple[T]", [("%t1", "list[T]")], "vtuple.new")], (), ()),
                 ("instance", [made("rt", "list[T]", 1, [("3", "int")], "list.new"), typed("list.len", "int", [("%t1", "list[str]")])], (), ()),
-                ("instance", [typed("mem.load", "list[str]", [("%x.1", "&list[str]")])], (), [slot("x", "list[?]", 1)]),
+                ("instance", [typed("list.len", "int", [("%a0", "list[?]")])], ["list[int]"], ()),
+                ("instance", [typed("mem.load", "str", [("%x.1", "&str")])], (), [slot("x", "opt[None]", 1)]),
                 ("instance", [typed("rt", "int", [("%a0", "S")], "dict.len")], ["dict[str,int]"], ()),
                 ("alias", [typed("ret", "", [("%a0", "bytes")])], ["str"], ()),
                 ("alias", [typed("slot.pack", "%slot", [("%a0", "tuple[int,str]")])], ["tuple[bool,str]"], ()),
@@ -309,15 +311,20 @@ class ValueTypeTests(unittest.TestCase):
                 ([typed("rt", "%ptr", [("%x.1", "*T")], "box")], (), [slot("x", "int", 1)], "rt operand 0 reads the address %x.1 as a packed slot"),
                 ([made("list.load", "*int", 1, [("%a0", "list[int]"), ("0", "int")]), typed("mem.load", "int", [("%t1", "&int")])], ["list[int]"], (),
                  "mem.load operand 0 reads %t1, a packed slot, as an address"),
-                ([made("rt", "%ptr", 1, [], "x"), typed("mem.store", "", [("%s.2", "&str"), ("%t1", "str")]), typed("ret", "", [("%t1", "list[int]")])],
-                 (), [slot("s", "str", 2)], "ret operand 0 reads %t1 as list[int], where mem.store operand 1 reads it as str"),
-                # (another op's machine word is read at a type only through a cast: bits are an rt op's)
+                ([made("rt", "list[T]", 1, [("null", "%ptr")], "vtuple.list"), typed("mem.store", "", [("%s.2", "&list[int]"), ("%t1", "list[int]")]),
+                  typed("ret", "", [("%t1", "list[str]")])],
+                 (), [slot("s", "list[int]", 2)], "ret operand 0 reads %t1 as list[str], where mem.store operand 1 reads it as list[int]"),
+                # (any op's machine word, an rt op's result too, is read at a type only through a cast:
+                # Gen.settle makes them; and an empty container is read at the type a use decided)
+                ([made("rt", "%ptr", 1, [], "x"), typed("mem.load", "int", [("%t1", "&int")])], (), (), "mem.load operand 0 reads %t1 as &int, but it is %ptr"),
+                ([typed("mem.load", "list[str]", [("%x.1", "&list[str]")])], (), [slot("x", "list[?]", 1)],
+                 "mem.load operand 0 reads %x.1 as &list[str], but it is &list[?]"),
                 ([made("mach.load", "%ptr", 1, [("%a0", "%ptr")]), typed("ret", "", [("%t1", "str")])], ["str"], (),
                  "ret operand 0 reads %t1 as str, but it is %ptr"),
                 ([made("slot.pack", "%slot", 1, [("%a0", "float")]), typed("num.cast", "float", [("%t1", "int")])], ["float"], (),
                  "num.cast operand 0 reads %t1 as int, but it is %slot"),
                 # (nor is a value read as a closed union of classes and as one of its members: casts do)
-                ([made("rt", "%ptr", 1, [], "x"), typed("ptr.cmp", "bool", [("%t1", "union[Base,Other]"), ("null", "None")], "=="),
+                ([made("rt", "R", 1, [], "x"), typed("ptr.cmp", "bool", [("%t1", "union[Base,Other]"), ("null", "None")], "=="),
                   typed("ret", "", [("%t1", "Other")])], (), (), "ret operand 0 reads %t1 as Other, where ptr.cmp operand 0 reads it as union[Base,Other]")):
             with self.subTest(expected=expected):
                 self.assertEqual(self.error(code, params, slots, classes=classes), expected)
@@ -327,7 +334,7 @@ class ValueTypeTests(unittest.TestCase):
 
     def test_a_value_its_definition_types_loosely_is_read_at_related_types(self):
         classes = (("Base", ""), ("Derived", "Base"))
-        code = [made("rt", "%ptr", 1, [], "x"), typed("ptr.cmp", "bool", [("%t1", "opt[Base]"), ("null", "None")], "=="),
+        code = [made("rt", "R", 1, [], "x"), typed("ptr.cmp", "bool", [("%t1", "opt[Base]"), ("null", "None")], "=="),
                 typed("ret", "", [("%t1", "Derived")])]
         self.assertEqual(self.error(code, classes=classes), "")
 

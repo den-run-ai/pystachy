@@ -178,7 +178,9 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     if sites is not None and not all(sites.values()):
         self.identity_event(f"hinted call of {f.name}()")
     self.number_casts()  # (after its last value: gen_cast)
+    self.settle(self.fn, False)  # (the values of empty containers, which instantiate reads)
     self.instantiate(self.fn)
+    self.settle(self.fn, True)  # (what instantiate left open, and the runtime's words)
     self.fn.n = self.n
     self.fn.build.otherbinds = None  # the binding index is needed only while building this function
     self.fns.append(self.fn)

@@ -232,13 +232,28 @@ entry:
   ret(int %t5)
 }
 
-function @machine_bits_read_at_two_types(n: int) -> opt[int] {
-  %s.1 = slot name=s : str
+function @a_runtime_variable_read_at_two_types(p: %ptr) -> list[str] {
+  %s.1 = slot name=s : list[int]
 entry:
-  %t2 = rt entry=box (*T %a0) : %ptr
-  mem.store(&str %s.1, str %t2)
-  ; expected-error {{ret operand 0 reads %t2 as opt[int], where mem.store operand 1 reads it as str}}
-  ret(opt[int] %t2)
+  %t2 = rt entry=vtuple.list (%ptr %a0) : list[T]
+  mem.store(&list[int] %s.1, list[int] %t2)
+  ; expected-error {{ret operand 0 reads %t2 as list[str], where mem.store operand 1 reads it as list[int]}}
+  ret(list[str] %t2)
+}
+
+function @a_runtime_word_read_as_a_typed_value(n: int) -> str {
+entry:
+  %t1 = rt entry=box (*T %a0) : %ptr
+  ; expected-error {{ret operand 0 reads %t1 as str, but it is %ptr}}
+  ret(str %t1)
+}
+
+function @an_empty_containers_placeholder_read_as_a_list() -> int {
+entry:
+  %t1 = rt entry=list.new (int 0) : list[?]
+  ; expected-error {{list.len operand 0 reads %t1 as list[int], but it is list[?]}}
+  %t2 = list.len(list[int] %t1) : int
+  ret(int %t2)
 }
 
 function @another_ops_word_read_as_a_typed_value(s: str) -> str {
@@ -359,7 +374,8 @@ entry:
   %t9 = rt entry=list.new (int 3) : list[T]
   mem.store(&list[int] %ys.3, list[int] %t9)
   %t10 = rt entry=box (*T %t4) : %ptr
-  %t11 = ptr.cmp == (opt[int] %t10, None null) : bool
+  %t21 = cast bits (%ptr %t10) : opt[int]
+  %t11 = ptr.cmp == (opt[int] %t21, None null) : bool
   %t17 = rt entry=list.new (int 0) : list[str]
   %t18 = slot.pack(str %a1) : *str
   rt entry=list.append (list[str] %t17, *str %t18) : None
