@@ -1373,6 +1373,18 @@ a class variable of the template with its current value, as the template's objec
 they assign it themselves or a subclass's body binds it again
 ([test](../../tests/programs/classes/template_subclass_class_variable.py),
 [specializations that compiled code makes](../../tests/programs/classes/template_subclass_class_variable_late.py)).
+A class method that such a class inherits and that uses `cls` is the class's own: called through
+an object of the class, as through the class's name, `cls` is that class, so `cls.__name__`, a
+class attribute its body binds again and `cls(...)` are its
+([test](../../tests/programs/classes/template_subclass_class_method.py)), and assigning a class
+attribute that it inherits through `cls` is rejected, as for any other class
+([error test](../../tests/errors/classes/template_subclass_cls_store.py),
+[error test](../../tests/errors/classes/template_spec_subclass_cls_store.py)). Called through a
+location typed by a class that others derive from, `cls` is that class also for an object of a
+deriving class: calls of class methods are not dispatched on the object's class. A class in
+another module than the method's, and any class where a default value of the method is evaluated
+when its def runs, has no copy of its own: through its object, `cls` is the nearest class that has
+one.
 These classes are still not values: `issubclass()` and `type[C]` reject them.
 
 The compiler rejects, with a message that names the limit: a subclass with a secondary base or a

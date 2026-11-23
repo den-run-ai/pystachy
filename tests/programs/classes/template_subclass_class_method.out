@@ -1,0 +1,12 @@
+Style/base?/Style/*Stylebase!/5
+Plain/base?/Plain/*Plainbase!/5
+Tagged/tagged?/Tagged/*Taggedtagged!/5
+Own/own?/Own/*Ownown!/5
+Mid/mid?/Mid/*Midmid!/5
+Deep/mid?/Deep/*Deepmid!/5
+Tagged/tagged?/Tagged/*Taggedtagged!/5 7
+Plain tagged? Own *Deepmid! 5
+Tagged tagged. Tagged Own 1 *Ownown!
+Box:box IntBox:int StrBox:box IntBox:int StrBox:boxStrBox:box
+IntBox:intIntBox:int Box:boxBox:box 3
+[exit 0]

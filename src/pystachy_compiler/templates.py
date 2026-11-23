@@ -255,6 +255,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
                 g = self.declare_fn(d, name)
                 self.lib = False
                 g.mod = s.mod
+                cls_shared(t, g)
                 s.methods[g.name] = g  # (x.setter: a property's setter)
         if p != "":
             self.inherit(s)  # (then its base's others, as member_spec's)
@@ -313,6 +314,15 @@ def gen_new_tag(self, s: ClassInfo) -> None:
             while len(d.refs) <= s.tag:
                 d.refs.append("null")
             d.refs[s.tag] = self.sconst(short(s.name))
+
+
+def cls_shared(t: ClassInfo, g: FnInfo) -> None:
+    # g, a specialization's method declared again from its template t's def, is the class method
+    # in which t's uses cls: the def before cls was renamed is theirs both, and that of the copies
+    # that the classes deriving from either have (inherit), so that cls_bound knows them for one
+    # method, not overrides of each other
+    if g.name in t.methods and t.methods[g.name].deco == "classmethod" and t.methods[g.name].clsuse:
+        g.orig = t.methods[g.name].orig
 
 
 def gen_member_spec(self, p: str, m: str) -> str:
@@ -395,6 +405,7 @@ def gen_member_spec(self, p: str, m: str) -> str:
                 g = self.declare_fn(d, name)
                 self.lib = False
                 g.mod = s.mod
+                cls_shared(t, g)
                 s.methods[g.name] = g
         self.inherit(s)
         s.hook = t.hook
