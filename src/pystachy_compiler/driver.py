@@ -6,7 +6,7 @@ import tempfile
 import time
 from typing import Callable, TypeVar, overload
 from src.pystachy_compiler import aot_runtime, cached_run, diagnostics, program_cache
-from src.pystachy_compiler.diagnostics import MAXNEST, RAW, ClassBoxes, NeedHandlers, NeedHierarchy, NeedSliceEH, Rejoin, TupleBoxes, fail
+from src.pystachy_compiler.diagnostics import MAXNEST, RAW, ClassBoxes, NeedHandlers, NeedHierarchy, NeedSelectors, NeedSliceEH, Rejoin, TupleBoxes, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer, host_text
 from src.pystachy_compiler.loader import Loader
@@ -166,6 +166,10 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
     # compile with (ClassBoxes), after which the program is compiled from the start, as if those
     # reads had never been typed.
     clsany: dict[int, bool] = {}
+    # The templates whose instances are compiled for each call's literal arguments of the parameters
+    # named (Gen.selectors): a pass whose only other outcome was an error added one (NeedSelectors),
+    # and each pass after it keeps them, as it keeps the joins found before
+    selectors: dict[str, str] = {}
     while True:
         attempt = timing_start()
         g = Gen()
@@ -180,6 +184,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
         g.xwant = xwant
         g.hierarchies = hierarchies
         g.tlate = tlate
+        g.selectors = selectors
         g.final = passes >= JOINS
         g.idfull = idfull
         g.idtry = idtry
@@ -233,6 +238,8 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
                 ntboxes = False
             elif isinstance(retry, NeedSliceEH):
                 slice_eh = True
+            elif isinstance(retry, NeedSelectors):
+                pass  # (g.selectors, the driver's own, has the templates it added: no join is counted)
             elif isinstance(retry, TupleBoxes):
                 ntboxes = True
             elif g.idevent != "" and not idfull:
@@ -272,6 +279,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
             hierarchies = {}
             tlate = {}
             clsany = {}
+            selectors = {}
         finally:
             timing_end("program.attempt", attempt)
         # (as parsing and lowering found them: the next pass numbers lambdas and

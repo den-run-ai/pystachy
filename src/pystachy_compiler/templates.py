@@ -1,6 +1,6 @@
 """Templates component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.analysis import local_names
+from src.pystachy_compiler.analysis import local_names, nonlocal_decls, read_names
 from src.pystachy_compiler.diagnostics import int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_aliases, comparison_properties, comparison_rebinds, comparison_reserve_fields
 from src.pystachy_compiler.generators import fresh_yield_context
@@ -20,18 +20,22 @@ from src.pystachy_compiler.utils import (
     clone,
     elem,
     gelem,
+    int_fits,
     is_callable,
     is_dict,
     is_gen,
     is_list,
+    is_opt,
     is_set,
     is_tuple,
+    is_union,
     kw_types,
     nones,
     selem,
     takes_self,
     targs,
     typestr,
+    umembers,
     unopt,
 )
 
@@ -881,10 +885,12 @@ def comparison_missing(n: Node, aliases: list[str], fields: dict[str, str]) -> N
         comparison_missing(kid, aliases, fields)
 
 
-def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "", nullable_self: bool = False) -> FnInfo:
+def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "", nullable_self: bool = False, lits: dict[str, Node] | None = None, fwd: dict[str, str] | None = None, frm: str = "") -> FnInfo:
     # the function template f compiles to for arguments of types ts, compiled when first
     # needed, in the middle of the function that calls it: its first return statement
-    # decides what it returns; nnp: the parameters whose objects are known not to be None
+    # decides what it returns; nnp: the parameters whose objects are known not to be None;
+    # lits, fwd and frm: of a template whose literal arguments choose its result, the call's
+    # (selector_args), which key an instance of their own
     # Only container contexts can type fresh displays. Include the full context
     # in the key and budgets: two callers may require different native storage.
     # A lambda's Callable result type, a generic class's specialization, types the C(...) it
@@ -911,6 +917,10 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     readkey += " length-hint" if raw_hint else ""
     nullable_self = nullable_self or f.nullable_self
     readkey += " nullable-self" if nullable_self else ""
+    chosen: dict[str, Node] = lits if lits is not None else {}
+    if len(chosen) > 0:
+        # (the literal arguments of its selectors, whose tests the instance decides: selector_const)
+        readkey += "".join([f";{p}={lit_key(chosen[p])}" for p in f.params if p in chosen])
     key = ",".join(ts) + (" " + ",".join(nnp) if len(nnp) > 0 else "") + readkey
     if cmpfields != "":
         key += " fields " + cmpfields  # never reuse the ordinary typed call's specialization
@@ -1010,6 +1020,11 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
         g.cmprebind = self.union_type([ts[0], ts[1]])
     g.cmptypes = cmptypes
     g.cmpops = cmpops
+    g.lits = chosen
+    if fwd is not None:
+        g.selfwd = fwd
+        g.selfrom = frm
+        g.selcaller = self.curfn if frm != "" else None  # (the calling instance: selector_fail)
     if cmpfields != "":
         g.node = clone(f.node)
         actual = self.classes[ts[1]]
@@ -1068,6 +1083,265 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     self.template_bytes -= size
     f.lastikey = key
     return g
+
+# ---- templates whose literal arguments choose what they return
+# def repair(s, logging=False) that returns a tuple if logging and a str otherwise: where an
+# instance's returns join to no type (statements.py's return), the parameters its tests read that
+# literals may give are its selectors (Gen.selectors, kept by the driver's passes: NeedSelectors).
+# Each call then compiles an instance for its literal arguments of them (selector_args), whose
+# tests of them are decided (selector_const), so that only the returns they reach are compiled:
+# repair(" a ") returns a str, repair(" b ", logging=True) a tuple. No other program changes: the
+# selectors are found only where compiling it failed otherwise (gen_err).
+def gen_selector_key(self, f: FnInfo) -> str:
+    # the key of template f (or of an instance of it) in Gen.selectors: its module, its def's line,
+    # its class and name, the same in every pass (as fnkey's)
+    return f"{f.mod}:{f.node.line}:{self.stable(f.cls)}.{f.name}"
+
+
+def lit_type(t: str) -> bool:
+    # can a parameter of type t take a literal that selects a result: a bool, an int, a str or None,
+    # or an optional value or union of those
+    if t in ["bool", "int", "str", "None", BIG]:
+        return True
+    if is_opt(t):
+        return lit_type(unopt(t))
+    return is_union(t) and all([lit_type(m) for m in umembers(t)])
+
+
+def scalar_literal(n: Node | None) -> Node | None:
+    # n where it is a literal that a selector takes: True, False, None, a str of ASCII characters
+    # (the compiler holds a str as its UTF-8 bytes, whose count const_of's len() would give), or an
+    # int that fits in 64 bits, negated or not, spelled in decimal (00 and -0 are 0, whose truth is
+    # false, as static() reads an int literal's); else None
+    if n is None:
+        return None
+    if n.kind == "True" or n.kind == "False" or n.kind == "None":
+        return n
+    if n.kind == "str":
+        return n if ascii_strs(n) else None
+    if n.kind == "int" and int_fits(n.s):
+        return mk("int", str(int(n.s)), n.line, [])
+    if n.kind == "unary" and n.s == "-" and len(n.kids) == 1 and n.kids[0].kind == "int" and int_fits(n.kids[0].s):
+        v = int(n.kids[0].s)  # (fits: -9223372036854775808 is none, whose int() of 9223372036854775808 would not)
+        return mk("int", "0", n.line, []) if v == 0 else mk("unary", "-", n.line, [mk("int", str(v), n.line, [])])
+    return None
+
+
+def ascii_strs(n: Node) -> bool:
+    # are the str literals in expression n all of ASCII characters, whose len() const_of gives
+    # (it counts a str's UTF-8 bytes, as the compiler holds it)
+    if n.kind == "str" and not all([ord(ch) < 128 for ch in n.s]):
+        return False
+    return all([ascii_strs(k) for k in n.kids])
+
+
+def tested_names(n: Node, out: dict[str, bool]) -> None:
+    # the names that the tests in code n read: those of its if, elif and while statements, its
+    # assertions and its conditional expressions, but in the defs, lambdas and classes in it
+    k = n.kind
+    if k == "def" or k == "lambda" or k == "class" or k == "subclass" or k == "lclass":
+        return
+    if (k == "if" or k == "while" or k == "assert" or k == "ifexp") and len(n.kids) > 0:
+        read_names(n.kids[0], out)
+    for c in n.kids:
+        tested_names(c, out)
+
+
+def import_names(n: Node, out: dict[str, bool]) -> None:
+    # the names that the import statements in code n bind (not in the defs and classes in it)
+    if n.kind == "def" or n.kind == "class" or n.kind == "subclass" or n.kind == "lclass":
+        return
+    if n.kind == "import":
+        for a in n.kids:
+            out[a.s] = True
+    if n.kind == "uimport":
+        for nm in n.s.split():
+            out[nm] = True
+    for c in n.kids:
+        import_names(c, out)
+
+
+def selector_fn(self, f: FnInfo) -> bool:
+    # may the instances of instance f's template be keyed by literal arguments: a def's (no
+    # lambda's) without a return annotation (Any's, which asks for inference, counts as none) that
+    # is no generator, of a module-level or nested function or of an instance method that no class
+    # overrides and no call dispatches (its class takes part in no inheritance), but a special
+    # method, a property and a comparison's adapter
+    if not f.inst or not f.infer or f.gen or f.node.kind != "def" or f.node.s == "<lambda>" or len(f.node.kids) < 3 or f.node.kids[1].kind != "noann":
+        return False
+    if f.cmpfields != "" or f.cmpops or f.bad != "":
+        return False
+    if f.cls == "":
+        return True
+    if (f.name.startswith("__") and f.name.endswith("__")) or f.deco != "" or f.prop or f.acc != "":
+        return False
+    return f.cls in self.classes and self.classes[f.cls].tag == 0
+
+
+def stable_params(self, f: FnInfo) -> list[str]:
+    # the parameters of instance f that its literal arguments may select by: of a type a literal
+    # has (lit_type), which its body never binds again (no assignment, del, import, def, class or
+    # nonlocal statement of a def in it), but self, a closure's env, *args, **kwargs and a sentinel's
+    body = f.node.kids[2].kids
+    bound: dict[str, bool] = {}
+    local_names(body, bound)
+    for st in body:
+        nonlocal_decls(st, bound)
+        import_names(st, bound)
+    out: list[str] = []
+    for j in range(1 if f.clo >= 0 or takes_self(f) else 0, len(f.params)):
+        p = f.params[j]
+        if j != f.vararg and j != f.kwarg and j < len(f.ptypes) and p not in bound and p not in f.sentinels and lit_type(f.ptypes[j]):
+            out.append(p)
+    return out
+
+
+def gen_selector_args(self, f: FnInfo, npre: int, args: list[Node], lits: dict[str, Node], fwd: dict[str, str]) -> str:
+    # a call of template f with arguments args (after npre given ones: self, a closure's env), where
+    # f's selectors choose its result (Gen.selectors): lits gets the literal argument of each, or its
+    # literal default where the call leaves it out (a parameter of the instance being compiled given
+    # one is one: forwarding), and fwd the parameter of the calling instance that the call passes
+    # for a selector instead, where that instance's own selectors may take it. Returns the calling
+    # template's key where fwd has any (else ""). A call with * or ** arguments gives none
+    names = self.selectors.get(self.selector_key(f), "").split() if len(self.selectors) > 0 else []
+    if len(names) == 0:
+        return ""
+    given: dict[str, Node] = {}
+    pos = npre
+    for a in args:
+        if a.kind == "starred" or a.kind == "dstar":
+            return ""
+        if a.kind == "kw":
+            # (a positional-only parameter's name, as *args's and **kwargs's, is a **kwargs key:
+            # its argument is no parameter's, as call_fn binds it)
+            k = f.params.index(a.s) if a.s in f.params else -1
+            if k >= f.posonly and k != f.vararg and k != f.kwarg:
+                given[a.s] = a.kids[0]
+        else:
+            if pos < len(f.params) and (f.vararg < 0 or pos < f.vararg):
+                given[f.params[pos]] = a
+            pos += 1
+    env: dict[str, Node] = {}
+    for p in self.curfn.lits:
+        if p not in self.compvars:
+            env[p] = self.curfn.lits[p]
+    caller = stable_params(self, self.curfn) if selector_fn(self, self.curfn) else []
+    for p in names:
+        if p not in f.params:
+            continue
+        j = f.params.index(p)
+        if j == f.vararg or j == f.kwarg:
+            continue
+        if p in given:
+            e = given[p]
+            c = scalar_literal(self.const_of(e, env, False)) if ascii_strs(e) else None
+            if c is not None:
+                lits[p] = c
+            elif e.kind == "name" and e.s in caller and e.s not in self.compvars:
+                fwd[p] = e.s
+        elif j < len(f.defaults) and f.defaults[j].kind != "noann" and ascii_strs(f.defaults[j]):
+            c = scalar_literal(self.const_of(f.defaults[j], {}, False))
+            if c is not None:
+                lits[p] = c
+    return self.selector_key(self.curfn) if len(fwd) > 0 else ""
+
+
+def gen_selector_type(self, t: str, n: Node) -> str:
+    # the type of a selector's literal argument n (selector_args) for a parameter of type t: where t
+    # is an optional value or a union, the member that n's value has (None of an optional one), as
+    # the parameter of the instance for n holds no other value (it never binds it again), so that
+    # its uses need no test of it (key is None, in an instance for key=5, does not leave key an
+    # int | None); else t
+    if not is_opt(t) and not is_union(t):
+        return t
+    if n.kind == "None":
+        return "None" if is_opt(t) else t
+    k = "bool" if n.kind == "True" or n.kind == "False" else "str" if n.kind == "str" else "int"
+    u = unopt(t)
+    ms = umembers(u) if is_union(u) else [u]
+    if k in ms:
+        return k
+    return BIG if k == "int" and BIG in ms else t
+
+
+def gen_selector_fail(self, a: str, b: str, marks: dict[str, str]) -> str:
+    # the error of a return of a value of type b in the instance being compiled, which returned a's,
+    # where no union joins them. Where its tests read parameters that literals may give
+    # (stable_params) and that are no selectors of its template yet, marks gets its key and its
+    # selectors with them: gen_err then compiles the program again with them, instead of reporting
+    # it (unless that error comes of a join or another retry). Where this instance's call gave a
+    # selector no literal, the message says so; where it passed the calling instance's own
+    # parameter instead, marks gets the caller's key and its selectors with that parameter, as
+    # forwarding (loads(s, logging) calling repair(s, logging)); and where the caller has that
+    # selector already, but its own call passed it its caller's parameter, that caller's, and so
+    # on up the calls (api(s, verbose) calling loads(s, logging=verbose))
+    g = self.curfn
+    msg = f"{short(g.name)}() returns both {typestr(a)} and {typestr(b)} (each function has one return type)"
+    if not selector_fn(self, g):
+        return msg
+    key = self.selector_key(g)
+    have = self.selectors.get(key, "").split()
+    tested: dict[str, bool] = {}
+    for st in g.node.kids[2].kids:
+        tested_names(st, tested)
+    new = [p for p in stable_params(self, g) if p in tested and p not in have]
+    if len(new) > 0:
+        marks[key] = " ".join(have + new)
+        return msg
+    missing = [p for p in have if p not in g.lits and p in g.params and g.params.index(p) < len(g.ptypes) and lit_type(g.ptypes[g.params.index(p)])]
+    if len(missing) == 0:
+        return msg
+    cur = g
+    ps = missing
+    depth = 0
+    while cur.selfrom != "" and all([p in cur.selfwd for p in ps]) and depth < 100:
+        qs = [cur.selfwd[p] for p in ps]
+        theirs = self.selectors.get(cur.selfrom, "").split()
+        more = [q for q in qs if q not in theirs]
+        if len(more) > 0:
+            for q in more:
+                if q not in theirs:
+                    theirs.append(q)
+            marks[cur.selfrom] = " ".join(theirs)
+            return msg
+        # (the caller has them as selectors already: its own call gave them no literals)
+        up = cur.selcaller
+        if up is None:
+            break
+        ps = [q for q in qs if q not in up.lits]
+        if len(ps) == 0:
+            break
+        cur = up
+        depth += 1
+    which = " and ".join([f"'{p}'" for p in missing])
+    if len(missing) == 1:
+        return msg + f": its parameter {which} chooses which, and this call gives it no literal: pass a literal or annotate the result"
+    return msg + f": its parameters {which} choose which, and this call gives them no literals: pass literals or annotate the result"
+
+
+def gen_selector_const(self, n: Node) -> Node | None:
+    # the literal value of test n, where the instance being compiled was compiled for literal
+    # arguments (FnInfo.lits) and n reads one of those parameters (not a comprehension's variable
+    # that shadows it): of the literals' truth, ==, !=, <, <=, >, >=, in, not in, not, len() and
+    # partition() (const_of), and of is and is not with None, True or False; else None
+    env: dict[str, Node] = {}
+    for p in self.curfn.lits:
+        if p not in self.compvars:
+            env[p] = self.curfn.lits[p]
+    if len(env) == 0 or not mentions(n, [p for p in env]) or not ascii_strs(n):
+        return None
+    if n.kind == "cmp" and (n.s == "is" or n.s == "is not") and len(n.kids) == 2:
+        x = self.const_of(n.kids[0], env, False)
+        y = self.const_of(n.kids[1], env, False)
+        one = ["None", "True", "False"]
+        if x is None or y is None or (x.kind not in one and y.kind not in one):
+            return None  # (the identity of ints and strs is CPython's to decide)
+        return mk("True" if (x.kind == y.kind) == (n.s == "is") else "False", "", n.line, [])
+    c = self.const_of(n, env, False)
+    if c is not None and (c.kind == "int" or c.kind == "unary"):
+        return scalar_literal(c)  # (in decimal, whose truth static() reads: (00, mode)[0] is 0)
+    return c
+
 
 # ---- classes that specialize on literal arguments
 def gen_literal_class(self, c: str) -> bool:

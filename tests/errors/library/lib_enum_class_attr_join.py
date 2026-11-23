@@ -1,4 +1,5 @@
 # error: returns both EnumType
+import sys
 from enum import Enum
 
 
@@ -20,4 +21,5 @@ class Registry:
         return self.second
 
 
-print(Registry().choose(True).LOW)
+flag = len(sys.argv) > 5
+print(Registry().choose(flag).LOW)

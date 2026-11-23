@@ -1,0 +1,6 @@
+a
+b ['stripped']
+c ('d', ['stripped'])
+E 2
+g ['h'] i
+[exit 0]
