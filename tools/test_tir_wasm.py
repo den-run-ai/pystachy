@@ -436,6 +436,43 @@ next:
 done:
   mem.store (&int @result, int %t1)
   ret
+""", False),
+            # (nested loops: the inner one's exit continues the outer one, 6 * 7 times in all)
+            ("""  br -> outer
+outer:
+  %t0 = phi (int 0, int %t5) -> entry, step : int
+  %t1 = phi (int 0, int %t7) -> entry, step : int
+  br -> inner
+inner:
+  %t2 = phi (int 0, int %t4) -> outer, inner : int
+  %t3 = phi (int %t1, int %t7) -> outer, inner : int
+  %t7 = scalar.bin add (int %t3, int 1) : int
+  %t4 = scalar.bin add (int %t2, int 1) : int
+  %t8 = num.cmp < (int %t4, int 7) : bool
+  cbr (bool %t8) -> inner, step
+step:
+  %t5 = scalar.bin add (int %t0, int 1) : int
+  %t9 = num.cmp < (int %t5, int 6) : bool
+  cbr (bool %t9) -> outer, done
+done:
+  mem.store (&int @result, int %t7)
+  ret
+""", False),
+            # (two ways into one loop, which no structured loop can express: the dispatcher's)
+            ("""  mem.store (&int @result, int 0)
+  %t0 = slot.unpack (*bool 2) : bool
+  cbr (bool %t0) -> a, b
+a:
+  %t1 = mem.load (&int @result) : int
+  %t2 = scalar.bin add (int %t1, int 1) : int
+  mem.store (&int @result, int %t2)
+  br -> b
+b:
+  %t3 = mem.load (&int @result) : int
+  %t4 = num.cmp < (int %t3, int 42) : bool
+  cbr (bool %t4) -> a, done
+done:
+  ret
 """, True),
         ]
         script = """
@@ -448,11 +485,13 @@ console.log(new DataView(memory.buffer).getBigInt64(0, true).toString());
 """
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "case.wasm"
-            for body, has_backedge in cases:
-                with self.subTest(has_backedge=has_backedge):
+            for body, irreducible in cases:
+                with self.subTest(irreducible=irreducible, body=body.split("\n")[0]):
                     emitter = T.Emitter(T.parse(preamble + body + "}"))
                     path.write_bytes(emitter.module())
-                    self.assertEqual(emitter.dispatch_local >= 0, has_backedge)
+                    # a reducible loop is a Wasm loop; only an irreducible one needs the dispatcher
+                    self.assertEqual(emitter.dispatch_local >= 0, irreducible)
+                    self.assertEqual(emitter.structured, not irreducible)
                     result = subprocess.check_output(["node", "-e", script, str(path)], text=True, timeout=10)
                     self.assertEqual(result.strip(), "42")
 
@@ -507,6 +546,99 @@ require("node:assert/strict").equal(view.getBigInt64(64, true), 42n);
             emit(text.replace("int %t3) -> work, again", "int %t3, int %t0) -> work, again, missing"))
         with self.assertRaisesRegex(T.Refused, "unequal input and predecessor counts"):
             emit(text.replace("int %t3) -> work, again", "int %t3) -> work"))
+
+    @unittest.skipUnless(shutil.which("node"), "node runs the module")
+    def test_float_division_and_sqrt_call_the_runtime_only_to_raise(self):
+        # x / y and math.sqrt(x) are Wasm instructions; the runtime's raising entries are called
+        # only for a zero divisor or a number below zero (-0.0 is not), where Python raises
+        text = """module complete {
+  global @result type=float
+  runtime fdiv
+  runtime m.sqrt
+}
+function @main.init() -> None kind=block {
+entry:
+  %t0 = rt entry=fdiv (float 84.0, float 2.0) : float
+  %t1 = rt entry=m.sqrt (float 1764.0) : float
+  %t2 = rt entry=fdiv (float 1.0, float 0.0) : float
+  %t3 = rt entry=m.sqrt (float -4.0) : float
+  %t4 = rt entry=m.sqrt (float -0.0) : float
+  %t5 = rt entry=fdiv (float 1.0, float -0.0) : float
+  %t6 = scalar.bin fadd (float %t0, float %t1) : float
+  %t7 = scalar.bin fadd (float %t6, float %t2) : float
+  %t8 = scalar.bin fadd (float %t7, float %t3) : float
+  %t9 = scalar.bin fadd (float %t8, float %t4) : float
+  %t10 = scalar.bin fadd (float %t9, float %t5) : float
+  mem.store (&float @result, float %t10)
+  ret
+}
+"""
+        script = """
+const assert = require("node:assert/strict");
+const mod = new WebAssembly.Module(require("node:fs").readFileSync(process.argv[1]));
+const memory = new WebAssembly.Memory({ initial: 1 });
+const calls = [];
+const rt = {
+  pys_recursion_state: 0,
+  pys_fdiv: (a, b) => { calls.push(["fdiv", a, Object.is(b, -0) ? "-0" : b]); return -1; },
+  pys_m_sqrt: x => { calls.push(["sqrt", x]); return -2; },
+};
+new WebAssembly.Instance(mod, { env: { memory, data: 64 }, rt }).exports.init();
+assert.deepEqual(calls, [["fdiv", 1, 0], ["sqrt", -4], ["fdiv", 1, "-0"]]);
+assert.equal(new DataView(memory.buffer).getFloat64(Number(process.argv[2]), true), 42 + 42 - 1 - 2 - 1);
+"""
+        emitter = T.Emitter(T.parse(text))
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "float.wasm"
+            path.write_bytes(bytes(emitter.module()))
+            subprocess.run(["node", "-e", script, str(path), str(64 + emitter.addr["@result"])], check=True, timeout=10)
+
+    @unittest.skipUnless(shutil.which("node"), "node runs the module")
+    def test_memmove_is_a_bulk_copy_and_c_ints_compare(self):
+        # bytearray slices move bytes with llvm.memmove and compare them with memcmp's C int
+        text = """module complete {
+  global @a type=int
+  global @b type=int
+  global @result type=int
+  runtime memmove
+  runtime memcmp
+}
+function @main.init() -> None kind=block {
+entry:
+  mem.store (&int @a, int 4242)
+  rt entry=memmove (&int @b, &int @a, int 8, %i1 false) : None
+  %t0 = rt entry=memcmp (&int @a, &int @b, int 8) : %i32
+  %t1 = scalar.cmp eq (%i32 %t0, %i32 0) : bool
+  %t2 = scalar.cmp slt (%i32 %t0, %i32 1) : bool
+  %t3 = select (bool %t1, bool %t2, bool false) : bool
+  %t4 = num.cast (bool %t3) : int
+  %t5 = mem.load (&int @b) : int
+  %t6 = scalar.bin add (int %t4, int %t5) : int
+  mem.store (&int @result, int %t6)
+  ret
+}
+"""
+        script = """
+const assert = require("node:assert/strict");
+const mod = new WebAssembly.Module(require("node:fs").readFileSync(process.argv[1]));
+assert.deepEqual(WebAssembly.Module.imports(mod).filter(i => i.kind === "function").map(i => i.name), ["pys_wasi_memcmp"]);
+const memory = new WebAssembly.Memory({ initial: 1 });
+const view = new DataView(memory.buffer);
+const memcmp = (a, b, n) => {
+  for (let k = 0; k < Number(n); k++) {
+    const d = view.getUint8(a + k) - view.getUint8(b + k);
+    if (d !== 0) return d;
+  }
+  return 0;
+};
+new WebAssembly.Instance(mod, { env: { memory, data: 64 }, rt: { pys_recursion_state: 0, pys_wasi_memcmp: memcmp } }).exports.init();
+assert.equal(view.getBigInt64(Number(process.argv[2]), true), 4243n);
+"""
+        emitter = T.Emitter(T.parse(text))
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "memmove.wasm"
+            path.write_bytes(bytes(emitter.module()))
+            subprocess.run(["node", "-e", script, str(path), str(64 + emitter.addr["@result"])], check=True, timeout=10)
 
     @unittest.skipUnless(shutil.which("node"), "node runs the module")
     def test_tuple_frames_share_and_restore_the_runtime_stack(self):

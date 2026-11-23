@@ -46,15 +46,19 @@ tests/run.sh ./pystachy wasm-tir tests/programs/apps/ouro2_*.py
 ```
 
 Each typed IR value is a WebAssembly local, and so is a slot that only loads and stores
-read. In a recursion-counted function, values of one type whose lifetimes do not overlap
-share a local. Fixed-size tuple temporaries use the reactor's 16-byte-aligned stack. A
+read. Values of one type whose lifetimes do not overlap share a local: V8 runs a long call's
+loops in its baseline compiler, whose cost grows with a function's locals. Fixed-size tuple temporaries use the reactor's 16-byte-aligned stack. A
 callee can recognize and copy a `*args` tuple before it escapes its caller.
 Modules import the stack pointer for these frames, their landing pads and their roots (below).
 
-A function's blocks lie in order inside nested `block`s. A forward branch is a `br` to its
-target's label, or falls through to the next block. A function with a backward branch also
-has a `loop` around them: that branch sets the next block's index and continues the loop,
-whose `br_table` dispatches it. The emitter handles the operations
+A function's blocks follow its dominator tree, as in Ramsey's "Beyond Relooper"
+(ICFP 2022): a loop header opens a `loop`, which its backward branches continue; a block that
+two or more forward branches reach follows a `block` that they leave; any other block's code
+lies where its one forward branch is. An irreducible CFG, such as a generator's resume
+function entering its loops at their suspension points, keeps the earlier layout: its blocks
+lie in order inside nested `block`s, and a backward branch sets the next block's index and
+continues a `loop` around them, whose `br_table` dispatches it. Float division and
+`math.sqrt` are Wasm instructions, calling the runtime only where Python raises. The emitter handles the operations
 of scalar code, runtime calls, direct calls, globals, class fields, tuples and list items,
 and constants (strings, tuples, field-name tables, class records), whose addresses
 `run.mjs` relocates once it has allocated the program's data. Masked integer expressions such
