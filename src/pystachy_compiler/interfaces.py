@@ -45,7 +45,11 @@ ITERABLE = "typing$Iterable"
 # the builtin types whose names isinstance() takes beside the program's classes for a value of
 # an interface (iface_classes), and those a test narrows such a value to, as the type it is then
 # (iface_narrow: an int may be a bool, which keeps its own repr and truth)
-BUILTIN_TESTS = ["int", "float", "bool", "str", "bytes", "list", "dict", "tuple", "set", "frozenset", "type"]
+BUILTIN_TESTS = ["int", "float", "bool", "str", "bytes", "list", "dict", "tuple", "set", "frozenset", "type", "complex", "range"]
+
+# the builtin types of BUILTIN_TESTS whose objects are those of a class of lib/ (builtin_backed),
+# which a test narrows such a value to (iface_narrow)
+BUILTIN_LIB = {"complex": COMPLEXC, "range": RANGEC}
 
 # the read-only view (names.py's VIEWSHOW) that a test of each builtin container type narrows a
 # value of object to (iface_narrow): its items are values of object, read through the view's
@@ -509,17 +513,16 @@ def gen_iface_impl(self, t: str) -> str:
 
 def gen_object_impl(self, t: str) -> str:
     # why a value of type t cannot be a value of object (OBJECT), or "": any value, but a
-    # function or Callable value, an exception and a value of another interface (whose box is not
-    # its object), each as to_object holds it
+    # function or Callable value (whose value is made anew where it is converted, and has no
+    # repr() or hash() of its own here), each as to_object holds it: an exception class as its
+    # class object (exctype), a value of another interface as its object (protocol_object)
     u = unopt(t)
     if t == "dyn":
         return ""  # (an Any value: dyn_object)
     if self.refl_builtin_class(t) != "":
         return ""  # (a builtin class named, as its class object: to_object)
     if t.startswith("fn[") or is_callable(u):
-        return f"a function or Callable value as a value of object is not supported yet: call it, or store a {typestr(t)} where one is expected"
-    if t == "exctype" or u == "exctype":
-        return "an exception class as a value of object is not supported yet (an exception object is)"
+        return f"a function, bound method or lambda (a Callable value) as a value of object is not supported yet: call it, or store a {typestr(t)} where one is expected"
     if self.is_view(u) or self.is_iface(u):
         return ""  # (a view of a value of object's container: that value, view_slot; a protocol's value: its object, protocol_object)
     if is_union(u):
@@ -783,6 +786,10 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
         if held == BIG and nt == "int":
             # (as|bool and the others never reach a promoting int: their tests fail for it)
             bad = f"narrowing a value of {typestr(tab.iface)} to {typestr(self.union_type(['int', 'bool']))} by isinstance() is not supported where it may hold a promoting int (a module that opts in to promoting ints stored one), which {typestr(self.union_type(['int', 'bool']))} holds only within 64 bits"
+        if held == "exctype" and nt == "type[object]":
+            # (an exception class, whose test of type passes: its class object is exceptions.py's,
+            # which no type[object], a class's reflection record, is)
+            bad = f"narrowing a value of {typestr(tab.iface)} to type by isinstance() is not supported where it may hold an exception class (a {typestr(held)}): test it with isinstance() of the classes it may be, or compare it with 'is'"
         ok = held == nt or held == "dyn" or (is_union(nt) and held in umembers(nt)) or (nt == "type[object]" and held.startswith("type["))
         ok = ok or (held in self.classes and nt in self.classes and not self.is_iface(nt) and self.derives(held, nt))
         # (an exception object of a class of the program as the exception that raises it, as a
@@ -1679,7 +1686,8 @@ def gen_iface_isinst(self, v: Val, c: Node) -> Val:
 def gen_iface_narrow(self, c: Node, t: str) -> str:
     # the type that a value of interface t holds where isinstance(x, c) is true, which its reads
     # take (iface_narrowed): c's, where it names one class that has one layout (not a class
-    # template's, whose objects' types its specializations are), bool, float, str or bytes; int
+    # template's, whose objects' types its specializations are), bool, float, str or bytes, lib/'s
+    # class for complex and range (BUILTIN_LIB); int
     # | bool for int, whose test a bool passes (keeping its own repr and truth), but in a module
     # that opts in to promoting ints, whose union would hold 64-bit ints; any class's class
     # object for type; for a value of object, the read-only view of the list or tuple, the set or
@@ -1692,6 +1700,8 @@ def gen_iface_narrow(self, c: Node, t: str) -> str:
     k = cs[0]
     if k in self.classes:
         return k
+    if k in BUILTIN_LIB and BUILTIN_LIB[k] in self.classes:
+        return BUILTIN_LIB[k]  # (a complex number, a range: lib/'s object)
     if k == "int":
         return "" if self.int_policy(self.line) else self.union_type(["int", "bool"])
     if k == "bool" or k == "float" or k == "str" or k == "bytes":

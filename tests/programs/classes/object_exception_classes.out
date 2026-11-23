@@ -1,0 +1,15 @@
+<class 'ValueError'> <class 'ValueError'> <class 'ValueError'> <class 'ValueError'> type True True False True
+<class '__main__.Oops'> <class '__main__.Oops'> <class '__main__.Oops'> <class '__main__.Oops'> type True True False True
+<class 'KeyError'> <class 'KeyError'> <class 'KeyError'> <class 'KeyError'> type True True False True
+<class '__main__.Point'> <class '__main__.Point'> <class '__main__.Point'> <class '__main__.Point'> type True True False True
+1 1 1 1 int False False False True
+s 's' s s str False False False True
+None None None None NoneType False False False False
+o Oops('o') o o Oops False False True True
+False True True True True True True True True
+True True True
+[True, False, False, False, False, False, False, False] [False, True, False, False, False, False, False, False] [True, True, False, True, True, True, True, True]
+True True 1 1 True False
+True True False False False False
+True False False True
+[exit 0]

@@ -6799,6 +6799,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         o = b.t if unopt(a.t) == "exctype" else a.t
         if unopt(o) == "exctype" or o == "None":
             return self.ptr_cmp(op, a, b)
+        if o in self.classes and self.classes[o].exc == "":
+            # (an object of a class of the program: type's __eq__ declines it, so that CPython calls
+            # the object's method, else compares them by identity, as with a value of a builtin type)
+            return self.inherit_cmp(op, a, b)
         if o in self.classes or is_union(unopt(o)):
             self.err(f"comparing an exception class with {typestr(o)} is not supported")
         return Val("false" if op == "==" else "true", "bool")

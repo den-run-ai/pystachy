@@ -1112,8 +1112,14 @@ values: list[object] = [1, 2.5, True, "s", b"b", [1], Point(0, 0), int, None]
 It is the stored interface that every type implements, with no method of its own: a value of
 `object` holds the value it was given, not a copy, so a list stored as `object` and changed
 through its typed name shows the change. Numbers, strs, bytes, containers, objects of the
-program's classes, class objects, exceptions, `None`, `Any` values and values of a protocol (their
-object) can be values of `object`; functions and `Callable` values and exception classes cannot.
+program's classes, class objects (an exception class's too), exceptions, `None`, `Any` values and
+values of a protocol (their object) can be values of `object`; functions, bound methods, lambdas
+and other `Callable` values cannot
+([error test](../../tests/errors/classes/object_storage_function.py)). An exception class prints,
+compares and hashes as a class object does
+([test](../../tests/programs/classes/object_exception_classes.py)), but `isinstance(x, type)`
+does not narrow a value of `object` that may hold one
+([error test](../../tests/errors/classes/object_storage_exception_class.py)).
 A list, dict or set display stored as `object` that is empty, or whose items no
 one type or union holds, holds values of `object` (a dict's keys are strs where it has none)
 ([test](../../tests/programs/classes/object_displays.py)); in a module that opts in to
@@ -1153,10 +1159,11 @@ a protocol's value above, each by its value's type
   equal numbers computed apart ([deviation](../../tests/deviations/object_number_identity.py));
 - `type(x).__name__`, `__qualname__` and `__module__`, and `callable(x)`;
 - `isinstance(x, C)` with the program's classes and the builtin types `int`, `float`, `bool`,
-  `str`, `bytes`, `list`, `dict`, `tuple`, `set`, `frozenset` and `type` (or a tuple of them),
-  which narrows `x` as an `if`, an early `return`, a `continue` or a `while` narrows a union: to
-  the class, to `bool`, `float`, `str`, `bytes` or `type[object]`, and to `int | bool` for `int`,
-  whose test a bool passes, keeping its own `repr()`
+  `str`, `bytes`, `list`, `dict`, `tuple`, `set`, `frozenset`, `type`, `complex` and `range` (or
+  a tuple of them), which narrows `x` as an `if`, an early `return`, a `continue` or a `while`
+  narrows a union: to the class, to `bool`, `float`, `str`, `bytes`, `complex`, `range` or
+  `type[object]` ([`complex` and `range`](../../tests/programs/classes/object_complex_range.py)),
+  and to `int | bool` for `int`, whose test a bool passes, keeping its own `repr()`
   ([test](../../tests/programs/classes/object_storage_narrow.py)), which indexes, counts and
   shifts as its int ([`bool | int`](#closed-scalar-unions)); where an `int` variable or
   parameter takes it, `not isinstance(x, bool)` narrows that to `int`, or `int(x)` converts it
