@@ -915,6 +915,7 @@ from src.pystachy_compiler.expressions import (
     gen_class_store as expressions_class_store,
     gen_cls_bound as expressions_cls_bound,
     gen_cmp2 as expressions_cmp2,
+    gen_cmp3 as expressions_cmp3,
     gen_titem_eq as expressions_titem_eq,
     gen_titem_union as expressions_titem_union,
     gen_titem_nt as expressions_titem_nt,
@@ -1387,6 +1388,8 @@ from src.pystachy_compiler.builtin_bases import (
     gen_bbase as builtin_bases_bbase,
     gen_bbuiltin as builtin_bases_bbuiltin,
     gen_bcalled as builtin_bases_bcalled,
+    gen_bkeeps as builtin_bases_bkeeps,
+    gen_bkept as builtin_bases_bkept,
     gen_bcompared as builtin_bases_bcompared,
     gen_bdecay as builtin_bases_bdecay,
     gen_bearly as builtin_bases_bearly,
@@ -5422,6 +5425,9 @@ class Gen:
     def cmp2(self, op: str, a: Val, b: Val) -> Val:
         return expressions_cmp2(self, op, a, b)
 
+    def cmp3(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_cmp3(self, op, a, b)
+
     def titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, lenient: bool = False) -> bool:
         return expressions_titem_eq(self, item, a, hit, ph, value, lenient)
 
@@ -5937,6 +5943,12 @@ class Gen:
 
     def bcalled(self, op: str, t: str, side: int) -> bool:
         return builtin_bases_bcalled(self, op, t, side)
+
+    def bkeeps(self, op: str, a: Val, b: Val) -> str:
+        return builtin_bases_bkeeps(self, op, a, b)
+
+    def bkept(self, op: str, a: Val, b: Val, attempt: str) -> Val:
+        return builtin_bases_bkept(self, op, a, b, attempt)
 
     def bstored(self, t: str, key: Node, vt: str) -> None:
         builtin_bases_bstored(self, t, key, vt)
