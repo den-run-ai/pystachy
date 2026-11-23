@@ -1,0 +1,93 @@
+argument int
+'A'
+argument int
+'☃'
+argument bool
+'\x01'
+argument Code
+Code.__index__
+'☃'
+argument int
+ValueError chr() arg not in range(0x110000)
+argument int
+ValueError chr() arg not in range(0x110000)
+argument float
+TypeError 'float' object cannot be interpreted as an integer
+argument str
+TypeError 'str' object cannot be interpreted as an integer
+argument NoneType
+TypeError 'NoneType' object cannot be interpreted as an integer
+argument Bad
+TypeError __index__ returned non-int (type float)
+argument str
+65
+argument str
+9786
+argument str
+TypeError ord() expected a character, but string of length 0 found
+argument str
+TypeError ord() expected a character, but string of length 2 found
+argument int
+TypeError ord() expected string of length 1, but int found
+argument NoneType
+TypeError ord() expected string of length 1, but NoneType found
+argument float
+TypeError ord() expected string of length 1, but float found
+argument int
+0xff
+argument int
+-0xff
+argument int
+0x0
+argument bool
+0x0
+argument Code
+Code.__index__
+0x2603
+argument int
+-0x8000000000000000
+argument float
+TypeError 'float' object cannot be interpreted as an integer
+argument str
+TypeError 'str' object cannot be interpreted as an integer
+argument NoneType
+TypeError 'NoneType' object cannot be interpreted as an integer
+argument int
+0o377
+argument int
+-0o377
+argument int
+0o0
+argument bool
+0o0
+argument Code
+Code.__index__
+0o23003
+argument int
+-0o1000000000000000000000
+argument float
+TypeError 'float' object cannot be interpreted as an integer
+argument str
+TypeError 'str' object cannot be interpreted as an integer
+argument NoneType
+TypeError 'NoneType' object cannot be interpreted as an integer
+argument int
+0b11111111
+argument int
+-0b11111111
+argument int
+0b0
+argument bool
+0b0
+argument Code
+Code.__index__
+0b10011000000011
+argument int
+-0b1000000000000000000000000000000000000000000000000000000000000000
+argument float
+TypeError 'float' object cannot be interpreted as an integer
+argument str
+TypeError 'str' object cannot be interpreted as an integer
+argument NoneType
+TypeError 'NoneType' object cannot be interpreted as an integer
+[exit 0]

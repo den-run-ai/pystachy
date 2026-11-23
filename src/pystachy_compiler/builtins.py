@@ -1003,8 +1003,15 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         vals[0] = self.dyn_box(vals[0])
     elif len(vals) == 1 and len(kws) == 0 and (name == "str" or name == "repr") and self.refl_builtin_class(vals[0].t) != "":
         vals[0] = self.class_value_builtin(vals[0])  # (a builtin class named: its class object)
-    if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id", "abs"]:
-        return self.dyn_builtin(name, vals[0])  # (by its box's type: dynamic.py)
+    if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id", "abs", "round"]:
+        return self.dyn_builtin(name, vals)  # (by its box's type: dynamic.py)
+    if len(vals) == 2 and len(kws) == 0 and (name == "divmod" or name == "round") and (vals[0].t == "dyn" or (vals[1].t == "dyn" and vals[0].t in (["int", "bool", "float", BIG] if name == "divmod" else ["float"]))):
+        # (a's class's __divmod__, else b's __rdivmod__, or x's __round__, as the program runs, else the
+        # numbers' own: dynamic.py; an object's typed divmod() and round(), and an int's round(), take
+        # an Any value below)
+        return self.dyn_builtin(name, vals)
+    if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["chr", "hex", "oct", "bin", "ord"]:
+        vals[0] = self.dyn_builtin_arg(name, vals[0], "TypeError: " + NONEARG[name])  # (the int or str the typed call takes)
     if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):
         # A boxed accumulator accepts a wide start without narrowing it to int64.
         return self.dyn_sum(vals[0] if vals[0].t == "dyn" else self.as_list(vals[0], name), vals[1] if len(vals) == 2 else Val("0", "int"))

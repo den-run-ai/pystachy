@@ -1,0 +1,68 @@
+argument a
+argument b
+(3, 1)
+argument a
+argument b
+(-4, 1)
+argument a
+argument b
+(-4, -1)
+argument a
+argument b
+(0, 1)
+argument a
+argument b
+(3.0, 1.5)
+argument a
+argument b
+(-4.0, 0.5)
+argument a
+argument b
+(14.0, 0.0)
+argument a
+argument b
+ZeroDivisionError integer division or modulo by zero
+argument a
+argument b
+ZeroDivisionError float divmod()
+argument a
+argument b
+ZeroDivisionError float divmod()
+argument a
+argument b
+ZeroDivisionError integer division or modulo by zero
+argument a
+argument b
+TypeError unsupported operand type(s) for divmod(): 'str' and 'int'
+argument a
+argument b
+TypeError unsupported operand type(s) for divmod(): 'NoneType' and 'int'
+argument a
+argument b
+TypeError unsupported operand type(s) for divmod(): 'int' and 'NoneType'
+argument a
+argument b
+TypeError unsupported operand type(s) for divmod(): 'list' and 'int'
+argument a
+argument b
+Money.__divmod__
+(2, 50)
+argument a
+argument b
+Money.__rdivmod__
+('r', 'int')
+argument a
+argument b
+Euro.__rdivmod__
+('euro', 'Money')
+argument a
+argument b
+TypeError unsupported operand type(s) for divmod(): 'Plain' and 'int'
+argument a
+argument b
+TypeError unsupported operand type(s) for divmod(): 'int' and 'Plain'
+argument x
+3 2 int
+(4.0, 0.0) (2.0, 0.5)
+(4611686018427387903, 1)
+[exit 0]

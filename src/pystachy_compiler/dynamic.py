@@ -56,12 +56,14 @@ DF_ROLE = 256
 # the comparisons the program's @o.x.<class> runs with any value, by their op codes (+ 1: dyn_xhelper)
 XCMP: list[str] = ["__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"]
 XOPS: list[str] = ["==", "!=", "<", "<=", ">", ">="]
-# the operator codes of pys_dyn_binop and pys_dyn_unary
-BINOPS: dict[str, int] = {"+": 0, "-": 1, "*": 2, "/": 3, "//": 4, "%": 5, "**": 6, "<<": 7, ">>": 8, "&": 9, "|": 10, "^": 11}
+# the operator codes of pys_dyn_binop and pys_dyn_unary (divmod() runs as a binary operator does:
+# a's __divmod__, else b's __rdivmod__, else the numbers' own)
+BINOPS: dict[str, int] = {"+": 0, "-": 1, "*": 2, "/": 3, "//": 4, "%": 5, "**": 6, "<<": 7, ">>": 8, "&": 9, "|": 10, "^": 11, "divmod": 12}
 UNOPS: dict[str, int] = {"-": 0, "+": 1, "~": 2}
 CMPOPS: dict[str, int] = {"<": 0, "<=": 1, ">": 2, ">=": 3}
 BINDUNDERS: dict[str, str] = {"+": "__add__", "-": "__sub__", "*": "__mul__", "/": "__truediv__", "//": "__floordiv__", "%": "__mod__",
-                              "**": "__pow__", "<<": "__lshift__", ">>": "__rshift__", "&": "__and__", "|": "__or__", "^": "__xor__"}
+                              "**": "__pow__", "<<": "__lshift__", ">>": "__rshift__", "&": "__and__", "|": "__or__", "^": "__xor__",
+                              "divmod": "__divmod__"}
 # the builtin types' DynTypes (RTDATA), by the static type of the payload
 BUILTIN: dict[str, str] = {"None": "pys_dyntype_none", "bool": "pys_dyntype_bool", "int": "pys_dyntype_int", "float": "pys_dyntype_float",
                            "str": "pys_dyntype_str", "dict[dyn,dyn]": "pys_dyntype_dict",
@@ -3165,7 +3167,7 @@ def gen_dyn_arith(self, op: str, a: Val, b: Val, inplace: bool = False) -> Val:
         self.err(f"the operator {op} on Any values is not supported")
     pa = a if a.t == BIG else self.dyn_proven_int(a)
     pb = b if b.t == BIG else self.dyn_proven_int(b)
-    if pa.t != "" and pb.t != "" and op != "**" and ((op != "&" and op != "|" and op != "^") or a.t == "int" or a.t == BIG or b.t == "int" or b.t == BIG):
+    if pa.t != "" and pb.t != "" and op != "**" and op != "divmod" and ((op != "&" and op != "|" and op != "^") or a.t == "int" or a.t == BIG or b.t == "int" or b.t == BIG):
         # (ints, or a bool and an int: the typed arithmetic, of an int result but for /'s float;
         # a promoting accumulator stays typed even past int64. ** may give a float,
         # and & | ^ of two bools a bool)
@@ -3311,11 +3313,14 @@ def index_value(self, v: Val) -> Val:
     return self.dyn_call(self.dyn_dispatcher("index", [DYN], DYN, "__index__"), [v])
 
 
-def gen_dyn_index(self, v: Val, none: str) -> Val:
+def gen_dyn_index(self, v: Val, none: str, wide: bool = False) -> Val:
     # an Any value where a typed sequence's subscript or range() takes an index: an int's value,
     # a bool's 0 or 1 and an object's __index__(), as CPython's index protocol gives them (no
     # annotation is checked here); any other value raises CPython's TypeError, none's ("Kind:
-    # text", the one for None) with the value's type where that names NoneType
+    # text", the one for None) with the value's type where that names NoneType. wide: as a
+    # promoting int where a module of the program promotes ints (an Any value can then hold one
+    # past 64 bits, which chr() and hex() take as they are)
+    big = wide and int_program()
     unbox = self.label()
     convert = self.label()
     isbool = self.label()
@@ -3330,6 +3335,8 @@ def gen_dyn_index(self, v: Val, none: str) -> Val:
     self.cbr(self.dyn_test(c, ["bool"]), isbool, other)
     self.place(isbool)
     flag = self.as_int(self.dyn_payload(c, "bool"))
+    if big:
+        flag = self.to_big(flag)
     flagged = self.cur
     self.br(end)
     self.place(other)
@@ -3343,14 +3350,14 @@ def gen_dyn_index(self, v: Val, none: str) -> Val:
     else:
         self.raise_(none[: none.find(":")], self.concat([Val(self.sconst(text[:cut]), "str"), self.dyn_type_name(v), Val(self.sconst(text[cut + 8 :]), "str")]).v)
     self.place(unbox)
-    number = self.dyn_unbox(Val(self.phi(box), DYN), "int")
+    number = self.dyn_unbox(Val(self.phi(box), DYN), BIG if big else "int")
     numbered = self.cur
     self.br(end)
     self.place(end)
-    ph = Ins("phi", "int", "")
+    ph = Ins("phi", BIG if big else "int", "")
     self.incoming(ph, number.v, numbered)
     self.incoming(ph, flag.v, flagged)
-    return Val(self.phi(ph), "int")
+    return Val(self.phi(ph), BIG if big else "int")
 
 
 def numeric_result(self, r: Val, method: str, owner: str) -> Val:
@@ -3896,6 +3903,18 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
     # class x.t's case of dispatcher key: its own operation on the object x, then return
     if key.endswith(".promote"):
         key = key[:-8]
+    if key == "round" or key == "roundn":
+        # round(x, None) calls x.__round__() too, as CPython's builtin_round_impl does
+        fm = self.classes[x.t].methods[dunder]
+        if key == "roundn":
+            given = self.label()
+            nodigits = self.label()
+            self.cbr(self.dyn_test(args[0], ["None"]), nodigits, given)
+            self.place(given)
+            dyn_round_arm(self, f, fm, x, args)
+            self.place(nodigits)
+        dyn_round_arm(self, f, fm, x, [])
+        return
     if key in ["iter", "next", "nextvalue", "reversed"]:
         protocol_method = "__iter__" if key == "iter" else "__reversed__" if key == "reversed" else "__next__"
         attempt = f"protocol:{x.t}.{protocol_method}"
@@ -4040,6 +4059,17 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
         r = self.expr(mk("call", "", line, [mk("attr", dunder, line, [xn])] + an), "")
     self.dyn_return(f, r)
 
+
+
+def dyn_round_arm(self, f: FnInfo, fm: FnInfo, x: Val, args: list[Val]) -> None:
+    # the object x's __round__ (fm) called with args, or CPython's TypeError where it takes no
+    # such arguments, once round()'s are evaluated, as an ordinary dynamic call raises it
+    own = 0 if fm.deco != "" else 1
+    if fm.bad == "" and len(fm.defaults) >= len(fm.params) and not self.dyn_takes(fm, own, len(args)):
+        self.raise_("TypeError", self.sconst(self.dyn_arity(fm, own, len(args))))
+        return
+    an = [self.vnode(a) for a in args]
+    self.dyn_return(f, self.expr(mk("call", "", self.line, [mk("attr", "__round__", self.line, [self.vnode(x)])] + an), ""))
 
 
 def dyn_iteration_arm(self, f: FnInfo, key: str, x: Val) -> None:
@@ -4786,6 +4816,22 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
         self.ret_(Val(self.rt(fn, "ptr", [f"ptr {o.v}", f"ptr {ps[1].v}", f"i64 {n}"]), DYN))
     elif key.startswith("un"):
         self.ret_(Val(self.rt("pys_dyn_unary_promote" if promote else "pys_dyn_unary", "ptr", [f"ptr {o.v}", f"i64 {key[2:]}"]), DYN))
+    elif key == "round" or key == "roundn":
+        # A number's __round__ takes n by its __index__(), and None as no n. Another value's
+        # TypeError comes first, from pys_dyn_round without n, before n is converted
+        fn = "pys_dyn_round_promote" if promote else "pys_dyn_round"
+        if key == "roundn":
+            number = self.label()
+            other = self.label()
+            self.cbr(self.dyn_test(o, ["int", "bool", "float"]), number, other)
+            self.place(number)
+            given = self.label()
+            self.cbr(self.dyn_test(ps[1], ["None"]), other, given)
+            self.place(given)
+            digits = index_value(self, ps[1])
+            self.ret_(Val(self.rt(fn, "ptr", [f"ptr {o.v}", f"ptr {digits.v}"]), DYN))
+            self.place(other)
+        self.ret_(Val(self.rt(fn, "ptr", [f"ptr {o.v}", "ptr null"]), DYN))
     elif key == "iter":
         self.ret_(Val(self.rt("pys_dyn_iter_box", "ptr", [f"ptr {o.v}"]), DYN))
     elif key == "slice_source":
@@ -4978,8 +5024,18 @@ def gen_dyn_dispatchers(self) -> bool:
     return True
 
 
-def gen_dyn_builtin(self, name: str, v: Val) -> Val:
-    # builtin name (len, str, repr, int, float, bool, id, abs) of the dyn value v
+def gen_dyn_builtin(self, name: str, vals: list[Val]) -> Val:
+    # builtin name (len, str, repr, int, float, bool, id, abs, round) of the dyn value vals[0], or
+    # divmod(a, b) and round(x, n) of vals where either is one: through the dunders of the boxed
+    # values' classes (a's __divmod__, else b's __rdivmod__; x's __round__), else the numbers' own
+    # (runtime.c's dyn_binop and dyn_round), each with CPython's TypeError for another value
+    v = vals[0]
+    suffix = ".promote" if self.int_policy(self.line) else ""
+    if name == "divmod":
+        return self.dyn_arith("divmod", v, vals[1])
+    if name == "round":
+        key = "round" if len(vals) == 1 else "roundn"
+        return self.dyn_call(self.dyn_dispatcher(key + suffix, [DYN] * len(vals), DYN, "__round__"), vals)
     if name == "len":
         return self.dyn_len(v)
     if name == "str":
@@ -4993,9 +5049,26 @@ def gen_dyn_builtin(self, name: str, v: Val) -> Val:
     if name == "id":
         return Val(self.rt("pys_dyn_id", "i64", [f"ptr {v.v}"]), "int")
     if name == "abs":
-        suffix = ".promote" if self.int_policy(self.line) else ""
         return self.dyn_call(self.dyn_dispatcher("un3" + suffix, [DYN], DYN, "__abs__"), [v])
     return Val(self.dyn_truth(v), "bool")
+
+
+def gen_dyn_builtin_arg(self, name: str, v: Val, none: str) -> Val:
+    # the value that builtin name's typed call takes for the dyn value v, as CPython's builtin
+    # takes it: chr(), hex(), oct() and bin() an int by the index protocol (dyn_index, wide, as
+    # they print an int past 64 bits), ord() a str; another value raises none ("Kind: text", the
+    # one for None) with the value's type where that names NoneType
+    if name != "ord":
+        return gen_dyn_index(self, v, none, True)
+    text = none[none.find(": ") + 2 :]
+    cut = text.find("NoneType")
+    hit = self.label()
+    bad = self.label()
+    self.cbr(self.dyn_test(v, ["str"]), hit, bad)
+    self.place(bad)
+    self.raise_(none[: none.find(":")], self.concat([Val(self.sconst(text[:cut]), "str"), self.dyn_type_name(v), Val(self.sconst(text[cut + 8 :]), "str")]).v)
+    self.place(hit)
+    return self.dyn_payload(v, "str")
 
 
 def gen_dyn_getattr(self, o: Val, a: str) -> Val:
