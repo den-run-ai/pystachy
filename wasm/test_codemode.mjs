@@ -123,6 +123,35 @@ print(os.environ[name])
   await assert.rejects(createCompiler({ fallback: false })(generator), { code: 3, message: /refused: .*generator/ });
 });
 
+test("Python's recursion limit, not the host's stack, ends deep recursion on both routes", async t => {
+  const program = `import sys
+from codemode import call
+
+def depth(n: int) -> int:
+    if n == 0:
+        return int(call("leaf", "bottom"))
+    return depth(n - 1) + 1
+
+sys.setrecursionlimit(60000)
+print(depth(50000))
+try:
+    depth(100000)
+except RecursionError:
+    print("RecursionError")
+`;
+  const dir = await mkdtemp(join(tmpdir(), "pystachy-depth-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const output = await open(join(dir, "out"), "w");
+  t.after(() => output.close());
+  const tools = new Map([["leaf", () => "7"]]);
+  for (const backend of ["direct", "llvm"]) {
+    const artifact = await createCompiler()(backend === "direct" ? program : program + generatorBody);
+    assert.equal(artifact.backend, backend);
+    assert.equal(await createRunner()(artifact.module, { tools, stdout: output.fd }), 0);
+  }
+  assert.equal(await readFile(join(dir, "out"), "utf8"), "50007\nRecursionError\n50007\nRecursionError\n42\n");
+});
+
 test("a deadline applies to a directly compiled Python loop", async () => {
   const run = createCodeMode({ fallback: false });
   const countdown = "i = 1073741824\nwhile i > 0:\n    i -= 1\n";
@@ -217,7 +246,7 @@ except TypeError as e:
     "2\n0\nexpected an array of issues\nexpected an issue object\nIllegal trailing comma before end of array 4\n");
 });
 
-test("the direct JSON codec reaches the recorded nesting limit on the default Node stack", async t => {
+test("the direct JSON codec reaches the recorded nesting limit", async t => {
   const prefix = "tests/programs/library/json_depth";
   const dir = await mkdtemp(join(tmpdir(), "pystachy-json-depth-"));
   t.after(() => rm(dir, { recursive: true, force: true }));

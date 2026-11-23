@@ -3,10 +3,14 @@
 const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const encoder = new TextEncoder();
 
-export function toolImports(tools, getMemory) {
+export function checkTools(tools) {
   if (tools !== undefined && !(tools instanceof Map)) {
     throw new TypeError("tools must be a Map of named functions");
   }
+}
+
+export function toolImports(tools, getMemory) {
+  checkTools(tools);
   let result;
   function bytes(pointer, length) {
     return new Uint8Array(getMemory().buffer, pointer >>> 0, length >>> 0);
