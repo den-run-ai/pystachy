@@ -26,9 +26,9 @@ from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
 from src.pystachy_compiler.reflection import hook_of
-from src.pystachy_compiler.specs import BIG, BYTEARRAYC, COMPLEXC, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
+from src.pystachy_compiler.specs import BIG, BYTEARRAYC, COMPLEXC, GENNEW, GENSTATE, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, made_var, mentions, mk
-from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_clsval, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, lib_source, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, gsend, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_clsval, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, lib_source, ListLayout, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -3662,15 +3662,17 @@ def gen_dyn_body(self, key: str) -> None:
         self.dyn_builtin_methods(f, key, o, ps[1:])
     if key.startswith("callv."):
         self.dyn_fn_arms(f, key, o, ps[1:])
-    dyn_generator_arms(self, key, o)
+    dyn_generator_arms(self, key, o, ps[1:])
     self.dyn_fallback(f, key, ps)
 
 
-def dyn_generator_arms(self, key: str, o: Val) -> None:
+def dyn_generator_arms(self, key: str, o: Val, args: list[Val]) -> None:
     # Iteration of boxed coroutine handles. The internal next dispatcher uses
     # null only for exhaustion; a yielded None is its ordinary non-null box.
-    # All generator state, errors and cleanup stay in the existing resume path.
-    if key != "iter" and key != "next":
+    # All generator state, errors and cleanup stay in the existing resume path,
+    # as for send() and close(), which a method call's dispatchers find too.
+    method = key[key.find(".") + 1 : key.rfind(".")] if key.startswith("call.") or key.startswith("has.") else ""
+    if key != "iter" and key != "next" and method != "send" and method != "close":
         return
     typ = Val(self.dyn_typeof(o), "dyntype")
     for t in [x for x in self.dyntypes if is_gen(x)]:
@@ -3680,14 +3682,48 @@ def dyn_generator_arms(self, key: str, o: Val) -> None:
         self.place(hit)
         if key == "iter":
             self.ret_(o)
-        else:
+        elif key == "next":
             done = self.label()
             handle = self.dyn_payload(o, t)
             promise = self.gen_next(handle, done)
             self.ret_(self.dyn_box(self.gen_value(promise, gelem(t))))
             self.place(done)
             self.ret_(Val("null", DYN))
+        elif key.startswith("has."):
+            self.ret_(Val("null", DYN))  # (a method, which call.<m>.<shape> calls)
+        else:
+            dyn_generator_call(self, key, method, self.dyn_payload(o, t), args)
         self.place(miss)
+
+
+def dyn_generator_call(self, key: str, method: str, handle: Val, args: list[Val]) -> None:
+    # g.send(v) or g.close() of a generator held in Any, as typed code compiles them (gen_send,
+    # gen_close), with CPython's TypeError for other arguments, once they are evaluated. A
+    # generator whose send type is None reads no sent value: send(None) is next(g), another value
+    # resumes it so too, but raises CPython's TypeError where g has not started
+    n = shape_npos(key)
+    named = len(shape_kws(key))
+    if named > 0:
+        self.raise_("TypeError", self.sconst(f"generator.{method}() takes no keyword arguments"))
+        return
+    if method == "close":
+        if n != 0:
+            self.raise_("TypeError", self.sconst(f"generator.close() takes no arguments ({n} given)"))
+            return
+        self.gen_close(handle)
+        self.ret_(self.dyn_box(Val("null", "None")))
+        return
+    if n != 1:
+        self.raise_("TypeError", self.sconst(f"generator.send() takes exactly one argument ({n} given)"))
+        return
+    if gsend(handle.t) != "None":
+        self.ret_(self.dyn_box(self.gen_send(handle, [self.vnode(args[0])])))
+        return
+    p = self.gen_promise(handle)
+    fresh = self.num_cmp("==", Val(self.mload("int", self.maddr("int", p, str(GENSTATE))), "int"), Val(str(GENNEW), "int")).v
+    some = self.scalar("xor", [Val(self.dyn_test(args[0], ["None"]), "bool"), Val("true", "bool")])
+    self.guard(self.scalar("and", [Val(fresh, "bool"), Val(some, "bool")]), "TypeError: can't send non-None value to a just-started generator")
+    self.ret_(self.dyn_box(self.gen_next_value(handle, Val("", ""))))
 
 
 def gen_dyn_reflected(self, f: FnInfo, c: str, r: str, a: Val, b: Val, ok: str) -> None:
