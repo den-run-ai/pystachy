@@ -10,6 +10,8 @@ The tool runs the real `pystachy ir` path in a fresh worker process, with
 `PYSTACHY_IRCHECK=1`. It does not execute the input program, run LLVM's optimization
 pipeline, build an executable or prove JIT/AOT correctness. `pystachy check`
 remains parse-only; it is not the inspection tool's compilation oracle.
+`pystachy check --semantic` compiles as `ir` does and reports only the first error,
+without this tool's JSON capture or snapshots.
 
 ## Quick start
 

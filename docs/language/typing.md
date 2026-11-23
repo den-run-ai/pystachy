@@ -23,6 +23,7 @@ unsupported forms, see [compatibility](compatibility.md).
 | `type[C]`, `type[C] \| None` | The class object of `C`, a class of the program, or of a class deriving from it; see [classes as values](semantics.md#classes-as-values) |
 | `type[object]`, `type` | The class object of any class: an ordinary class of the program or a builtin class |
 | `TextIO` | Text files |
+| `IO[str]` | Native text files and, when imported, the shipped `io.StringIO` |
 | `Generator[Y, S, R]`; `Iterator[T]` or `Iterable[T]` as a generator function's return | Generator objects that yield `Y` (any generator function's) and take `S` from `send()`; see [generators](semantics.md#generators). Elsewhere `Iterator[T]` and `Iterable[T]` type nothing ([iterators](semantics.md#iterators)), but in a protocol's methods |
 | `typing.Protocol` classes | Objects of any class that defines the protocol's methods ([stored interfaces](#protocols-and-stored-interfaces)) |
 
@@ -211,8 +212,9 @@ subscripts in annotations, evaluated or not, name the class, as CPython does not
 arguments: types, or number, `None`, `True`, `False` and `...` constants (`C[int]`, `C[1]`,
 `C[int, ...]`). A string argument is a forward reference, as elsewhere in an annotation, and any
 other argument must still be an annotation. `re.Pattern[str]` and `re.Match[str]` are such
-annotations. `os.PathLike` and the supported `collections.abc` names are exceptions to the
-restriction on builtin module attributes.
+annotations. `typing.Pattern[str]` and `typing.Match[str]` also name these classes when the
+program imports the shipped `re` module. `os.PathLike` and the supported `collections.abc` names are
+exceptions to the restriction on builtin module attributes.
 
 `Final[T]` uses type `T` without enforcing immutability. `x: Final = value` infers the
 value's type. In a class body, a constant gives a field its type, and any other value makes a
@@ -280,25 +282,41 @@ before twice).
 
 ### Recursive value aliases (prototype)
 
-A nongeneric module-level PEP 695 alias may define a closed recursive union:
+A module-level PEP 695 alias may define a closed recursive union:
 
 ```python
 type Value = None | bool | int | float | str | list[Value] | dict[str, Value]
+type Leafed[F] = int | str | F | list[Leafed[F]] | dict[str, Leafed[F]]
+type Spans = int | tuple[int, int] | list[Spans]
 ```
 
-Members may be `None`, `bool`, `int`, `float`, `str`, `list[Self]` and
-`dict[str, Self]`, with at least two distinct non-`None` alternatives and one
-recursive container member. `type Tree = int | list[Tree]` is also supported.
-Bare `list[Self]`, `None | list[Self]`, mutual recursion, generic recursive aliases
-and other recursive shapes remain unsupported. Qualified imports and ordinary
-aliases of an accepted alias retain the same named graph.
+Members may be `None`, `bool`, `int`, `float`, `str`, one tuple type that does not name
+the alias, `list[Self]` and `dict[str, Self]`, with at least two distinct non-`None`
+alternatives and one recursive container member. `type Tree = int | list[Tree]` is also
+supported. A tuple leaf follows the rules of a
+[union's tuple member](#operations-on-closed-unions): `isinstance(v, tuple)` narrows to it,
+and an index or a loop over the whole value needs narrowing first.
+
+A generic alias names itself with its own parameters in their order (`Leafed[F]`), and a
+parameter may be a member. Each use with type arguments names one graph: `Leafed[float]` and
+`Leafed[bool]` are two types, and `Leafed[T]` in a generic class or function is the graph of
+what `T` is bound to ([cases](../../tests/programs/inference/recursive_alias_generic.py)).
+A type argument is a scalar, `None`, a union of them or a tuple; a class is rejected. In a
+generic function, a local variable's annotation cannot name the TypeVar, and the result
+type is inferred from the returns, as for other function templates.
+
+Bare `list[Self]`, `None | list[Self]`, mutual recursion, a tuple that holds the alias
+(`tuple[Self, Self]`), class members and other recursive shapes remain unsupported.
+Qualified imports and ordinary aliases of an accepted alias retain the same named graph.
 
 Recursive container slots hold existing tagged union boxes. `isinstance()` narrows
 locals and parameters to the original list/dict pointer, preserving shared mutation;
 existing mutable containers remain invariant. The type graph is finite and does
 not prescribe a fixed data depth. Runtime traversal has recursion guards, and the
-native JSON codec has its own depth/int64 limits. Unlike other aliases, a recursive
-alias is nominal: another alias with the same members is a different type. See the
+native JSON codec has its own depth/int64 limits. Two recursive aliases with the same
+members are one type, as other aliases are: a decoded `json.JSONValue` is a value of a
+program's own alias that lists its members
+([cases](../../tests/programs/inference/recursive_alias_same_shape.py)). See the
 [JSON prototype](../json.md) for representation, operations and API scope.
 `Any` remains inference-only here (but in a module that opts in to
 [dynamic `Any`](../dynamic-any.md)); this adds no runtime compilation.
@@ -885,6 +903,28 @@ needs the narrowed value. A truth test takes any member, and a function is true.
 `==` need narrowing first. `callable()` cannot tell two `Callable` types apart, so a union
 holds one, and none beside classes or files.
 
+A union may hold one tuple type beside scalars, lists and dictionaries, for a result that is
+a value or a pair of it and a log:
+
+```python
+def repair(text: str, logging: bool = False) -> str | tuple[str, list[str]]:
+    if logging:
+        return text, []
+    return text
+
+result = repair("x", True)
+if isinstance(result, tuple):
+    value, log = result
+```
+
+The tuple is fixed (`tuple[A, B]`) or of any length (`tuple[T, ...]`), and a tuple display
+where the union is expected takes that type, so an empty list among its items needs no
+annotation. `isinstance(x, tuple)` narrows to it; an index, unpacking, a loop, arithmetic, an
+ordering and a method call need the narrowed value. Truth, `len()`, `str()`, `repr()`,
+printing, `==` and `!=` take any member ([cases](../../tests/programs/inference/union_tuple_member.py)).
+`isinstance()` cannot tell two tuple types apart, so a union holds one, and none beside
+classes or files. A tuple of promoting ints is no member.
+
 ## Native reference unions
 
 Explicit unions can also hold up to four native class or `TextIO` types. This lets an
@@ -898,6 +938,13 @@ from typing import TextIO
 def read_character(stream: TextIO | StringIO) -> str:
     return stream.read(1)
 ```
+
+A `typing.IO[str]` annotation accepts a native text file. When the program imports
+the shipped `io` module, it denotes the same reference union as `TextIO | StringIO`
+above, so `Optional[IO[str]]` can hold either stream or `None`. Without `io`,
+the existing restrictions for `TextIO` apply, including its rejection of `None`.
+Binary streams, `io.TextIOWrapper` objects and arbitrary file-like classes do not
+belong to this bounded annotation.
 
 Arguments, returns, fields, locals, list elements and dict values may use these
 unions. A tagged box retains the original object or file pointer: passing through
@@ -1514,15 +1561,14 @@ An imported subclass becomes available when compiled code needs it, including cl
 tests and annotations of a called helper. Its activation recompiles earlier dispatch sites
 with the complete set of used classes. Unused imported siblings and their overrides stay
 excluded; merely declaring them does not make a working base-class call compile their
-bodies. An initializer whose field types depend on its arguments still cannot take part
-in inheritance. Explicit `Base.__init__(self, ...)` delegation remains excluded from the
-fixed-layout proof because it passes the receiver to another callable.
+bodies. An initializer whose field types depend on its arguments takes part in inheritance
+only as a class template's, below. Explicit `Base.__init__(self, ...)` delegation remains
+excluded from the fixed-layout proof because it passes the receiver to another callable.
 
 If `Box.__init__(self, value: Any) -> None` assigns `self.value = value`, it behaves like
 the unannotated constructor: `Box(1).value` is an `int`, and `Box("s").value` is a `str`.
 Existing field types cannot change later. `Any` does not provide a shared boxed layout for
-these objects. Inheritance with class templates remains unsupported; use concrete constructor
-annotations there. Dataclass fields annotated `Any` still require a concrete type.
+these objects. Dataclass fields annotated `Any` still require a concrete type.
 
 Each specialization is a distinct static type. One variable or container cannot hold both
 `Box[int]` and `Box[str]`, although both satisfy `isinstance(value, Box)` and use the name
@@ -1540,6 +1586,69 @@ determines the callable's result type.
 The [stored interface tutorial](../../examples/typed_iterator/README.md) compares this
 with [protocols](#protocols-and-stored-interfaces): explicit `Callable` adapters specialize
 for each source, while a typed field or list retains a shared wrapper with its own identity.
+
+### Subclasses of class templates
+
+A class may derive from a class template that has no base of its own
+([#962](https://github.com/den-run-ai/pystachy/issues/962)). Each specialization of the
+template is a class of its own and the root of a hierarchy of its own:
+
+- A subclass without an `__init__` of its own runs the template's and is a class template
+  too. Each specialization of the template is made together with one specialization of each
+  such subclass, for the same argument types, which derives from it: `StrStyle("x")` makes an
+  object of the class that derives from the class of `Style("x")`
+  ([test](../../tests/programs/classes/template_subclass_inherit.py)).
+- A subclass with an annotated `__init__` of its own derives from one specialization: the one
+  its `super().__init__(...)` makes. Its `__init__` calls `super().__init__(...)`, or
+  `Base.__init__(self, ...)` of the base it names, once, in a statement of its own, with
+  arguments whose types are known where the class is declared: literals, `None` and `()`, its
+  parameters' annotations, functions and the template's defaults
+  ([test](../../tests/programs/classes/template_subclass_super.py),
+  [test](../../tests/programs/classes/template_subclass_explicit_init.py)).
+- A subclass whose own `__init__` is a class template too calls its base's `__init__` so, and is
+  a class template: each of its specializations derives from the one that this call makes for
+  the types of its own arguments, as its parameters' types give them. `Dog("rex", True)` makes an
+  object of the class that derives from the class of `Animal("rex")`, and `Dog(7, "x")` one of a
+  class that derives from that of `Animal(7)`
+  ([test](../../tests/programs/classes/template_subclass_template_init_dispatch.py),
+  [test](../../tests/programs/classes/template_subclass_template_field.py)). These
+  specializations are made before any code is compiled, as the others are: one that code makes
+  first is made in turn, and the program is compiled again from the start. Its arguments may be
+  of the types the declarations know, a module's functions too
+  ([test](../../tests/programs/classes/template_subclass_template_init_function.py)), but not
+  objects of a class template's specialization, lambdas, nested functions or bound methods
+  ([error test](../../tests/errors/classes/template_subclass_template_init_object.py)).
+- `class IntBox(Box[int])` derives from the specialization that `Box[int]` names, for a generic
+  class whose `__init__` binds its type variables
+  ([test](../../tests/programs/classes/template_subclass_generic.py)).
+
+A subclass's specializations are made with the template's, and the specialization that a
+subclass with an `__init__` derives from is made where the classes are declared, before any
+code is compiled; its fields are typed there, one that holds an object of another class
+template too, of the specialization its arguments' types make
+([test](../../tests/programs/classes/template_subclass_declared_field.py)).
+A variable, field or list typed by a specialization therefore holds objects
+of every class that derives from it, and a call through it selects the object's override, also
+inside the template's methods
+([test](../../tests/programs/classes/template_subclass_override.py)). Objects of two
+specializations still cannot share one location
+([test](../../tests/programs/classes/template_subclass_two_specs.py)). `isinstance(x, C)`,
+where `C` is the template or a subclass without an `__init__`, holds for an object of any of
+its specializations or of a class that derives from one
+([test](../../tests/programs/classes/template_subclass_isinstance.py)). These classes are
+still not values: `issubclass()` and `type[C]` reject them.
+
+The compiler rejects, with a message that names the limit: a subclass with a secondary base or a
+decorator; an `__init__` that calls `super().__init__(...)` other than once at its top level, or
+with arguments whose types only compiled code tells
+([error test](../../tests/errors/classes/template_subclass_template_init_args.py)); a template
+with a base of its own, such as `logging`'s `Logger`, whose base `Filterer` is an ordinary class
+([error test](../../tests/errors/classes/template_fixed_base.py)); a template whose `__init__`
+makes an object of its subclass without an `__init__`; and `class C(Box[T])`, which passes a
+type variable on. An imported module's subclass of a class template is compiled where the
+program uses it, as an imported subclass of a fixed-layout class is, and left out otherwise
+([test](../../tests/programs/classes/template_subclass_imported.py),
+[test](../../tests/programs/classes/template_subclass_imported_template_init.py)).
 
 ### Explicit generic classes
 
@@ -1671,8 +1780,10 @@ compiles, so a visitor's methods may call `accept()` again, and a field stored f
 ([test](../../tests/programs/classes/generic_visitor_postponed.py)). A variable annotated with
 the base holds any visitor, whose methods then dispatch to every visitor class and need one
 return type ([error test](../../tests/errors/classes/generic_visitor_base_variable.py)). A class
-cannot yet derive from a generic class whose `__init__` binds its type variables
-(`class IntBox(Box[int])`).
+derives from one specialization of a generic class whose `__init__` binds its type variables,
+`class IntBox(Box[int])`, as a [subclass of a class template](#subclasses-of-class-templates)
+does, not from `Box[T]`
+([error test](../../tests/errors/classes/template_subclass_typevar.py)).
 
 A generic class may pass its own type variables on to generic bases, as mypy's visitors do:
 `class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T])` derives from
@@ -1783,7 +1894,9 @@ classes and `dataclasses.replace()`. Explicit method calls such as `obj.__init__
 A class-body default is a class attribute, read by instances until they assign their own
 value. Later changes to the class attribute affect those instances. Unannotated class-body
 assignments infer their type, except in dataclasses and NamedTuples, where annotations are
-required. Supported subclasses also inherit their base's fields and class attributes.
+required. For example, `EPS = sys.float_info.epsilon` infers `float` and
+`BITS = sys.float_info.mant_dig` infers `int`. Supported subclasses also inherit their
+base's fields and class attributes.
 In a module-level class without decorators or a `NamedTuple` base, a later class-body value
 or method default may read a name the body binds once to a constant (`op_str = {ADD: "+"}`),
 as CPython reads the class namespace; lambdas and comprehensions past their first iterable
@@ -1914,10 +2027,12 @@ that names functions or attributes at run time (`getattr()`, `globals()`) keeps 
 
 An ordinary class may derive from one previously declared ordinary class, including an
 imported class. Annotate its `__init__` parameters. Constructor arguments may be generic
-when all fields retain one fixed concrete layout; layout-specialized class templates cannot
-participate in a hierarchy. A generic base without its own `__init__` supports the
-[visitor subset](#explicit-generic-classes); bases whose constructor binds type variables and
-subclasses passing through their own type variables remain unsupported. Fields retain their
+when all fields retain one fixed concrete layout; a layout-specialized class template takes
+part in a hierarchy as the [root of its specializations' hierarchies](#subclasses-of-class-templates).
+A generic base without its own `__init__` supports the
+[visitor subset](#explicit-generic-classes); a base whose constructor binds type variables
+supports one specialization as a base (`class IntBox(Box[int])`), and subclasses passing
+through their own type variables remain unsupported. Fields retain their
 declared or inferred types, and the existing field-inference rules still apply.
 
 Subclasses inherit fields, class attributes, methods and `__init__` when they do not define

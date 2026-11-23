@@ -1,0 +1,5 @@
+b:1 False False
+fixed fixed:3 True False
+loose:7 False True
+6 t 7
+[exit 0]

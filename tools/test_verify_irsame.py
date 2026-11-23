@@ -39,9 +39,32 @@ if prefix.startswith("./"):
 settings = json.loads(Path(__file__).with_name("behavior.json").read_text())
 sys.stderr.write(settings["message"].replace("{lib}", prefix))
 if settings["ir"] is not None and "-o" in sys.argv:
-    Path(sys.argv[sys.argv.index("-o") + 1]).write_text(settings["ir"])
+    # {real} and {home}: the library directory and home as the compiler embeds them (realpath);
+    # {length} and {size}: a string constant's length and array size, from its text
+    lines = []
+    for line in settings["ir"].replace("{real}", os.path.realpath(home + "/lib")).replace(
+            "{home}", os.path.realpath(home)).splitlines(keepends=True):
+        if 'c"' in line:
+            text = line[line.index('c"') + 2 : line.rindex("\\\\00")]
+            line = line.replace("{length}", str(len(text))).replace("{size}", str(len(text) + 1))
+        lines.append(line)
+    Path(sys.argv[sys.argv.index("-o") + 1]).write_text("".join(lines))
 sys.exit(settings["status"])
 '''
+
+
+# A str constant as the compiler emits it, with the sizes of its text
+def constant(index, text, length="{length}"):
+    return (f"@s.{index} = private unnamed_addr global {{i64, i64, i64, [{{size}} x i8]}} "
+            f'{{i64 {length}, i64 0, i64 {{size}}, [{{size}} x i8] c"{text}\\00"}}, align 8\n')
+
+
+# The library paths the compiler embeds: ImportError's message (gen_unbound()), a module's __file__,
+# sys.path's library entry and sys.prefix
+LIBRARY_IR = ("define i64 @main() {\n  ret i64 0\n}\n" +
+              constant(1, "cannot import name 'GenericAlias' from 'types' ({real}/types.py)") +
+              constant(2, "{real}/importlib/resources.py") + constant(3, "{real}") + constant(4, "{home}") +
+              constant(5, "ImportError"))
 
 
 class IrsameTests(unittest.TestCase):
@@ -192,6 +215,66 @@ class IrsameTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("  exit status 1 -> 2\n", result.stdout)
         self.assertNotIn("  messages:\n", result.stdout)
+
+    def test_prose_apostrophes_and_nested_function_descriptions_normalize(self):
+        message = ("{lib}base64.py:611: error: importing module 'sys' in a function of module 'base64' is not "
+                   "supported: the program's module-level code does not import it (compiling f() for the call "
+                   "at {lib}csv.py:3; making a Callable of <function f.<locals>.g ({lib}csv.py:4)> at {lib}csv.py:5;"
+                   " compiling h(<function <lambda> ({lib}csv.py:6)>) for the call at {lib}csv.py:7)\n"
+                   "case.py:2: error: square()'s parameter 'x' is annotated Any; CPython's copy differs "
+                   "(compiling copy(A) for the call at {lib}csv.py:8)\n"
+                   "case.py:3: error: unsupported literal 'it's' (compiling f() at {lib}csv.py:9)\n")
+        for name in ("old", "new"):
+            self.configure(name, message=message)
+        self.assert_identical(self.compare())
+
+    def test_quoted_values_keep_their_apostrophes(self):
+        for message in ("case.py:2: error: unsupported literal 'it's (compiling f() at {lib}csv.py:8)'\n",
+                        "case.py:2: error: f()'s literal '(compiling f() at {lib}csv.py:8)'\n",
+                        "case.py:2: error: unsupported literal '<function f.<locals>.g ({lib}csv.py:8)>'\n",
+                        "case.py:2: error: M's literal 'a'b (compiling f() at {lib}csv.py:8)'\n"):
+            with self.subTest(message=message):
+                for name in ("old", "new"):
+                    self.configure(name, message=message)
+                result = self.compare()
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("  messages:\n", result.stdout)
+
+    def test_library_paths_in_ir_strings_normalize_with_their_sizes(self):
+        for name in ("old", "new"):
+            self.configure(name, status=0, ir=LIBRARY_IR)
+        self.assert_identical(self.compare())
+        self.compiler("old/pystachy.py")
+        self.configure("old", status=0, ir=LIBRARY_IR)
+        self.assert_identical(self.compare(f"{sys.executable} -B old/pystachy.py", str(self.root / "new/pystachy")))
+        # The rewritten constants are those a compiler emits for the placeholders' text: valid IR.
+        placeholders = LIBRARY_IR.replace("{real}", "<lib>").replace("{home}", "<home>")
+        self.configure("new", status=0, ir=placeholders)
+        self.assert_identical(self.compare())
+
+    def test_ir_strings_with_other_text_paths_or_sizes_remain_significant(self):
+        changes = (("'GenericAlias'", "'Alias'"), ("from 'types'", "from 'typing'"), ("/types.py", "/typing.py"),
+                   ("{real}/types.py", "lib/types.py"), ("{home}\\00", "/elsewhere\\00"),
+                   (constant(3, "{real}"), constant(3, "see {real}")), (constant(3, "{real}"), constant(3, "{real}/")),
+                   (constant(2, "{real}/importlib/resources.py"), constant(2, "{real}/importlib/data.txt")))
+        for before, after in changes:
+            with self.subTest(change=after):
+                self.assertIn(before, LIBRARY_IR)
+                for name in ("old", "new"):
+                    self.configure(name, status=0, ir=LIBRARY_IR)
+                self.configure("new", status=0, ir=LIBRARY_IR.replace(before, after))
+                result = self.compare()
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("  IR from line ", result.stdout)
+        # constants whose sizes disagree with their text, unfamiliar shapes and unknown wrappers stay raw
+        for ir in (constant(1, "{real}/types.py", length="{size}"), constant(1, "{real}/types.py\\0A"),
+                   "; {real}/types.py\n", LIBRARY_IR):
+            with self.subTest(ir=ir):
+                for name in ("old", "new"):
+                    self.configure(name, status=0, ir=ir)
+                result = self.compare(*(("env old/pystachy", "env new/pystachy") if ir == LIBRARY_IR else ()))
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("  IR from line ", result.stdout)
 
     def test_ir_differences_and_missing_output_are_not_normalized(self):
         self.configure("old", status=0, ir="; old/lib/csv.py\n")

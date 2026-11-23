@@ -392,10 +392,24 @@ Type-erased `Protocol` and iterator storage with shared method tables remains a
 
 ## Errors and cleanup
 
-Overflow, invalid receivers and uninitialized reads branch to shared cold error blocks.
+Overflow, invalid receivers and uninitialized reads branch to shared cold error blocks, one per
+message, and per line where the program has line tables.
 For programs that use `try` or `with`, exception lowering gives may-raise calls explicit
 unwind edges to LLVM landing pads. The runtime unwinds through native frames using its own
 personality routine; local raises can branch directly to their handler.
+
+An uncaught exception prints CPython's traceback before its last line: each frame's file, line,
+function and source line, outermost first, with CPython's cutoff for repeated frames. The
+driver gives an executable's program functions line tables (`build`, and `run` where the
+[program cache](program-cache.md) keeps one), and runtime.c reads the executable's DWARF only
+when it reports the error (`traceback`). Each frame's return address gives its function, the
+functions inlined there and the lines that call them. Calls that raise stay distinct
+(`nomerge` on the runtime's `_Noreturn` functions and on the program's raises), so a return
+address names one line. In a program with `try` or `with`, each raise records the frames its
+forced unwind passes, so an exception that a bare `raise` or a `finally` raises again keeps the
+frames below its handler. The runtime and the compiler's wrappers have no lines and show no
+frames. Chained exceptions' tracebacks, CPython's `~^` markers, JIT code, macOS and
+`PYSTACHY_DEBUG_LINES=0` print the last line alone.
 
 Handlers match exception classes and rethrow unmatched exceptions. `finally` and `with`
 cleanup run on the relevant normal and exceptional exits. Nested `finally` handling avoids
@@ -965,8 +979,16 @@ The bootstrap checks that all three emit identical LLVM IR for the compiler and 
 This fixed point catches disagreements that affect self-compilation; differential tests
 provide the broader behavior check. See [testing](testing.md) for the commands.
 
+Stage 2's own `ir` of the compiler must also infer its types in one attempt
+(`tools/self_compile_once.sh` counts its `program.attempt` records). A restart compiles the whole
+program again, so a variable, field or return that holds two types in the compiler's source can
+double every self-compilation. `python3 tools/inference_restarts.py [PROGRAM.py]` runs the hosted
+compiler and names each restart's kind, the error that raised it and the joins it found; rename or
+annotate what it names.
+
 `pystachy build FILE.py -o EXE --emit-ir RAW.ll` retains the same raw module that
-`pystachy ir FILE.py` emits, without another frontend invocation. It excludes the
+`PYSTACHY_DEBUG_LINES=1 pystachy ir FILE.py` emits, with the build's line tables (none with
+`PYSTACHY_DEBUG_LINES=0`), without another frontend invocation. It excludes the
 AOT-only `pys_plain` marker and subsequent LLVM optimization. The IR file is replaced
 only after a successful native build; a failed build preserves an earlier IR file.
 The IR path must differ from the source and executable, including symbolic and hard
@@ -997,10 +1019,10 @@ are required before promotion. `make verify` keeps the standard tier.
 | `PYSTACHY_LIBPYTHON` | The CPython 3.12+ shared library that a program importing `pyobj` [embeds](ffi.md#calling-cpython) |
 | `PYSTACHY_RUNTIME_C_CACHE=1` | Opt in to Linux default-flag C-runtime bitcode reuse across compiler producers; `0` (default) disables it |
 | `PYSTACHY_CFLAGS` | Extra clang flags for runtime compilation and AOT linking; part of the cache key |
-| `PYSTACHY_AOT_OPT=0\|1\|2` | Experimental ordinary `build` program optimization/codegen tier; `2` is the default. Runtime compilation, raw IR, JIT and extensions keep their existing tiers. Use `make BOOTSTRAP_AOT_OPT=1` for the temporary bootstrap stage only. |
+| `PYSTACHY_AOT_OPT=0\|1\|2` | Experimental ordinary `build` program optimization/codegen tier; `2` is the default. Runtime compilation, raw IR, JIT and extensions keep their existing tiers. `build -O0`, `-O1` or `-O2` sets it for one build, over the environment. Use `make BOOTSTRAP_AOT_OPT=1` for the temporary bootstrap stage only. |
 | `PYSTACHY_PROFILE_GENERATE=DIR` | Make `build` write an executable that records a raw profile in `DIR` each time it runs; see [profile-guided builds](#profile-guided-builds) |
 | `PYSTACHY_PROFILE_USE=FILE` | Make `build` optimize with the indexed profile `FILE`; not together with `PYSTACHY_PROFILE_GENERATE` |
-| `PYSTACHY_DEBUG_LINES=1` | Emit deterministic Python file, function and instruction line metadata in LLVM IR; AOT retains DWARF line tables. No local variable descriptions; part of the runtime and program cache keys. See [source attribution](../bench/source_attribution/README.md) for JIT and profiler limits. |
+| `PYSTACHY_DEBUG_LINES=0\|1` | Deterministic Python file, function and instruction line metadata in LLVM IR, which executables keep as DWARF line tables; no local variable descriptions. Unset, `build` and cached `run` give the program's functions line tables, which [tracebacks](#errors-and-cleanup) read, and `ir`, JIT code and `runtime.py` have none; `1` gives all of them line tables; `0` gives none. `build -g` sets `1` for one build. Part of the runtime and program cache keys. See [source attribution](../bench/source_attribution/README.md) for JIT and profiler limits. |
 | `PYSTACHY_TIMING=1` | Print monotonic compiler [stage durations](#compiler-stage-timings) to stderr; nested totals overlap |
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |

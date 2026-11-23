@@ -1,9 +1,11 @@
 """Keep the dynamic-Any boundary inventory in step with the shipped opt-ins.
 
 docs/dynamic-any-boundaries.md gives every lib/ and ports/json_repair/ module that opts in to
-dynamic Any a row: its consumer, retained boundary and containment debt (the admission rule of
-docs/dynamic-any.md). An opt-in without a row, or a row naming a module that does not opt in,
-fails here. Whether a row's reasoning holds remains a review question.
+dynamic Any a row: its status, consumer, retained boundary and containment debt (the admission
+rule of docs/dynamic-any.md). An opt-in without a row, or a row naming a module that does not opt
+in, fails here. So does a row whose status is neither a contract that links a test in the
+checkout (a caller that uses the module's Any values as such) nor a debt that links the issue
+whose work removes the opt-in. Whether a row's reasoning holds remains a review question.
 """
 
 import re
@@ -25,6 +27,10 @@ SECTIONS = {
 }
 # Shipped and maintained code whose opt-ins need rows; tests exercise dynamic behavior on purpose.
 SCANNED = ("lib", "ports")
+# A row's second column: "contract: why ([test](../tests/...py))" or "debt: why ([#N](issue URL))".
+STATUS = re.compile(r"(contract|debt): \S")
+TEST_LINK = re.compile(r"\]\((\.\./tests/[^)#\s]+\.py)\)")
+ISSUE_LINK = re.compile(r"\]\(https://github\.com/den-run-ai/pystachy/issues/[0-9]+\)")
 
 
 def opted_in(root):
@@ -52,6 +58,45 @@ def sections(text):
             current.append(re.findall(r"`([^`]+)`", first))
     # (each table's first row is its header, which names no module)
     return {title: rows[1:] for title, rows in names.items()}
+
+
+def statuses(text):
+    """Each inventory section's rows as (first-column text, second-column text), headers excluded.
+    Neither column holds a "|" (the later, free-text columns may escape one)."""
+    rows = {}
+    current = None
+    for line in text.splitlines():
+        if line.startswith("## "):
+            current = rows.setdefault(line[3:].strip(), [])
+        elif current is not None and line.startswith("|") and not re.fullmatch(r"\|[-| :]*\|", line):
+            cells = line.split("|")
+            current.append((cells[1].strip(), cells[2].strip() if len(cells) > 2 else ""))
+    return {title: found[1:] for title, found in rows.items()}
+
+
+def status_problems(root, text):
+    """Rows of the inventory sections whose status is not a contract with a test that exists
+    under root or a debt with an issue, as messages."""
+    found = []
+    tables = statuses(text)
+    for title in SECTIONS:
+        for name, cell in tables.get(title, []):
+            match = STATUS.match(cell)
+            if match is None:
+                found.append(f"'{title}' row {name} has no status: its second column starts with "
+                             "'contract: ' or 'debt: '")
+            elif match.group(1) == "contract":
+                links = TEST_LINK.findall(cell)
+                if not links:
+                    found.append(f"'{title}' row {name} is a contract without a test link: link a test "
+                                 "in which a caller uses the module's Any values (../tests/...py)")
+                for link in links:
+                    if not (root / "docs" / link).resolve().is_file():
+                        found.append(f"'{title}' row {name} links {link}, which does not exist")
+            elif ISSUE_LINK.search(cell) is None:
+                found.append(f"'{title}' row {name} is a debt without an issue link: link the issue "
+                             "whose work removes the opt-in")
+    return found
 
 
 def resolve(root, base, kind, name):
@@ -92,7 +137,7 @@ def problems(root, text):
                      "retained boundary and containment debt (docs/dynamic-any.md#admission-and-containment)")
     for path in sorted(listed - actual):
         found.append(f"{path} has an inventory row but does not opt in: remove or update the row")
-    return found
+    return found + status_problems(root, text)
 
 
 class InventoryTests(unittest.TestCase):
@@ -120,14 +165,17 @@ class ControlTests(unittest.TestCase):
             path.write_bytes(text if isinstance(text, bytes) else text.encode("utf-8"))
         return root
 
-    INVENTORY = ("# Dynamic library boundaries\n\n## Library modules\n\n| Module | Boundary | Debt |\n|---|---|---|\n"
-                 "| `pkg._inner` | open | none |\n| `single` | open | none |\n\n"
-                 "## JSON repair port modules\n\n| Modules | Boundary | Debt |\n|---|---|---|\n"
-                 "| `a.py`, `sub/b.py` | open | none |\n")
+    CONTRACT = "contract: a caller reads it as Any ([test](../tests/programs/area/case.py))"
+    DEBT = "debt: a compiler limit ([#1](https://github.com/den-run-ai/pystachy/issues/1))"
+    INVENTORY = ("# Dynamic library boundaries\n\n## Library modules\n\n| Module | Status | Boundary | Debt |\n|---|---|---|---|\n"
+                 f"| `pkg._inner` | {CONTRACT} | open | none |\n| `single` | {DEBT} | open | none |\n\n"
+                 "## JSON repair port modules\n\n| Modules | Status | Boundary | Debt |\n|---|---|---|---|\n"
+                 f"| `a.py`, `sub/b.py` | {CONTRACT} | open | none |\n")
     PRAGMA = "# pystachy: dynamic-any\nx = 1\n"
 
     def base_files(self):
-        return {"lib/pkg/__init__.py": "x = 1\n", "lib/pkg/_inner.py": self.PRAGMA,
+        return {"tests/programs/area/case.py": "print(1)\n",
+                "lib/pkg/__init__.py": "x = 1\n", "lib/pkg/_inner.py": self.PRAGMA,
                 "lib/single/__init__.py": "# a comment\n\n" + self.PRAGMA,
                 "ports/json_repair/a.py": self.PRAGMA, "ports/json_repair/sub/b.py": self.PRAGMA}
 
@@ -154,7 +202,7 @@ class ControlTests(unittest.TestCase):
 
     def test_unknown_duplicate_and_missing_entries_fail(self):
         text = self.INVENTORY.replace("| `single` |", "| `single`, `missing.mod` |")
-        text += "| `a.py` | again | none |\n| no module | x | y |\n"
+        text += f"| `a.py` | {self.DEBT} | again | none |\n| no module | {self.DEBT} | x | y |\n"
         found = problems(self.tree(self.base_files()), text)
         self.assertIn("'Library modules' lists `missing.mod`, which is not a module under lib/", found)
         self.assertIn("ports/json_repair/a.py has more than one inventory row", found)
@@ -164,6 +212,28 @@ class ControlTests(unittest.TestCase):
         text = self.INVENTORY.split("## JSON repair")[0]
         found = problems(self.tree(self.base_files()), text)
         self.assertIn("inventory section '## JSON repair port modules' with a table is missing", found)
+
+    def test_a_status_must_be_a_contract_with_a_test_or_a_debt_with_an_issue(self):
+        root = self.tree(self.base_files())
+        cases = {
+            "open boundary": "has no status",
+            "contract: callers use it": "is a contract without a test link",
+            "contract: see ([test](../tests/programs/area/missing.py))": "links ../tests/programs/area/missing.py, which does not exist",
+            "debt: a compiler limit": "is a debt without an issue link",
+            "debt: see ([test](../tests/programs/area/case.py))": "is a debt without an issue link",
+        }
+        for cell, message in cases.items():
+            found = problems(root, self.INVENTORY.replace(f"| `single` | {self.DEBT} |", f"| `single` | {cell} |"))
+            self.assertEqual(len(found), 1, cell)
+            self.assertIn("'Library modules' row `single` " + message, found[0])
+
+    def test_a_contract_links_a_test_and_not_another_file(self):
+        files = self.base_files()
+        files["docs/note.py"] = "print(1)\n"
+        text = self.INVENTORY.replace("../tests/programs/area/case.py", "note.py")
+        found = problems(self.tree(files), text)
+        self.assertEqual(len(found), 2)
+        self.assertTrue(all("is a contract without a test link" in m for m in found))
 
     def test_non_python_files_and_tests_are_not_scanned(self):
         files = self.base_files()
