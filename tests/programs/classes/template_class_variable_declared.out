@@ -1,0 +1,5 @@
+2 2 4 2 1 1 box
+10 10 20 10 9 9 ['t'] True
+crate crate crate crate crate
+0 15 30 15 15 case own case
+[exit 0]
