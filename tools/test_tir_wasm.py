@@ -519,6 +519,41 @@ entry:
                 self.assertEqual([i.keep for i in main.blocks[0].code], kept)
                 self.assertEqual(emitter.rooted, {"@make", "@main.init"})   # (both may allocate and return)
 
+    def test_a_pointer_into_a_kept_object_needs_no_root_of_its_own(self):
+        # The collector moves nothing and finds an object from any pointer into it: a word's
+        # address, a generator's promise or a reference cast is kept by its base where that is
+        # live, or is a reference parameter. Not where the base is dead.
+        text = """module complete {
+}
+function @main.init() -> None kind=block {
+entry:
+  ret
+}
+function @use(a: list[int], n: int) -> None {
+entry:
+  %t0 = rt entry=list.new_atomic (int 2) : list[int]
+  %t1 = mach.addr element=int (%ptr %t0, int 1) : %ptr
+  %t2 = cast (list[int] %t0) : %ptr
+  %t3 = mach.addr element=int (%ptr %a0, int 1) : %ptr
+  %t4 = rt entry=list.new_atomic (int 3) : list[int]
+  %t5 = mach.addr element=int (%ptr %t4, int 1) : %ptr
+  %t9 = rt entry=list.new_atomic (int 4) : list[int]
+  mach.store (%ptr %t1, int 1)
+  mach.store (%ptr %t2, int 1)
+  mach.store (%ptr %t3, int 1)
+  mach.store (%ptr %t5, int 1)
+  rt entry=list.clear (list[int] %t0) : None
+  ret.none
+}
+"""
+        emitter = T.Emitter(T.parse(text), False, True)
+        emitter.module()
+        use = [fn for fn in emitter.funcs if fn.name == "@use"][0]
+        calls = [i for b in use.blocks for i in b.code if i.op == "rt" and i.fields["entry"] == "list.new_atomic"]
+        # %t0 keeps %t1 and %t2, %a0 keeps %t3; %t5's base %t4 is dead, so it keeps its own root
+        self.assertEqual(sorted(calls[2].keep), ["%a0", "%t0", "%t5"])
+        self.assertEqual(sorted(calls[1].keep), ["%a0", "%t0"])
+
     def test_lines_section_names_each_call_at_its_module_offset(self):
         # runtime.c's tracebacks find a frame's line by the module offset of its call (V8's
         # positions), through compact locals' rewrite and guest roots' frames alike
