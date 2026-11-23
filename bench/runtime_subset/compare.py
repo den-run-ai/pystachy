@@ -45,9 +45,9 @@ COUNTS = {"scalar": 120000000, "range": 60000000, "power": 60000000,
           "dict-set": 100000000, "dict-get": 150000000, "dict-get-large": 60000000, "dict-str": 60000000,
           "dict-tuple": 30000000, "dict-churn": 40000000, "dict-iterate": 600000, "dict-copy": 200000,
           "dict-pop": 150000, "dict-columns": 300000, "dict-setdefault": 60000000,
-          "walk-repr-ints": 400000, "walk-repr-strs": 300000, "walk-repr-floats": 150000, "walk-repr-nested": 60000,
-          "walk-eq-tuples": 1000000, "walk-eq-dicts": 600000, "walk-sort-tuples": 40000, "walk-in-tuples": 1500000,
-          "walk-order-lists": 10000000}
+          "walk-repr-ints": 800000, "walk-repr-strs": 750000, "walk-repr-floats": 250000, "walk-repr-nested": 250000,
+          "walk-eq-tuples": 800000, "walk-eq-dicts": 600000, "walk-sort-tuples": 50000, "walk-in-tuples": 1000000,
+          "walk-order-lists": 6000000}
 # The cases of a later migration have a source of their own, so that workload.py keeps the hash
 # that the first recorded report names.
 INT_TEXT_CASES = ("str-int", "str-int-short", "int-str", "int-str-short", "int-str-hex", "int-str-padded")
