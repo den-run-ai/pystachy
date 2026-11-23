@@ -1770,6 +1770,25 @@ def gen_class_attr(self, cn: Node, a: str) -> Val:
         self.dyn_id_read(v, ci.fglob[a] + ".box")
     return v
 
+def gen_class_stores(self, ns: list[Node], cls: str, c: str) -> None:
+    # the attributes the program assigns through a class's name (C.x = v, C.x += v), as
+    # cvar_stores finds them, before the classes' fields are declared (Gen.cstores): what a
+    # class template's specialization that a declaration's annotation makes goes by (specialize).
+    # In the body of a class method of class c, its parameter cls names c, which declare_fn has
+    # not written in its place yet
+    for n in ns:
+        if n.kind == "assign" or ((n.kind == "augassign" or n.kind == "annassign") and len(n.kids) > 0):  # (no list made at other nodes)
+            ts: list[Node] = n.kids[:-1] if n.kind == "assign" else [n.kids[0]]
+            while len(ts) > 0:
+                t = ts.pop()
+                if t.kind == "tuple" or t.kind == "starred":
+                    ts.extend(t.kids)
+                elif t.kind == "attr" and t.kids[0].kind == "name" and cls != "" and t.kids[0].s == cls:
+                    self.cstores[c + "." + t.s] = True
+                elif t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s in self.classes:
+                    self.cstores[t.kids[0].s + "." + t.s] = True
+        self.class_stores(n.kids, cls, c)
+
 def gen_cvar_stores(self, ns: list[Node]) -> None:
     # the class attributes the program assigns through their class (C.x = v, C.x += v; a class
     # method's cls.x is C.x): those of a plain class become class variables (self.cvars), read
@@ -1793,9 +1812,17 @@ def gen_cvar_stores(self, ns: list[Node]) -> None:
                         h = self.default_home(self.classes[c], t.s)
                         for x in self.classes.values():
                             related = self.classes[c].tag > 0 and x.tag > 0 and (self.derives(c, x.name) or self.derives(x.name, c))
-                            if t.s in x.ftypes and (related or (t.s in x.fdefault and self.default_home(x, t.s) is h)):
+                            if t.s in x.ftypes and (related or (t.s in x.fdefault and self.cvar_home(x, t.s) is h)):
                                 self.cvars[x.name + "." + t.s] = True
         self.cvar_stores(n.kids)
+
+def gen_cvar_home(self, x: ClassInfo, a: str) -> ClassInfo:
+    # the class whose class body binds class attribute a of x (default_home), a class template
+    # for its specializations, which share its class variables (specialize)
+    h = self.default_home(x, a)
+    while h.origin in self.classes and a in self.classes[h.origin].fdefault and self.classes[h.origin].fdefault[a] is h.fdefault[a]:
+        h = self.default_home(self.classes[h.origin], a)
+    return h
 
 def gen_cvar(self, cn: Node, a: str) -> ClassInfo:
     # the class that C.a = ... assigns a class variable of (see cvar_stores), checked

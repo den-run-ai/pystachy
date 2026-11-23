@@ -1,0 +1,9 @@
+%a/Style/6 %1/Sub/6 %7/Fixed/6 !2.5/Loud/6 %d/Deep/6 #4/Deeper/6
+% % % ! % # True
+@a/Style/6 @1/Sub/6 @7/Fixed/6 !2.5/Loud/6 @d/Deep/6 #4/Deeper/6
+@ @ @ ! @ # @
+& own & ! & # & !
+&1/Style/9 &2/Sub/9 &3/Fixed/9 9 9 9
+1 1 1 2 2
+9 9 9 10 10
+[exit 0]
