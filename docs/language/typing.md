@@ -1060,8 +1060,11 @@ for another implementation.
 Orderings, dict keys and set elements, searches and sorts of containers of protocol values
 (`in` a list, `count()`, `index()`, `sort()`, `min()`, `max()`), `id()`, `type()` and other
 reflection, `isinstance()` with another type and class patterns are compilation errors.
-Converting one protocol's value to another protocol, and to or from a dynamic `Any` value, is
-not supported. A union's value converts once narrowed to one class; functions and `Callable`
+A protocol's value stored as [`object`](#object), or given to a dynamic `Any` value, is its
+object, as if the object had been stored ([test](../../tests/programs/classes/protocol_as_object.py),
+[`Any`](../../tests/programs/classes/protocol_as_any.py)); converting one protocol's value to
+another protocol, and an `Any` value to a protocol's, is not supported. A union's value converts
+once narrowed to one class; functions and `Callable`
 values are not implementations (annotate a callback with `Callable[[A], R]` rather than a
 protocol with `__call__`).
 
@@ -1109,9 +1112,9 @@ values: list[object] = [1, 2.5, True, "s", b"b", [1], Point(0, 0), int, None]
 It is the stored interface that every type implements, with no method of its own: a value of
 `object` holds the value it was given, not a copy, so a list stored as `object` and changed
 through its typed name shows the change. Numbers, strs, bytes, containers, objects of the
-program's classes, class objects, exceptions, `None` and `Any` values can be values of `object`;
-functions and `Callable` values, exception classes, and values of a protocol (convert the object
-itself) cannot. A list, dict or set display stored as `object` that is empty, or whose items no
+program's classes, class objects, exceptions, `None`, `Any` values and values of a protocol (their
+object) can be values of `object`; functions and `Callable` values and exception classes cannot.
+A list, dict or set display stored as `object` that is empty, or whose items no
 one type or union holds, holds values of `object` (a dict's keys are strs where it has none)
 ([test](../../tests/programs/classes/object_displays.py)); in a module that opts in to
 [dynamic `Any`](../dynamic-any.md), an empty list or dict display holds `Any` values, as its

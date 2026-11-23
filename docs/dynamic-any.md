@@ -277,10 +277,11 @@ records current failures and their owning issues. These remain compatibility gap
 | Functions, bound methods, closures and `Callable` objects | Retain their function, receiver or environment. |
 | Unions of supported values | Box the member selected by the union's tag. |
 
-Values of a [protocol](language/typing.md#protocols-and-stored-interfaces) do not cross
-in either direction yet: the box of a protocol value is not its object, and the protocol's
-table is chosen from the static type it converts from. Typed protocol storage remains
-separate from dynamic `Any` storage. [Values of `object`](language/typing.md#object) cross both
+A value of a [protocol](language/typing.md#protocols-and-stored-interfaces) becomes an `Any`
+value through its object, as a value of `object` that holds it does
+(`tests/programs/classes/protocol_as_any.py`); an `Any` value does not become a protocol's
+value yet: the protocol's table is chosen from the static type it converts from. Typed protocol
+storage remains separate from dynamic `Any` storage. [Values of `object`](language/typing.md#object) cross both
 ways: the value one holds becomes an `Any` value as a value of its type does (`None` the `None`
 box), as does a view of the container one holds, and an `Any` value becomes one that holds its
 box, whose operations are `Any`'s (a view of an `Any` container reads it by them too)

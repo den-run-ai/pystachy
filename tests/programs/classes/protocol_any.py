@@ -1,5 +1,6 @@
-# error: protocol_any.py:16: error: a value of Named, an interface, cannot become an Any value yet (its box is not its object)
 # pystachy: dynamic-any
+# a value of a protocol as an Any value: its object, which the protocol's box is not
+# (protocol_as_any.py: its operations)
 from typing import Any, Protocol
 
 
@@ -14,4 +15,4 @@ class A:
 
 x: Named = A()
 box: Any = x
-print(box)
+print(box.name(), box is x, isinstance(box, A))

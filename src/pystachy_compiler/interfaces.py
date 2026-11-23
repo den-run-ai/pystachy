@@ -520,10 +520,8 @@ def gen_object_impl(self, t: str) -> str:
         return f"a function or Callable value as a value of object is not supported yet: call it, or store a {typestr(t)} where one is expected"
     if t == "exctype" or u == "exctype":
         return "an exception class as a value of object is not supported yet (an exception object is)"
-    if self.is_view(u):
-        return ""  # (a view of a value of object's container: that value, view_slot)
-    if self.is_iface(u):
-        return f"a value of {typestr(u)} as a value of object is not supported: convert the object itself"
+    if self.is_view(u) or self.is_iface(u):
+        return ""  # (a view of a value of object's container: that value, view_slot; a protocol's value: its object, protocol_object)
     if is_union(u):
         for m in umembers(u):
             why = self.object_impl(m)
@@ -545,6 +543,8 @@ def gen_to_object(self, v: Val) -> Val:
         return v
     if self.is_view(v.t):
         return self.cast(v, OBJECT, "view")
+    if self.is_iface(unopt(v.t)):
+        return protocol_object(self, Val(v.v, unopt(v.t)))
     why = self.object_impl(v.t)
     if why != "":
         self.err(f"expected object, got {typestr(v.t)}: {why}")
@@ -584,6 +584,15 @@ def gen_to_object(self, v: Val) -> Val:
     self.br(end)
     self.place(end)
     return Val(self.phi(ph), OBJECT)
+
+
+def protocol_object(self, v: Val) -> Val:
+    # v, a value of a protocol, as a value of object: None as None, else its object, by the entry
+    # of its implementation's table, which makes a value of object of it as to_object makes one of
+    # a value of its type (the protocol's box is not the object's: its table is the protocol's)
+    self.object_iface()  # (object's, which a program that stores no value as object has not made)
+    e = mk("name", "_o", self.line, [])
+    return self.iface_apply(v, "object()", [], OBJECT, e, "object", [], "object", v, v)
 
 
 def gen_dyn_object(self, v: Val) -> Val:
@@ -1333,6 +1342,8 @@ def gen_iface_none(self, none: str, a: Val, b: Val) -> Val:
         return Val(self.sconst("None"), "str")
     if none == "dyn":
         return Val(self.rtdata("pys_dyn_none_box"), "dyn")  # (None as an Any value: object_dyn)
+    if none == "object":
+        return Val("null", OBJECT)  # (None as a value of object: protocol_object)
     if none.startswith("type()."):
         return Val(self.sconst("builtins" if none == "type().__module__" else "NoneType"), "str")  # (object_type_attr)
     if none.startswith("raise:"):

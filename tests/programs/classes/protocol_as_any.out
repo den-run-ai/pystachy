@@ -1,0 +1,6 @@
+P1 True True True False
+D2 True True False True
+D(a=2) D(a=2) D(a=2)
+True 3 True
+True
+[exit 0]
