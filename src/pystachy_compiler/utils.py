@@ -10,6 +10,7 @@ from src.pystachy_compiler.llvm_abi import llvm_decl
 from src.pystachy_compiler.names import own_name, short
 from src.pystachy_compiler.specs import (
     BIG,
+    BIGLL,
     BIGOPT,
     CODECS,
     COMPLEXC,
@@ -124,7 +125,7 @@ def lt(t: str) -> str:
     if t == "%slot" or t.startswith("*"):
         return "i64"  # (a packed slot *T, the eight-byte word that holds a T, or %slot, opaque bits)
     if t == "int+":
-        return "{i64, ptr}"  # (a promoting int: its 64-bit value, and its Mpz or null, bigints.py)
+        return BIGLL  # (a promoting int: its 64-bit value, and its Mpz or null, bigints.py)
     return "ptr"
 
 

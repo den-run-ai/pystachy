@@ -4,7 +4,7 @@ from src.pystachy_compiler.diagnostics import fail, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, slot_register, tmpname, one_num
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.lower_module import const_slot, struct_types
-from src.pystachy_compiler.specs import CHECKED, CLASSREC_LL, COMPLEXC, CONTAINER_HEADERS, DYNTYPE_LL, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
+from src.pystachy_compiler.specs import BIGLL, CHECKED, CLASSREC_LL, COMPLEXC, CONTAINER_HEADERS, DYNTYPE_LL, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, LIST_ITEMS, LIST_ITEMS_LL, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, gelem, generator_identity, generator_slots, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
 
 
@@ -405,10 +405,10 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     elif op == "ptr.cmp":
         o.append(f"  {tmpname(i.r[0])} = icmp {ICMP[i.s]} ptr {i.a[0].v}, {i.a[1].v}")
     elif op == "big.make":
-        o.append(f"  {tmpname(i.r[0])} = insertvalue {{i64, ptr}} undef, i64 {i.a[0].v}, 0")
-        o.append(f"  {tmpname(i.r[1])} = insertvalue {{i64, ptr}} {tmpname(i.r[0])}, ptr {i.a[1].v}, 1")
+        o.append(f"  {tmpname(i.r[0])} = insertvalue {BIGLL} undef, i64 {i.a[0].v}, 0")
+        o.append(f"  {tmpname(i.r[1])} = insertvalue {BIGLL} {tmpname(i.r[0])}, ptr {i.a[1].v}, 1")
     elif op == "big.lo" or op == "big.hi":
-        o.append(f"  {tmpname(i.r[0])} = extractvalue {{i64, ptr}} {i.a[0].v}, {0 if op == 'big.lo' else 1}")
+        o.append(f"  {tmpname(i.r[0])} = extractvalue {BIGLL} {i.a[0].v}, {0 if op == 'big.lo' else 1}")
     elif op == "br":
         o.append(f"  br label %{i.b[0]}")
     elif op == "cbr":
@@ -527,9 +527,9 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append(f"  store i64 {kind}, ptr {tmpname(i.r[0])}")
     elif op == "list.load":
         # the item of a list at an index within its length (listget): l->a[index], as runtime.c
-        # lays a List out ({len, cap, a}), in the 8-byte slot pys_list_get would have returned
+        # lays a List out (RTRECORDS), in the 8-byte slot pys_list_get would have returned
         r = i.r
-        o.append(f"  {tmpname(r[1])} = getelementptr inbounds {{i64, i64, ptr}}, ptr {i.a[0].v}, i64 0, i32 2")
+        o.append(f"  {tmpname(r[1])} = getelementptr inbounds {LIST_ITEMS_LL}, ptr {i.a[0].v}, i64 0, i32 {LIST_ITEMS}")
         o.append(f"  {tmpname(r[2])} = load ptr, ptr {tmpname(r[1])}{self.list_tag('items')}")
         o.append(f"  {tmpname(r[3])} = getelementptr inbounds i64, ptr {tmpname(r[2])}, i64 {i.a[1].v}")
         o.append(f"  {tmpname(r[0])} = load i64, ptr {tmpname(r[3])}{self.list_tag('slot')}")
@@ -537,7 +537,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         # l->a[index] = item, at an index within its length (listguard), as pys_list_set stores it
         # where the list has no identity companion (ircheck: no list of the program has one)
         r = i.r
-        o.append(f"  {tmpname(r[0])} = getelementptr inbounds {{i64, i64, ptr}}, ptr {i.a[0].v}, i64 0, i32 2")
+        o.append(f"  {tmpname(r[0])} = getelementptr inbounds {LIST_ITEMS_LL}, ptr {i.a[0].v}, i64 0, i32 {LIST_ITEMS}")
         o.append(f"  {tmpname(r[1])} = load ptr, ptr {tmpname(r[0])}{self.list_tag('items')}")
         o.append(f"  {tmpname(r[2])} = getelementptr inbounds i64, ptr {tmpname(r[1])}, i64 {i.a[1].v}")
         o.append(f"  store i64 {i.a[2].v}, ptr {tmpname(r[2])}{self.list_tag('slot')}")
