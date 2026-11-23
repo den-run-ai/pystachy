@@ -2,14 +2,14 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names, numeric_statement
 from src.pystachy_compiler.bigints import converts
-from src.pystachy_compiler.builtin_bases import BWORDS, has_def
+from src.pystachy_compiler.builtin_bases import has_def
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, has_hook, hook_missing, hook_prop, hook_read, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, COMPLEXC, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, OBJECTC, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, COMPLEXC, CONTAINER_HEADERS, DISPATCH_INLINE, EXCEPTIONS, GLUE, HASATTR, MODATTRS, OBJECTC, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.unions import ANNTYPES, ann_open, ann_returns, ann_site, ann_takes, field_value
@@ -176,10 +176,16 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
                 return self.exit_value(vals)
             return self.exc_value("OSError" if f.s == "IOError" or f.s == "EnvironmentError" else f.s, vals)
         return self.builtin(f.s, args, want, resultsoft)
-    if f.kind == "attr" and f.s == "__class__" and self.refl_typeof(f) is not None and self.class_value_named(unopt(self.dry(f.kids[0]))) and (not self.dyn_policy(self.line) or is_clsval(self.dry(f))):
-        # o.__class__(args): a call of the class object of o's class (class_values.py)
-        return self.obj_call(self.expr(f, ""), args, want, resultsoft)
     if f.kind == "attr":
+        receiver = f.kids[0]
+        # The result of a method call is already a value. Capture it once before
+        # probing which __class__ it has, including a subclass's shadowing member.
+        # Otherwise each probe recompiles the whole receiver in a chain of calls.
+        if f.s == "__class__" and receiver.kind == "call" and receiver.kids[0].kind == "attr":
+            f = mk("attr", f.s, f.line, [self.vnode(self.expr(receiver, ""))])
+            self.line = f.line
+        if f.s == "__class__" and self.refl_typeof(f) is not None and self.class_value_named(unopt(self.dry(f.kids[0]))) and (not self.dyn_policy(self.line) or is_clsval(self.dry(f))):
+            return self.obj_call(self.expr(f, ""), args, want, resultsoft)
         c = self.curfn.cls
         if c != "" and self.classes[c].exc != "" and f.kids[0].kind == "name" and f.kids[0].s not in self.ltype and self.derives(c, f.kids[0].s) and f.kids[0].s != c and len(args) > 0 and args[0].kind == "name" and len(self.curfn.params) > 0 and args[0].s == self.curfn.params[0] and (f.kids[0].s in self.classes or not self.bound(f.kids[0].s)):
             # Base.m(self, args) in a method of an exception class: super().m(args) for its base
@@ -221,7 +227,7 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         self.mcall = n
         r = self.method(o, f.s, args, want, resultsoft)
         if f.s != "close" and r.t != BFILE:  # (__enter__() and __iter__() return the file: it stays open)
-            self.close_temp(f.kids[0], o)
+            self.close_temp(receiver, o)
         return r
     if f.kind == "name":
         # (a union's value that a test narrowed to its Callable member is that Callable here)
@@ -901,7 +907,7 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         if s.t != "str":
             self.err(f"fromhex() argument must be str, not {tname(s.t)}")
         return Val(self.rt("pys_bytes_fromhex", "ptr", [f"ptr {s.v}"]), "bytes")
-    if len(self.bsubn) > 0 and o.t.startswith("fn[b:") and o.t[5:-1] in BWORDS and len(args) > 0 and args[0].kind in ["name", "attr"] and self.bkind(unopt(self.target_type(args[0], True))) == o.t[5:-1]:
+    if len(self.bsubn) > 0 and o.t.startswith("fn[b:") and o.t[5:-1] in CONTAINER_HEADERS and len(args) > 0 and args[0].kind in ["name", "attr"] and self.bkind(unopt(self.target_type(args[0], True))) == o.t[5:-1]:
         # list.m(o, args) of an object o of a class deriving from list, as its methods name it
         # (list.append(self, x), list.__init__(self, xs)): list's own m (builtin_bases.py)
         me = self.expr(args[0], "")
@@ -1559,7 +1565,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         self.err("importlib.import_module() is supported where a string constant names the module and the call binds one variable or stands alone (mod = import_module(\"a.b\")), outside a class body, through a name that only imports of importlib bind and one has bound before the call: a program's modules are compiled with it, so none is imported by a name it computes, and a module is no value")
     if identity_abi(f) and len(f.node.kids) == 3:
         self.numeric_proof(f, f.node.kids[2].kids)
-    if f.cls in self.classes and self.classes[f.cls].tag > 0 and f.deco == "" and len(pre) > 0:
+    if f.cls in self.classes and self.classes[f.cls].tag > 0 and f.deco == "" and len(pre) > 0 and not (pre[0].v == "" and f.cls in self.tmpl):
+        # (not a template hierarchy's class template's __init__ for the object it makes: below)
         if pre[0].t not in self.classes or not self.derives(pre[0].t, f.cls):
             self.err(f"{short(f.cls)}.{f.name}() needs an instance of {short(f.cls)}")
         if not direct:
@@ -1742,7 +1749,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             union_args = self.constructor_unions(f.cls, [v.t for v in vals[1:]])
             for j in range(len(union_args)):
                 vals[j + 1] = self.pcoerce(vals[j + 1], union_args[j], f, j + 1)
-        sc = self.specialize(f.cls, [v.t for v in vals[1:]], self.want_tvars(f.cls, context), False, self.literal_args(f, args) if self.literal_class(f.cls) else {})
+        # (of the class called, whose __init__ f is: a template hierarchy's member's is its base's)
+        sc = self.specialize(pre[0].t, [v.t for v in vals[1:]], self.want_tvars(f.cls, context), False, self.literal_args(f, args) if self.literal_class(f.cls) else {})
         vals[0] = self.new_obj(sc)
         pre[0] = vals[0]
         f = self.classes[sc].methods["__init__"]

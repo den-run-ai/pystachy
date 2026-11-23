@@ -6,6 +6,7 @@ reach the program unchanged.
 """
 import os
 from pathlib import Path
+import struct
 import subprocess
 import sys
 import tempfile
@@ -16,6 +17,20 @@ COMPILER = os.environ.get("PYSTACHY_TEST_COMPILER", "")
 LLVM = os.environ.get("PYSTACHY_TEST_LLVM", "")
 
 
+def elf_sections(data):
+    """Return the section names of a 64-bit little-endian ELF executable."""
+    assert data[:6] == b"\x7fELF\x02\x01", "expected a 64-bit little-endian ELF executable"
+    (table,) = struct.unpack_from("<Q", data, 0x28)
+    size, count, names = struct.unpack_from("<HHH", data, 0x3A)
+    (strings,) = struct.unpack_from("<Q", data, table + names * size + 0x18)
+    found = set()
+    for index in range(count):
+        (name,) = struct.unpack_from("<I", data, table + index * size)
+        start = strings + name
+        found.add(data[start:data.index(b"\0", start)])
+    return found
+
+
 class CommandLine(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory(prefix="pystachy-cli-")
@@ -24,10 +39,11 @@ class CommandLine(unittest.TestCase):
         self.source = self.root / "g.py"
         self.source.write_text("import sys\nprint(sys.argv[1:])\n")
 
-    def pystachy(self, *args, llvm=None, path=None):
+    def pystachy(self, *args, llvm=None, path=None, cache=None, extra=None):
         command = [COMPILER] if COMPILER else [sys.executable, "-B", str(ROOT / "pystachy.py")]
         env = {k: v for k, v in os.environ.items() if not k.startswith("PYSTACHY_")}
-        env["PYSTACHY_CACHE"] = str(self.root / "cache")
+        env["PYSTACHY_CACHE"] = str(self.root / "cache") if cache is None else cache
+        env.update(extra or {})
         if path is not None:
             env["PATH"] = path
         if llvm is not None:
@@ -71,6 +87,27 @@ class CommandLine(unittest.TestCase):
         self.assertIn("opt: 20.1.8\n  expected LLVM major 18", result.stdout)
         self.assertFalse((self.root / "cache").exists())
 
+    def test_doctor_names_a_relative_cache_from_the_root(self):
+        here = os.path.realpath(self.root)
+        missing = str(self.root / "no LLVM")
+        for spelled, expected in (("rel", "rel"), ("./rel/x", "rel/x"), ("././rel", "rel")):
+            with self.subTest(cache=spelled):
+                result = self.pystachy("doctor", llvm=missing, cache=spelled)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn(f"Runtime cache: {here}/{expected}", result.stdout.splitlines())
+                self.assertFalse((self.root / "rel").exists())
+        # A checkout's compiler run by a relative path, with no PYSTACHY_CACHE: its build directory.
+        compiler = Path(COMPILER) if COMPILER else ROOT / "pystachy.py"
+        if not (compiler.parent / "runtime.c").is_file():
+            self.skipTest("the compiler is not beside its runtime")
+        command = ["./" + compiler.name] if COMPILER else [sys.executable, "-B", "./pystachy.py"]
+        env = {k: v for k, v in os.environ.items() if not k.startswith("PYSTACHY_")}
+        env["PYSTACHY_LLVM"] = missing
+        result = subprocess.run(command + ["doctor"], cwd=compiler.parent, env=env, capture_output=True,
+                                text=True, timeout=600)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(f"Runtime cache: {os.path.realpath(compiler.parent)}/build", result.stdout.splitlines())
+
     def test_a_file_named_like_help_is_still_compiled(self):
         (self.root / "--help").write_text("print(1)\n")
         result = self.pystachy("check", "--help")
@@ -80,7 +117,8 @@ class CommandLine(unittest.TestCase):
         for args, first in (([], "usage: pystachy run FILE.py"),
                             (["frob", "g.py"], "pystachy: error: unknown command 'frob'"),
                             (["frob"], "pystachy: error: unknown command 'frob'"),
-                            (["build"], "pystachy build: error: missing the source file")):
+                            (["build"], "pystachy build: error: missing the source file"),
+                            (["check", "--semantic"], "pystachy check: error: missing the source file")):
             with self.subTest(args=args):
                 result = self.pystachy(*args)
                 self.assertEqual(result.returncode, 2)
@@ -92,6 +130,35 @@ class CommandLine(unittest.TestCase):
         result = self.pystachy("build", "missing.py")
         self.assertEqual(result.returncode, 1)
         self.assertEqual(result.stderr, "missing.py:0: error: file not found\n")
+
+    def test_semantic_check_compiles_without_llvm_and_plain_check_only_parses(self):
+        (self.root / "a.py").write_text("async def f() -> int:\n    return 1\n\n\nprint(f)\n")
+        plain = self.pystachy("check", "a.py", llvm=str(self.root / "no LLVM"))
+        self.assertEqual((plain.returncode, plain.stdout, plain.stderr), (0, "", ""))
+        for args in (["check", "a.py", "--semantic"], ["check", "--semantic", "a.py"]):
+            with self.subTest(args=args):
+                result = self.pystachy(*args, llvm=str(self.root / "no LLVM"))
+                self.assertEqual((result.returncode, result.stdout), (1, ""))
+                self.assertEqual(result.stderr, "a.py:1: error: async functions are not supported\n")
+        result = self.pystachy("check", "g.py", "--semantic", "-O3", llvm=str(self.root / "no LLVM"))
+        self.assertEqual((result.returncode, result.stdout), (0, ""))
+        self.assertEqual(result.stderr, "pystachy check: warning: ignoring argument '-O3'\n")
+        self.assertFalse((self.root / "cache").exists())
+        (self.root / "--semantic").write_text("print(1)\n")  # a file of that name is still the one checked
+        result = self.pystachy("check", "--semantic", "a.py")
+        self.assertEqual((result.returncode, result.stdout), (0, ""))
+        self.assertEqual(result.stderr, "pystachy check: warning: ignoring argument 'a.py'\n")
+
+    def test_semantic_check_reports_the_rejection_corpus_as_ir_does(self):
+        # A spread of tests/errors cases (not those that need an import path or compile as runtime.py)
+        cases = sorted(p for p in (ROOT / "tests/errors").glob("*/*.py")
+                       if not p.with_suffix(".path").exists() and not p.name.startswith("rtmode_"))
+        for case in cases[:: max(1, len(cases) // 8)]:
+            with self.subTest(case=case.name):
+                ir = self.pystachy("ir", str(case))
+                check = self.pystachy("check", str(case), "--semantic")
+                self.assertEqual(ir.returncode, 1, ir.stderr)
+                self.assertEqual((check.returncode, check.stdout, check.stderr), (1, "", ir.stderr))
 
     def test_ignored_arguments_warn_and_the_command_still_succeeds(self):
         result = self.pystachy("ir", "g.py", "-O3", "-o")
@@ -108,6 +175,44 @@ class CommandLine(unittest.TestCase):
         self.assertEqual(result.stderr, "pystachy check: warning: ignoring argument 'other.py'\n")
         result = self.pystachy("check", "g.py")
         self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""))
+
+    def test_build_options_are_read_before_the_settings_they_replace(self):
+        # Without LLVM the build fails later, but never on the environment's tier, and the options
+        # are not reported as unused.
+        result = self.pystachy("build", "g.py", "-O1", "-g", "-o", "exe", llvm=str(self.root / "no LLVM"),
+                               extra={"PYSTACHY_AOT_OPT": "9"})
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("PYSTACHY_AOT_OPT must be", result.stderr)
+        self.assertNotIn("warning", result.stderr)
+        result = self.pystachy("build", "g.py", "-o", "exe", llvm=str(self.root / "no LLVM"),
+                               extra={"PYSTACHY_AOT_OPT": "9"})
+        self.assertEqual(result.stderr, "g.py:0: error: PYSTACHY_AOT_OPT must be 0, 1 or 2\n")
+
+    @unittest.skipUnless(LLVM, "set PYSTACHY_TEST_LLVM to build programs")
+    def test_build_options_match_their_settings(self):
+        def build(output, *args, extra=None):
+            result = self.pystachy("build", "g.py", "-o", output, *args, llvm=LLVM, extra=extra)
+            self.assertEqual((result.returncode, result.stdout), (0, ""), result.stderr)
+            run = subprocess.run([str(self.root / output), "x"], capture_output=True, text=True, timeout=60)
+            self.assertEqual((run.returncode, run.stdout), (0, "['x']\n"))
+            return result.stderr, (self.root / output).read_bytes()
+
+        _, default = build("default")
+        self.assertEqual(build("o0", "-O0")[1], build("o0env", extra={"PYSTACHY_AOT_OPT": "0"})[1])
+        self.assertNotEqual(build("o0", "-O0")[1], default)
+        self.assertEqual(build("o1", "-O1", extra={"PYSTACHY_AOT_OPT": "0"})[1],
+                         build("o1env", extra={"PYSTACHY_AOT_OPT": "1"})[1])
+        # A build gives the program line tables unless PYSTACHY_DEBUG_LINES=0; -g sets 1 for one build.
+        # (Every executable holds the string ".debug_line": the traceback reader looks the section up.)
+        lines = build("lines", "-g", extra={"PYSTACHY_DEBUG_LINES": "0"})[1]
+        self.assertEqual(lines, build("linesenv", extra={"PYSTACHY_DEBUG_LINES": "1"})[1])
+        self.assertIn(b".debug_line", elf_sections(lines))
+        self.assertIn(b".debug_line", elf_sections(default))
+        self.assertNotIn(b".debug_line", elf_sections(build("nolines", extra={"PYSTACHY_DEBUG_LINES": "0"})[1]))
+        warned, _ = build("o3", "-O3")
+        self.assertEqual(warned, "pystachy build: warning: ignoring argument '-O3'\n")
+        build("-g")  # -o's value, not the option
+        self.assertTrue((self.root / "-g").is_file())
 
     @unittest.skipUnless(LLVM, "set PYSTACHY_TEST_LLVM to run programs")
     def test_run_passes_every_later_argument_to_the_program(self):

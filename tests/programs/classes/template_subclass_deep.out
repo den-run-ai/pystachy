@@ -1,0 +1,10 @@
+base(1)
+middle<base>(2)
+leaf<middle<base>>(3)
+base(a)
+leaf<middle<base>>(b)
+base(0) 1
+middle<base>(5) 6
+fixed<middle<base>,x>(42) 43
+under<fixed<middle<base>,x>>(42) 43
+[exit 0]
