@@ -105,8 +105,9 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
 def gen_cls_kept(self, d: str, ci: ClassInfo) -> dict[str, bool]:
     # the class attributes for which cls stays d, the class that defines a class method, in the
     # copy of the method that ci has (materialize): those that a class method of d or of a class
-    # between them assigns through cls and that ci inherits, or binds in its class body without
-    # their being a class variable of it (cvar_stores saw no store through ci's name)
+    # between them assigns through cls and that are no class variable of ci, whose class body
+    # binds them (cvar_stores saw no store through ci's name). One that ci inherits is a class
+    # variable of both, and its store through ci is rejected, as any other class's (cvar)
     kept: dict[str, bool] = {}
     k = ci.name
     while k in self.classes:
@@ -115,7 +116,7 @@ def gen_cls_kept(self, d: str, ci: ClassInfo) -> dict[str, bool]:
                 found: dict[str, bool] = {}
                 cls_assigned(f.orig.kids[2].kids, f.orig.kids[0].kids[0].s, found)
                 for x in found:
-                    if (x in ci.fdefault and self.default_home(ci, x) is not ci) or ci.name + "." + x not in self.cvars:
+                    if ci.name + "." + x not in self.cvars:
                         kept[x] = True
         if k == d:
             break
@@ -159,11 +160,10 @@ def gen_materialize(self, f: FnInfo) -> None:
         # template's own defs, whose cls(...) makes the specialization that fits the arguments)
         c = self.classes[c].origin
     if f.clsdef != "" and c in self.classes:
-        # (cls.x = v for an x that the class inherits: CPython gives the class an x of its own,
-        # which is not supported, and an ordinary class's store is rejected (cvar). Under a
-        # class template it changed the x of the class that defines the method, where cls named
-        # that class, and programs that print what CPython prints that way compile: for such an
-        # x, cls stays that class, in its reads too, which then find what they found, #1744)
+        # (cls.x = v for an x that the class binds in its class body but that is no class
+        # variable of it: the store has no global to change, and changed the x of the class that
+        # defines the method, where cls named that class. For such an x cls stays that class, in
+        # its reads too, which then find what they found, #1744)
         kept = self.cls_kept(f.clsdef, self.classes[c])
         if len(kept) > 0:
             rename_attr(f.node.kids[2], f.orig.kids[0].kids[0].s, kept, f.clsdef)

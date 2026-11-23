@@ -1379,12 +1379,10 @@ class attribute its body binds again and `cls(...)` are its
 ([test](../../tests/programs/classes/template_subclass_class_method.py)), and `cls.x = v` changes
 the class's `x` where its class body binds `x`
 ([test](../../tests/programs/classes/template_subclass_cls_store_own.py)). For an `x` that the
-class inherits, `cls` is still the class that defines the method, in the method's reads of `x`
-too: the store changes that class's attribute, where CPython gives the class an `x` of its own and
-any other class's store is rejected
-([#1744](https://github.com/den-run-ai/pystachy/issues/1744);
-[test](../../tests/programs/classes/template_subclass_cls_store_kept.py) of programs that this
-leaves as CPython runs them). Called through a
+class inherits the store is rejected, as for any other class: CPython gives the class an `x` of
+its own
+([error test](../../tests/errors/classes/template_subclass_cls_store.py),
+[error test](../../tests/errors/classes/template_spec_subclass_cls_store.py)). Called through a
 location typed by a class that others derive from, `cls` is that class also for an object of a
 deriving class: calls of class methods are not dispatched on the object's class. A class in
 another module than the method's, and any class where a default value of the method is evaluated
