@@ -23,12 +23,11 @@ under load, about ten programs per corpus run. The runner wraps each WASI import
 JavaScript function. This avoids the affected fast-call path within the guest and leaves
 the embedding process's V8 flags alone.
 
-The command-line runner runs the guest on a worker thread with a 256 MiB stack. On Node's
+Both runners run the guest on a worker thread with a 256 MiB stack. On Node's
 main thread, V8 allows under 1 MiB, about 11,000 frames of a small recursive function, so a
 program that raised `sys.setrecursionlimit()` trapped where native code raises
 `RecursionError`. The runtime's stack floor bounds only the 8 MiB linear-memory stack:
-recursion past the engine's own stack still traps (status 134). Embedded runners use their
-caller's thread and its stack.
+recursion past the engine's own stack still traps (status 134).
 
 `wasm/build.sh program` runs `pystachy ir`, adapts the IR to wasm32 (`wasm32_ir.py`),
 compiles it with `clang --target=wasm32-wasi -O2` and links it with `wasm-ld` against the
@@ -169,12 +168,14 @@ await run(module, { tools: new Map([["lookup", id => "first"]]) });
 await run(module, { tools: new Map([["lookup", id => "second"]]) });
 ```
 
-Guest execution and callbacks are synchronous on the Node thread. Both runner
+Embedded guests run on a pool of worker threads that idle without keeping the process
+alive. A thread takes about 25 ms to start, so `createRunner` starts the first one while the
+caller compiles. Tool callbacks run synchronously on the calling thread while the guest
+waits for each reply. Both runner
 APIs accept an optional positive integer `executionTimeoutMs` per call. Expiry
-during instantiation or execution rejects the promise with
-`ERR_SCRIPT_EXECUTION_TIMEOUT`. Source compilation, linking and module
-compilation occur before the timer starts. A blocking native host call can
-delay interruption, and a tool may already have performed external work.
+during instantiation, execution or a tool call rejects the promise with
+`ERR_SCRIPT_EXECUTION_TIMEOUT` and ends the guest's thread. Source compilation, linking and module
+compilation occur before the timer starts. A tool may already have performed external work.
 A hard deadline over the complete request requires a separately supervised
 process. The Node host has no fuel accounting or suspend/resume API.
 

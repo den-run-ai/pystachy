@@ -5,8 +5,10 @@ import { readFile } from "node:fs/promises";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 import { WASI } from "node:wasi";
-import { isMainThread, Worker, workerData } from "node:worker_threads";
-import { toolImports } from "./tools.mjs";
+import {
+  isMainThread, MessageChannel, parentPort, receiveMessageOnPort, Worker, workerData,
+} from "node:worker_threads";
+import { checkTools, toolImports } from "./tools.mjs";
 
 const defaultRuntime = new URL("../build/wasm/runtime.wasm", import.meta.url);
 
@@ -35,19 +37,30 @@ function missingDispatcher(name) {
   return () => { throw new Error(`${name}: the program has no such dispatcher`); };
 }
 
+// Guests run on worker threads with a 256 MiB stack. V8 allows under 1 MiB on a host's main
+// thread: about 11,000 frames of a small recursive function, where Python's limit can allow more.
+const STACK_MB = 256;
+
 // Each runner retains only the compiled runtime module. A path or URL, bytes, or a compiled
 // WebAssembly.Module is accepted for both arguments. Each call gets fresh WASI and Wasm state.
 // args includes argv[0]. Embedded runs have no directory mounts and borrow their stdio fds.
 export function createRunner(runtimeSource = defaultRuntime) {
+  // (a guest thread takes about 25 ms to start: the first one starts now, while the caller compiles)
+  if (idleGuests.length === 0) idleGuests.push(guestThread());
   return runner(runtimeSource, false);
 }
 
-function runner(runtimeSource, cli) {
+// here: run on this thread, which the CLI and guest threads (below) do
+function runner(runtimeSource, cli, here = cli) {
   let compiledRuntime;
   async function run(source, {
     args = ["program"], env = {}, stdin = 0, stdout = 1, stderr = 2, tools, preopens, executionTimeoutMs,
   } = {}) {
     if (preopens !== undefined) throw new TypeError("directory mounts are unavailable in embedded runs");
+    checkTools(tools);
+    const { runInNewContext } = await import("node:vm");
+    // vm validates a deadline as it does for the run's own timer
+    if (executionTimeoutMs !== undefined) runInNewContext("0", {}, { timeout: executionTimeoutMs });
     const module = await compile(source);
     const [section] = WebAssembly.Module.customSections(module, "pystachy.data");
     let runtimeModule;
@@ -59,11 +72,11 @@ function runner(runtimeSource, cli) {
       });
       runtimeModule = await compiledRuntime;
     }
+    if (!here) return onGuestThread(module, runtimeModule, { args, env, stdin, stdout, stderr }, tools, executionTimeoutMs);
     const options = { args, env, stdin, stdout, stderr, tools };
     if (executionTimeoutMs === undefined) return instantiateAndRun(module, section, runtimeModule, options);
     // V8 can interrupt synchronous Wasm and JS across this call. Loading and
     // compilation have already finished. A blocking native host call can delay return.
-    const { runInNewContext } = await import("node:vm");
     const execute = () => instantiateAndRun(module, section, runtimeModule, options);
     return runInNewContext("execute()", { execute }, { timeout: executionTimeoutMs });
   }
@@ -205,12 +218,112 @@ async function main(argv) {
   });
 }
 
-// The CLI runs the guest on a worker thread with a 256 MiB stack: V8's own limit on the main
-// thread, under 1 MiB, ended a recursion that Python's limit allows after about 11,000
-// frames (wasm/README.md). The guest's stdio is the process's descriptors either way.
-const STACK_MB = 256;
+// Embedded runs take an idle guest thread or start one. A thread returns to the pool after a
+// run that ended normally, and is ended by a deadline. The caller's thread runs each tool while
+// the guest waits for its reply. Idle threads do not keep the process alive.
+const idleGuests = [];
 
-if (!isMainThread && workerData?.pystachyRun) {
+function guestThread() {
+  const signal = new SharedArrayBuffer(4);
+  const { port1, port2 } = new MessageChannel();
+  const worker = new Worker(new URL(import.meta.url), {
+    workerData: { pystachyGuest: true, signal, replies: port2 }, transferList: [port2],
+    resourceLimits: { stackSizeMb: STACK_MB },
+  });
+  worker.unref();
+  return { worker, wake: new Int32Array(signal), replies: port1 };
+}
+
+function timedOut(ms) {
+  return Object.assign(new Error(`Script execution timed out after ${ms}ms`), { code: "ERR_SCRIPT_EXECUTION_TIMEOUT" });
+}
+
+async function onGuestThread(module, runtimeModule, options, tools, timeoutMs) {
+  const { runInNewContext } = await import("node:vm");
+  const guest = idleGuests.pop() ?? guestThread();
+  const { worker, wake, replies } = guest;
+  worker.ref();
+  return new Promise((resolve, reject) => {
+    const deadline = timeoutMs === undefined ? undefined : performance.now() + timeoutMs;
+    let timer;
+    function finish(settle, value, reuse) {
+      clearTimeout(timer);
+      worker.off("message", message);
+      worker.off("error", failed);
+      worker.off("exit", exited);
+      if (reuse) {
+        worker.unref();
+        idleGuests.push(guest);
+      } else {
+        worker.terminate();
+      }
+      settle(value);
+    }
+    function stop() {
+      finish(reject, timedOut(timeoutMs), false);
+    }
+    function message(m) {
+      if (m.tool === undefined) {
+        if (m.error === undefined) finish(resolve, m.status, true);
+        else finish(reject, Object.assign(new Error(m.error.message), m.error.code ? { code: m.error.code } : {}), true);
+        return;
+      }
+      // a deadline also interrupts a tool that is still running when it passes
+      const call = () => tools.get(m.tool)(m.payload);
+      try {
+        const value = deadline === undefined ? call()
+          : runInNewContext("call()", { call }, { timeout: Math.max(1, Math.ceil(deadline - performance.now())) });
+        try {
+          replies.postMessage({ value });
+        } catch {
+          replies.postMessage({ value: undefined });
+        }
+      } catch (error) {
+        if (error?.code === "ERR_SCRIPT_EXECUTION_TIMEOUT") return stop();
+        replies.postMessage({ error: String(error?.message ?? error) });
+      }
+      Atomics.store(wake, 0, 1);
+      Atomics.notify(wake, 0);
+    }
+    function failed(error) {
+      finish(reject, error, false);
+    }
+    function exited(code) {
+      finish(reject, new Error(`the guest thread exited with status ${code}`), false);
+    }
+    worker.on("message", message);
+    worker.on("error", failed);
+    worker.on("exit", exited);
+    const names = tools === undefined ? undefined : [...tools].filter(([, f]) => typeof f === "function").map(([n]) => n);
+    worker.postMessage({ module, runtimeModule, options, names });
+    if (timeoutMs !== undefined) timer = setTimeout(stop, timeoutMs);
+  });
+}
+
+// A guest thread: each tool call posts the request, then blocks until the caller's thread
+// replies, so the guest's synchronous import returns the tool's result.
+function serveGuests({ signal, replies }) {
+  const wake = new Int32Array(signal);
+  parentPort.on("message", ({ module, runtimeModule, options, names }) => {
+    const tools = names === undefined ? undefined : new Map(names.map((name) => [name, (payload) => {
+      parentPort.postMessage({ tool: name, payload });
+      Atomics.wait(wake, 0, 0);
+      Atomics.store(wake, 0, 0);
+      const reply = receiveMessageOnPort(replies).message;
+      if (reply.error !== undefined) throw new Error(reply.error);
+      return reply.value;
+    }]));
+    runner(runtimeModule, false, true)(module, { ...options, tools }).then(
+      (status) => parentPort.postMessage({ status }),
+      (error) => parentPort.postMessage({ error: { message: String(error?.message ?? error), code: error?.code } }),
+    );
+  });
+}
+
+// The CLI also runs its guest on such a thread. The guest's stdio is the process's descriptors either way.
+if (!isMainThread && workerData?.pystachyGuest) {
+  serveGuests(workerData);
+} else if (!isMainThread && workerData?.pystachyRun) {
   process.exit(await main(workerData.argv));
 } else if (import.meta.main ?? (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url)) {
   const worker = new Worker(new URL(import.meta.url), {

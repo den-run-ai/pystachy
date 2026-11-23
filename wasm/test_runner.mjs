@@ -90,6 +90,18 @@ function recurse() {
   );
 }
 
+// Exit with the length of the reply to call("", ""), the code mode tool import.
+function toolCaller() {
+  return wasm(
+    section(1, 3, fn([i32, i32, i32, i32], [i32]), fn([i32], []), fn([], [])),
+    section(2, 2, imp("codemode", "call", 0, 0), imp("wasi_snapshot_preview1", "proc_exit", 0, 1)),
+    section(3, 1, 2),
+    section(5, 1, 0, 1),
+    section(7, 2, exp("memory", 2, 0), exp("_start", 0, 2)),
+    section(10, 1, body(0x41, 0, 0x41, 0, 0x41, 0, 0x41, 0, 0x10, 0, 0x10, 1)),
+  );
+}
+
 // Do finite CPU work in the normal entry point, or in the Wasm start section
 // that runs before the instance constructor returns. Both routes use the same loop.
 function countdown(entry, runAtInstantiation) {
@@ -151,6 +163,17 @@ test("execution deadlines interrupt command and reactor guests and leave the run
   assert.equal(await run(program(), { executionTimeoutMs: 2000 }), 17);
   assert.equal(await run(program()), 17);
   await assert.rejects(run(command(), { executionTimeoutMs: 0 }), { code: "ERR_OUT_OF_RANGE" });
+});
+
+test("embedded guests hold a million frames and wait for each tool on the caller's thread", { timeout: 60000 }, async () => {
+  const run = createRunner("unused-runtime.wasm");
+  assert.equal(await run(recurse()), 64);
+  const tools = new Map([["", () => "abc"]]);
+  assert.equal(await run(toolCaller(), { tools }), 3);
+  const hung = new Map([["", () => { for (;;); }]]);
+  await assert.rejects(run(toolCaller(), { tools: hung, executionTimeoutMs: 50 }), { code: "ERR_SCRIPT_EXECUTION_TIMEOUT" });
+  assert.equal(await run(toolCaller(), { tools, executionTimeoutMs: 2000 }), 3);
+  await assert.rejects(run(toolCaller(), { tools: [] }), /tools must be a Map/);
 });
 
 test("embedded runs cannot close or renumber borrowed stdio or mount directories", async (t) => {
