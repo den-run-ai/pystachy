@@ -118,8 +118,9 @@ The source compiler passes the finalized functions and declarations directly to 
 `build/wasm/wasm_from_source SOURCE.py OUT.wasm` compiles a file in one process. Use `- -`
 for UTF-8 source on stdin and binary Wasm on stdout. For existing module text, use
 `build/wasm/tir_wasm MODULE.tir OUT.wasm`. The shell build runs the source compiler on
-Python when the native executable is absent or older than a source it was built from. In fallback mode a named refusal reuses
-the same compilation's LLVM IR. Input errors and failed builds propagate to the caller.
+Python when the native executable is absent or older than a source it was built from. In
+fallback mode a named refusal reuses the same compilation's LLVM IR. Input errors and
+failed builds propagate to the caller.
 
 ## Calling tools from a Node host
 
