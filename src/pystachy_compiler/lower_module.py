@@ -546,6 +546,12 @@ def lower_extern(plan: ExternDecl) -> str:
         decl = f"@ffi.fp.{x} = internal global ptr null\n@ffi.lib.{x} = private unnamed_addr constant [{len(plan.library) + 1} x i8] c\"{llstr(plan.library)}\\00\"\n@ffi.sym.{x} = private unnamed_addr constant [{len(sym) + 1} x i8] c\"{llstr(sym)}\\00\""
     return (decl + "\n" if decl != "" else "") + f"define internal {lt(plan.result)} {plan.symbol}({', '.join(ps)}) {{\n" + "\n".join(code) + "\n}"
 
+def extension_entries(funcs: dict[str, FnInfo]) -> list[FnInfo]:
+    # pystachy ext: the functions CPython sees, in the order of pyx_exports (gen_pyext): the main
+    # module's public functions, which gen_validate_module admits (tools/typed_ir_text.py's
+    # module text declares them as entries)
+    return [f for f in funcs.values() if f.mod == "" and f.cls == "" and not f.name.startswith("_") and not f.extern]
+
 def gen_validate_module(self) -> None:
     # Admit the module before the finalized typed program is exposed. These
     # source restrictions do not depend on LLVM function bodies or wrappers.
@@ -556,9 +562,7 @@ def gen_validate_module(self) -> None:
     if self.ext == "":
         return
     letter = {"int": "i", "float": "f", "bool": "b", "str": "s", "None": "n"}
-    for f in self.funcs.values():
-        if f.mod != "" or f.cls != "" or f.name.startswith("_") or f.extern:
-            continue
+    for f in extension_entries(self.funcs):
         self.line = f.node.line
         if not f.pyexport:
             self.err(f"{f.name}() is public in extension module '{self.ext}' but not @export: CPython would not see it; export it or name it _{f.name}")
@@ -598,9 +602,7 @@ def gen_pyext(self) -> list[str]:
               "  invoke void @main.init() to label %ok unwind label %lp", "ok:", "  ret ptr null"] + pad + ["  ret ptr %e", "}"])
     tab: list[str] = []
     letter = {"int": "i", "float": "f", "bool": "b", "str": "s", "None": "n"}
-    for f in self.funcs.values():
-        if f.mod != "" or f.cls != "" or f.name.startswith("_") or f.extern:
-            continue
+    for f in extension_entries(self.funcs):
         sig = "".join([letter[t] for t in [f.ret] + f.ptypes])
         o.extend([f"define internal i64 @pyx.f.{f.name}(ptr %a, ptr %err) personality ptr @pys_personality {{", "entry:",
                   "  %mark = call i64 @pys_try_mark()", "  %prev = call ptr @pys_exc_handled()", "  %depth = call i64 @pys.recursion.depth()"])
