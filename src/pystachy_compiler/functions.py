@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.analysis import globals_in, inert_input_sites, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends, targets
 from src.pystachy_compiler.diagnostics import Rejoin, int_program
 from src.pystachy_compiler.ir import IFn, Try, Val
-from src.pystachy_compiler.symbols import FnInfo
+from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.optimizations import recursion_unsnapshot
@@ -102,6 +102,50 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
         self.fn.counted = f.node.kind == "def" and len(f.node.kids) >= 3 and f.name != "<callable>" and f.name != "<dispatch>"
         self.fn.rdepth = self.rt("pys_recursion_depth", "i64", [])
 
+def gen_cls_kept(self, d: str, ci: ClassInfo) -> dict[str, bool]:
+    # the class attributes for which cls stays d, the class that defines a class method, in the
+    # copy of the method that ci has (materialize): those that a class method of d or of a class
+    # between them assigns through cls and that ci inherits, or binds in its class body without
+    # their being a class variable of it (cvar_stores saw no store through ci's name)
+    kept: dict[str, bool] = {}
+    k = ci.name
+    while k in self.classes:
+        for f in self.classes[k].methods.values():
+            if f.deco == "classmethod" and f.clsuse:
+                found: dict[str, bool] = {}
+                cls_assigned(f.orig.kids[2].kids, f.orig.kids[0].kids[0].s, found)
+                for x in found:
+                    if (x in ci.fdefault and self.default_home(ci, x) is not ci) or ci.name + "." + x not in self.cvars:
+                        kept[x] = True
+        if k == d:
+            break
+        k = self.classes[k].base
+    return kept
+
+
+def cls_assigned(ns: list[Node], cls: str, out: dict[str, bool]) -> None:
+    # the attributes that the statements ns assign through the name cls (cls.x = v, cls.x += v),
+    # in the targets that class_stores reads
+    for n in ns:
+        if n.kind == "assign" or ((n.kind == "augassign" or n.kind == "annassign") and len(n.kids) > 0):
+            ts: list[Node] = n.kids[:-1] if n.kind == "assign" else [n.kids[0]]
+            while len(ts) > 0:
+                t = ts.pop()
+                if t.kind == "tuple" or t.kind == "starred":
+                    ts.extend(t.kids)
+                elif t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s == cls:
+                    out[t.s] = True
+        cls_assigned(n.kids, cls, out)
+
+
+def rename_attr(n: Node, name: str, attrs: dict[str, bool], to: str) -> None:
+    # the reads and stores of name.x in n, for the x of attrs, are those of to.x instead
+    if n.kind == "attr" and n.s in attrs and n.kids[0].kind == "name" and n.kids[0].s == name:
+        n.kids[0].s = to
+    for k in n.kids:
+        rename_attr(k, name, attrs, to)
+
+
 def gen_materialize(self, f: FnInfo) -> None:
     # Flow annotates nodes and cls substitution renames them: each compiled inherited
     # method needs its own body, but an unused one retains only its declaration header.
@@ -114,6 +158,15 @@ def gen_materialize(self, f: FnInfo) -> None:
         # (a specialization's: its template's name, as in the methods declared from the
         # template's own defs, whose cls(...) makes the specialization that fits the arguments)
         c = self.classes[c].origin
+    if f.clsdef != "" and c in self.classes:
+        # (cls.x = v for an x that the class inherits: CPython gives the class an x of its own,
+        # which is not supported, and an ordinary class's store is rejected (cvar). Under a
+        # class template it changed the x of the class that defines the method, where cls named
+        # that class, and programs that print what CPython prints that way compile: for such an
+        # x, cls stays that class, in its reads too, which then find what they found, #1744)
+        kept = self.cls_kept(f.clsdef, self.classes[c])
+        if len(kept) > 0:
+            rename_attr(f.node.kids[2], f.orig.kids[0].kids[0].s, kept, f.clsdef)
     rename(f.node.kids[2], f.orig.kids[0].kids[0].s, c)
     mod = self.flowmod
     self.flowmod = f.mod

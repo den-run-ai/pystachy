@@ -465,6 +465,7 @@ def gen_inherit(self, ci: ClassInfo) -> None:
         if f.acc != "" and m not in ci.methods and f.node.s in ci.methods and ci.methods[f.node.s].cls == ci.name:
             continue  # (its own @property def makes a new property, without the base's setter and deleter)
         src = f
+        defined = f.clsdef
         if m not in ci.methods and not f.clsuse and f.deco == "classmethod" and b.origin in self.classes and m in self.classes[b.origin].methods:
             # (a specialization's class method is declared again from its template's def, in
             # which cls already reads the template's name: the template's is the one that uses
@@ -473,6 +474,7 @@ def gen_inherit(self, ci: ClassInfo) -> None:
             tf = self.classes[b.origin].methods[m]
             if tf.deco == "classmethod" and tf.clsuse and tf.node is f.node:
                 src = tf
+                defined = tf.cls
         if m not in ci.methods and src.clsuse and src.mod == ci.mod and len([x for x in src.defaults if not is_const(x) and x.kind != "noann"]) == 0:
             self.line = src.node.line
             self.lib = src.mod != ""
@@ -491,6 +493,7 @@ def gen_inherit(self, ci: ClassInfo) -> None:
                 g.tvbpos = list(src.tvbpos)
             g.orig = src.orig
             g.clsuse = True
+            g.clsdef = defined
             g.pending = True
             g.bad = g.bad if g.bad != "" else src.bad  # the defining declaration checked the body
             ci.methods[m] = g
