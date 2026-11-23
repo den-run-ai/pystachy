@@ -9,7 +9,7 @@ import math
 import struct
 from fractions import Fraction
 
-from rt_heap import Fault, Ptr, nsw, shift  # noqa: F401  (a raw address; unchecked arithmetic, as load() rewrites it)
+from rt_heap import Fault, Ptr, Str, nsw, shift  # noqa: F401  (a raw address; unchecked arithmetic, as load() rewrites it)
 
 M64 = (1 << 64) - 1
 
@@ -20,6 +20,14 @@ def unchecked(f):
 
 
 def cold(f):
+    return f
+
+
+def noinline(f):
+    return f
+
+
+def inline(f):
     return f
 
 
@@ -51,6 +59,8 @@ def i64(x):
 def byte(s, i):
     if not 0 <= i < len(s):
         raise IndexError("string index out of range")
+    if isinstance(s, Str):  # (a str in the heap: its byte is read there, untagged as compiled)
+        return s.heap.load(s.addr + 24 + i, 1, None, False)
     return s[i] if isinstance(s, bytearray) else ord(s[i])
 
 
@@ -257,8 +267,19 @@ def fail(kind, msg):
         raise UnicodeDecodeError(msg)
     if kind == "UnicodeEncodeError":
         raise UnicodeEncodeError(msg)
+    if kind == "KeyError":
+        raise KeyErrorText(msg)
     import builtins
     raise getattr(builtins, kind)(msg)
+
+
+class KeyErrorText(KeyError):
+    # a KeyError whose str() is its message as given: CPython's is the repr of its key
+    def __str__(self):
+        return self.args[0]
+
+
+KeyErrorText.__name__ = "KeyError"
 
 
 def ftrunc(x):

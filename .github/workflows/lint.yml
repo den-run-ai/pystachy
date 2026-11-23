@@ -110,6 +110,7 @@ jobs:
           PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_retained_ir.py
           PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_runtime_rounding.py
           python3 -m unittest discover -s tools -p test_rtcheck_memory.py
+          python3 -m unittest discover -s tools -p test_runtime_decorators.py
           PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_bootstrap_tier.py
           PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_profile_build.py
 

@@ -8,7 +8,7 @@ This guide covers the architecture, development workflow and private interface
 used by `runtime.py`. Ordinary programs cannot use that interface.
 
 - [Responsibilities](#responsibilities) and [writing runtime code](#writing-runtime-code).
-- [Runtime ABI](#runtime-mode-and-abi), [private primitives](#private-primitives), [machine memory](#machine-memory) and [container storage](#list-and-dict-storage).
+- [Runtime ABI](#runtime-mode-and-abi), [private primitives](#private-primitives), [machine memory](#machine-memory) and [container storage](#list-set-and-dict-storage).
 - [Build and cache](#build-and-cache), [verification](#verification) and [what remains in `runtime.c`](#what-remains-in-runtimec).
 
 ## Responsibilities
@@ -101,7 +101,8 @@ programs, with these additional rules:
 - Module scope permits functions, imports and docstrings. Module initialization,
   global variables, classes and computed parameter defaults are rejected. A
   parameter's default value must be a literal. The only decorators are
-  `@_rt.unchecked` and `@_rt.cold` ([machine memory](#machine-memory)).
+  `@_rt.unchecked`, `@_rt.cold`, `@_rt.noinline` and `@_rt.inline`
+  ([machine memory](#machine-memory)).
 - A function that `RUNTIME` does not name takes and returns `int`, `float`, `str`,
   `_rt.Ptr` or `None`.
 - A function cannot use an operation that lowers directly to itself. For example,
@@ -282,6 +283,14 @@ undefined, which lets LLVM reason about a size as it does in C. `<<` and `>>` sh
 their count modulo 64. Without the decorator those operators raise `OverflowError`, which
 a function whose entry has no `R` may not do. Arithmetic that is meant to wrap says so
 with `wrap_add`, `wrap_sub` and `wrap_mul`. `@_rt.cold` keeps a slow path out of line.
+`@_rt.noinline` keeps a function that is not cold a call of its own, as the entry points
+that hash a key are: copied into every use in a program's AOT build, they made
+executables larger for no speed. `@_rt.inline` gives each caller its own copy, which
+takes the caller's constant arguments.
+
+A function with a result whose loops only a `return` leaves ends in a `return` that is
+never reached. Without it the compiler raises for the missing result, and that raise
+would give the function an `R` it does not have.
 
 `runtime.c` keeps what only it can provide: `pys_alloc` and `pys_alloc_atomic`, the page
 map's answer to whether an array is scanned, the addresses of its static sentinels and the
@@ -293,7 +302,7 @@ above and the unchecked arithmetic: see [verification](#checks-and-test-boundari
 compiled tests cover it too, with the collector's stress modes, the sanitizer builds and
 the list and dict probes.
 
-## List and dict storage
+## List, set and dict storage
 
 The list header and its item array are `runtime.py`'s: new lists, growth, `append`,
 indexed reads and writes, `pop`, `del`, `insert`, `extend`, slices and their assignment
@@ -330,6 +339,15 @@ which each call's context types (`typed_empty`). It is allocated scanned, as are
 and growth made of it, because one allocation may serve a `list[int]` context and a
 `list[str]` one. `tests/programs/runtime/gc_list_kinds.py` covers these cases under
 `PYSTACHY_GC_STRESS_PROGRAM=1`, and `make listprobe` checks the allocation kinds directly.
+
+A set's table is `runtime.py`'s as well: the probes, insertion, removal, the rebuilds,
+merges and differences, comparison, iteration and `pop`, for 64-bit elements and for the
+ints past 64 bits whose `Mpz` a second array holds. It is CPython 3.13's table, so a set
+of ints iterates in CPython's order. `runtime.py` hashes ints and strs itself. For an
+element that a type descriptor describes it calls `runtime.c`, whose hash and equality
+may run the program's `__hash__` and `__eq__`: every loop that makes such a call reads
+the table again afterwards, and starts again where CPython's does. The 8 slots of a new
+or cleared set are scanned whatever its kind; a larger table of ints is atomic.
 
 Dict value arrays follow the same rule. The compiler makes a dict whose values are ints,
 floats or bools with `pys_dict_new_atomic`, which sets the dict's `vatomic` word. Every value
@@ -413,15 +431,26 @@ the model checks each one, and `tools/rtcheck.py` reports as a failure:
 | A typed read of a slot that another type last wrote | Let LLVM reorder the two: the [alias rules](#machine-memory). |
 | A sum, difference or product past 64 bits in an `@_rt.unchecked` function | Be undefined, as in C. |
 | An overlapping `_rt.cpy`, or a size below zero | Be undefined. |
+| More reads in one operation than any real one makes | Never return: a loop without an end. |
 
 The list operations run against CPython's own `list`, one operation at a time:
 the result or the error, then the storage that `runtime.c` promises (capacity,
 the kind of the item array, zeroed slots past the length, the emptied list's
 sentinel). With an identity companion each item keeps the box that CPython's
 object identity says it has, and with a promoting-int companion its `Mpz`. The
-str operations are checked for their bytes, terminator and cached count. The
-model's own checks are tested by faults made on purpose, and by seeded bugs in
-the moved code, each of which a default run finds.
+str operations are checked for their bytes, terminator and cached count.
+
+The set operations run against CPython's own `set` in the same way. Of ints, of
+ints past 64 bits and of objects with a `__hash__` of their own, the table must be
+CPython's slot for slot: the elements come out in CPython's order after every
+operation, which checks the probe sequence, the reuse of dummies and each resize
+rule. Sets of strs are compared as sets, since a str's hash is not CPython's. An
+`__eq__` that changes a set during a lookup must leave the tables sound; what such
+a program prints is compared with CPython by the compiled tests.
+
+The model's own checks are tested by faults made on purpose, and by seeded bugs in
+the moved code, each of which the test's run finds
+(`tools/test_rtcheck_memory.py`).
 
 ASan covers both runtime parts during cached JIT/AOT builds; UBSan covers C only.
 `tools/test_runtime_asan.py` verifies cached subset instrumentation and uses an
@@ -459,7 +488,7 @@ container code move; the table gives the state and the order.
 | Unicode and other constant tables | 1,390 | Stay as data; `runtime.py` reads them through pure helpers. |
 | Lists | 720 | Next: the identity companion's entry points, `min`/`max`, then the sort. |
 | Strings | 620 | Slices, indexed text access and its hints, `chr`/`ord`, float text. Float formatting and parsing stay with libc. |
-| Sets and hashing | 500 | After lists: hashing by descriptor, then the table (380 lines, which sit after the dynamic values in the file). |
+| Hashing by descriptor, and what the sets ask of it | 190 | With the walks. The set's table is `runtime.py`'s. |
 | Dicts | 690 | After sets: the compact ordered table, views and iteration. |
 | Generic `repr`, equality and ordering | 760 | With dicts: walks of a value by its type descriptor. |
 | Dynamic values | 1,170 | After the walks: boxes, dispatch and the `Any` operators. |
@@ -471,7 +500,7 @@ decides its place in the order:
 
 | Needs | For |
 |---|---|
-| Nothing new | Sets and dicts: their tables are words and 32-bit words, and key equality and hashing can stay calls into `runtime.c` until the walks move. The probes' counters need a call that the checks can count. |
+| Nothing new | Dicts, as the sets before them: their tables are words and 32-bit words, and key equality and hashing can stay calls into `runtime.c` until the walks move. The probes' counters need a call that the checks can count. |
 | The checks moved with the code | The identity companion's entry points: `check_lean_companion.py` pins their text, and `test_runtime_list_identity.py` their cost, in `runtime.c`. |
 | The address of a static | Text indexing (its position hints and the one-byte strs), the sentinels, dynamic values (each builtin type's descriptor and the small ints' boxes). Accessor functions stand in today. |
 | A record in a local | The sort's merge state, and the buffer that `repr` and error messages grow. |

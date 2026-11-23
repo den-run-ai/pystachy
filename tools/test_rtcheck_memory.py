@@ -1,10 +1,11 @@
 """tools/rtcheck.py finds seeded bugs in runtime.py's memory code.
 
-Each mutant is one change to the list or str code that a compiled runtime would run without
-complaint: a write past a block, a stale slot that the collector would scan, a read that
-breaks an alias rule, arithmetic that overflows unchecked, an identity that a companion
-loses. The heap model of tools/rt_cpython/rt_heap.py must report every one of them at the
-size this test runs, and nothing in the code as it is.
+Each mutant is one change to the list, str or set code that a compiled runtime would run
+without complaint: a write past a block, a stale slot that the collector would scan, a read
+that breaks an alias rule, arithmetic that overflows unchecked, an identity that a companion
+loses, a set whose table is no longer CPython's slot for slot. The heap model of
+tools/rt_cpython/rt_heap.py must report every one of them at the size this test runs, and
+nothing in the code as it is.
 """
 import concurrent.futures
 import os
@@ -17,6 +18,65 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ROUNDS = "1500"
 
 # (what the fault is, the text of runtime.py that it replaces, the replacement)
+SET_MUTANTS = [
+    ("an insertion's probe looks at one slot less beside the first",
+     '        free = -1\n        again = False\n        while not again:\n            probes = 9 if i + 9 <= mask else 0',
+     '        free = -1\n        again = False\n        while not again:\n            probes = 8 if i + 9 <= mask else 0'),
+    ("a lookup's probe looks at one slot less beside the first",
+     '        perturb = h\n        again = False\n        while not again:\n            probes = 9 if i + 9 <= mask else 0',
+     '        perturb = h\n        again = False\n        while not again:\n            probes = 8 if i + 9 <= mask else 0'),
+    ("an insertion that fills 3/5 of the table does not rebuild it",
+     '                        if fill * 5 >= mask * 3:\n                            set_resize(s, set_grown(s))\n                        return',
+     '                        if fill * 5 >= mask * 4:\n                            set_resize(s, set_grown(s))\n                        return'),
+    ("a discard leaves the element's hash",
+     '    _rt.put(_rt.getp(s, "Set.keys"), j, 1)\n    _rt.put(hs, j, -1)\n    _rt.set(s, "Set.len", _rt.get(s, "Set.len") - 1)\n    return True',
+     '    _rt.put(_rt.getp(s, "Set.keys"), j, 1)\n    _rt.set(s, "Set.len", _rt.get(s, "Set.len") - 1)\n    return True'),
+    ("a rebuilt table is sized for twice its elements",
+     '    return n * 2 if n > 50000 else n * 4',
+     '    return n * 2'),
+    ("a merge's copy of a table forgets its Mpz words",
+     '            _rt.cpy(kb, _rt.getp(o, "Set.kb"), size * 8)\n            _rt.setp(s, "Set.kb", kb)\n',
+     '            _rt.cpy(kb, _rt.getp(o, "Set.kb"), size * 8)\n'),
+    ("a rebuild drops the Mpz of an element past 64 bits",
+     '            if k <= -9223372036854775807 and _rt.word(kb, i) != 0:\n                set_big_put(s, e, _rt.ptr(_rt.word(kb, i)))\n',
+     ''),
+    ("the sentinel of an element past 64 bits ignores its hash",
+     '    return -9223372036854775807 if h == -4 else -9223372036854775807 - 1',
+     '    return -9223372036854775807 - 1'),
+    ("an int's hash is -1",
+     '    if v < 0:\n        h = -h\n    return -2 if h == -1 else h',
+     '    if v < 0:\n        h = -h\n    return h'),
+    ("a lookup goes on in the table that an __eq__ replaced",
+     '                        eq = pys_rt_set_eq(s, j, x, k, 0)\n                        if eq < 0:\n                            again = True\n                            break\n                        if eq != 0:',
+     '                        eq = pys_rt_set_eq(s, j, x, k, 0)\n                        if eq > 0:'),
+    ("s & o walks the first set, not the smaller",
+     '        t = a\n        a = b\n        b = t\n    i = 0\n    while i <= _rt.get(b, "Set.mask"):\n        k = _rt.word(_rt.getp(b, "Set.keys"), i)',
+     '        pass\n    i = 0\n    while i <= _rt.get(b, "Set.mask"):\n        k = _rt.word(_rt.getp(b, "Set.keys"), i)'),
+    ("an insertion does not reuse the dummy it passed",
+     '                    if _rt.word(keys, j) != 0:\n                        free = j\n                    else:',
+     '                    if _rt.word(keys, j) != 0:\n                        pass\n                    else:'),
+    ("a difference keeps its dummies",
+     '    if _rt.get(s, "Set.fill") - _rt.get(s, "Set.len") > _rt.lshr(_rt.get(s, "Set.mask"), 2):',
+     '    if _rt.get(s, "Set.fill") - _rt.get(s, "Set.len") > _rt.get(s, "Set.mask"):'),
+    ("list(s) gives an element past 64 bits its set's sentinel",
+     '                _rt.put(items, n, -9223372036854775807 - 1)\n            n += 1',
+     '                _rt.put(items, n, _rt.word(keys, i))\n            n += 1'),
+    ("s ^= d adds a key it has just removed",
+     '            if not set_discard(s, k, h):\n                set_add(s, k, h)\n        e += 1',
+     '            set_discard(s, k, h)\n            set_add(s, k, h)\n        e += 1'),
+    ("s.update(d) does not size the table for the dict's keys",
+     '        set_resize(s, (_rt.get(s, "Set.len") + _rt.get(d, "Dict.len")) * 2)\n',
+     '        pass\n'),
+    ("the Mpz words of a table are one short",
+     '        _rt.setp(s, "Set.kb", pys_alloc((_rt.get(s, "Set.mask") + 1) * 8))',
+     '        _rt.setp(s, "Set.kb", pys_alloc(_rt.get(s, "Set.mask") * 8))'),
+    ("a new table's last slot keeps hash 0",
+     '    _rt.fill(hs, 255, size * 8)\n',
+     '    _rt.fill(hs, 255, size * 8 - 8)\n'),
+    ("a merge into a table with elements skips the last slot",
+     '    while i <= _rt.get(o, "Set.mask"):  # (an __eq__ may change o: its table is read again)',
+     '    while i < _rt.get(o, "Set.mask"):  # (an __eq__ may change o: its table is read again)'),
+]
 MUTANTS = [
     ("pop keeps the stale slot",
      '    _rt.set(l, "List.len", n)\n    _rt.put(_rt.getp(l, "List.a"), n, 0)\n    if _rt.get(l, "List.len") == 0:\n        pys_list_empty(l)\n    return v',
@@ -93,8 +153,8 @@ MUTANTS = [
 ]
 
 
-def check(runtime):
-    return subprocess.run([sys.executable, os.path.join(ROOT, "tools", "rtcheck.py"), ROUNDS, "1", "--runtime", runtime, "--only", "memory"],
+def check(runtime, part="memory"):
+    return subprocess.run([sys.executable, os.path.join(ROOT, "tools", "rtcheck.py"), ROUNDS, "1", "--runtime", runtime, "--only", part],
                           capture_output=True, text=True, cwd=ROOT)
 
 
@@ -109,15 +169,16 @@ class Memory(unittest.TestCase):
             source = f.read()
         with tempfile.TemporaryDirectory() as tmp:
             def run(j):
-                name, old, new = MUTANTS[j]
+                # (each against the part of the fuzz that is about its code)
+                name, old, new = (MUTANTS + SET_MUTANTS)[j]
                 self.assertEqual(source.count(old), 1, f"{name}: runtime.py no longer has the text this mutant replaces")
                 path = os.path.join(tmp, f"runtime{j}.py")
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(source.replace(old, new))
-                return name, check(path)
+                return name, check(path, "lists" if j < len(MUTANTS) else "sets")
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-                for name, r in pool.map(run, range(len(MUTANTS))):
+                for name, r in pool.map(run, range(len(MUTANTS) + len(SET_MUTANTS))):
                     with self.subTest(name):
                         self.assertNotEqual(r.returncode, 0, f"{name}: not found\n{r.stdout[-400:]}")
 

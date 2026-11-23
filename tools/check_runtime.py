@@ -62,8 +62,9 @@ compiler builds for runtime.py, in this process:
     a cycle through a helper (helper -> math.gcd -> pys_m_gcd -> helper) or through runtime.c
     (pys_format_str formatting with a nested spec, which calls runtime.c's pys_format, which calls
     pys_format_str) would recurse without end where nothing in the source shows a call. Recursion
-    by name stays allowed; the check is conservative, as it does not follow descriptors (a str ==
-    in pys_hash_str would be reported, through pys_eq's dict case).
+    by name stays allowed. A cycle through a walk of a value by its descriptor (eqv, repr) is not
+    one: the walk goes as deep as the value's type and guards a recursive alias itself, so a set
+    of frozensets may compare its elements with the set's own functions.
 The runtime the driver builds must also call no function that only a recent C library has under
 that name: glibc 2.38 compiles strtol(), atoi() and sscanf() to __isoc23_* names, which an older
 glibc lacks, so runtime.c reads its numbers itself (decnum, hexnum). The check sees those names
@@ -342,7 +343,8 @@ def params(ll):
                 hook[h.group(1)] = h.group(2)
             # Only a direct i64 store to Str's hash or character count is an invisible cache write.
             # Keep its loads, calls, and every other reachable store in the effect analysis.
-            m = re.fullmatch(r"  (%[\w.]+) = getelementptr (?:inbounds )?%struct.Str, ptr %[\w.]+, i64 0, i32 [12]", line)
+            # (runtime.c's Str, or the record that runtime.py's fields address: RTRECORDS)
+            m = re.fullmatch(r"  (%[\w.]+) = getelementptr (?:inbounds )?(?:%struct\.Str|\{ i64, i64, i64 \}), ptr %[\w.]+, i64 0, i32 [12]", line)
             if cache_layout and m:
                 cache_fields.add(m.group(1))
             x = instruction(line.strip())
@@ -919,6 +921,8 @@ def main():
             if o and sym in eff and i < len(eff[sym]) and eff[sym][i] is not None:
                 memory.extend((["r" + o] if eff[sym][i][0] else []) + (["w" + o] if eff[sym][i][1] else []))
         for x in sorted(letters[sym]) + memory:
+            if k in NO_USER and x in ("U", "R?"):
+                continue  # (reached only through comparing elements, which it never does)
             if x not in have and "U" not in have and not (x == "U" and "U?" in have) and not (x == "R?" and "R" in have):
                 bad.append(f"{k}: runtime.py's {sym} has effect {x}, which RUNTIME leaves out")
         if "N" in have:
@@ -971,8 +975,11 @@ def main():
             if x in have and x not in derived:
                 note.append(f"{k}: {x}, which runtime.c does not show")
     # recursion: an rt op that calls a function of runtime.py goes through a node of its own, so
-    # that a cycle through it, or through runtime.c, is found
-    graph = {n: v[3] for n, v in fns.items() if v[4] == "define"}
+    # that a cycle through it, or through runtime.c, is found. A walk of a value by its descriptor
+    # (BY_DESC) is not followed: what it calls for an element is as deep as the value's type, and
+    # its own guard counts the edges of a recursive alias (a set of frozensets compares frozensets,
+    # through eqv, with the set's own functions)
+    graph = {n: set() if n in BY_DESC else v[3] for n, v in fns.items() if v[4] == "define"}
     for f, ops in rpy_ops.items():
         graph[f] = set()
         for op, x, _ in ops:

@@ -14,7 +14,8 @@ CPython finds what a compiled run would only corrupt:
   type, and neither does what runtime.c writes;
 - a sum, difference or product past 64 bits in a function that is @_rt.unchecked, whose
   arithmetic is runtime.c's: undefined there (load() rewrites those functions to check it);
-- overlapping _rt.cpy ranges, and sizes below zero.
+- overlapping _rt.cpy ranges, and sizes below zero;
+- an operation that reads more than any real one does (LIMIT): a loop that does not end.
 
 A fault raises Fault, which is no exception of the runtime's: a test that expects CPython's
 outcome reports it as a failure.
@@ -36,6 +37,10 @@ MAX = (1 << 63) - 1
 
 class Fault(Exception):
     """Something that a compiled runtime would not notice: a bug in runtime.py's memory code."""
+
+
+class Runaway(Fault):
+    """An operation that read more than any real one does: its loop has no end."""
 
 
 class Ptr:
@@ -82,11 +87,14 @@ def signed(x):
 
 
 class Heap:
+    LIMIT = 3000000
+
     def __init__(self, records):
         self.records = {name: spec.split() for name, spec in records.items()}
         self.reset()
 
     def reset(self):
+        self.steps = 0  # (the reads of the operation under way: whoever starts one resets it)
         self.bases = []
         self.blocks = {}
         self.ptrs = {0: Ptr(0)}
@@ -154,6 +162,9 @@ class Heap:
 
     # ---- typed loads and stores (tag None: no type)
     def load(self, addr, n, tag, sign=True):
+        self.steps += 1
+        if self.steps > self.LIMIT:
+            raise Runaway(f"more than {self.LIMIT} reads in one operation: a loop that does not end")
         b = self.block(addr, n, "a read")
         o = addr - b.base
         if b.known[o : o + n] != b"\x01" * n:
@@ -461,6 +472,9 @@ class CSide:
         self.empty_ids = {k: h.static([k], "empty_identity") for k in (1, 2, 3, 9, 10)}
         self.boxes = {}
         self.on_eq = None
+        self.mpz = {}    # an Mpz's address: the int it is
+        self.objs = {}   # an object's address: the CPython object that is its element or key
+        self.dicts = {}  # a Dict's address: the keys it holds, as CPython values
 
     # ---- raw words
     def w(self, addr):
@@ -592,9 +606,71 @@ class CSide:
         v = self.boxes[self.heap.of(x)]
         return self.heap.P(v[1] if isinstance(v, tuple) else 0)
 
+    # ---- what the sets call: the hash and the equality of the elements that a type descriptor
+    # describes (here CPython objects, whose __hash__ and __eq__ are the program's), the memory
+    # of a key table, Mpz, and the dict whose keys a set takes
+    SET_MASK, SET_KEYS = 24, 40
+
+    def new_mpz(self, value):
+        a = self.heap.new(16, "atomic", "mpz")
+        self.mpz[a] = value
+        return a
+
+    def new_obj(self, obj):
+        a = self.heap.new(16, "scan", "object")
+        self.objs[a] = obj
+        return a
+
+    def element(self, k, kind):
+        # the CPython value of word k of a set or a dict of this kind
+        return k if kind & ~2 == 0 else self.text(k) if kind & ~2 == 1 else self.objs[k] if self.text(kind & ~2).lstrip("!")[0] not in "ib" else k
+
+    def pys_mpz_hash(self, m):
+        return hash(self.mpz[self.heap.of(m)])
+
+    def pys_mpz_cmp(self, a, b):
+        x, y = self.mpz[self.heap.of(a)], self.mpz[self.heap.of(b)]
+        return (x > y) - (x < y)
+
+    def pys_rt_keymem(self, kind, n):
+        # runtime.c's keymem: an int key holds no pointer
+        ints = kind == 0 or (kind > 3 and self.text(kind & ~2).lstrip("!")[0] in "ib")
+        return self.pys_alloc_atomic(n * 8) if ints else self.pys_alloc(n * 8)
+
+    def pys_rt_hitem(self, k, kind):
+        return hash(self.element(k, kind))
+
+    def pys_rt_set_eq(self, s, j, x, k, add):
+        # runtime.c's seq and sxeq: the comparison, then whether it left the table and the slot
+        a = self.heap.of(s)
+        keys, mask, kind = self.w(a + self.SET_KEYS), self.w(a + self.SET_MASK), self.w(a + 8)
+        eq = int(self.element(x, kind) == self.element(k, kind))
+        if eq and add:
+            return 1
+        now = self.w(a + self.SET_KEYS)
+        if (now != keys and (mask != 7 or self.w(a + self.SET_MASK) != 7)) or self.w(now + 8 * j) != x:
+            return -1
+        return eq
+
+    def pys_rt_set_keyerr(self, s, k):
+        raise KeyError(self.element(k, self.w(self.heap.of(s) + 8)))
+
+    def pys_rt_bkeyerr(self, m):
+        raise KeyError(self.mpz[self.heap.of(m)])
+
+    def pys_rt_khash(self, kind):
+        return int(kind & 2 != 0)
+
+    def pys_rt_dict_lacks(self, d, k, h, m, c):
+        d = self.heap.of(d)
+        m = self.heap.of(m)
+        return int((self.mpz[m] if m else self.element(k, self.w(d + 8))) not in self.dicts[d])
+
     NAMES = ("pys_alloc pys_alloc_atomic pys_rt_raw pys_rt_oom pys_rt_opt_in pys_rt_empty_list pys_rt_empty_atomic "
              "pys_rt_empty_inline pys_rt_empty_identity pys_rt_atomic_items pys_rt_list_box pys_rt_big_list "
-             "pys_list_identity pys_str_eq pys_rt_list_item_eq pys_rt_not_in_list pys_dyn_big pys_dyn_big_ptr").split()
+             "pys_list_identity pys_str_eq pys_rt_list_item_eq pys_rt_not_in_list pys_dyn_big pys_dyn_big_ptr "
+             "pys_mpz_hash pys_mpz_cmp pys_rt_keymem pys_rt_hitem pys_rt_set_eq pys_rt_set_keyerr pys_rt_bkeyerr "
+             "pys_rt_khash pys_rt_dict_lacks").split()
 
     def install(self, module):
         # give module (runtime.py, loaded) these in place of its declarations

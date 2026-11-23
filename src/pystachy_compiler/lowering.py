@@ -33,6 +33,8 @@ def gen_lower(self, fn: IFn) -> None:
     # the depth its caller was at (%rd), and its own symbol is a wrapper below
     rd = f.ll in self.rdpass
     cold = " cold noinline" if raises_only(fn) or (self.rtmode and f.cold) else ""  # (or runtime mode's @_rt.cold)
+    if cold == "" and self.rtmode and f.inlining != "":
+        cold = " noinline" if f.inlining == "noinline" else " alwaysinline"  # (@_rt.noinline, @_rt.inline)
     name = "@v." + f.ll[1:] if n > 0 else "@r." + f.ll[1:] if rd else f.ll
     scope = self.source_lines.function(f.name, name, f.node.line)
     debug = " !dbg " + scope if scope != "" else ""

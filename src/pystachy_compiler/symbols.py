@@ -72,6 +72,7 @@ class FnInfo:
         self.cmpops = False  # isolated comparison helpers raise guaranteed builtin TypeErrors at runtime
         self.unchecked = False  # runtime mode's @_rt.unchecked: + - * are C's signed ones (no overflow check) and << >> take their count modulo 64
         self.cold = False  # runtime mode's @_rt.cold: a slow path, which LLVM keeps out of its callers (noinline cold)
+        self.inlining = ""  # runtime mode's @_rt.noinline (a call of its own, as runtime.c's LOOKUP entry points) or @_rt.inline (alwaysinline: each caller's copy takes its constant arguments)
         self.cmptypes: dict[str, str] = {}  # guarded comparison missing-read layouts, inherited by isolated helper specializations
         self.cmpfields = ""  # a structural comparison adapter's canonical field types; missing reads raise at their source position
         self.ikey = ""  # (an instance: its key in its template's insts, which joins' keys name it by: Gen.fnkey)

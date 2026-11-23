@@ -48,8 +48,8 @@ for flag in ("--runtime", "--only"):
         else:
             ONLY = ARGS[at + 1]
         del ARGS[at : at + 2]
-if ONLY not in ("", "memory"):
-    sys.exit("rtcheck: --only takes memory")
+if ONLY not in ("", "memory", "lists", "sets"):
+    sys.exit("rtcheck: --only takes memory, or lists or sets for a part of it")
 HEAP = rt_heap.Heap(RTRECORDS)
 _rt.use(rt_heap.primitives(HEAP))
 rt = rt_heap.load(RUNTIME)
@@ -87,8 +87,13 @@ def text(alpha=ASCII, n=12):
 
 
 def outcome(f, *a):
+    HEAP.steps = 0
     try:
         return ("ok", f(*a))
+    except rt_heap.Runaway as e:
+        # (nothing after it would end either)
+        print(f"FAIL {getattr(f, '__name__', 'an operation')}: {e}")
+        sys.exit(1)
     except Exception as e:  # the runtime raises CPython's exception types and messages
         return (type(e).__name__, str(e))
 
@@ -438,6 +443,373 @@ def fuzz_list_search():
             p = HEAP.of(got[1])
             got = ("ok", HEAP.words(C.w(p + 16), C.w(p)))
         same("bytes-list", got, ("ok", list(data)), (data,))
+
+
+class Key:
+    """An element whose hash and equality are the program's: hv picks its probes (equal hashes
+    collide) and == compares v. hook, where one is set, runs at each comparison: an __eq__
+    that changes a set while a lookup of it is under way."""
+    hook = None
+
+    def __init__(self, hv, v):
+        self.hv, self.v = hv, v
+
+    def __hash__(self):
+        return self.hv
+
+    def __eq__(self, other):
+        if Key.hook is not None:
+            Key.hook()
+        return self.v == other.v
+
+    def __repr__(self):
+        return f"Key({self.hv}, {self.v})"
+
+
+class HeapSet:
+    def __init__(self, ptr, ref, exact):
+        self.ptr = ptr
+        self.ref = ref
+        self.exact = exact  # its table is CPython's, slot for slot: the elements come in its order
+
+
+def set_table(s, mode):
+    # (heap set s's elements in the order of their slots, as CPython values; what its storage
+    # breaks of runtime.c's Set, or "")
+    none = -(1 << 63)
+    a = HEAP.of(s.ptr)
+    n, kind, fill, mask, keys, hs, kb = C.w(a), C.w(a + 8), C.w(a + 16), C.w(a + 24), C.w(a + 40), C.w(a + 48), C.w(a + 56)
+    size = mask + 1
+    if size < 8 or size & mask:
+        return [], f"a table of {size} slots"
+    ints = mode in ("int", "big")
+    for name, at, want in (("keys", keys, "atomic" if ints and size > 8 else "scan"), ("hs", hs, "atomic"), ("kb", kb, "scan")):
+        if name == "kb" and at == 0:
+            continue
+        b = HEAP.block_of(at)
+        if b is None or b.base != at or b.size < size * 8 + 1 or b.kind != want:
+            return [], f"{name} is not an array of {size} {want} words"
+    if kb and mode != "big":
+        return [], "Mpz words in a set that holds no int past 64 bits"
+    out = []
+    dummies = 0
+    for j in range(size):
+        h, k = C.w(hs + 8 * j), C.w(keys + 8 * j)
+        m = C.w(kb + 8 * j) if kb else 0
+        if h == -1:
+            if k not in (0, 1) or m:
+                return [], f"slot {j} holds no element, and key {k} or an Mpz"
+            dummies += k
+            continue
+        if m:
+            v = C.mpz[m]
+            if k != (none + 1 if h == -4 else none):
+                return [], f"slot {j} has an Mpz and not its sentinel"
+        else:
+            v = C.element(k, kind)
+        want = rt.str_key_hash(k) if mode == "str" else hash(v)
+        if h != want:
+            return [], f"slot {j} keeps hash {h} of an element whose hash is {want}"
+        out.append(v)
+    if len(out) != n or fill != n + dummies:
+        return out, f"len {n} and fill {fill} of {len(out)} elements and {dummies} dummies"
+    if fill * 5 >= mask * 3:
+        return out, f"{fill} of {size} slots are used: a table that insertions would have rebuilt"
+    return out, ""
+
+
+def set_dict(mode, keys, ktag):
+    # a Dict of runtime.c's with these keys in order (None: a hole), as much of one as the sets
+    # read; ktag: its keys are hashed by CPython's hash, which its table keeps
+    none = -(1 << 63)
+    n = max(len(keys), 1)
+    d = HEAP.new(96, "scan", "dict")
+    ka = HEAP.new(8 * n, "scan" if mode == "str" else "atomic", "dict keys")
+    ha = HEAP.new(8 * n, "atomic", "dict hs")
+    kb = 0
+    kind = 1 if mode == "str" else 0
+    if ktag:
+        kind = 3 if mode == "str" else HEAP.new_str(b"!i", 0) | 2
+    live = 0
+    for e, k in enumerate(keys):
+        if k is None:
+            C.put(ha + 8 * e, -1 if ktag else 0)
+            continue
+        live += 1
+        if mode == "str":
+            w = HEAP.new_str(k.encode(), 0)
+            h = rt.str_key_hash(w)
+        elif none <= k <= MAXI:
+            w = k
+            h = hash(k) if ktag else rt.pys_hash_int(k) or 1
+        else:
+            w = none
+            if not kb:
+                kb = HEAP.new(8 * n, "scan", "dict kb")
+            C.put(kb + 8 * e, C.new_mpz(k))
+            h = hash(k) if ktag else rt.pys_hash_int(hash(k)) or 1
+        C.put(ka + 8 * e, w)
+        C.put(ha + 8 * e, h)
+    for at, v in ((0, live), (8, kind), (16, len(keys)), (24, 8), (32, ka), (48, ha), (88, kb)):
+        C.put(d + at, v)
+    C.dicts[d] = {k for k in keys if k is not None}
+    return HEAP.P(d)
+
+
+def fuzz_sets():
+    # runtime.py's sets against CPython's, an operation at a time: the result or the error, then
+    # the table. Of ints, of ints past 64 bits and of objects with a __hash__ of their own, the
+    # table is CPython's slot for slot, since the hashes are: the elements come in CPython's
+    # order. A str's hash is not CPython's, so a set of strs is compared as a set. An __eq__
+    # that changes a set during a lookup has no CPython to compare with here (the suite's
+    # programs do that): the storage must stay sound
+    global fails, cases
+    none = -(1 << 63)
+    prime = (1 << 61) - 1
+    for mode in ("int", "str", "obj", "big"):
+        for round in range(max(1, N // 25)):
+            HEAP.reset()
+            C.setup()
+            C.opt = int(mode == "big")
+            Key.hook = None
+            kind = {"int": 0, "big": 0, "str": 1}.get(mode) if mode != "obj" else HEAP.new_str(b"P000", 0)
+            sets = []
+            if mode == "obj":
+                pool = [Key(hv, v) for hv in (0, 0, 1, 8, 16, 17, -2, 1 << 40) for v in range(4)]
+                for x in pool:
+                    x.addr = C.new_obj(x)
+            elif mode == "str":
+                pool = ["", "a", "b", "ab", "ba", "abc"] + [chr(97 + i % 26) * (1 + i // 26) for i in range(60)]
+            else:
+                pool = [0, 1, 2, 3, -1, -2, 7, 8, 9, 15, 16, 24, 32, prime - 1, prime, prime + 1, MAXI, none, none + 1, -prime, -prime - 4] + list(range(40, 100))
+                if mode == "big":
+                    pool += [1 << 63, -(1 << 63) - 1, 1 << 64, (1 << 70) + 3, 4 - (1 << 64), 8 * prime + 12, -(1 << 63) - 4, prime << 3]
+            grow = R.randrange(4) == 0  # (some rounds fill their tables past the small ones)
+
+            def elem():
+                return R.choice(pool) if grow or mode == "obj" else R.choice(pool[: 12 + R.randrange(12)])
+
+            def word(x):
+                # element x as the runtime takes it: its word, and its Mpz where it is past 64 bits
+                if mode == "str":
+                    return HEAP.new_str(x.encode(), 0), _rt.nil()
+                if mode == "obj":
+                    return x.addr, _rt.nil()
+                if none <= x <= MAXI:
+                    return x, _rt.nil()
+                return 0, HEAP.P(C.new_mpz(x))
+
+            def call(name, s, x):
+                # s.add(x), x in s, s.discard(x), s.remove(x)
+                w, m = word(x)
+                if mode == "big":
+                    return outcome(getattr(rt, "pys_set_big_" + name), s.ptr, w, m)
+                return outcome(getattr(rt, "pys_set_" + name), s.ptr, w)
+
+            def new(ref, exact=True):
+                s = HeapSet(rt.pys_set_new(kind), set(), exact and mode != "str")
+                for x in ref:
+                    call("add", s, x)
+                    s.ref.add(x)
+                sets.append(s)
+                return s
+
+            def heap_list(xs):
+                l = rt.pys_list_new(len(xs)) if mode in ("str", "obj") else rt.pys_list_new_atomic(len(xs))
+                for x in xs:
+                    w, m = word(x)
+                    if m.addr:
+                        rt.pys_list_append_big(l, m)
+                    else:
+                        rt.pys_list_append(l, w)
+                return l
+
+            def values(l):
+                # the elements of heap list l, as CPython values
+                a = HEAP.of(l)
+                out = []
+                for i, w in enumerate(HEAP.words(C.w(a + 16), C.w(a))):
+                    m = rt.pys_rt_lbig(l, i).addr
+                    out.append(C.mpz[m] if m else C.element(w, kind))
+                return out
+
+            def sound(s, after):
+                # is heap set s CPython's s.ref, in its order where its table is CPython's?
+                global fails, cases
+                have, fault = set_table(s, mode)
+                cases += 1
+                if fault == "" and (have != list(s.ref) if s.exact else len(have) != len(s.ref) or set(have) != s.ref):
+                    fault = f"elements {have[:12]}, CPython's {list(s.ref)[:12]}"
+                if fault != "":
+                    fails += 1
+                    if fails <= 20:
+                        print(f"FAIL set after {after} ({mode}): {fault}")
+                return fault == ""
+
+            if mode == "int" and round == 0:
+                # a probe's ten adjacent slots: 193 starts at slot 1 of 32, where 1 to 9 are, and
+                # takes the tenth, before 11's; one slot less, and its next probe is slot 12
+                s = new(list(range(1, 10)) + [11, 193])
+                same("set-has-run", call("has", s, 193), ("ok", 1), ())
+                if not sound(s, "a run of nine"):
+                    return
+            for _ in range(3):
+                new([elem() for _ in range(R.choice([0, 1, 3, 5, 9, 30]))])
+            for _ in range(60):
+                a = R.choice(sets)
+                b = R.choice(sets)
+                x = elem()
+                xs = [elem() for _ in range(R.choice([0, 1, 2, 5, 12, 40]))]
+                made = None
+                hooked = False
+                if mode == "obj" and R.randrange(3) == 0:
+                    # the program's __eq__, at one of the next comparisons: it changes a or b
+                    count = [R.randrange(1, 4)]
+                    victim = R.choice([a, b])
+                    change = R.choice(["add", "discard", "clear", "grow"])
+                    extra = [elem() for _ in range(12)]
+
+                    def hook():
+                        nonlocal hooked
+                        count[0] -= 1
+                        if count[0] == 0:
+                            Key.hook = None
+                            hooked = True
+                            if change == "clear":
+                                rt.pys_set_clear(victim.ptr)
+                            elif change == "grow":
+                                for e in extra:
+                                    rt.pys_set_add(victim.ptr, e.addr)
+                            else:
+                                getattr(rt, "pys_set_" + change)(victim.ptr, extra[0].addr)
+                    Key.hook = hook
+                op = R.choice(("add add add has has discard remove pop clear copy update update_list or and and_list iand isub isub_list sub "
+                               "sub_list xor xor_list ixor ixor_list cmp le_list ge_list isdisjoint isdisjoint_list iterate list union "
+                               "slot_del" + (" update_dict sub_dict xor_dict ixor_dict" if mode != "obj" else "")).split())
+                dkeys = []
+                for k in [R.choice([None, elem()]) for _ in range(R.choice([0, 1, 3, 8, 30]))] if op.endswith("_dict") else []:
+                    dkeys.append(k if k is None or k not in dkeys else None)  # (a dict has each key once)
+                dref = dict.fromkeys(k for k in dkeys if k is not None)
+                d = set_dict(mode, dkeys, R.randrange(2) == 1) if op.endswith("_dict") else None
+                both = a.exact and b.exact
+                if op in ("add", "discard", "remove"):
+                    got, want = call(op, a, x), outcome(getattr(a.ref, op), x)
+                elif op == "has":
+                    got, want = call("has", a, x), ("ok", int(x in a.ref))
+                elif op == "pop":
+                    def pop():
+                        # (a set of ints past 64 bits: runtime.c's pys_set_big_pop, which takes the slot's two words)
+                        if mode != "big":
+                            return C.element(rt.pys_set_pop(a.ptr), kind)
+                        i = rt.pys_rt_set_pop_slot(a.ptr)
+                        m = rt.pys_rt_sbig(a.ptr, i).addr
+                        k = C.w(C.w(HEAP.of(a.ptr) + 40) + 8 * i)
+                        rt.pys_rt_set_take(a.ptr, i)
+                        return C.mpz[m] if m else k
+                    got = outcome(pop)
+                    if a.exact or got[0] != "ok":
+                        want = outcome(a.ref.pop)
+                    else:
+                        want = ("ok", got[1]) if got[1] in a.ref else ("missing", None)
+                        a.ref.discard(got[1])
+                elif op == "clear":
+                    got, want = outcome(rt.pys_set_clear, a.ptr), outcome(a.ref.clear)
+                elif op == "copy":
+                    made = HeapSet(rt.pys_set_copy(a.ptr), a.ref.copy(), a.exact)
+                    got = want = ("ok", None)
+                elif op == "update":
+                    got, want = outcome(rt.pys_set_update, a.ptr, b.ptr), outcome(a.ref.update, b.ref)
+                    a.exact = both
+                elif op == "update_list":
+                    got, want = outcome(rt.pys_set_update_list, a.ptr, heap_list(xs)), outcome(a.ref.update, xs)
+                elif op == "update_dict":
+                    got, want = outcome(rt.pys_set_update_dict, a.ptr, d), outcome(a.ref.update, dref)
+                elif op == "union":
+                    r = rt.pys_set_copy(a.ptr)
+                    rt.pys_set_union_more(r, a.ptr, b.ptr)
+                    made = HeapSet(r, a.ref.union(b.ref), both)
+                    got = want = ("ok", None)
+                elif op in ("or", "and", "sub", "xor"):
+                    f = {"or": set.__or__, "and": set.__and__, "sub": set.__sub__, "xor": set.__xor__}[op]
+                    made = HeapSet(getattr(rt, "pys_set_" + op)(a.ptr, b.ptr), f(a.ref, b.ref), both)
+                    got = want = ("ok", None)
+                elif op in ("and_list", "sub_list", "xor_list"):
+                    f = {"and_list": a.ref.intersection, "sub_list": a.ref.difference, "xor_list": a.ref.symmetric_difference}[op]
+                    made = HeapSet(getattr(rt, "pys_set_" + op)(a.ptr, heap_list(xs)), f(xs), a.exact)
+                    got = want = ("ok", None)
+                elif op in ("sub_dict", "xor_dict"):
+                    f = a.ref.difference if op == "sub_dict" else a.ref.symmetric_difference
+                    made = HeapSet(getattr(rt, "pys_set_" + op)(a.ptr, d), f(dref), a.exact)
+                    got = want = ("ok", None)
+                elif op == "iand":
+                    def iand():
+                        a.ref &= b.ref
+                    got, want = outcome(lambda: rt.pys_set_assign(a.ptr, rt.pys_set_and(a.ptr, b.ptr))), outcome(iand)
+                    a.exact = both
+                elif op == "isub":
+                    def isub():
+                        a.ref -= b.ref
+                    got, want = outcome(rt.pys_set_isub, a.ptr, b.ptr), outcome(isub)
+                    a.exact = both
+                elif op == "ixor":
+                    def ixor():
+                        a.ref ^= b.ref
+                    got, want = outcome(rt.pys_set_ixor, a.ptr, b.ptr), outcome(ixor)
+                    a.exact = both
+                elif op in ("isub_list", "ixor_list"):
+                    f = a.ref.difference_update if op == "isub_list" else a.ref.symmetric_difference_update
+                    got, want = outcome(getattr(rt, "pys_set_" + op), a.ptr, heap_list(xs)), outcome(f, xs)
+                elif op == "ixor_dict":
+                    got, want = outcome(rt.pys_set_ixor_dict, a.ptr, d), outcome(a.ref.symmetric_difference_update, dref)
+                elif op == "cmp":
+                    k = R.randrange(6)
+                    f = [set.__lt__, set.__le__, set.__gt__, set.__ge__, set.__eq__, set.__ne__][k]
+                    got, want = outcome(rt.pys_set_cmp, a.ptr, b.ptr, k), ("ok", int(f(a.ref, b.ref)))
+                elif op in ("le_list", "ge_list", "isdisjoint_list"):
+                    f = {"le_list": a.ref.issubset, "ge_list": a.ref.issuperset, "isdisjoint_list": a.ref.isdisjoint}[op]
+                    got, want = outcome(getattr(rt, "pys_set_" + op), a.ptr, heap_list(xs)), ("ok", int(f(xs)))
+                elif op == "isdisjoint":
+                    got, want = outcome(rt.pys_set_isdisjoint, a.ptr, b.ptr), ("ok", int(a.ref.isdisjoint(b.ref)))
+                elif op == "iterate":
+                    # a for loop's calls, and one that finds the set another size
+                    def loop():
+                        out = []
+                        used = C.w(HEAP.of(a.ptr))
+                        j = rt.pys_set_next(a.ptr, 0, used)
+                        while j >= 0:
+                            m = rt.pys_set_big_key(a.ptr, j).addr
+                            out.append(C.mpz[m] if m else C.element(rt.pys_set_key(a.ptr, j), kind))
+                            j = rt.pys_set_next(a.ptr, j + 1, used)
+                        return out
+                    got, want = outcome(loop), ("ok", set_table(a, mode)[0])
+                    same("set-next-changed", outcome(rt.pys_set_next, a.ptr, 0, len(a.ref) + 1), ("RuntimeError", "Set changed size during iteration"), (mode,))
+                elif op == "list":
+                    got, want = outcome(lambda: values(rt.pys_set_list(a.ptr))), ("ok", set_table(a, mode)[0])
+                else:
+                    live = [j for j in range(C.w(HEAP.of(a.ptr) + 24) + 1) if C.w(C.w(HEAP.of(a.ptr) + 48) + 8 * j) != -1]
+                    if not live:
+                        continue
+                    j = R.choice(live)
+                    m = rt.pys_rt_sbig(a.ptr, j).addr
+                    gone = C.mpz[m] if m else C.element(C.w(C.w(HEAP.of(a.ptr) + 40) + 8 * j), kind)
+                    got, want = outcome(rt.pys_set_slot_del, a.ptr, j), outcome(a.ref.remove, gone)
+                Key.hook = None
+                if made is not None:
+                    sets.append(made)
+                if hooked:
+                    # no CPython outcome to compare with: no fault, and the tables stay sound
+                    cases += 1
+                    if got[0] not in ("ok", "KeyError"):
+                        fails += 1
+                        print(f"FAIL set {op} ({mode}), with an __eq__ that changes a set: {got}")
+                    for s in sets:
+                        s.ref = set(set_table(s, mode)[0])
+                        s.exact = False
+                    got = want
+                same(f"set-{op}", got, want, (mode, x if op in ("add", "has", "discard", "remove") else len(xs)))
+                for s in (a, b, made):
+                    if s is not None and not sound(s, op):
+                        return
 
 
 def u8count(data):
@@ -1324,11 +1696,14 @@ def fuzz_int_text():
         same("int-str", outcome(rt.pys_int_str, b(t), base), want(b(t), base), (t[:30], len(t), base))
 
 
-fuzz_lists()
-fuzz_list_search()
-fuzz_str_memory()
-check_model()
-if ONLY == "memory":
+if ONLY != "sets":
+    fuzz_lists()
+    fuzz_list_search()
+    fuzz_str_memory()
+    check_model()
+if ONLY != "lists":
+    fuzz_sets()
+if ONLY != "":
     print(f"{cases} cases, {fails} failed")
     sys.exit(1 if fails else 0)
 fuzz_str()

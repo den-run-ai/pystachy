@@ -18,6 +18,7 @@ REDUCTIONS = Path(__file__).with_name("reductions.py").resolve()
 NUMERIC = Path(__file__).with_name("numeric.py").resolve()
 INTEGERS = Path(__file__).with_name("integers.py").resolve()
 LISTS = Path(__file__).with_name("lists.py").resolve()
+TABLES = Path(__file__).with_name("tables.py").resolve()
 # Keep the small arithmetic kernels long enough to measure without launch time.
 COUNTS = {"scalar": 120000000, "range": 60000000, "power": 60000000,
           "sum-float": 5000, "sum-int": 5000, "reduction": 5000, "ascii": 5000, "unicode": 5000,
@@ -35,7 +36,10 @@ COUNTS = {"scalar": 120000000, "range": 60000000, "power": 60000000,
           "list-add": 6000000, "list-mul": 8000000, "list-set-slice": 15000000,
           "list-in": 10000000, "list-in-str": 4000000, "list-find": 5000000, "list-remove": 8000000,
           "list-range": 10000000, "list-bytes": 8000000,
-          "str-add": 60000000, "str-cat": 30000000, "str-mul": 20000000}
+          "str-add": 60000000, "str-cat": 30000000, "str-mul": 20000000,
+          "set-add": 150000000, "set-has": 150000000, "set-has-large": 60000000, "set-churn": 15000000,
+          "set-str": 50000000, "set-tuple": 40000000, "set-algebra": 150000, "set-iterate": 1500000,
+          "set-update-list": 500000, "set-pop": 500000, "set-compare": 1500000}
 # The cases of a later migration have a source of their own, so that workload.py keeps the hash
 # that the first recorded report names.
 INT_TEXT_CASES = ("str-int", "str-int-short", "int-str", "int-str-short", "int-str-hex", "int-str-padded")
@@ -46,9 +50,12 @@ LIST_CASES = ("list-append", "list-append-str", "list-short", "list-stack", "lis
               "list-slice-step", "list-extend", "list-reverse", "list-index", "list-add", "list-mul", "list-set-slice",
               "list-in", "list-in-str", "list-find", "list-remove", "list-range", "list-bytes",
               "str-add", "str-cat", "str-mul")
+SET_CASES = ("set-add", "set-has", "set-has-large", "set-churn", "set-str", "set-tuple", "set-algebra", "set-iterate",
+             "set-update-list", "set-pop", "set-compare")
 SOURCES = dict.fromkeys(COUNTS, SOURCE)
 for source, workload_cases in ((INT_TEXT, INT_TEXT_CASES), (REDUCTIONS, REDUCTION_CASES),
-                               (NUMERIC, NUMERIC_CASES), (INTEGERS, INTEGER_CASES), (LISTS, LIST_CASES)):
+                               (NUMERIC, NUMERIC_CASES), (INTEGERS, INTEGER_CASES), (LISTS, LIST_CASES),
+                               (TABLES, SET_CASES)):
     SOURCES.update(dict.fromkeys(workload_cases, source))
 
 

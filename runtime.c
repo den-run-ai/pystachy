@@ -1886,7 +1886,8 @@ static I titem(const I *t, I n, I i, const char *e, I *w) {   /* item i of tuple
 }
 /* and a set of ints holds an element past 64 bits as -2**63 or -2**63 + 1 in its slot, and its Mpz
    in that slot's word of kb (see sets) */
-static Mpz *sbig(Set *s, I j) { return s->keys[j] <= INT64_MIN + 1 && s->kb && opt_in() ? (Mpz *)s->kb[j] : NULL; }
+Mpz *pys_rt_sbig(Set *s, I j);   /* runtime.py's */
+static inline Mpz *sbig(Set *s, I j) { return pys_rt_sbig(s, j); }
 static int list_has_big(List *l) {   /* does l hold an item past 64 bits */
   if (l->ids && opt_in()) for (I i = 0; i < l->len; i++) if (lbig(l, i)) return 1;
   return 0;
@@ -4794,12 +4795,8 @@ Dict *pys_dict_fromkeys_dict(Dict *o, I v) {
    only sbfind compares Mpz. The operations that move elements from a table carry their Mpz (sbig),
    those of 64-bit elements (pys_set_add, ...) none. */
 #define LINEAR_PROBES 9
-static I hint(I v) {                                 /* long_hash */
-  uint64_t u = v < 0 ? 0 - (uint64_t)v : (uint64_t)v;
-  I h = (I)(u % ((1ULL << 61) - 1));
-  h = v < 0 ? -h : h;
-  return h == -1 ? -2 : h;
-}
+I pys_rt_hash_long(I v);                             /* long_hash, which is runtime.py's */
+static inline I hint(I v) { return pys_rt_hash_long(v); }
 static I hstr(Str *s) { return (I)hstrd(s); }   /* hstrd caches both sentinel normalizations */
 static I hptr(I p) { uint64_t y = (uint64_t)p; y = y >> 4 | y << 60; return (I)y == -1 ? -2 : (I)y; }   /* _Py_HashPointer */
 static I hdbl(double v) {                            /* _Py_HashDouble; a NaN's is 0, as a float here has no identity */
@@ -4869,7 +4866,6 @@ static I hitem(I k, const char *d) {                 /* the hash of a value k (a
   }
   return hint(k);
 }
-static I shash(Set *s, I k) { return s->kind == 0 ? hint(k) : s->kind == 1 ? hstr((Str *)k) : hitem(k, ((Str *)s->kind)->s); }
 /* is x, the element in slot j, equal to k (kind > 1; their hashes are): 1 or 0, or -1 where an
    __eq__ changed the table or that slot, after which CPython's set_lookkey and set_add_entry start
    again; add (set_add_entry's): 1 where x is equal, whatever changed (its found_active comes
@@ -6056,188 +6052,30 @@ void pys_dict_entry_del(Dict *d, I e) {
   while (d->idx[i] != e + 1) { p >>= 5; i = (i * 5 + p + 1) & mask; DICT_PROBE(); }
   dtake(d, i);
 }
-static void stable(Set *s, I size) {                 /* an empty table of size slots */
-  /* the 8 slots of a new or cleared set are scanned whatever its kind: the compiler gives an empty
-     set from a template the kind of the type its caller expects (typed_empty) only after it is
-     made. A larger table comes from insertions, of the set's own kind by then (a dict's tables
-     come at its first insertion, so a dict needs no such care) */
-  s->keys = size > 8 ? keymem(s->kind, size) : pys_alloc(size * 8);
-  s->hs = pys_alloc_atomic(size * 8); memset(s->hs, 0xff, size * 8);
-  s->mask = size - 1; s->fill = 0; s->kb = 0;
-}
-/* (the allocator adds its byte of slack: the header keeps 64 bytes, as before kb) */
-Set *pys_set_new(I kind) { Set *s = pys_alloc(sizeof(Set) - 1); s->kind = kind; stable(s, 8); return s; }
-static I slook(Set *s, I k, I h) {                   /* set_lookkey: k's slot, else the empty one that ends its probes */
-  uint64_t mask = s->mask, i = (uint64_t)h & mask, perturb = (uint64_t)h;
-  for (;; perturb >>= 5, i = (i * 5 + 1 + perturb) & mask) {
-    I probes = i + LINEAR_PROBES <= mask ? LINEAR_PROBES : 0;
-    for (uint64_t j = i;; j++) {
-      DICT_PROBE();
-      if (s->hs[j] == h) {
-        I x = s->keys[j];
-        if (x == k || (s->kind == 1 && pys_str_eq((Str *)x, (Str *)k))) return (I)j;
-        if (s->kind > 1) {
-          int eq = seq(s, j, x, k, 0);
-          if (eq < 0) return slook(s, k, h);
-          if (eq) return (I)j;
-        }
-      }
-      else if (s->hs[j] == -1 && !s->keys[j]) return (I)j;
-      if (!probes--) break;
-    }
-  }
-}
-static uint64_t sclean(Set *s, I k, I h) {           /* set_insert_clean: k into a table that has no dummy, nor k; its slot */
-  uint64_t mask = s->mask, i = (uint64_t)h & mask, perturb = (uint64_t)h, e;
-  for (;; perturb >>= 5, i = (i * 5 + 1 + perturb) & mask) {
-    if (s->hs[e = i] == -1) break;
-    if (i + LINEAR_PROBES <= mask) {
-      int j = 0;
-      while (j < LINEAR_PROBES && s->hs[++e] != -1) j++;
-      if (j < LINEAR_PROBES) break;
-    }
-  }
-  s->keys[e] = k; s->hs[e] = h;
-  return e;
-}
-/* the slot of element m, an int past 64 bits of hash h, else -1 less the empty slot that ends its
-   probes, and *free the last dummy they passed (set_lookkey and set_add_entry for m) */
-static I sbfind(Set *s, Mpz *m, I h, I *free) {
-  I k = h == -4 ? INT64_MIN + 1 : INT64_MIN;          /* (its sentinel: ssent) */
-  uint64_t mask = s->mask, i = (uint64_t)h & mask, perturb = (uint64_t)h;
-  *free = -1;
-  for (;; perturb >>= 5, i = (i * 5 + 1 + perturb) & mask) {
-    I probes = i + LINEAR_PROBES <= mask ? LINEAR_PROBES : 0;
-    for (uint64_t j = i;; j++) {
-      DICT_PROBE();
-      if (s->hs[j] == h && s->keys[j] == k) { Mpz *x = sbig(s, j); if (x && (x == m || pys_mpz_cmp(x, m) == 0)) return (I)j; }
-      else if (s->hs[j] == -1 && s->keys[j]) *free = (I)j;
-      else if (s->hs[j] == -1) return -1 - (I)j;
-      if (!probes--) break;
-    }
-  }
-}
-/* slot j's element is past 64 bits: its Mpz m, in kb (out of the loops that store elements) */
-__attribute__((noinline, cold)) static void sbput(Set *s, uint64_t j, Mpz *m) {
-  if (!s->kb) s->kb = pys_alloc((s->mask + 1) * 8);
-  s->kb[j] = (I)m;
-}
-static void sresize(Set *s, I minused) {             /* set_table_resize: the first size > minused, without dummies */
-  I size = 8, m = s->mask, *keys = s->keys, *hs = s->hs, *kb = s->kb;
-  while (size <= minused) size <<= 1;
-  if (size == 8 && m == 7 && s->fill == s->len) return;   /* (the small table without dummies stays as it is) */
-  stable(s, size); s->fill = s->len;
-  if (!kb) { for (I i = 0; i <= m; i++) if (hs[i] != -1) sclean(s, keys[i], hs[i]); return; }
-  for (I i = 0; i <= m; i++) if (hs[i] != -1) { uint64_t e = sclean(s, keys[i], hs[i]); if (keys[i] <= INT64_MIN + 1 && kb[i]) sbput(s, e, (Mpz *)kb[i]); }
-}
-/* set_add_entry: k, whose hash is h, unless an equal element is there; into the last dummy its
-   probes passed, else the empty slot that ends them. An __eq__ that changed the table or the slot
-   it compared makes it start again, and so does one that filled that dummy (or dropped it, in a
-   rebuild of the small table), as CPython's does: k would overwrite another element */
-static void sadd(Set *s, I k, I h) {
-restart:;
-  uint64_t mask = s->mask, i = (uint64_t)h & mask, perturb = (uint64_t)h;
-  I free = -1;
-  for (;; perturb >>= 5, i = (i * 5 + 1 + perturb) & mask) {
-    I probes = i + LINEAR_PROBES <= mask ? LINEAR_PROBES : 0;
-    for (uint64_t j = i;; j++) {
-      DICT_PROBE();
-      if (s->hs[j] == h) {
-        I x = s->keys[j];
-        if (x == k || (s->kind == 1 && pys_str_eq((Str *)x, (Str *)k))) return;
-        if (s->kind > 1) {
-          int eq = seq(s, j, x, k, 1);
-          if (eq < 0) goto restart;
-          if (eq) return;
-        }
-      }
-      else if (s->hs[j] == -1 && s->keys[j]) free = (I)j;
-      else if (s->hs[j] == -1) {
-        if (free >= 0 && s->kind > 1 && !(s->hs[free] == -1 && s->keys[free])) goto restart;
-        if (free >= 0) { s->keys[free] = k; s->hs[free] = h; s->len++; return; }
-        s->keys[j] = k; s->hs[j] = h; s->len++;
-        if ((uint64_t)++s->fill * 5 >= mask * 3) sresize(s, s->len > 50000 ? s->len * 2 : s->len * 4);
-        return;
-      }
-      if (!probes--) break;
-    }
-  }
-}
-static int sdiscard(Set *s, I k, I h) {              /* set_discard_entry: was k there */
-  I j = slook(s, k, h);
-  if (s->hs[j] == -1) return 0;
-  s->keys[j] = 1; s->hs[j] = -1; s->len--;
-  return 1;
-}
-static int shas(Set *s, I k, I h) { I j = slook(s, k, h); return s->hs[j] != -1; }   /* (s->hs once slook is done: an __eq__ may replace it) */
-/* sadd, sdiscard and shas of m, an int past 64 bits of hash h (sbfind) */
-static void sbadd(Set *s, Mpz *m, I h) {
-  I free, j = sbfind(s, m, h, &free), k = h == -4 ? INT64_MIN + 1 : INT64_MIN;
-  if (j >= 0) return;
-  if (free >= 0) { s->keys[free] = k; s->hs[free] = h; sbput(s, free, m); s->len++; return; }
-  j = -1 - j; s->keys[j] = k; s->hs[j] = h; sbput(s, j, m); s->len++;
-  if ((uint64_t)++s->fill * 5 >= (uint64_t)s->mask * 3) sresize(s, s->len > 50000 ? s->len * 2 : s->len * 4);
-}
-static int sbdiscard(Set *s, Mpz *m, I h) {
-  I free, j = sbfind(s, m, h, &free);
-  if (j < 0) return 0;
-  s->keys[j] = 1; s->hs[j] = -1; s->kb[j] = 0; s->len--;
-  return 1;
-}
-static int sbhas(Set *s, Mpz *m, I h) { I free; return sbfind(s, m, h, &free) >= 0; }
-/* the same of element k of hash h, past 64 bits where its Mpz m is not null: for an element taken
-   from a table (sbig) or a list (lbig), whose 64-bit ones take the paths above */
-static void saddm(Set *s, I k, I h, Mpz *m) { if (m) sbadd(s, m, h); else sadd(s, k, h); }
-static int sdiscardm(Set *s, I k, I h, Mpz *m) { return m ? sbdiscard(s, m, h) : sdiscard(s, k, h); }
-static int shasm(Set *s, I k, I h, Mpz *m) { return m ? sbhas(s, m, h) : shas(s, k, h); }
-static void smerge(Set *s, Set *o) {                 /* set_merge: o's elements into s */
-  if (o == s || !o->len) return;
-  if ((s->fill + o->len) * 5 >= s->mask * 3) sresize(s, (s->len + o->len) * 2);
-  if (!s->fill && s->mask == o->mask && o->fill == o->len) {   /* tables of one size, o's without dummies: a copy */
-    memcpy(s->keys, o->keys, (o->mask + 1) * 8); memcpy(s->hs, o->hs, (o->mask + 1) * 8);
-    if (o->kb) s->kb = memcpy(pys_alloc((o->mask + 1) * 8), o->kb, (o->mask + 1) * 8);   /* (s, with no fill, has no kb) */
-    s->fill = o->fill; s->len = o->len; return;
-  }
-  if (!s->fill) {
-    s->fill = s->len = o->len;
-    for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) { uint64_t e = sclean(s, o->keys[i], o->hs[i]); Mpz *m = sbig(o, i); if (m) sbput(s, e, m); }
-    return;
-  }
-  for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) saddm(s, o->keys[i], o->hs[i], sbig(o, i));
-}
-static void sshrink(Set *s) {                        /* after a difference: a rebuild once a quarter of the slots are dummies */
-  if ((uint64_t)(s->fill - s->len) > (uint64_t)s->mask / 4) sresize(s, s->len > 50000 ? s->len * 2 : s->len * 4);
-}
-/* (an element's __eq__ may change the sets these loops go through: each takes an element and its
-   hash before it looks them up) */
-static void ssymupd(Set *s, Set *o) {                /* set_symmetric_difference_update_set */
-  for (I i = 0; i <= o->mask; i++) { I k = o->keys[i], h = o->hs[i]; if (h == -1) continue; Mpz *m = sbig(o, i); if (!sdiscardm(s, k, h, m)) saddm(s, k, h, m); }
-}
-static int ssubset(Set *a, Set *b) {                 /* set_issubset of a set */
-  if (a->len > b->len) return 0;
-  for (I i = 0; i <= a->mask; i++) if (a->hs[i] != -1 && !shasm(b, a->keys[i], a->hs[i], sbig(a, i))) return 0;
-  return 1;
-}
-LOOKUP void pys_set_add(Set *s, I k) { sadd(s, k, shash(s, k)); }
-LOOKUP I pys_set_has(Set *s, I k) { return shas(s, k, shash(s, k)); }
-LOOKUP void pys_set_discard(Set *s, I k) { sdiscard(s, k, shash(s, k)); }
-LOOKUP void pys_set_remove(Set *s, I k) {
-  if (sdiscard(s, k, shash(s, k))) return;
+/* The set's table is runtime.py's (sets): its probes, insertions, resizes, merges and the entry
+   points the compiler calls. What it asks of this file follows: the hash and the equality of
+   the elements that a type descriptor describes, which may run the program's code, the kind
+   of memory a table of such elements needs, and the KeyErrors, whose text is a repr */
+Set *pys_set_new(I kind);
+void pys_set_add(Set *s, I k);
+I pys_set_has(Set *s, I k);
+Set *pys_set_copy(Set *s);
+List *pys_set_list(Set *s);
+void pys_rt_set_table(Set *s, I size);              /* an empty table of size slots */
+I pys_rt_set_clean(Set *s, I k, I h);               /* set_insert_clean: k's slot in a table without dummies, nor k */
+I pys_rt_set_pop_slot(Set *s);                      /* set_pop's slot (KeyError: the set is empty) */
+void pys_rt_set_take(Set *s, I i);                  /* and its element taken */
+I *pys_rt_keymem(I kind, I n) { return keymem(kind, n); }
+I pys_rt_hitem(I k, I kind) { return hitem(k, ((Str *)kind)->s); }
+/* is x, the element in slot j, equal to k (kind > 1; their hashes are): seq's answer */
+I pys_rt_set_eq(Set *s, I j, I x, I k, I add) { return seq(s, (uint64_t)j, x, k, (int)add); }
+_Noreturn NOMERGE void pys_rt_set_keyerr(Set *s, I k) {   /* s.remove(k) of an element s has not */
   Buf b = {0}; put(&b, "KeyError: ", 10); repr(&b, k, s->kind > 1 ? ((Str *)s->kind)->s : s->kind ? "s" : "i"); put(&b, "", 1); pys_fail(b.p);
 }
-I pys_set_pop(Set *s) {                              /* set_pop: the first element from the finger on */
-  if (!s->len) pys_fail("KeyError: 'pop from an empty set'");
-  I i = s->finger & s->mask;
-  while (s->hs[i] == -1) if (++i > s->mask) i = 0;
-  if (sbig(s, i)) pys_fail(NARROW);   /* (pys_set_big_pop's) */
-  I k = s->keys[i];
-  s->keys[i] = 1; s->hs[i] = -1; s->len--; s->finger = i + 1;
-  return k;
-}
-/* s.add(x), x in s, s.discard(x) and s.remove(x) of a set of ints and a promoting int x, {lo, m}: one
-   that fits as its 64-bit int; past 64 bits, its Mpz m, of CPython's hash (sbfind) */
-LOOKUP void pys_set_big_add(Set *s, I lo, Mpz *m) { if (m) sbadd(s, m, pys_mpz_hash(m)); else pys_set_add(s, lo); }
-LOOKUP I pys_set_big_has(Set *s, I lo, Mpz *m) { return m ? sbhas(s, m, pys_mpz_hash(m)) : pys_set_has(s, lo); }
+_Noreturn NOMERGE void pys_rt_bkeyerr(Mpz *m) { bkeyerr(m); }
+I pys_rt_khash(I kind) { return khash(kind); }      /* are a dict's keys hashed by CPython's hash, which a set takes as its own */
+/* has dict d no key k of the set's hash h (m: its Mpz past 64 bits; c: d keeps CPython's hashes) */
+I pys_rt_dict_lacks(Dict *d, I k, I h, Mpz *m, I c) { return (m ? dbfind(d, m, hbig(d, m), 0) : c ? dfind(d, k, (uint64_t)h, 0) : entry(d, k)) < 0; }
 LOOKUP I pys_set_int_find_any(Set *s, Dyn *query) {
   I h = (I)hdyn(query);                             /* preserve __hash__ side effects */
 restart:;
@@ -6256,27 +6094,11 @@ restart:;
     }
   }
 }
-void pys_set_slot_del(Set *s, I j) {
-  s->keys[j] = 1; s->hs[j] = -1; if (s->kb) s->kb[j] = 0; s->len--;
-}
-LOOKUP void pys_set_big_discard(Set *s, I lo, Mpz *m) { if (m) sbdiscard(s, m, pys_mpz_hash(m)); else pys_set_discard(s, lo); }
-LOOKUP void pys_set_big_remove(Set *s, I lo, Mpz *m) {
-  if (!m) { pys_set_remove(s, lo); return; }
-  if (!sbdiscard(s, m, pys_mpz_hash(m))) bkeyerr(m);
-}
-Mpz *pys_set_big_key(Set *s, I i) { return sbig(s, i); }   /* the Mpz of the element in slot i, where pys_set_key gave -2**63 or -2**63 + 1 */
 Big pys_set_big_pop(Set *s) {                        /* s.pop() of a set of ints, as a promoting int */
-  if (!s->len) pys_fail("KeyError: 'pop from an empty set'");
-  I i = s->finger & s->mask;
-  while (s->hs[i] == -1) if (++i > s->mask) i = 0;
-  Mpz *m = sbig(s, i); I k = s->keys[i];
-  if (m) s->kb[i] = 0;
-  s->keys[i] = 1; s->hs[i] = -1; s->len--; s->finger = i + 1;
+  I i = pys_rt_set_pop_slot(s); Mpz *m = sbig(s, i); I k = s->keys[i];
+  pys_rt_set_take(s, i);
   Big r = {m ? 0 : k, m}; return r;
 }
-void pys_set_clear(Set *s) { stable(s, 8); s->len = 0; }
-/* set(o), s.copy() and frozenset(o) of a set o: o merged into a new set */
-Set *pys_set_copy(Set *s) { Set *r = pys_set_new(s->kind); smerge(r, s); return r; }
 /* frozenset o of Any values as a frozenset of t's, which a frozenset[T] or an AbstractSet[T] takes
    (Gen.coerce): a new set of kind kind, whose elements are o's payloads. Each is checked as a typed
    variable's is (pys_dyn_unbox: TypeError), all of them before the set is made. They keep o's
@@ -6286,151 +6108,13 @@ Set *pys_set_unbox(Set *o, const DynType *t, I kind) {
   for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) pys_dyn_unbox((Dyn *)o->keys[i], t);
   Set *s = pys_set_new(kind);
   if (!o->len) return s;
-  if (o->mask != s->mask) stable(s, o->mask + 1);
+  if (o->mask != s->mask) pys_rt_set_table(s, o->mask + 1);
   s->fill = s->len = o->len;
   for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) {
     I k = pys_dyn_unbox((Dyn *)o->keys[i], t);
-    if (o->fill == o->len) { s->keys[i] = k; s->hs[i] = o->hs[i]; } else sclean(s, k, o->hs[i]);
+    if (o->fill == o->len) { s->keys[i] = k; s->hs[i] = o->hs[i]; } else pys_rt_set_clean(s, k, o->hs[i]);
   }
   return s;
-}
-/* s.update(o) (s |= o) of a set o; of a list (any other iterable's items), one insertion per item;
-   of a dict, one resize for all its keys, then theirs in order */
-void pys_set_update(Set *s, Set *o) { smerge(s, o); }
-/* item i of list l as an element of s: *k, and *m the Mpz of an int past 64 bits (BIGIDS); its hash,
-   taken before a lookup (an __eq__ may change l) */
-static I lelem(Set *s, List *l, I i, I *k, Mpz **m) { *k = l->a[i]; *m = lbig(l, i); return *m ? pys_mpz_hash(*m) : shash(s, *k); }
-void pys_set_update_list(Set *s, List *l) { for (I i = 0; i < l->len; i++) { I k; Mpz *m; I h = lelem(s, l, i, &k, &m); saddm(s, k, h, m); } }
-/* the set's hash of d's key e: CPython's takes the dict's, which an H kind's is (c: khash) */
-static I dhash(Set *s, Dict *d, I e, int c) { return c ? (I)d->hs[e] : shash(s, d->keys[e]); }
-/* s.update(d) (op 0), the removal of d's keys from s (1) and s ^= d (2) of a dict of int keys that
-   may hold a key past 64 bits (d->kb: kbig), whose hash is CPython's of it: a path of its own, so
-   that the loops of the others stay as they were */
-__attribute__((noinline)) static void sdict_big(Set *s, Dict *d, int c, int op) {
-  for (I e = 0; e < d->n; e++) if (dlive(d, e)) {
-    Mpz *m = kbig(d, e); I k = d->keys[e], h = m ? pys_mpz_hash(m) : dhash(s, d, e, c);
-    if (op && sdiscardm(s, k, h, m)) continue;
-    if (op != 1) saddm(s, k, h, m);
-  }
-}
-void pys_set_update_dict(Set *s, Dict *d) {
-  int c = khash(d->kind);
-  if ((s->fill + d->len) * 5 >= s->mask * 3) sresize(s, (s->len + d->len) * 2);
-  if (d->kb && opt_in()) { sdict_big(s, d, c, 0); return; }
-  for (I e = 0; e < d->n; e++) if (dlive(d, e)) sadd(s, d->keys[e], dhash(s, d, e, c));
-}
-/* s.union(..., o, ...) after the first: o, unless it is s itself (r: the union so far) */
-void pys_set_union_more(Set *r, Set *s, Set *o) { if (o != s) smerge(r, o); }
-Set *pys_set_or(Set *a, Set *b) { Set *r = pys_set_copy(a); if (b != a) smerge(r, b); return r; }
-/* s & o (set_intersection): the elements of the smaller set (o if both have as many), in its order,
-   that the other has; of a list, its items in order that s has, until there are as many as s has */
-Set *pys_set_and(Set *a, Set *b) {
-  if (a == b) return pys_set_copy(a);
-  Set *r = pys_set_new(a->kind);
-  if (b->len > a->len) { Set *t = a; a = b; b = t; }
-  for (I i = 0; i <= b->mask; i++) { I k = b->keys[i], h = b->hs[i]; if (h == -1) continue; Mpz *m = sbig(b, i); if (shasm(a, k, h, m)) saddm(r, k, h, m); }
-  return r;
-}
-Set *pys_set_and_list(Set *s, List *l) {
-  Set *r = pys_set_new(s->kind);
-  for (I i = 0; i < l->len; i++) {
-    I k; Mpz *m; I h = lelem(s, l, i, &k, &m);
-    if (shasm(s, k, h, m)) { saddm(r, k, h, m); if (r->len >= s->len) break; }
-  }
-  return r;
-}
-/* s &= o and s.intersection_update(...): s takes the table of the intersection (set_swap_bodies) */
-void pys_set_assign(Set *s, Set *t) { s->len = t->len; s->fill = t->fill; s->mask = t->mask; s->keys = t->keys; s->hs = t->hs; s->kb = t->kb; }
-/* s -= o and s.difference_update(o) (set_difference_update_internal): o's elements discarded (those
-   of s & o, if o is more than 8 times larger); a list's items in order */
-void pys_set_isub(Set *s, Set *o) {
-  if (s == o) { pys_set_clear(s); return; }
-  if ((o->len >> 3) > s->len) o = pys_set_and(s, o);
-  for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) sdiscardm(s, o->keys[i], o->hs[i], sbig(o, i));
-  sshrink(s);
-}
-void pys_set_isub_list(Set *s, List *l) { for (I i = 0; i < l->len; i++) { I k; Mpz *m; I h = lelem(s, l, i, &k, &m); sdiscardm(s, k, h, m); } sshrink(s); }
-/* s - o (set_difference): a copy of s less o's elements if s has more than 4 times as many, else
-   the elements of s that o has not, inserted into a new set; of a list, the copy less its items;
-   of a dict, as of a set, with its keys */
-Set *pys_set_sub(Set *a, Set *b) {
-  if ((a->len >> 2) > b->len) { Set *r = pys_set_copy(a); pys_set_isub(r, b); return r; }
-  Set *r = pys_set_new(a->kind);
-  for (I i = 0; i <= a->mask; i++) { I k = a->keys[i], h = a->hs[i]; if (h == -1) continue; Mpz *m = sbig(a, i); if (!shasm(b, k, h, m)) saddm(r, k, h, m); }
-  return r;
-}
-Set *pys_set_sub_list(Set *s, List *l) { Set *r = pys_set_copy(s); pys_set_isub_list(r, l); return r; }
-Set *pys_set_sub_dict(Set *s, Dict *d) {
-  int c = khash(d->kind);
-  if ((s->len >> 2) > d->len) {
-    Set *r = pys_set_copy(s);
-    if (d->kb && opt_in()) sdict_big(r, d, c, 1);
-    else for (I e = 0; e < d->n; e++) if (dlive(d, e)) sdiscard(r, d->keys[e], dhash(r, d, e, c));
-    sshrink(r);
-    return r;
-  }
-  Set *r = pys_set_new(s->kind);
-  for (I i = 0; i <= s->mask; i++) {
-    I k = s->keys[i], h = s->hs[i];
-    if (h == -1) continue;
-    Mpz *m = sbig(s, i);   /* (an int past 64 bits: a key past 64 bits, dbfind) */
-    if ((m ? dbfind(d, m, hbig(d, m), 0) : c ? dfind(d, k, (uint64_t)h, 0) : entry(d, k)) < 0) saddm(r, k, h, m);
-  }
-  return r;
-}
-/* s ^ o (set_symmetric_difference): a new set of o's elements (a list's items, a dict's keys), with
-   each element of s then removed if it is there, else added */
-Set *pys_set_xor(Set *a, Set *b) { Set *r = pys_set_new(a->kind); smerge(r, b); ssymupd(r, a); return r; }
-Set *pys_set_xor_list(Set *s, List *l) { Set *r = pys_set_new(s->kind); pys_set_update_list(r, l); ssymupd(r, s); return r; }
-Set *pys_set_xor_dict(Set *s, Dict *d) { Set *r = pys_set_new(s->kind); pys_set_update_dict(r, d); ssymupd(r, s); return r; }
-/* s ^= o and s.symmetric_difference_update(o): each element of o removed from s if it is there, else
-   added (s ^= s empties s); a list's items go through a set of them first, a dict's keys do not */
-void pys_set_ixor(Set *s, Set *o) { if (s == o) pys_set_clear(s); else ssymupd(s, o); }
-void pys_set_ixor_list(Set *s, List *l) { Set *o = pys_set_new(s->kind); pys_set_update_list(o, l); ssymupd(s, o); }
-void pys_set_ixor_dict(Set *s, Dict *d) {
-  int c = khash(d->kind);
-  if (d->kb && opt_in()) { sdict_big(s, d, c, 2); return; }
-  for (I e = 0; e < d->n; e++) if (dlive(d, e)) { I k = d->keys[e], h = dhash(s, d, e, c); if (!sdiscard(s, k, h)) sadd(s, k, h); }
-}
-/* a op b for op 0..5 = < <= > >= == != (set_richcompare): subsets and equality */
-I pys_set_cmp(Set *a, Set *b, I op) {
-  switch (op) {
-  case 0: return a->len < b->len && ssubset(a, b);
-  case 1: return ssubset(a, b);
-  case 2: return a->len > b->len && ssubset(b, a);
-  case 3: return ssubset(b, a);
-  case 4: return a->len == b->len && ssubset(a, b);
-  }
-  return a->len != b->len || !ssubset(a, b);
-}
-/* s.issubset(l), s.issuperset(l) and s.isdisjoint(...) */
-I pys_set_le_list(Set *s, List *l) { return pys_set_and_list(s, l)->len == s->len; }
-I pys_set_ge_list(Set *s, List *l) { for (I i = 0; i < l->len; i++) { I k; Mpz *m; I h = lelem(s, l, i, &k, &m); if (!shasm(s, k, h, m)) return 0; } return 1; }
-I pys_set_isdisjoint(Set *a, Set *b) {
-  if (a == b) return !a->len;
-  if (b->len > a->len) { Set *t = a; a = b; b = t; }
-  for (I i = 0; i <= b->mask; i++) if (b->hs[i] != -1 && shasm(a, b->keys[i], b->hs[i], sbig(b, i))) return 0;
-  return 1;
-}
-I pys_set_isdisjoint_list(Set *s, List *l) { for (I i = 0; i < l->len; i++) { I k; Mpz *m; I h = lelem(s, l, i, &k, &m); if (shasm(s, k, h, m)) return 0; } return 1; }
-/* for loops: the slot of the next element from slot i, or -1 at the end, failing like CPython's set
-   iterator when the set changed size meanwhile (used: its len when the loop started) */
-I pys_set_next(Set *s, I i, I used) {
-  if (s->len != used) pys_fail("RuntimeError: Set changed size during iteration");
-  while (i <= s->mask && s->hs[i] == -1) i++;
-  return i > s->mask ? -1 : i;
-}
-I pys_set_key(Set *s, I i) { return s->keys[i]; }
-/* list(s), sorted(s), ...: the elements in the order a loop sees them */
-List *pys_set_list(Set *s) {
-  List *l = list_new(s->len, atomic_items(s->keys));   /* (an int set's table past 8 slots is atomic) */
-  for (I i = 0; i <= s->mask; i++) if (s->hs[i] != -1) {
-    Mpz *m = sbig(s, i);   /* (an int past 64 bits: -2**63 and the list's BIGIDS companion) */
-    if (m && !l->ids) { l->ids = pys_alloc((l->cap + 1) * sizeof(I)); l->ids[0] = BIGIDS; }
-    if (m) l->ids[l->len + 1] = (I)m;
-    l->a[l->len++] = m ? INT64_MIN : s->keys[i];
-  }
-  return l;
 }
 
 /* ---------- formatting: f"{x:spec}" ---------- */
