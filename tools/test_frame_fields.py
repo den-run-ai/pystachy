@@ -57,6 +57,10 @@ NOT_RESET = {
 # and the function it interrupts sees what it added. Only Gen.__init__ assigns them of the lists.
 # source_lines accumulates metadata across module lowering, outside AST/dry traversal.
 # pipeline belongs to the compilation attempt; nested functions never advance or restore it.
+# tlate keeps the specializations that compiled code made of subclasses whose own __init__ is a
+# template, which each later pass makes before code compiles; newlate says this pass added one.
+# ntag is the greatest class tag: a template hierarchy's specialization that a nested compile or
+# dry() makes keeps its class, and so its tag, as classes does (templates.new_tag).
 # bsubn and bsub are each builtin subclass's base and its type (builtin_bases.py): a nested compile
 # or dry() that finds a bare base's type by a first fill leaves it for the function it interrupts,
 # which needs it; the next pass starts from the hint that the find leaves in newhints.
@@ -67,7 +71,7 @@ PROGRAM = """
     consts fieldnames bconsts tconsts tconstdata lconsts strs bstrs strvals vnodes cmexit rtfns opfxs out source_lines fns fll callsites summaries xcls xvals
     xmods xsigs xctors xtypes exctree eh ntboxes nttests opts reds lazy lazyat wake called gflag ocls ocmp hcls one
     xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx xwant newwant ncand retseen
-    template_instances template_retained retainers unsupported hierarchies deferred_hierarchies cnodes hooks chooks flagged unraised
+    template_instances template_retained retainers unsupported hierarchies deferred_hierarchies tlate newlate ntag cnodes hooks chooks flagged unraised
     noneglobals intglobals rangeused objectused abcsets declflag complexused intat strglobals globanns strtuples abstracts abcmeta
     constflags late ext libdir prefix moddirs csyms csymline cdirect extvars rtmode rtdefs
     rtcache externs deps comp flowctx closures clokeys adapters adrets ncv dispatchers cacheforms decorated
@@ -133,6 +137,7 @@ SCOPED = {
     "guessing": "module constants whose values guess() is typing: a recursion guard, set and cleared around it",
     "globguess": "the types guess() gave constants' values within one outermost guess of one: cleared as that starts",
     "guesscuts": "how often guess() cut a constant's recursion: compared before and after each guess of a value",
+    "tbasing": "template_bases makes a hierarchy's specializations before code compiles: guess may specialize templates, set around it",
 }
 # those of SCOPED that a nested compile wrongly sees or changes today, each with its reproducer: a
 # fix saves and resets each as Frame and gen_enter do, and moves it out of SCOPED (as #822's

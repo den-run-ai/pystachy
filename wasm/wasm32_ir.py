@@ -245,14 +245,162 @@ LANDING = re.compile(
     re.MULTILINE,
 )
 UNWIND = re.compile(r"^(  (?:%[-.\w]+ = )?invoke .+ unwind label %)([-.\w]+)", re.MULTILINE)
+BLOCK = re.compile(r"^([-.\w]+):(?:\s*;.*)?$")
+SUCCESSOR = re.compile(r"\blabel %([-.\w]+)")
+UNWINDS_TO = re.compile(r"^  (?:%[-.\w]+ = )?invoke .+ unwind label %([-.\w]+)")
 
 
-def wasm_landing(match: re.Match) -> str:
+def dominator_tree(order: list, successors: dict) -> dict:
+    # each reachable block's children in the dominator tree (Cooper, Harvey and Kennedy's
+    # iterative algorithm over the reverse postorder from the entry block, order[0])
+    entry = order[0]
+    seen = {entry}
+    stack = [(entry, iter(successors[entry]))]
+    post = []
+    while stack:
+        block, rest = stack[-1]
+        nxt = next(rest, None)
+        if nxt is None:
+            stack.pop()
+            post.append(block)
+        elif nxt in successors and nxt not in seen:
+            seen.add(nxt)
+            stack.append((nxt, iter(successors[nxt])))
+    rpo = post[::-1]
+    index = {b: k for k, b in enumerate(rpo)}
+    preds: dict = {b: [] for b in rpo}
+    for b in rpo:
+        for s in successors[b]:
+            if s in index:
+                preds[s].append(b)
+    idom = {entry: entry}
+    changed = True
+    while changed:
+        changed = False
+        for b in rpo[1:]:
+            new = ""
+            for p in preds[b]:
+                if p not in idom:
+                    continue
+                if new == "":
+                    new = p
+                    continue
+                x, y = p, new
+                while x != y:
+                    while index[x] > index[y]:
+                        x = idom[x]
+                    while index[y] > index[x]:
+                        y = idom[y]
+                new = x
+            if new != "" and idom.get(b) != new:
+                idom[b] = new
+                changed = True
+    children: dict = {b: [] for b in rpo}
+    for b in rpo[1:]:
+        if b in idom:
+            children[idom[b]].append(b)
+    return children
+
+
+BEGIN = re.compile(r"^  %[-.\w]+ = (call|invoke) ptr @pys_exc_begin\(.*?(?:unwind label %([-.\w]+))?(?:, !dbg !\d+)?$")
+JUMP = re.compile(r"^  br label %([-.\w]+)(?:, !dbg !\d+)?$")
+
+
+def lexical_parent(landing: str, lines: dict) -> str | None:
+    # A landing's code starts with pys_exc_begin, called as the try statement's own position
+    # in the code calls (lower_module.py): an invoke of the enclosing try's landing pad inside
+    # one, else a call. Its landing pad, "" for a call (the caller), None where not found
+    block, seen = landing, set()
+    while block in lines and block not in seen:
+        seen.add(block)
+        for line in lines[block]:
+            m = BEGIN.match(line)
+            if m:
+                return m[2] if m[1] == "invoke" else ""
+        m = JUMP.match(lines[block][-1]) if lines[block] else None
+        if not m:
+            return None
+        block = m[1]
+    return None
+
+
+def handler_parents(body: list) -> dict:
+    # The handler each landing pad's catch must unwind to. LLVM's Wasm lowering treats the
+    # blocks that a catchpad dominates as its catch, including those after catchret: what they
+    # raise goes to the catchswitch's unwind destination unless an invoke says otherwise, and
+    # where the two differ its fix-ups can send an invoke's exception to the caller instead
+    # (an except clause inside a try then misses it). That destination is the handler of the
+    # try statement that encloses this one, whose landing pad the landing's pys_exc_begin
+    # invokes; else, the target of the invokes in the blocks it dominates outside the try
+    # statements nested there. None of either: the caller (no enclosing try in this function).
+    order: list = []
+    lines: dict = {}
+    current = "%entry"
+    order.append(current)
+    lines[current] = []
+    for line in body:
+        m = BLOCK.match(line)
+        if m:
+            current = m[1]
+            order.append(current)
+            lines[current] = []
+        else:
+            lines[current].append(line)
+    if not lines["%entry"]:
+        order.pop(0)
+    successors = {b: list(dict.fromkeys(SUCCESSOR.findall("\n".join(lines[b])))) for b in order}
+    landings = {b for b in order if lines[b] and " = landingpad " in lines[b][0]}
+    children = dominator_tree(order, successors)
+    parents: dict = {}
+    for landing in landings:
+        if landing not in children:
+            continue  # (unreachable)
+        parent = lexical_parent(landing, lines)
+        if parent is not None:
+            parents[landing] = parent
+            continue
+        region, todo = set(), [landing]
+        while todo:
+            b = todo.pop()
+            region.add(b)
+            todo.extend(children[b])
+        targets = set()
+        for b in region:
+            for line in lines[b]:
+                m = UNWINDS_TO.match(line)
+                if m and m[1] not in region:
+                    targets.add(m[1])
+        if len(targets) > 1:
+            raise ValueError(f"WASI landing pad {landing} has handlers {sorted(targets)} after it")
+        parents[landing] = targets.pop() if targets else ""
+    for landing in parents:  # (unwind edges between catchswitches must not form a cycle)
+        seen, at = {landing}, parents[landing]
+        while at != "":
+            if at in seen:
+                raise ValueError(f"WASI landing pads nest in a cycle at {landing}")
+            seen.add(at)
+            at = parents.get(at, "")
+    return parents
+
+
+def adapt_function(text: str) -> str:
+    # one function's invokes and landing pads (text: from its define line), as Wasm's catches
+    if " = landingpad " not in text:
+        return text
+    body = text.split("\n")
+    end = body.index("}") if "}" in body else len(body)
+    parents = handler_parents(body[1:end])
+    text = UNWIND.sub(r"\1pys.wasi.dispatch.\2", text)
+    return LANDING.sub(lambda m: wasm_landing(m, parents.get(m["label"], "")), text)
+
+
+def wasm_landing(match: re.Match, parent: str = "") -> str:
     label = match["label"]
     dispatch = "pys.wasi.dispatch." + label
     pad = "pys.wasi.pad." + label
+    unwind = f"label %pys.wasi.dispatch.{parent}" if parent else "to caller"
     return (f"{dispatch}:\n"
-            f"  %{dispatch}.cs = catchswitch within none [label %{pad}] unwind to caller\n"
+            f"  %{dispatch}.cs = catchswitch within none [label %{pad}] unwind {unwind}\n"
             f"{pad}:\n"
             f"  %{pad}.token = catchpad within %{dispatch}.cs [ptr null]\n"
             f"  {match['exc']} = call ptr @llvm.wasm.get.exception(token %{pad}.token){match['dbg'] or ''}\n"
@@ -313,8 +461,7 @@ def adapt_module(src: str) -> str:
         raise ValueError("exception-enabled WASI input requires a command entry point")
     out = re.sub(r"^define i32 @__main_argc_argv\(", "define internal i32 @pys.wasi.main(", out, flags=re.MULTILINE)
     out = re.sub(r"^(define [^\n]+) personality ptr @pys_personality", r"\1 personality ptr @__gxx_wasm_personality_v0", out, flags=re.MULTILINE)
-    out = UNWIND.sub(r"\1pys.wasi.dispatch.\2", out)
-    out = LANDING.sub(wasm_landing, out)
+    out = "".join(adapt_function(part) for part in re.split(r"(?m)^(?=define )", out))
     if re.search(r"^  %[-.\w]+ = landingpad ", out, re.MULTILINE):
         raise ValueError("unsupported WASI landing pad")
     return out + WASI_MAIN

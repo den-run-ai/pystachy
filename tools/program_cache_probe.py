@@ -505,7 +505,8 @@ def check_semantics(p: Probe) -> None:
     ordinary = p.run("uncached error reference", raised, changes={"PYSTACHY_PROGRAM_CACHE": "0"})
     p.check(ordinary.status != 0 and b"ValueError: same error" in ordinary.stderr,
             "uncached exception reference did not fail as expected")
-    p.pair(raised, "uncaught error", reference=ordinary)
+    # (the executable a cached run makes prints CPython's traceback, which JIT code does not)
+    p.pair(raised, "uncaught error")
 
 
 def check_corruption(p: Probe) -> None:

@@ -335,6 +335,20 @@ entry:
   ret.none
 }
 
+function @a_block_without_a_label() -> None {
+entry:
+  ret.none
+"":
+  ; expected-error {{block 1 without a label}}
+  ret.none
+}
+
+function @a_first_block_other_than_entry() -> None {
+start:
+  ; expected-error {{a block named entry that is not the first, or a first that is not entry}}
+  ret.none
+}
+
 ; ---- functions the verifier accepts
 
 function @accepted_views(xs: list[int], s: str) -> opt[str] {

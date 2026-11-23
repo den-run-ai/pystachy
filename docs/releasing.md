@@ -76,6 +76,10 @@ Documented deviations, gaps that predate the alphas, and performance or CI work 
 it. A fix found after the second candidate ships in the stable release, which passes the
 same gates. New features wait for the next minor version's alphas.
 
+For release-candidate compatibility evidence, compare the previous release and candidate
+using the [pinned CPython method census](../tests/upstream/core-sweep.md#repeat-the-144-file-census).
+Record the common denominator, outcome counts and the names of methods that gained or lost a match.
+
 ## Publish a version
 
 1. Set [VERSION](../VERSION) to the intended semantic version and add its notes as

@@ -576,6 +576,12 @@ def gen_isinst(self, t: str, c: Node) -> int:
         if t in self.classes and self.classes[t].tag > 0:
             if self.derives(t, c.s):
                 return -2
+            if c.s in self.tmpl:
+                # (a class template's: an object of a template hierarchy's class, template_bases, is
+                # one where its chain holds a specialization of it)
+                if self.tmpl_derives(t, c.s):
+                    return -2
+                return -1 if len([x for x in self.classes.values() if x.tag > 0 and self.tmpl_derives(x.name, c.s) and self.derives(x.name, t)]) > 0 else 0
             return -1 if self.derives(c.s, t) or c.s in self.classes[t].overlaps else 0
         # (an exception of class t, or of a builtin one, may be an object of a class deriving from t)
         xc = self.classes[c.s].exc != "" and (t == "exc" or (t in self.classes and (self.derives(t, c.s) or self.derives(c.s, t) or self.exc_overlap(t, c.s))))
@@ -794,7 +800,7 @@ def gen_class_matches(self, c: str, t: Node) -> bool:
     if self.cabc_ref(t) != "":
         return self.cabc_exact(c, self.cabc_ref(t)) == 1  # (an object of exactly c: not its subclasses')
     if t.kind == "name" and t.s in self.classes:
-        return self.derives(c, t.s)
+        return self.derives(c, t.s) or (t.s in self.tmpl and self.tmpl_derives(c, t.s))
     return self.isinst(c, t) in [1, -2]
 
 def gen_obj_isinst(self, v: Val, t: Node) -> Val:
@@ -1184,6 +1190,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         candidates = [m for m in umembers(want) if is_dict(m)] if k == "dict" or k == "dictcomp" else [m for m in umembers(want) if is_list(m)]
         if len(candidates) == 1:
             want = candidates[0]
+    if k == "exportbound":
+        # A star import uses public names until the module binds __all__. Reuse the
+        # global definition flag that ordinary foreign reads check for this variable.
+        return self.mem_load(Val("@g." + n.s + ".def", "&bool")) if n.s in self.gflag else Val("true", "bool")
     if k == "name":
         if "?" not in want and same_kind(want, self.ltype.get(n.s, "")) and self.unfilled(n.s):
             self.refine(n.s, want)  # an empty container that nothing fills takes the type expected here
@@ -1688,6 +1698,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             self.dict_put(Val(r, self.ctype("dict", kv)), ks[i], self.key_slot(ks[i]), vs[i], kv)
         return Val(r, self.ctype("dict", kv))
     if k == "tuple":
+        tms = [m for m in umembers(unopt(want)) if is_tuple(m) or is_vtuple(m)] if is_union(unopt(want)) else []
+        if len(tms) == 1:
+            want = tms[0]  # (where a union is expected: a display of its one tuple type, whose items type an empty list's)
         ws = targs(want) if is_tuple(want) else ["dyn"] * len(n.kids) if want == "dyn" else []  # (dynamic items: dynamic.py)
         if is_vtuple(unopt(want)) and targs(unopt(want))[0] == "dyn":
             # Box each fresh item while its numeric identity is still available;
@@ -4411,6 +4424,13 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
     ms = self.classes[a.t].methods
     if m in ms and (op == "==" or op == "!=") and self.lenient and self.cmp_method(a.t, m, b.t) == "":
         return Val("", "")
+    em = m if m in ms else "__eq__" if op == "!=" and "__eq__" in ms else ""
+    if (op == "==" or op == "!=") and em != "" and ms[em].synthetic and self.is_dc(ms[em].cls) and self.object_eq(a.t, b.t) and (self.tmpl_of(a.t) == "" or self.tmpl_of(a.t) != self.tmpl_of(b.t)):
+        # (what @dataclass writes returns NotImplemented for an object of another class and for
+        # a value of a builtin type, which its parameter does not take: cmp2 goes on to the
+        # other operand's reflected method, else to identity, as cmp_pick skips it. Two
+        # specializations of one class template are one class to CPython: not declined)
+        return Val("", "")
     if m in ms and (op == "==" or op == "!="):
         return self.eqcall(ms[m], op == "==", a, b)
     if m in ms:
@@ -4740,6 +4760,22 @@ def gen_cmp_stage(self, op: str, at: str, bt: str, stage: int) -> list[str]:
         if i >= len(cs) or cs[i][1] == "@scalar" or not self.may_decline(self.classes[at if cs[i][0] == "a" else bt].methods[cs[i][1]]):
             return ["never"]
     return cs[stage] if stage < len(cs) else []
+
+def gen_object_eq(self, at: str, bt: str) -> bool:
+    # are at and bt the types of an object of a class of the program and of an object of another
+    # such class or a value of a builtin type, which == and != compare as CPython does where no
+    # rule of cmp2 does, by inherit_cmp: the left operand's method, else the right operand's
+    # reflected one, and where neither class has one, or both decline, their identity, which a
+    # value of another type never shares. A class of lib/ stands for a type of CPython's with an
+    # equality of its own (a dict's, a deque's), which identity is not, and an exception's object
+    # has rules of its own (exc_eq): cmp2 rejects what it does not compare of them, as before
+    own = [t in self.classes and self.classes[t].exc == "" and not lib_file(self.classes[t].node.line, self.libdir) for t in [at, bt]]
+    if own[0] and own[1]:
+        return at != bt
+    if not own[0] and not own[1]:
+        return False
+    o = bt if own[0] else at
+    return o not in self.classes and o != "None" and comparison_builtin(unopt(o)) != ""
 
 def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
     # the method concrete_cmp calls for op between objects of the concrete classes at and bt, as
@@ -6862,6 +6898,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             return self.num_cmp('!=' if op == '==' else '==', Val(r, "int"), Val('0', "int"))
         r = self.rt("pys_cmpop", "i64", [f"i64 {sa}", f"i64 {sb}", d, f"i64 {ORDOP[op]}"])
         return self.num_cmp('!=', Val(r, "int"), Val('0', "int"))
+    if eq and self.object_eq(a.t, b.t):
+        # (an object of a class of the program and another such object or a value of a builtin
+        # type, which no rule above compares: as an object of a class with subclasses is compared)
+        return self.inherit_cmp(op, a, b)
     x = "an exception" if a.t == "exc" else "object" if a.t == OBJECTC else "int" if a.t == BIG else "bytearray" if a.t == BYTEARRAYC else a.t
     y = "an exception" if b.t == "exc" else "object" if b.t == OBJECTC else "int" if b.t == BIG else "bytearray" if b.t == BYTEARRAYC else b.t
     self.err(f"cannot compare {x} {op} {y}")

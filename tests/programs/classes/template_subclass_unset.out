@@ -1,0 +1,8 @@
+1
+'Base' object has no attribute 'more'
+3
+'Sub' object has no attribute 'more'
+'Base' object has no attribute 'more'
+'Sub' object has no attribute 'more'
+c
+[exit 0]

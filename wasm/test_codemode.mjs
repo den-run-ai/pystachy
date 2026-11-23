@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdtemp, open, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import test from "node:test";
 import { createCodeMode, createCompiler } from "./codemode.mjs";
 import { createRunner } from "./run.mjs";
@@ -11,7 +11,10 @@ import { createRunner } from "./run.mjs";
 const source = 'from codemode import call\nprint(call("lookup", "α"))\n';
 const generatorBody = `
 def values():
-    yield 42
+    try:
+        yield 42
+    finally:
+        print("", end="")
 for v in values():
     print(v)
 `;
@@ -21,7 +24,10 @@ test("LLVM fallback catches Python exceptions and lets host errors escape", asyn
   const script = `from codemode import call
 
 def parse():
-    yield int(call("value", "number"))
+    try:
+        yield int(call("value", "number"))
+    finally:
+        print("", end="")
 
 try:
     for value in parse():
@@ -123,26 +129,41 @@ test("a deadline applies to a directly compiled Python loop", async () => {
   await assert.rejects(run(countdown, { executionTimeoutMs: 25 }), { code: "ERR_SCRIPT_EXECUTION_TIMEOUT" });
 });
 
-test("direct exception handling matches the CPython recordings", async t => {
+test("direct exceptions, object dispatch and key layouts match CPython", async t => {
   const compile = createCompiler({ fallback: false });
   const run = createRunner();
   const dir = await mkdtemp(join(tmpdir(), "pystachy-exceptions-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
-  const cases = [
+  const exceptions = [
     "exc_handler_loop_values", "exc_raise", "exc_finally", "exc_recursion_unwind", "exc_uncaught", "exc_exit",
     "exc_class_try", "exc_class_exit", "exc_class_exit_msg",
   ];
-  for (const name of cases) {
-    await t.test(name, async t => {
-      const prefix = `tests/programs/exceptions/${name}`;
+  const cases = [
+    ...exceptions.map(name => `exceptions/${name}`), "classes/object_containers", "containers/dict_user_hash",
+    "containers/tuple_runtime_object_compare", "generics/template_empty_forward",
+    "classes/builtin_dict_basic", "classes/builtin_list_token_list",
+    "reflection/callables", "exceptions/exc_class_values", "generators/gen_resume_typed_iterators",
+    "generators/gen_suspend_temporaries", "generators/gen_protocol_noeh", "generators/gen_resume_depth", "generators/gen_tree",
+    "library/lib_atexit", "library/lib_atexit_exit", "library/lib_atexit_uncaught",
+  ];
+  for (const fixture of cases) {
+    await t.test(fixture, async t => {
+      const prefix = `tests/programs/${fixture}`;
+      const name = basename(fixture);
       const { module } = await compile(await readFile(`${prefix}.py`, "utf8"));
       const out = join(dir, `${name}.out`), err = join(dir, `${name}.err`);
       const stdout = await open(out, "w"), stderr = await open(err, "w");
       t.after(() => Promise.all([stdout.close(), stderr.close()]));
       const status = await run(module, { stdout: stdout.fd, stderr: stderr.fd });
       assert.equal(await readFile(out, "utf8") + `[exit ${status}]\n`, await readFile(`${prefix}.out`, "utf8"));
-      const expectedError = ["exc_uncaught", "exc_class_try", "exc_class_exit_msg"].includes(name) ? await readFile(`${prefix}.err`, "utf8") : "";
-      assert.equal(await readFile(err, "utf8"), expectedError);
+      const expectedError = await readFile(`${prefix}.err`, "utf8").catch(error => {
+        if (error.code === "ENOENT") return "";
+        throw error;
+      });
+      // CPython recordings keep the last stderr line. Check both ignored callbacks in full.
+      const prefixError = name === "lib_atexit" ?
+        "Exception ignored in atexit callback:\nSystemExit: 3\nException ignored in atexit callback:\n" : "";
+      assert.equal(await readFile(err, "utf8"), prefixError + expectedError);
     });
   }
 });

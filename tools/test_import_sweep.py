@@ -82,6 +82,7 @@ class SweepTests(unittest.TestCase):
                                   "slow": "timeout: no result after 120 s", "re": "left out: lib/ has re"})
         metadata = json.loads(self.metadata.read_text())
         self.assertEqual(metadata["mode"], "import")
+        self.assertFalse(metadata["include_ports"])
         self.assertEqual(metadata["python"]["version"], sweep.sys.version)
         self.assertEqual(metadata["stdlib"], str(self.stdlib))
         self.assertEqual(metadata["compiler"]["path"], str(self.compiler))
@@ -129,6 +130,27 @@ class SweepTests(unittest.TestCase):
         self.assertEqual(metadata["timeout_s"], sweep.STUB_TIMEOUT)
         self.assertEqual(metadata["counts"]["ok_without_stubs"], 0)
         self.assertIn("OK (stubs: _thread)", json.loads(self.output.read_text()).values())
+
+    def test_include_ports_compiles_submodules_with_their_upstream_package_hidden(self):
+        (self.stdlib / "sample").mkdir()
+        (self.stdlib / "sample" / "__init__.py").touch()
+        (self.stdlib / "sample" / "extra.py").touch()
+        (self.root / "lib" / "sample.py").touch()
+
+        def compile_import(cmd, env, directory, module, timeout, stubs):
+            self.assertFalse((Path(env["PYSTACHY_PATH"]) / "sample").exists())
+            return ("error: missing submodule" if module == "sample.extra" else "OK"), []
+
+        with contextlib.redirect_stdout(io.StringIO()), mock.patch.object(sweep, "compile_one", side_effect=compile_import):
+            sweep.main(["--include-ports", "--metadata", str(self.metadata), *self.args])
+        result = json.loads(self.output.read_text())
+        self.assertEqual(result["sample"], "OK")
+        self.assertEqual(result["sample.extra"], "error: missing submodule")
+        metadata = json.loads(self.metadata.read_text())
+        self.assertTrue(metadata["include_ports"])
+        self.assertEqual(metadata["counts"]["included"], len(result))
+        self.assertEqual(metadata["overlay"]["port_namespace_modules"], ["re", "sample", "sample.extra"])
+        self.assertEqual(metadata["overlay"]["excluded_modules"], [])
 
     def test_legacy_overlay_argument_forms(self):
         for compiler in ([], [str(self.compiler)]):

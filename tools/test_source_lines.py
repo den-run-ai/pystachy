@@ -1,4 +1,4 @@
-"""Python source locations survive native code generation; disabled IR is unchanged."""
+"""Python source locations survive native code generation, and an executable's tracebacks read them."""
 from __future__ import annotations
 
 import os
@@ -32,8 +32,8 @@ HELPER = '''def imported(value: int) -> int:
     result = value * value
     return result + 3
 '''
-# Code compiled after a body, and the one raise block that a function's checks of one message
-# share (their line, or 0 for code merged from several lines, as LLVM numbers it).
+# Code compiled after a body, and the raise blocks of a function's checks of one message: one for
+# each line where line tables are on, whose call LLVM keeps apart (nomerge).
 ATTRIBUTION = '''def total(xs: list[int]) -> int:
     s = 0
     for x in xs:
@@ -64,6 +64,58 @@ def first(path: str) -> str:
 
 print(total([1, 2]), count(3), single(1, 2), first(__file__))
 '''
+
+
+# Uncaught errors: CPython's tracebacks, from line tables an executable has by default. A check
+# of each of two lines whose raise blocks LLVM would merge (divide), a function inlined into its
+# caller (lookup), a recursion that RecursionError ends at a function's entry (down), and an
+# exception that a finally block raises again, whose frames below the handler stay (chain). The
+# program has try, so a raise unwinds; without it (WITHOUT_TRY), the report reads the stack.
+TRACEBACK = '''import sys
+
+
+def divide(a: int, b: int, c: int) -> int:
+    x = a // b
+    y = a // c
+    return x + y
+
+
+def lookup(d: dict[str, int], k: str) -> int:
+    return d[k]
+
+
+def down(n: int) -> int:
+    return down(n + 1) + 1
+
+
+def chain(k: str) -> int:
+    try:
+        return lookup({"a": 1}, k)
+    finally:
+        print("finally")
+
+
+if sys.argv[1] == "divide":
+    print(divide(6, 2, 3))
+    print(divide(6, 2, 0))
+elif sys.argv[1] == "lookup":
+    print(lookup({"a": 1}, "b"))
+elif sys.argv[1] == "down":
+    print(down(0))
+else:
+    print(chain("b"))
+'''
+TRACEBACKS = {
+    'divide': ([(27, '<module>', 'print(divide(6, 2, 0))'), (6, 'divide', 'y = a // c')],
+               'ZeroDivisionError: integer division or modulo by zero'),
+    'lookup': ([(29, '<module>', 'print(lookup({"a": 1}, "b"))'), (11, 'lookup', 'return d[k]')], "KeyError: 'b'"),
+    'down': ([(31, '<module>', 'print(down(0))')] + [(15, 'down', 'return down(n + 1) + 1')] * 3,
+             'RecursionError: maximum recursion depth exceeded'),
+    'chain': ([(33, '<module>', 'print(chain("b"))'), (20, 'chain', 'return lookup({"a": 1}, k)'),
+               (11, 'lookup', 'return d[k]')], "KeyError: 'b'"),
+}
+
+WITHOUT_TRY = TRACEBACK.replace('    try:\n', '    if k == "":\n').replace('    finally:\n', '    else:\n')
 
 
 def located(ir):
@@ -189,9 +241,11 @@ class SourceLinesTests(unittest.TestCase):
         enabled = self.compile_ir('1')
         self.assertEqual(enabled, self.compile_ir('1'))
         self.assertNotIn('!dbg', off)
-        body = enabled.split('; pystachy source locations\n')[0]
-        body = re.sub(r',? !dbg ![0-9]+', '', body)
-        self.assertEqual(off, body)
+        self.assertNotIn(' nomerge', off)
+        # helper.imported's two overflow checks: one raise block without line tables, one for each
+        # line (2 and 3) with them, whose calls LLVM keeps apart
+        self.assertEqual(len(re.findall(r'call void @pys_raise\(ptr @s\.\d+, ptr @s\.\d+\)\n', off)), 5)
+        self.assertEqual(len(re.findall(r'call void @pys_raise\(ptr @s\.\d+, ptr @s\.\d+\) nomerge, !dbg', enabled)), 6)
         self.assertIn('DILocation(line: 0,', enabled)
         self.assertIn('DILocation(line: 12,', enabled)
         self.assertIn('DILocation(line: 2,', enabled)
@@ -206,23 +260,25 @@ class SourceLinesTests(unittest.TestCase):
         path = self.directory / 'attribution.py'
         path.write_text(ATTRIBUTION)
         enabled = self.compile_ir('1', path)
-        body = enabled.split('; pystachy source locations\n')[0]
-        self.assertEqual(self.compile_ir(None, path), re.sub(r',? !dbg ![0-9]+', '', body))
         functions = located(enabled)
 
+        def lines(function, pattern):
+            return [at for text, at in functions[function] if re.search(pattern, text)]
+
         def line(function, pattern):
-            found = [at for text, at in functions[function] if re.search(pattern, text)]
+            found = lines(function, pattern)
             self.assertEqual(len(found), 1, (function, pattern, functions[function]))
             return found[0]
 
         # A loop's step is its header's, not the last statement of its body.
         self.assertEqual(line('@f.total', r'= add i64 %t\d+, 1$'), 3)
         self.assertEqual(line('@f.count', r'sadd\.with\.overflow\.i64\(i64 %t\d+, i64 1\)'), 11)
-        # A raise block is its checks' line where they share one, else 0; never the function's
-        # last statement's. (A range loop's step ends the loop where it would overflow.)
-        self.assertEqual(line('@f.single', r'@pys_raise\('), 17)
-        self.assertEqual(line('@f.count', r'@pys_raise\('), 12)
-        self.assertEqual(line('@f.total', r'@pys_raise\('), 0)
+        # A raise block is its checks' line, one for each line; never the function's last
+        # statement's. (A range loop's step ends the loop where it would overflow.)
+        self.assertEqual(line('@f.single', r'@pys_raise\(.*\) nomerge$'), 17)
+        self.assertEqual(line('@f.count', r'@pys_raise\(.*\) nomerge$'), 12)
+        self.assertEqual(lines('@f.total', r'@pys_raise\(.*\) nomerge$'), [4, 5])
+        self.assertEqual(self.compile_ir(None, path).count('@pys_raise('), 4)
         # Closing a with statement's file is the statement's.
         self.assertEqual(line('@f.first', r'@pys_file_close\('), 23)
 
@@ -247,6 +303,33 @@ class SourceLinesTests(unittest.TestCase):
         self.assertIn('DW_LANG_Python', info)
         self.assertIn('imported', info)
         self.assertIn('outer', info)
+
+    @unittest.skipUnless(sys.platform.startswith('linux'), 'reads the ELF executable\'s DWARF')
+    def test_executables_print_cpython_tracebacks(self):
+        self.tool('clang')
+        built = {}
+        for name, text, setting in (('try', TRACEBACK, ''), ('plain', WITHOUT_TRY, ''), ('off', TRACEBACK, '0')):
+            path = self.directory / f'{name}.py'
+            path.write_text(text)
+            built[name] = (path, self.directory / name)
+            env = dict(self.env, PYSTACHY_DEBUG_LINES=setting, PYSTACHY_CACHE=str(self.directory / 'cache'))
+            subprocess.run([sys.executable, '-m', 'pystachy', 'build', str(path), '-o', str(built[name][1])],
+                           cwd=ROOT, env=env, capture_output=True, check=True, timeout=600)
+        for name in ('try', 'plain', 'off'):
+            path, executable = built[name]
+            for case, (frames, last) in TRACEBACKS.items():
+                if name == 'plain' and case == 'chain':
+                    continue
+                with self.subTest(program=name, case=case):
+                    result = subprocess.run([str(executable), case], capture_output=True, text=True, timeout=60)
+                    self.assertEqual(result.returncode, 1, result.stderr)
+                    expected = ['Traceback (most recent call last):']
+                    for at, function, text in frames:
+                        expected += [f'  File "{path}", line {at}, in {function}', '    ' + text]
+                    if case == 'down':
+                        expected.append('  [Previous line repeated 996 more times]')
+                    # PYSTACHY_DEBUG_LINES=0: no line tables, so the last line alone, as before
+                    self.assertEqual(result.stderr, ('\n'.join(expected) + '\n' if name != 'off' else '') + last + '\n')
 
     @unittest.skipUnless(sys.platform.startswith('linux'), 'observes the ELF GDB JIT interface')
     def test_default_orc_registers_python_line_table(self):
