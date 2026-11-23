@@ -41,6 +41,11 @@ class FnBuild:
         # container or None had given a type (gen_mem_load, gen_mem_store)
         self.closed: dict[str, bool] = {}
         self.reopened = False  # and once the program is built, as another function decided one (Gen.reopen)
+        # the hint key of each hole that an empty display assigned to a local made (Gen.empty),
+        # and the types decided on this build for its locals that a placeholder typed first:
+        # Gen.decide_ahead builds the function again with them, as if annotated
+        self.emptykeys: dict[int, str] = {}
+        self.ahead: dict[str, str] = {}
 
 
 class FnInfo:

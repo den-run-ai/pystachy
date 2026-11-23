@@ -264,6 +264,7 @@ from src.pystachy_compiler.unions import (
     gen_joinable as unions_joinable,
     gen_local_hint as unions_local_hint,
     gen_local_again as unions_local_again,
+    gen_decide_ahead as unions_decide_ahead,
     gen_replay_state as unions_replay_state,
     gen_stable as unions_stable,
     gen_ueq_type as unions_ueq_type,
@@ -3710,6 +3711,9 @@ class Gen:
 
     def local_again(self, f: FnInfo, before: list[int]) -> bool:
         return unions_local_again(self, f, before)
+
+    def decide_ahead(self, f: FnInfo) -> bool:
+        return unions_decide_ahead(self, f)
 
     def replay_state(self) -> list[int]:
         return unions_replay_state(self)

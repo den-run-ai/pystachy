@@ -156,15 +156,21 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
         f.noret = noret
         asked = self.dyn_asked(f)
         self.function_body(f, body)
-    if len(self.newhints) > 0 and self.local_again(f, before):
+    joins = len(self.newhints) > 0 and self.local_again(f, before)
+    # (and the types it decided for locals that ops read at a placeholder first: decide_ahead,
+    # which may follow a first build that compiled what f calls)
+    mark = self.replay_state()
+    ahead = self.decide_ahead(f)
+    if joins or ahead:
         f.ret = ret
         f.noret = noret
-        # (the discarded body's runtime functions are declared again where the retry uses them,
-        # in the order the program's next pass would declare them)
-        for k in list(self.rtfns)[declared:]:
-            del self.rtfns[k]
+        if mark == before:
+            # (the discarded body's runtime functions are declared again where the retry uses
+            # them, in the order the program's next pass would declare them)
+            for k in list(self.rtfns)[declared:]:
+                del self.rtfns[k]
         self.function_body(f, body)
-        if self.replay_state() != before or f.ll in self.retseen or f.ll in self.dynseen:
+        if self.replay_state() != mark or f.ll in self.retseen or f.ll in self.dynseen:
             raise Rejoin()  # the retry itself discovered a dependent layout or signature
         prefix = self.fnkey(f) + "|"
         for name in self.ltype:

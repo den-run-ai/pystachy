@@ -1345,3 +1345,29 @@ def gen_local_again(self, f: FnInfo, before: list[int]) -> bool:
     self.qholes.pop(f.ll, [])
     self.qforward.pop(f.ll, False)
     return True
+
+
+def gen_decide_ahead(self, f: FnInfo) -> bool:
+    # Where building f decided the type of a local that a placeholder typed first (FnBuild.ahead:
+    # an empty display's, a first None's) after ops read or stored it, f is built again with
+    # those types as hints, which its next build gives each local where it is made (Gen.empty,
+    # store_name's first None), as an annotation would: no op of the IR it keeps reads one of
+    # them at a placeholder, and Gen.settle has none of them to type (#1718). The next build
+    # takes the same path, and gives the IR the same numbers. As for local_again, a generator,
+    # closure, lambda, module code and runtime.py, a function with cells, a dynamic program's and
+    # one whose result a call has read keep their placeholders, which Gen.settle types; unlike
+    # it, the first build may have compiled what f calls, which the next calls again and must not
+    # add to (Gen.function raises Rejoin)
+    a = self.fn.build.ahead
+    if len(a) == 0 or dynamic_program() or self.modlevel or self.rtmode or f.gen or f.clo >= 0 or f.node.kind != "def":
+        return False
+    if len(self.cells) > 0 or f.ll in self.retseen or f.ll in self.dynseen:
+        return False
+    for key in a:
+        self.hints[key] = a[key]
+    self.guessed.pop(f.ll, "")
+    self.qused.pop(f.ll, "")
+    self.qret.pop(f.ll, "")
+    self.qholes.pop(f.ll, [])
+    self.qforward.pop(f.ll, False)
+    return True

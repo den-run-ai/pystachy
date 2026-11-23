@@ -1141,6 +1141,36 @@ print(evens(5), best(4), counts(["a", "b", "a"]), slots(2), [x * x for x in rang
         for name in open_types:
             self.assertEqual(open_types[name], ["list[?]"] if name == "empty" else [], name)
 
+    def test_a_local_decided_after_its_uses_is_built_with_its_type(self):
+        # (each function's types as its building ends, before Gen.settle: a local's that a use
+        # decided after ops read or stored it, which Gen.decide_ahead builds again with that type
+        # from the start; a [None] list's items, a template's empty result and module code still
+        # take theirs from Gen.settle)
+        built = {}
+        rebuilt = []
+        settle = Gen.settle
+        decide_ahead = Gen.decide_ahead
+
+        def capture(g, fn, late):
+            if not late:
+                types = [i.t for i in fn.slots] + [i.t for b in fn.blocks for i in b.code] + [a.t for b in fn.blocks for i in b.code for a in i.a]
+                built[fn.f.name] = sorted({t for t in types if "?" in t or "opt[None]" in t})
+            settle(g, fn, late)
+
+        def ahead(g, f):
+            if decide_ahead(g, f):
+                rebuilt.append(f.name)
+                return True
+            return False
+
+        with patch.object(Gen, "settle", capture), patch.object(Gen, "decide_ahead", ahead):
+            Gen().program(Loader([]).program("decided.py", self.SOURCE))
+        self.assertEqual(sorted(rebuilt), ["best", "counts", "evens"])
+        for name in ("best", "counts", "evens", "__next__"):
+            self.assertEqual(built[name], [], name)
+        self.assertEqual(built["slots"], ["&list[opt[?]]", "*opt[?]", "list[opt[?]]"])
+        self.assertEqual(built["empty"], ["list[?]"])
+
 
 if __name__ == "__main__":
     unittest.main()

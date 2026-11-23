@@ -590,6 +590,10 @@ def gen_none_resolve(self, name: str, t: str) -> None:
         if self.final or self.rtmode or name in self.compvars:
             self.err(f"cannot infer the type of '{name}' from None here; annotate it ({name}: T | None)")
         self.newhints[f"none:{self.fnkey(self.curfn)}|{name}"] = t
+    elif t != NONEVAR and self.ltype.get(name, "") == NONEVAR:
+        # (its slot, and the None stores to it, came first: the next build of the function gives
+        # its slot this type as it is made, Gen.decide_ahead)
+        self.fn.build.ahead[f"none:{self.fnkey(self.curfn)}|{name}"] = t
     if t != NONEVAR:
         self.fn.build.decided[self.lreg[name]] = t  # (the type of its slot, which it took None first in)
         self.fn.build.settle = True
@@ -1189,12 +1193,23 @@ def gen_empty_of(self, e: Node) -> str:
 
 def gen_empty(self, kind: str, name: str) -> Val:
     # [] or {} assigned to a variable without a type: the first use that shows what it holds
-    # gives the variable its type (fill, refine); until then only len() and truth tests read it
+    # gives the variable its type (fill, refine); until then only len() and truth tests read it.
+    # A local's that such a use typed on an earlier build of its function (Gen.decide_ahead) has
+    # that type as its hole's op makes it, which nothing reads before
     i = self.hole(kind)
     if self.is_global(name):
         self.gkk[name] = self.gkk.get(name, "") + f" {i.k}"
-    else:
-        self.lkk[name] = self.lkk.get(name, "") + f" {i.k}"
+        return Val(tmpname(i.r[0]), i.t)
+    key = f"empty:{self.fnkey(self.curfn)}|{name}@{self.line}"
+    t = self.hints.get(key, "") if len(self.hints) > 0 else ""
+    if t != "" and same_kind(t, i.t):
+        self.decide_hole(i.k, t, False)
+        if is_dict(t) or is_set(t):
+            self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t))
+        return Val(tmpname(i.r[0]), t)
+    if self.drying == 0:
+        self.fn.build.emptykeys[i.k] = key
+    self.lkk[name] = self.lkk.get(name, "") + f" {i.k}"
     return Val(tmpname(i.r[0]), i.t)
 
 def gen_none_extend(self, name: str) -> None:
@@ -1233,6 +1248,9 @@ def gen_refine(self, name: str, t: str, glob: bool = False) -> None:
         self.fn.build.decided[self.lreg[name]] = t
         self.fn.build.settle = True
         toks = self.lkk.pop(name, "")
+        for h in toks.split():
+            if int(h) in self.fn.build.emptykeys:
+                self.fn.build.ahead[self.fn.build.emptykeys[int(h)]] = t  # (Gen.empty, on the next build)
         if "?" in self.ret and name in self.qret.get(self.curfn.ll, "").split():
             self.adopt(t)  # the function returned it: so it returns t
     else:
