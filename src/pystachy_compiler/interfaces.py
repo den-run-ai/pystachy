@@ -9,13 +9,14 @@ their table entry with the object, as a Callable's call calls its code with its 
 calls through the interface use (iface_finish): an implementation needs only what is called.
 """
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import dynamic_program, where
+from src.pystachy_compiler.diagnostics import ClassBoxes, NeedHandlers, NeedHierarchy, NeedSliceEH, Rejoin, TupleBoxes, dynamic_program, where
+from src.pystachy_compiler.frames import Frame
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.names import MAPVIEW, OBJECT, SEQVIEW, SETVIEW, VIEWSHOW, short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
-from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, EMPTYFS, OBJECTC, SPECSHOW, is_excname
+from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, EMPTYFS, OBJECTC, RANGEC, SPECSHOW, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import clone, elem, gelem, identity_abi, is_callable, is_clsval, is_dict, is_fset, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_union, is_vtuple, lt, numeric_identity, selem, targs, tname, typestr, umembers, unopt
 
@@ -762,6 +763,8 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
         a.append(x if m is None or m.npos < 0 or j + 1 < m.npos else mk("kw", m.params[j + 1], line, [x]))
     parts = op.split("|", 2) if derived else []
     bad = ""
+    tried = ""  # (the attempt of a comparison that may not compile: eq_how)
+    note = ""  # (what an error of the entry's comparison says to do: eq_note)
     body: list[Node] = []
     if derived and parts[0] == "as":
         # (a narrowing, iface_narrowed: the object as the type the test proved, of an
@@ -814,6 +817,14 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
                 # (a class object, or object()'s object, and an object of a class: CPython asks the
                 # class's __eq__ or __ne__, reflected, as the object on the left asks it first)
                 e.kids = [e.kids[1], e.kids[0]]
+        how = eq_how(self, tab, op, e)
+        if how != "":
+            tried = "objeq:" + self.stable(f"{tab.iface}|{tab.impl}|{op}")
+        if tried != "" and tried in self.xnot:
+            # (a comparison of two types that no comparison of the compiler takes, a pass found:
+            # CPython's default answer, or the other operand's method that CPython calls reflected)
+            e = eq_default_expr(how, e, line)
+        note = eq_note(self, tab, op, e)
     elif op in face.props:
         e = mk("attr", op, line, [o])
     elif op in BUILTIN_FORMS and len(ps) == 0 and (op in IMPLICIT or tab.impl not in self.classes or op == "__next__" or op == "__iter__"):
@@ -835,16 +846,170 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
         body = [mk("raise", "", line, [mk("call", "", line, [mk("name", "NotImplementedError", line, []), msg])])]
     f.node.kids = [mk("params", "-1,-1", line, []), mk("noann", "", line, []), mk("block", "", line, body)]
     self.making.append(f"making the table of {typestr(tab.impl)} as {typestr(tab.iface)} (for {face.dshow[op] if derived else op}), converted at {where(line)}")
+    if note != "":
+        self.making.append(note)
     if bad != "":
         self.err(bad)
     fr = self.save()
     self.modlevel = False
     self.lenient = False
     self.line = line
-    self.function(f, body)
+    if tried != "" and tried not in self.xnot:
+        eq_try(self, f, body, tried, fr)
+    else:
+        self.function(f, body)
     self.restore(fr)
+    if note != "":
+        self.making.pop()
     self.making.pop()
     return ll
+
+
+def eq_try(self, f: FnInfo, body: list[Node], tried: str, fr: Frame) -> None:
+    # compile entry f, a comparison that eq_default could answer, as an attempt (Gen.xtry) named
+    # tried: where it does not compile, this pass goes on, to find the other comparisons that do
+    # not (an error after it starts the next pass instead: gen_err), and ends, and the next pass
+    # compiles CPython's default answer from the start (iface_adapter); the partial compilation
+    # of the entry is dropped with this pass
+    previous = self.xtry
+    making = len(self.making)
+    sel = self.selfcls
+    self.xtry = tried
+    try:
+        self.function(f, body)
+    except Rejoin as retry:
+        if isinstance(retry, NeedHandlers) or isinstance(retry, NeedHierarchy) or isinstance(retry, ClassBoxes) or isinstance(retry, NeedSliceEH) or isinstance(retry, TupleBoxes) or tried not in self.newx:
+            raise
+        self.restore(fr)
+        while len(self.making) > making:
+            self.making.pop()
+        self.selfcls = sel
+    self.xtry = previous
+
+
+def eq_family(self, t: str) -> str:
+    # the family of a value of type t for == and != with a value of another family, which
+    # CPython's comparisons of the two kinds both decline (NotImplemented), so that it compares
+    # them by identity: "num" (a number), "str", "bytes", "None", "list", "tuple" (a NamedTuple's
+    # object too), "dict", "set" (a frozenset too), "range", "dc:C" (an object of dataclass C, whose
+    # generated __eq__ declines another class's), "id:T" (a value equal only to itself: a
+    # generator, a class object, an exception, an enum member, an object of a class that defines
+    # no __eq__ or __ne__); "" where a method of the program may decide (user_eq) or for another
+    # type, whose comparison is the compiler's own
+    u = unopt(t) if is_sopt(t) else t
+    if u == "int" or u == "float" or u == "bool" or u == BIG or u == COMPLEXC:
+        return "num"
+    if u == "str" or u == "bytes" or u == "None":
+        return u
+    if u == RANGEC:
+        return "range"
+    if is_list(u) or self.bkind(u) == "list":
+        return "list"
+    if is_dict(u) or self.bkind(u) == "dict":
+        return "dict"
+    if is_set(u) or u == EMPTYFS:
+        return "set"
+    if is_tuple(u) or is_vtuple(u):
+        return "tuple"
+    if is_gen(u) or is_clsval(u) or u == "exctype" or u == "exc":
+        return "id:" + u
+    if u not in self.classes or user_eq(self, u) or self.bkind(u) != "" or u == OBJECTC:
+        return ""
+    if u in self.nts:
+        return "tuple"
+    if self.is_dc(u) and "no-eq" not in self.classes[u].dcopts:
+        return "dc:" + u
+    return "id:" + u
+
+
+def user_eq(self, c: str) -> bool:
+    # does class c, or a class it derives from (its template's, for a specialization), define
+    # __eq__ or __ne__ (not one the compiler writes for a dataclass): CPython calls it with a
+    # value of any type, which only its body answers
+    seen: dict[str, bool] = {}
+    todo = [c]
+    while len(todo) > 0:
+        x = todo.pop()
+        if x in seen or x not in self.classes:
+            continue
+        seen[x] = True
+        ci = self.classes[x]
+        for m in ["__eq__", "__ne__"]:
+            if m in ci.methods and not ci.methods[m].synthetic:
+                return True
+        todo.extend([ci.base, ci.origin] + ci.roles)
+    return False
+
+
+def eq_default(self, a: str, b: str) -> str:
+    # CPython's answer to a == b, a of type a and b of type b, where the comparison of a declines
+    # b (eq_family): "swap" where b's class defines __eq__ or __ne__ (user_eq), which CPython then
+    # calls reflected, as b == a calls it first; where the comparison of b declines a too, "is"
+    # where one object may have both types (one class, or a class and a class it derives from),
+    # "false" where none may; "" where a comparison decides (of numbers, of strs, of containers
+    # item by item, a dataclass's, a method of a's class)
+    fa = eq_family(self, a)
+    fb = eq_family(self, b)
+    if fa != "" and fb == "" and b in self.classes and user_eq(self, b) and self.bkind(b) == "" and b != OBJECTC:
+        return "swap"
+    if fa == "" or fb == "":
+        return ""
+    if fa == fb:
+        return "is" if fa.startswith("id:") else ""
+    ua = fa[3:]
+    ub = fb[3:]
+    if (fa.startswith("id:") or fa.startswith("dc:")) and (fb.startswith("id:") or fb.startswith("dc:")) and ua in self.classes and ub in self.classes and (self.derives(ua, ub) or self.derives(ub, ua)):
+        return "is"
+    return "false"
+
+
+def eq_how(self, tab: ITab, op: str, e: Node) -> str:
+    # how CPython answers comparison e of entry op ("==|l|T", "!=|r|T", ...) of implementation
+    # tab.impl with a value of type T, where the compiler's own comparison of the two types does
+    # not compile (eq_default: the entry tries it, eq_try); "" where that comparison decides
+    parts = op.split("|", 2)
+    if tab.iface != OBJECT or len(parts) != 3 or (parts[0] != "==" and parts[0] != "!=") or parts[2] == "None":
+        return ""
+    if self.is_iface(unopt(parts[2])) or self.is_iface(tab.impl) or e.kind != "cmp" or len(e.kids) != 2 or e.kids[0].kind != "name" or e.kids[1].kind != "name":
+        return ""
+    ts = [tab.impl if x.s == "_o" else parts[2] for x in e.kids]
+    return eq_default(self, ts[0], ts[1])
+
+
+def eq_note(self, tab: ITab, op: str, e: Node) -> str:
+    # what an error of comparison e of entry op of implementation tab.impl says to do, where its
+    # left operand's class defines the method CPython calls (__eq__, or __ne__ for !=) annotated
+    # to take a type that the right operand's is not: "" for another entry
+    parts = op.split("|", 2)
+    if tab.iface != OBJECT or len(parts) != 3 or (parts[0] != "==" and parts[0] != "!=") or e.kind != "cmp" or len(e.kids) != 2 or e.kids[0].kind != "name" or e.kids[1].kind != "name":
+        return ""
+    ts = [tab.impl if x.s == "_o" else parts[2] for x in e.kids]
+    c = ts[0]
+    seen: dict[str, bool] = {}
+    while c in self.classes and c not in seen:
+        # (the class and its bases, nearest first)
+        seen[c] = True
+        ci = self.classes[c]
+        for m in (["__ne__", "__eq__"] if parts[0] == "!=" else ["__eq__"]):
+            if m in ci.methods and not ci.methods[m].synthetic:
+                f = ci.methods[m]
+                t = f.ptypes[1] if len(f.ptypes) == 2 else ""
+                if t == "" or self.is_object(t) or t == "dyn" or t == ts[1]:
+                    return ""
+                return f"{short(c)}.{m}() takes only {typestr(t)}, where CPython calls it with any value that a value of object holds: annotate its parameter object and narrow it with isinstance()"
+        c = ci.base
+    return ""
+
+
+def eq_default_expr(how: str, e: Node, line: int) -> Node:
+    # comparison e, _o op _a0 or _a0 op _o (op "==" or "!="), as how (eq_default) answers it: its
+    # operands' identity ("is"), False for == and True for != ("false"), or the operands swapped
+    # ("swap": the right operand's method, which CPython calls reflected)
+    if how == "swap":
+        return mk("cmp", e.s, line, [clone(e.kids[1]), clone(e.kids[0])])
+    if how == "is":
+        return mk("cmp", "is" if e.s == "==" else "is not", line, [clone(e.kids[0]), clone(e.kids[1])])
+    return mk("False" if e.s == "==" else "True", "", line, [])
 
 
 def operator_form(op: str, n: int) -> str:

@@ -1120,7 +1120,15 @@ a protocol's value above, each by its value's type
 
 - `str()`, `repr()`, printing, f-strings, `format()`, `%s`, `%r` and `%a`, and truth tests;
 - `==` and `!=` with a value of any type: numbers by their values (`1 == 1.0`, `True == 1`),
-  values of builtin types of two kinds (a number and a str, a list and a tuple) unequal;
+  values of builtin types of two kinds (a number and a str, a list and a tuple) unequal, and any
+  two values of `object` whatever they hold: where neither type's comparison takes the other (a
+  range and a bool, a generator and a list, a dataclass and an exception) and no `__eq__` of the
+  program decides, as CPython by identity, `False` (`True` for `!=`); a class's `__eq__` that takes
+  `object` is called, reflected where the other operand's type declines
+  ([test](../../tests/programs/classes/object_eq_pairs.py)), and one annotated to take only its
+  own class rejects the program where a value of `object` of another type may meet it: annotate
+  its parameter `object` and narrow it with `isinstance()`
+  ([error test](../../tests/errors/classes/object_eq_strict.py));
 - `hash()`, alike for equal numbers;
 - `is` and `is not`: `None` is only `None`; an object, a str, a container or a class object is
   itself; a number is an equal number of its type, a float by its bits, as in PyPy, which is

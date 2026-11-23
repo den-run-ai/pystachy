@@ -45,6 +45,11 @@ def gen_err(self, msg: str) -> None:
             # joins are found again where they are not its, see narrows)
             self.newhints = {}
         raise Rejoin()
+    if any(k.startswith("objeq:") for k in self.newx):
+        # (an error after a comparison of an interface's entry that did not compile, which the
+        # next pass answers as CPython's default does: what this pass compiles after it may be
+        # left of it, interfaces.eq_try)
+        raise Rejoin()
     if len(self.newhints) > 0 and not self.final:
         raise Rejoin()  # (an error after a join may come of the narrower type it widens: see Rejoin)
     if len(self.clsused) > 0:

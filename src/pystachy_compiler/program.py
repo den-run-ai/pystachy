@@ -2463,6 +2463,8 @@ def gen_discover_program(self, prepared: PreparedProgram) -> None:
         # (the dispatchers of dynamic values, compiled again while more classes are boxed: dynamic.py)
         if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(xed) + len(self.xctors) == before and not tabled and not self.dyn_dispatchers():
             break
+    if any(k.startswith("objeq:") for k in self.newx):
+        raise Rejoin()  # (comparisons of interfaces' entries that did not compile: the next pass answers them as CPython's default does, interfaces.eq_try)
     self.exc_tables()
     self.iface_tables()
     for nm in self.flagged:
