@@ -808,6 +808,15 @@ Each case calls the class's operation with `Any` arguments: a method whose param
 unannotated or `Any` takes them as they are (a template is instantiated for `Any` once), and
 one annotated with a concrete type unboxes them as above.
 
+A NamedTuple's object held in `Any` is the tuple of its fields to the tuple operations its class
+does not define, as CPython's NamedTuple inherits them: it compares and hashes as that tuple with
+tuples and with other NamedTuple classes' objects, and `len()`, indexing and slicing, `in`,
+iteration (`for`, `list()`, unpacking, `reversed()`), truth, `count()`, `index()`, `+` and `*` run
+as the tuple's (`tests/programs/inference/dynany_namedtuple.py`,
+`dynany_namedtuple_sequence.py`); `isinstance(x, tuple)` is true for it
+(`dynany_isinstance_namedtuple.py`). A class whose fields no `Any` value holds raises
+`TypeError` where its object would run as that tuple.
+
 `==` and ordering between objects of
 one class (or of a class and its subclass) run the class's `__eq__`, `__lt__` and so on through
 the existing `pys_obj_eq`/`pys_obj_cmp`, as typed code compares them: a subclass's `__eq__`
@@ -1142,12 +1151,6 @@ can still need an explicit `list[Any]` destination.
 
 - A slice of an object through an `Any` value raises `TypeError`: its `__getitem__` would take a
   slice object, which Pystachy does not have (typed code rejects the slice at compile time).
-
-- A NamedTuple's object compares and hashes as the tuple of its fields through `Any` values
-  (`tests/programs/inference/dynany_namedtuple.py`), and `isinstance(x, tuple)` is true for it
-  (`tests/programs/inference/dynany_isinstance_namedtuple.py`), but it is no sequence there: `len()`,
-  indexing and iteration raise `TypeError`, and an object of another NamedTuple class compares
-  with it by identity (an ordering raises `TypeError`), where CPython compares their fields.
 
 - A static or class method read through an object held in `Any` without a call raises `AttributeError`
   (typed code rejects a static method as a value at compile time), and so does a call of a

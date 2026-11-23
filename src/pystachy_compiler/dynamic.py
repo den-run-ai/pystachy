@@ -1676,11 +1676,14 @@ def gen_dyn_xbody(self, c: str) -> None:
             if not self.term:
                 self.ret_(Val(self.select(r, Val("1", "int"), Val("0", "int")), "int"))
         else:
+            # (a tuple, or another NamedTuple class's object, which tuple's method takes as the tuple
+            # of its fields, whatever methods its class defines: dyn_nt_tuple)
+            peer = dyn_nt_tuple(self, b, "")
             tup = self.label()
             other = self.label()
-            self.cbr(self.dyn_test(b, ["vtuple[dyn]"]), tup, other)
+            self.cbr(self.dyn_test(peer, ["vtuple[dyn]"]), tup, other)
             self.place(tup)
-            same = self.cmp2(XOPS[k], self.ntup(a, True), b)
+            same = self.cmp2(XOPS[k], self.ntup(a, True), peer)
             self.ret_(Val(self.select(same.v, Val("1", "int"), Val("0", "int")), "int"))
             self.place(other)
             self.ret_(Val("2", "int"))
@@ -3604,6 +3607,25 @@ def gen_dyn_body(self, key: str) -> None:
         self.place(hit)
         self.ret_(Val("1", "int"))
         return
+    if key == "ntfields":
+        # (no class's own operation: each NamedTuple class's case, then any other value itself)
+        for c in [x for x in self.dynclasses if x in self.nts]:
+            hit = self.label()
+            nxt = self.label()
+            self.cbr(self.ptr_cmp("==", Val(self.dyn_typeof(o), "dyntype"), Val(self.dyntypes[c], "dyntype")).v, hit, nxt)
+            self.place(hit)
+            dyn_nt_fields_arm(self, f, c, self.dyn_payload(o, c))
+            self.place(nxt)
+        self.ret_(o)
+        return
+    own = nt_operand(self, key)
+    if own != "":
+        # A NamedTuple's object is the tuple of its fields to the sequence operations its class
+        # does not define, as CPython's tuple methods give them: each such operand runs as that tuple
+        o = dyn_nt_tuple(self, o, own)
+        ps[0] = o
+        if key.startswith("op") or key.startswith("iop"):
+            ps[1] = dyn_nt_tuple(self, ps[1], own)
     t = Val(self.dyn_typeof(o), "dyntype")
     if key in ["get.__name__", "get.__qualname__", "get.__module__"]:
         hit = self.label()
@@ -3671,6 +3693,62 @@ def gen_dyn_body(self, key: str) -> None:
         self.dyn_fn_arms(f, key, o, ps[1:])
     dyn_generator_arms(self, key, o)
     self.dyn_fallback(f, key, ps)
+
+
+def nt_operand(self, key: str) -> str:
+    # where dispatcher key takes a boxed NamedTuple's object as the tuple of its fields (gen_dyn_body):
+    # the methods, "|"-separated, whose definition by its class keeps it itself, as CPython runs
+    # tuple's method without one of them; else ""
+    if len([c for c in self.dynclasses if c in self.nts]) == 0:
+        return ""
+    k = key[:-8] if key.endswith(".promote") else key
+    seq = {"len": "__len__", "getitem": "__getitem__", "slice": "__getitem__", "contains": "__contains__",
+           "iter": "__iter__", "reversed": "__reversed__|__len__|__getitem__", "truth": "__bool__|__len__",
+           "op0": "__add__|__radd__", "op2": "__mul__|__rmul__", "iop0": "__iadd__|__add__|__radd__",
+           "iop2": "__imul__|__mul__|__rmul__"}
+    if k in seq:
+        return seq[k]
+    if k.startswith("call.count.") or k.startswith("call.index."):
+        return k[5 : k.rfind(".")]  # (tuple's count() and index())
+    return ""
+
+
+def dyn_nt_tuple(self, v: Val, own: str) -> Val:
+    # v, or the tuple of its fields (ntfields) where v holds an object of a NamedTuple class that
+    # defines none of the methods own names ("|"-separated; all NamedTuple classes for ""): tuple's
+    # operation then runs on that tuple, as CPython's NamedTuple inherits it
+    classes = [c for c in self.dynclasses if c in self.nts and len([m for m in own.split("|") if m != "" and m in self.classes[c].methods]) == 0]
+    if len(classes) == 0:
+        return v
+    hit = self.label()
+    rest = self.label()
+    end = self.label()
+    self.cbr(self.dyn_test(v, classes), hit, rest)
+    self.place(hit)
+    fields = self.dyn_call(self.dyn_dispatcher("ntfields", [DYN], DYN, ""), [v])
+    got = self.cur
+    self.br(end)
+    self.place(rest)
+    kept = self.cur
+    self.br(end)
+    self.place(end)
+    ph = Ins("phi", DYN, "")
+    self.incoming(ph, fields.v, got)
+    self.incoming(ph, v.v, kept)
+    return Val(self.phi(ph), DYN)
+
+
+def dyn_nt_fields_arm(self, f: FnInfo, c: str, x: Val) -> None:
+    # ntfields' case of x, an object of NamedTuple class c: the tuple of its fields, as an Any value.
+    # Optional, as an iteration protocol's case is: a class whose fields no Any value holds raises
+    # where its object runs as a tuple, instead of failing the program
+    attempt = f"protocol:{c}.fields"
+    if attempt in self.xnot:
+        self.raise_("TypeError", self.sconst(f"a {short(c)} held as an Any value is not supported as a tuple: its fields have no layout as Any values"))
+        return
+    self.xtry = attempt
+    self.dyn_return(f, self.ntup(x, True))
+    self.xtry = ""
 
 
 def dyn_generator_arms(self, key: str, o: Val) -> None:
@@ -4972,7 +5050,9 @@ def dyn_iteration_hooks(self) -> None:
         for key in ["iter", "next", "lengthhint"]:
             needed = iterate if key == "iter" else advance if key == "next" else length
             method = "__len__" if key == "lengthhint" else "__" + key + "__"
-            if needed and (method in ms or (key == "lengthhint" and "__length_hint__" in ms)):
+            # (a NamedTuple's object iterates over its fields, as tuple's __iter__ does: the iter
+            # dispatcher takes it as their tuple, see nt_operand)
+            if needed and (method in ms or (key == "lengthhint" and "__length_hint__" in ms) or (key == "iter" and c in self.nts)):
                 f = self.dyn_dispatcher(key, [DYN], "int" if key == "lengthhint" else DYN, method)
                 self.called[f.ll] = True
                 for d in self.consts:
