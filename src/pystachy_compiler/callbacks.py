@@ -116,6 +116,7 @@ def callback_clone(fn: IFn, param: int, target: str, code: str, ft: str, codes: 
         item.mode, item.ctr = loop.mode, loop.ctr
         item.nonnegative = loop.nonnegative
         item.stop = Val(loop.stop.v, loop.stop.t)
+        item.inc = Val(loop.inc.v, loop.inc.t)
         item.seqs = [Val(v.v, v.t) for v in loop.seqs]
         item.tests, item.idx = [s for s in loop.tests], [s for s in loop.idx]
         out.loops.append(item)

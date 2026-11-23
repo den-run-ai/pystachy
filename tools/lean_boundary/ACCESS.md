@@ -65,7 +65,10 @@ loop, `stop <= len(xs) - c`, gives `stop + c ≤ n` for the length `n`; the loop
 stop` and the index `j = i + c` chain to `j + 1 ≤ n`, which with `j ≥ 0` is `0 ≤ j < n`. A 1-based
 loop's test, `stop <= len(xs) + 1`, adds to a length, which with at most 2^62 items cannot wrap.
 Where the stop is a constant, the loop's test bounds `i` above, the test before it bounds the
-length below, and the first must lie under the second.
+length below, and the first must lie under the second. Where the start is a variable `s`, a test
+before the loop, `-c <= s`, gives `s ≥ -c`, which the loop's first index copies and each step by a
+positive constant keeps; a variable step's test, `1 <= step`, makes the step's sum keep it too
+(lower bounds add up), and the copy branches on `i < stop` alone.
 Sums prove copies whose index adds a base `b` that no iteration changes (`data[bi + d]`). The
 tests before the loop give `b ≥ -start - c` and, through `t = stop + b`, a checked sum, `t + c ≤ n`;
 the copy's `j = b + i` is a plain sum, which gives the fact `j = b + i` only where `i < stop`,
@@ -77,7 +80,9 @@ Certificate inference retains the finite positive lower bounds requested by init
 constants and negative offsets. Thus a loop starting at 1 and advancing by 2 keeps
 `i >= 1` at the join of its initial and later iterations. Each proposed weakening
 is checked by the existing Lean rule; an invalid start or descending induction
-still fails the access proof.
+still fails the access proof. It derives no difference bound `a + k ≤ b` or upper
+bound weaker than one it knows: a cycle of an offset and an order (a copy of
+`range(i, i + 256)`) would otherwise derive weaker ones without end.
 
 The build checks 51 examples by kernel reduction: 16 shapes the compiler emits and 35
 corruptions that must fail: a signed test of a possibly negative index, a list write between a

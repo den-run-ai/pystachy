@@ -514,6 +514,17 @@ class ProvedCheckerTests(SnapshotFixture):
             for corrupt in (further, lowered, shortened):
                 self.assertFalse(self.verdict(corrupt(symbol), symbol), (symbol, corrupt.__name__))
 
+    def test_a_cycle_of_offsets_and_orders_stops_at_the_strongest_bound(self):
+        # (listguard's copy of range(i, i + 256): t = x + 256, x < t and t <= n give x + 1 <= n,
+        # and that with t = x + 256 gives t - 255 <= n, weaker than t <= n, and so on without
+        # end, which exceeded the resource bound in re._optimize_charset; weaker bounds add
+        # nothing, so the closure derives none)
+        start = [("off", "t", "x", 256), ("le", "t", "n", 0), ("ge", "x", 0), ("lt", "x", "t")]
+        facts, _ = access.closure(start, [("lt", "x", "t")], {"t", "x", "n"})
+        self.assertLess(len(facts), 16)
+        self.assertIn(("below", "x", "n"), facts)
+        self.assertEqual([f for f in facts if f[:3] == ("le", "t", "n")], [("le", "t", "n", 0)])
+
     def test_a_base_copy_is_proved_and_each_corruption_of_its_tests_rejects(self):
         # (listguard with a base: the copy's unchecked reads of data[bi + d] and data[bj + d] hold
         # where the tests before the loop find each base at least 0 and the stop plus it at most

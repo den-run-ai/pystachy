@@ -2113,6 +2113,7 @@ def gen_for_range(self, tgt: Node, start: str, stop: str, step: str, body: list[
     lp = Loop("range", lc, lb, ls, le)
     lp.ctr = ctr
     lp.stop = Val(stop, "int")
+    lp.inc = Val(step, "int")
     lp.nonnegative = not start.startswith("%") and int(start) >= 0 and not step.startswith("%") and int(step) > 0
     self.fn.loops.append(lp)
     self.place(lc)

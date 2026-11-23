@@ -613,6 +613,15 @@ def closure(start, new, relevant, lower_bounds=(), kinds=None):
         for part in mention_set(fact):
             by_name.setdefault(part, []).append(fact)
     premises = {}
+    # (the strongest difference bound a + k <= b and upper bound a <= k known for each pair or
+    # value: a weaker one adds nothing, as each rule that uses one gives at least as much from the
+    # stronger, and a cycle of offsets and orders could derive weaker ones without end)
+    strongest = {}
+    for fact in facts:
+        if fact[0] == "le":
+            strongest[("le", fact[1], fact[2])] = max(strongest.get(("le", fact[1], fact[2]), fact[3]), fact[3])
+        elif fact[0] == "atMost":
+            strongest[("atMost", fact[1])] = min(strongest.get(("atMost", fact[1]), fact[2]), fact[2])
     pending = deque(fact for fact in new if fact in index)
     while pending:
         fact = pending.popleft()
@@ -625,6 +634,16 @@ def closure(start, new, relevant, lower_bounds=(), kinds=None):
             if derived in index or (derived[0] == "eq" and derived[1] == derived[2]) or any(
                     part not in relevant for part in mentions(derived)) or (kinds is not None and derived[0] not in kinds):
                 continue
+            if derived[0] == "le":
+                known_k = strongest.get(("le", derived[1], derived[2]))
+                if known_k is not None and known_k >= derived[3]:
+                    continue
+                strongest[("le", derived[1], derived[2])] = derived[3]
+            elif derived[0] == "atMost":
+                known_k = strongest.get(("atMost", derived[1]))
+                if known_k is not None and known_k <= derived[2]:
+                    continue
+                strongest[("atMost", derived[1])] = derived[2]
             facts.append(derived)
             index.add(derived)
             premises[derived] = needs

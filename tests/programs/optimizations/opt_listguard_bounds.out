@@ -1,0 +1,30 @@
+tri 119.5 0.0 0.0
+eliminate [0.0, 1.0, 2.0, -1.5, -4.0, -7.5, -12.0, -17.5]
+eliminate wraps [0.0, 0.0, -2.0, -10.5, -20.0, -32.5, -84.0, -115.5]
+sparse [70.0, 0.0, 180.0]
+sparse long row list index out of range
+down [6, 5, 8, 11] []
+between 694 0 0 456
+between past the end list index out of range
+strided 208 75 5
+strided zero step range() arg 3 must not be zero
+stepdown 75 106 0
+stepdown past the end list index out of range
+shifted 525 27 0
+shifted past the end list index out of range
+based 91 121 -117
+based past the end list index out of range
+based big 25
+based top 4
+based down 21245 0 414
+based bottom 18
+based down past the end list index out of range
+partial 1 2
+partial 2 5
+partial long list index out of range
+partial down long list index out of range
+partial down 2 3
+partial down 1 5
+partial down 0 6
+partial down 6
+[exit 0]

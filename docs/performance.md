@@ -239,6 +239,12 @@ This inventory does not implement source-line annotations or explain missed pass
 | In-place str append | `s += t` and `s = s + t` on a str local grow its str in place while only the local holds it; past 8,200 bytes a second copy leaves room for as much again, trimmed after its length is unchanged across two sweeps | [#544](https://github.com/den-run-ai/pystachy/pull/544), [#567](https://github.com/den-run-ai/pystachy/issues/567); no switch |
 | JIT helper inlining | Runs user-function inlining for programs of at most 20,000 IR lines by default | `PYSTACHY_JIT_INLINE=0` disables it |
 
+`listguard` also copies range loops whose start or step is a variable, such as Gaussian
+elimination's row update over `range(j + 1, n)` and a sparse row's `range(row[r], row[r + 1])`:
+the default JIT ran the row update in 0.12× the time (it calls the runtime for each checked
+item), and an AOT build ran a CSR product in 0.53×; AOT builds already vectorized the row update
+([results](../bench/results/listguard-bounds-2026-11-19.json)).
+
 `PYSTACHY_OPT=-all` disables the typed-IR passes. JIT inlining has a separate control:
 `PYSTACHY_JIT_INLINE=N` changes the size limit. It excludes the separately compiled runtime;
 AOT optimizes the program with the bodies of the runtime functions it may inline. The measured tradeoffs are recorded in
