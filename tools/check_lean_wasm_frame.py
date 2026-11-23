@@ -20,7 +20,7 @@ def unsigned(stream):
     raise ValueError("invalid Wasm length")
 
 
-def function_body(module):
+def sections(module):
     stream = io.BytesIO(module)
     if stream.read(8) != b"\0asm\x01\0\0\0":
         raise ValueError("invalid Wasm header")
@@ -29,15 +29,19 @@ def function_body(module):
         data = stream.read(size)
         if len(data) != size:
             raise ValueError("truncated Wasm section")
-        if section == b"\x0a":
-            code = io.BytesIO(data)
-            if unsigned(code) == 1:
-                length = unsigned(code)
-                body = code.read()
-                if length == len(body):
-                    return body
-            raise ValueError("expected one complete function body")
-    raise ValueError("missing code section")
+        yield section[0], data
+
+
+def function_bodies(data):
+    stream = io.BytesIO(data)
+    for _ in range(unsigned(stream)):
+        size = unsigned(stream)
+        body = stream.read(size)
+        if len(body) != size:
+            raise ValueError("truncated Wasm function")
+        yield body
+    if stream.read(1):
+        raise ValueError("trailing bytes in Wasm code section")
 
 
 def compile_frame(arities):
@@ -46,7 +50,9 @@ def compile_frame(arities):
     slots = "\n".join(f"  %stk.{i} = slot kind=2 : tuple[{','.join(['int'] * n)}]"
                       for i, n in enumerate(arities))
     text = f"module complete {{\n}}\nfunction @main.init() -> None kind=block {{\n{slots}\nentry:\n  ret\n}}"
-    return function_body(tir_wasm.Emitter(tir_wasm.parse(text)).module())
+    module = tir_wasm.Emitter(tir_wasm.parse(text)).module()
+    body, = function_bodies(dict(sections(module))[10])
+    return body
 
 
 def main():

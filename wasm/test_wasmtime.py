@@ -1,5 +1,7 @@
 """Host contracts, without a native frontend or WASI SDK."""
 
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,6 +16,7 @@ from wasm.run_wasmtime import Runner
 REACTOR = """(module
   (import "program" "init" (func $init))
   (import "program" "raise" (func $raise (param i32)))
+  (import "wasi_snapshot_preview1" "proc_exit" (func $exit (param i32)))
   (memory (export "memory") 1)
   (global $sp (export "__stack_pointer") (mut i32) (i32.const 96))
   (func (export "_initialize"))
@@ -23,8 +26,8 @@ REACTOR = """(module
   (func (export "pys_throw") (param i32)
     ;; An uncaught Python exception must return here with the C stack restored.
     (if (i32.ne (global.get $sp) (i32.const 96)) (then unreachable))
-    (i32.store (i32.const 32) (local.get 0))
-    (call $raise (local.get 0)))
+    (call $raise (local.get 0))
+    (call $exit (local.get 0)))
   (func (export "fail") (global.set $sp (i32.const 8)) (call $raise (i32.const 17))))"""
 
 
@@ -38,6 +41,26 @@ class HostTests(unittest.TestCase):
 
     def compile(self, wat):
         return self.runner.compile(wt.wat2wasm(wat))
+
+    def test_cli_reads_stdin(self):
+        binary = self.runner.runtime_path.with_name("stdin.wasm")
+        binary.write_bytes(wt.wat2wasm('''(module
+          (import "wasi_snapshot_preview1" "fd_read" (func $read (param i32 i32 i32 i32) (result i32)))
+          (import "wasi_snapshot_preview1" "proc_exit" (func $exit (param i32)))
+          (memory (export "memory") 1)
+          (func (export "_start")
+            (i32.store (i32.const 0) (i32.const 16))
+            (i32.store (i32.const 4) (i32.const 1))
+            (drop (call $read (i32.const 0) (i32.const 0) (i32.const 1) (i32.const 8)))
+            (call $exit (i32.load8_u (i32.const 16)))))'''))
+        for args, expected in [
+            (["-m", "wasm.run_wasmtime", str(binary)], ord("Z")),
+            (["-c", "import sys; from pathlib import Path; from wasm.run_wasmtime import Runner; "
+              "r = Runner(); sys.exit(r.run(r.compile(Path(sys.argv[1]).read_bytes())))", str(binary)], 0),
+        ]:
+            with self.subTest(expected=expected):
+                run = subprocess.run([sys.executable, *args], input=b"Z", capture_output=True, timeout=15)
+                self.assertEqual(run.returncode, expected, run.stderr)
 
     def test_relocations(self):
         program = self.compile(r'''(module

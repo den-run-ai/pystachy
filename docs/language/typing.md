@@ -23,6 +23,7 @@ unsupported forms, see [compatibility](compatibility.md).
 | `type[C]`, `type[C] \| None` | The class object of `C`, a class of the program, or of a class deriving from it; see [classes as values](semantics.md#classes-as-values) |
 | `type[object]`, `type` | The class object of any class: an ordinary class of the program or a builtin class |
 | `TextIO` | Text files |
+| `IO[str]` | Native text files and, when imported, the shipped `io.StringIO` |
 | `Generator[Y, S, R]`; `Iterator[T]` or `Iterable[T]` as a generator function's return | Generator objects that yield `Y` (any generator function's) and take `S` from `send()`; see [generators](semantics.md#generators). Elsewhere `Iterator[T]` and `Iterable[T]` type nothing ([iterators](semantics.md#iterators)) |
 
 A `bytes` value comes from a literal (`b"\x00ab"`, `rb"..."`), `bytes()` (empty, `bytes(n)` zero
@@ -210,8 +211,9 @@ subscripts in annotations, evaluated or not, name the class, as CPython does not
 arguments: types, or number, `None`, `True`, `False` and `...` constants (`C[int]`, `C[1]`,
 `C[int, ...]`). A string argument is a forward reference, as elsewhere in an annotation, and any
 other argument must still be an annotation. `re.Pattern[str]` and `re.Match[str]` are such
-annotations. `os.PathLike` and the supported `collections.abc` names are exceptions to the
-restriction on builtin module attributes.
+annotations. `typing.Pattern[str]` and `typing.Match[str]` also name these classes when the
+program imports the shipped `re` module. `os.PathLike` and the supported `collections.abc` names are
+exceptions to the restriction on builtin module attributes.
 
 `Final[T]` uses type `T` without enforcing immutability. `x: Final = value` infers the
 value's type. In a class body, a constant gives a field its type, and any other value makes a
@@ -279,25 +281,41 @@ before twice).
 
 ### Recursive value aliases (prototype)
 
-A nongeneric module-level PEP 695 alias may define a closed recursive union:
+A module-level PEP 695 alias may define a closed recursive union:
 
 ```python
 type Value = None | bool | int | float | str | list[Value] | dict[str, Value]
+type Leafed[F] = int | str | F | list[Leafed[F]] | dict[str, Leafed[F]]
+type Spans = int | tuple[int, int] | list[Spans]
 ```
 
-Members may be `None`, `bool`, `int`, `float`, `str`, `list[Self]` and
-`dict[str, Self]`, with at least two distinct non-`None` alternatives and one
-recursive container member. `type Tree = int | list[Tree]` is also supported.
-Bare `list[Self]`, `None | list[Self]`, mutual recursion, generic recursive aliases
-and other recursive shapes remain unsupported. Qualified imports and ordinary
-aliases of an accepted alias retain the same named graph.
+Members may be `None`, `bool`, `int`, `float`, `str`, one tuple type that does not name
+the alias, `list[Self]` and `dict[str, Self]`, with at least two distinct non-`None`
+alternatives and one recursive container member. `type Tree = int | list[Tree]` is also
+supported. A tuple leaf follows the rules of a
+[union's tuple member](#operations-on-closed-unions): `isinstance(v, tuple)` narrows to it,
+and an index or a loop over the whole value needs narrowing first.
+
+A generic alias names itself with its own parameters in their order (`Leafed[F]`), and a
+parameter may be a member. Each use with type arguments names one graph: `Leafed[float]` and
+`Leafed[bool]` are two types, and `Leafed[T]` in a generic class or function is the graph of
+what `T` is bound to ([cases](../../tests/programs/inference/recursive_alias_generic.py)).
+A type argument is a scalar, `None`, a union of them or a tuple; a class is rejected. In a
+generic function, a local variable's annotation cannot name the TypeVar, and the result
+type is inferred from the returns, as for other function templates.
+
+Bare `list[Self]`, `None | list[Self]`, mutual recursion, a tuple that holds the alias
+(`tuple[Self, Self]`), class members and other recursive shapes remain unsupported.
+Qualified imports and ordinary aliases of an accepted alias retain the same named graph.
 
 Recursive container slots hold existing tagged union boxes. `isinstance()` narrows
 locals and parameters to the original list/dict pointer, preserving shared mutation;
 existing mutable containers remain invariant. The type graph is finite and does
 not prescribe a fixed data depth. Runtime traversal has recursion guards, and the
-native JSON codec has its own depth/int64 limits. Unlike other aliases, a recursive
-alias is nominal: another alias with the same members is a different type. See the
+native JSON codec has its own depth/int64 limits. Two recursive aliases with the same
+members are one type, as other aliases are: a decoded `json.JSONValue` is a value of a
+program's own alias that lists its members
+([cases](../../tests/programs/inference/recursive_alias_same_shape.py)). See the
 [JSON prototype](../json.md) for representation, operations and API scope.
 `Any` remains inference-only here (but in a module that opts in to
 [dynamic `Any`](../dynamic-any.md)); this adds no runtime compilation.
@@ -877,6 +895,28 @@ needs the narrowed value. A truth test takes any member, and a function is true.
 `==` need narrowing first. `callable()` cannot tell two `Callable` types apart, so a union
 holds one, and none beside classes or files.
 
+A union may hold one tuple type beside scalars, lists and dictionaries, for a result that is
+a value or a pair of it and a log:
+
+```python
+def repair(text: str, logging: bool = False) -> str | tuple[str, list[str]]:
+    if logging:
+        return text, []
+    return text
+
+result = repair("x", True)
+if isinstance(result, tuple):
+    value, log = result
+```
+
+The tuple is fixed (`tuple[A, B]`) or of any length (`tuple[T, ...]`), and a tuple display
+where the union is expected takes that type, so an empty list among its items needs no
+annotation. `isinstance(x, tuple)` narrows to it; an index, unpacking, a loop, arithmetic, an
+ordering and a method call need the narrowed value. Truth, `len()`, `str()`, `repr()`,
+printing, `==` and `!=` take any member ([cases](../../tests/programs/inference/union_tuple_member.py)).
+`isinstance()` cannot tell two tuple types apart, so a union holds one, and none beside
+classes or files. A tuple of promoting ints is no member.
+
 ## Native reference unions
 
 Explicit unions can also hold up to four native class or `TextIO` types. This lets an
@@ -890,6 +930,13 @@ from typing import TextIO
 def read_character(stream: TextIO | StringIO) -> str:
     return stream.read(1)
 ```
+
+A `typing.IO[str]` annotation accepts a native text file. When the program imports
+the shipped `io` module, it denotes the same reference union as `TextIO | StringIO`
+above, so `Optional[IO[str]]` can hold either stream or `None`. Without `io`,
+the existing restrictions for `TextIO` apply, including its rejection of `None`.
+Binary streams, `io.TextIOWrapper` objects and arbitrary file-like classes do not
+belong to this bounded annotation.
 
 Arguments, returns, fields, locals, list elements and dict values may use these
 unions. A tagged box retains the original object or file pointer: passing through
@@ -1584,7 +1631,9 @@ classes and `dataclasses.replace()`. Explicit method calls such as `obj.__init__
 A class-body default is a class attribute, read by instances until they assign their own
 value. Later changes to the class attribute affect those instances. Unannotated class-body
 assignments infer their type, except in dataclasses and NamedTuples, where annotations are
-required. Supported subclasses also inherit their base's fields and class attributes.
+required. For example, `EPS = sys.float_info.epsilon` infers `float` and
+`BITS = sys.float_info.mant_dig` infers `int`. Supported subclasses also inherit their
+base's fields and class attributes.
 In a module-level class without decorators or a `NamedTuple` base, a later class-body value
 or method default may read a name the body binds once to a constant (`op_str = {ADD: "+"}`),
 as CPython reads the class namespace; lambdas and comprehensions past their first iterable

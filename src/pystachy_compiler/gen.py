@@ -1,8 +1,7 @@
 """Gen component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-import os
 from src.pystachy_compiler.diagnostics import STATICFILES
-from src.pystachy_compiler.source_lines import SourceLines
+from src.pystachy_compiler.source_lines import SourceLines, wanted
 from src.pystachy_compiler.lowering import gen_lower_scalar as scalar_ir_lower_scalar
 from src.pystachy_compiler.scalar_ir import (
     gen_scalar as scalar_ir_scalar,
@@ -272,6 +271,7 @@ from src.pystachy_compiler.unions import (
     gen_scalar_union as unions_scalar_union,
     gen_num_union as unions_num_union,
     gen_cx_union as unions_cx_union,
+    gen_tuple_union as unions_tuple_union,
     gen_value_union as unions_value_union,
     gen_uop as unions_uop,
     gen_scalar_view as unions_scalar_view,
@@ -670,6 +670,12 @@ from src.pystachy_compiler.declarations import (
     gen_rec_type as declarations_rec_type,
     gen_rec_fold as declarations_rec_fold,
     gen_recursive_aliases as declarations_recursive_aliases,
+    gen_rec_edge as declarations_rec_edge,
+    gen_rec_generic as declarations_rec_generic,
+    gen_rec_instance as declarations_rec_instance,
+    gen_rec_members as declarations_rec_members,
+    gen_rec_named as declarations_rec_named,
+    gen_rec_names as declarations_rec_names,
     gen_ann as declarations_ann,
     gen_ann_base as declarations_ann_base,
     gen_ann_items as declarations_ann_items,
@@ -928,6 +934,7 @@ from src.pystachy_compiler.expressions import (
     gen_exc_kinds as expressions_exc_kinds,
     gen_cmp_kinds as expressions_cmp_kinds,
     gen_cmp_pick as expressions_cmp_pick,
+    gen_object_eq as expressions_object_eq,
     gen_may_decline as expressions_may_decline,
     gen_decl_flag as expressions_decl_flag,
     gen_cmp_cands as expressions_cmp_cands,
@@ -1560,7 +1567,7 @@ class Gen:
         for op in IROPS:
             self.opfxs[op] = fxmask(IROPS[op].replace("T", "").replace("*", ""))
         self.out: list[str] = []  # completed LLVM function chunks and the current function's lines
-        self.source_lines = SourceLines(os.getenv("PYSTACHY_DEBUG_LINES", "") == "1")
+        self.source_lines = SourceLines(wanted(True))
         self.fns: list[IFn] = []  # the functions compiled, in the order they were completed
         self.fll: dict[str, int] = {}  # and their positions there by symbol, once the program is built
         # listguard (gen_listguard): how many calls of each function the program's IR makes, by
@@ -3330,6 +3337,24 @@ class Gen:
 
     def recursive_aliases(self) -> None:
         return declarations_recursive_aliases(self)
+
+    def rec_edge(self, n: Node, name: str, tps: list[str]) -> bool:
+        return declarations_rec_edge(self, n, name, tps)
+
+    def rec_generic(self, name: str) -> bool:
+        return declarations_rec_generic(self, name)
+
+    def rec_instance(self, name: str, xs: list[Node]) -> str:
+        return declarations_rec_instance(self, name, xs)
+
+    def rec_members(self, name: str, tps: list[str], args: list[str]) -> list[str]:
+        return declarations_rec_members(self, name, tps, args)
+
+    def rec_named(self, name: str, members: list[str]) -> str:
+        return declarations_rec_named(self, name, members)
+
+    def rec_names(self, n: Node, names: list[str]) -> bool:
+        return declarations_rec_names(self, n, names)
 
     def subst_ann(self, n: Node, tps: list[str], args: list[Node]) -> Node:
         return declarations_subst_ann(self, n, tps, args)
@@ -5270,6 +5295,9 @@ class Gen:
     def cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
         return expressions_cmp_pick(self, op, at, bt)
 
+    def object_eq(self, at: str, bt: str) -> bool:
+        return expressions_object_eq(self, at, bt)
+
     def may_decline(self, f: FnInfo) -> bool:
         return expressions_may_decline(self, f)
 
@@ -6185,6 +6213,9 @@ class Gen:
 
     def value_union(self, t: str) -> bool:
         return unions_value_union(self, t)
+
+    def tuple_union(self, t: str) -> bool:
+        return unions_tuple_union(self, t)
 
     def uop(self, v: Val, op: str) -> Val:
         return unions_uop(self, v, op)

@@ -1,4 +1,4 @@
-"""Opt-in, deterministic LLVM line tables (no source-variable descriptions)."""
+"""Deterministic LLVM line tables (no source-variable descriptions)."""
 from __future__ import annotations
 import os
 from src.pystachy_compiler import diagnostics
@@ -40,6 +40,17 @@ def remap_refs(text: str, offset: int) -> str:
     return "".join(parts)
 
 
+# PYSTACHY_DEBUG_LINES: unset or empty, a program's functions have line tables where the driver
+# asks for them (PROGRAM[0]: an executable's build, whose tracebacks read them) and runtime.py's have
+# none; 1: both have them, wherever the program is compiled; 0: neither has them.
+PROGRAM: list[bool] = [False]
+
+
+def wanted(program: bool) -> bool:
+    setting = os.getenv("PYSTACHY_DEBUG_LINES", "")
+    return setting == "1" or (setting == "" and program and PROGRAM[0])
+
+
 class SourceLines:
     def __init__(self, enabled: bool):
         self.enabled = enabled
@@ -63,7 +74,8 @@ class SourceLines:
         index = line // LINES
         path = diagnostics.FILES[index] if index < len(diagnostics.FILES) else diagnostics.SRC
         if path not in self.files:
-            self.files[path] = self.node(f'!DIFile(filename: "{file_quote(path)}", directory: "{file_quote(os.getcwd())}")')
+            # (normalized: lib/'s files are build/../lib/... to a compiler run from build/, as in make)
+            self.files[path] = self.node(f'!DIFile(filename: "{file_quote(os.path.normpath(path))}", directory: "{file_quote(os.getcwd())}")')
         return self.files[path]
 
     def function(self, name: str, symbol: str, line: int) -> str:
@@ -73,7 +85,7 @@ class SourceLines:
             self.empty = self.node("!{}")
             self.types = self.node(f"!DISubroutineType(types: {self.empty})")
             mainfile = self.file(0)
-            self.unit = self.node(f'distinct !DICompileUnit(language: DW_LANG_Python, file: {mainfile}, producer: "Pystachy", isOptimized: true, runtimeVersion: 0, emissionKind: LineTablesOnly)')
+            self.unit = self.node(f'distinct !DICompileUnit(language: DW_LANG_Python, file: {mainfile}, producer: "Pystachy", isOptimized: true, runtimeVersion: 0, emissionKind: FullDebug, nameTableKind: None)')
             self.flags = [self.node('!{i32 2, !"Dwarf Version", i32 4}'), self.node('!{i32 2, !"Debug Info Version", i32 3}')]
         file = self.file(line)
         local = line % LINES
