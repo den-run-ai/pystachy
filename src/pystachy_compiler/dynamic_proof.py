@@ -16,9 +16,13 @@ not the table.
 from __future__ import annotations
 
 from src.pystachy_compiler.dataflow import forward_fixpoint, live_values
-from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, slot_register
+from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, slot_register, tmpname
 from src.pystachy_compiler.union_proof import proof_number
-from src.pystachy_compiler.union_state import UnionState, union_join
+from src.pystachy_compiler.union_state import UnionState, pkey, union_join
+
+# (the types an op names that DynamicProof's domains hold, where it names none: a list each op
+# would make otherwise, which none writes, #1644)
+NO_TYPES: list[str] = []
 
 
 # runtime.c's DynType kinds (DK_*, as dynamic.py names them) and its role flag
@@ -136,19 +140,19 @@ class DynamicProof:
         for b in fn.blocks:
             for i in b.code:
                 if i.op == "dyn.type" and len(i.r) == 1:
-                    tags["%t" + str(i.r[0])] = True
+                    tags[tmpname(i.r[0])] = True
         # (each in a pass of its own: a block can be listed before one that runs first)
         for b in fn.blocks:
             for i in b.code:
                 if i.op == "mach.addr" and i.s == "dyntype" and len(i.r) == 1 and len(i.a) == 2 and i.a[0].v in tags and i.a[1].v == CLASS_FIELD:
-                    self.addresses["%t" + str(i.r[0])] = True
+                    self.addresses[tmpname(i.r[0])] = True
         for b in fn.blocks:
             for i in b.code:
                 if i.op == "mach.load" and i.t == "int" and len(i.r) == 1 and len(i.a) == 1 and i.a[0].v in self.addresses:
-                    self.numbers["%t" + str(i.r[0])] = True
+                    self.numbers[tmpname(i.r[0])] = True
         for b in fn.blocks:
             for i in b.code:
-                found: list[str] = []
+                found = NO_TYPES
                 if i.op == "dyn.payload":
                     self.payloads += 1
                     if i.s not in self.accepts:
@@ -162,6 +166,7 @@ class DynamicProof:
                 elif i.op == "ptr.cmp":
                     found = [a.v for a in i.a if a.t == "dyntype" and a.v in types.kind]
                 elif i.op == "switch" and len(i.a) > 0 and i.a[0].v in self.numbers:
+                    found = []
                     for j in range(1, len(i.a)):
                         if i.a[j].v not in self.cases:
                             self.cases[i.a[j].v] = types.numbered(i.a[j].v)
@@ -206,11 +211,11 @@ class DynamicProof:
 
     def forget_bool(self, s: UnionState, v: str) -> None:
         if v in s.truth:
-            del s.truth[v]
+            del s.wtruth()[v]
         if v in s.bt:
-            del s.bt[v]
+            del s.wbt()[v]
         if v in s.bf:
-            del s.bf[v]
+            del s.wbf()[v]
 
     def compare(self, s: UnionState, result: str, value: str, member: str, equal: bool) -> None:
         yes = s.clone()
@@ -220,24 +225,24 @@ class DynamicProof:
         s.boolean(result, yes if equal else no, no if equal else yes)
 
     def transfer(self, s: UnionState, i: Ins, block: str, checking: bool) -> None:
-        r = "%t" + str(i.r[0]) if len(i.r) > 0 else ""
+        r = tmpname(i.r[0]) if len(i.r) > 0 else ""
         for n in i.r:
-            v = "%t" + str(n)
-            s.forget("D:" + v)
-            s.forget("T:" + v)
+            v = tmpname(n)
+            s.forget(pkey("D:", v))
+            s.forget(pkey("T:", v))
             self.forget_bool(s, v)
             if v in self.addresses:
                 s.forget("A:" + v)
             if v in self.numbers:
                 s.forget("C:" + v)
         if i.op == "dyn.type":
-            s.copy("T:" + r, self.key(s, i.a[0].v))
+            s.copy(pkey("T:", r), self.key(s, i.a[0].v))
         elif i.op == "dyn.payload":
             accepted = self.accepts[i.s]
             if checking and s.live and (len(accepted) == 0 or len([t for t in s.dom(self.key(s, i.a[0].v)) if t not in accepted]) > 0):
                 self.bad.append("dyn.payload of " + i.s + " needs tag " + self.accepted(i.s) + " for " + i.a[0].v)
                 self.badblocks.append(block)
-        elif i.op == "rt" and r != "" and len(i.a) == 2 and i.s + "|" + i.a[1].v in self.tests:
+        elif i.op == "rt" and r != "" and len(i.a) == 2 and (i.s == "dyn.isa" or i.s == "dyn.role_isa") and i.s + "|" + i.a[1].v in self.tests:
             # pys_dyn_isa or pys_dyn_role_isa of a box and a DynType: nonzero for its tests' tags
             test = i.s + "|" + i.a[1].v
             box = self.key(s, i.a[0].v)
@@ -318,11 +323,7 @@ class DynamicProof:
                 yes.copy(key, self.key(yes, i.a[1].v, i.t == "dyntype"))
                 no.copy(key, self.key(no, i.a[2].v, i.t == "dyntype"))
             merged = union_join(yes, no)
-            s.d = merged.d
-            s.eq = merged.eq
-            s.bt = merged.bt
-            s.bf = merged.bf
-            s.truth = merged.truth
+            s.adopt(merged)
             s.live = merged.live
         # Other instructions produce unknown values. Calls cannot change an
         # existing immutable box's tag or a nonescaping private binding. Loads
@@ -331,6 +332,11 @@ class DynamicProof:
     def edge(self, state: UnionState, source: str, target: str) -> UnionState:
         # (state is this edge's own facts, which become the target's: dataflow.forward_fixpoint)
         s = state
+        code = self.fn.blocks[self.blocks[target]].code
+        if len(code) == 0 or code[0].op != "phi":
+            # (no phi to assign: the tables below would stay empty, #1644)
+            s.retain(self.livevalues[target])
+            return s
         dests: list[str] = []
         sources: list[str] = []
         bools: list[str] = []
@@ -338,12 +344,12 @@ class DynamicProof:
         for i in self.fn.blocks[self.blocks[target]].code:
             if i.op != "phi":
                 break
-            r = "%t" + str(i.r[0])
+            r = tmpname(i.r[0])
             if source not in i.b:
                 # The shape verifier checks named edges. Missing incoming values
                 # cannot establish a proof if malformed IR reaches this solver.
-                s.forget("D:" + r)
-                s.forget("T:" + r)
+                s.forget(pkey("D:", r))
+                s.forget(pkey("T:", r))
                 self.forget_bool(s, r)
                 continue
             a = i.a[i.b.index(source)]
@@ -356,7 +362,7 @@ class DynamicProof:
         # Phi assignments are simultaneous, including swapping loop-carried
         # values. Keep old sources until every temporary has been captured.
         for j in range(len(dests)):
-            s.copy("phi:" + dests[j], sources[j])
+            s.copy(pkey("phi:", dests[j]), sources[j])
         bs: list[UnionState] = []
         for j in range(len(bools)):
             q = s.clone()
@@ -369,19 +375,19 @@ class DynamicProof:
                 for k in dests:
                     if k in facts:
                         del facts[k]
-                    if "phi:" + k in facts:
-                        facts[k] = facts["phi:" + k]
-                        del facts["phi:" + k]
+                    if pkey("phi:", k) in facts:
+                        facts[k] = facts[pkey("phi:", k)]
+                        del facts[pkey("phi:", k)]
             bs.append(q)
         for k in dests:
-            s.copy(k, "phi:" + k)
+            s.copy(k, pkey("phi:", k))
         for k in dests:
-            s.forget("phi:" + k)
+            s.forget(pkey("phi:", k))
         for j in range(len(bools)):
             k = bools[j]
-            s.truth[k] = bs[j].truth[k]
-            s.bt[k] = bs[j].bt[k]
-            s.bf[k] = bs[j].bf[k]
+            s.wtruth()[k] = bs[j].truth[k]
+            s.wbt()[k] = bs[j].bt[k]
+            s.wbf()[k] = bs[j].bf[k]
         s.retain(self.livevalues[target])
         return s
 

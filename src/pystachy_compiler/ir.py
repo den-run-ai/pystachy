@@ -257,15 +257,49 @@ class Ins:
         self.b: list[str] = NOLABELS  # labels: the successors of br, cbr and check; a phi's predecessors
 
 
+# each slot's register by its kind, name and number, and each parameter's name and its
+# identity companion's, by position: made once, as every proof and every pass's verification
+# names them again (PYSTACHY_IRCHECK, #1644), as tmpname's are
+SLOT_FLAGS: dict[str, dict[int, str]] = {}
+SLOT_STACK: dict[int, str] = {}
+SLOT_NAMES: dict[str, dict[int, str]] = {}
+PARAMS: list[str] = []
+PARAM_IDS: list[str] = []
+ADDRESSES: dict[str, str] = {}
+
+
 def slot_register(i: Ins) -> str:
     # the register that lowering allocates for a slot op, which every analysis of slots must
     # name the same way: a local's "is assigned" flag and its numeric identity companions share
     # its number, so a slot's number alone is no name (a stack tuple's register is its value)
-    if i.k == 1:
-        return f"%{i.s}.def.{i.r[0]}"
+    n = i.r[0]
     if i.k == 2:
-        return f"%stk.{i.r[0]}"
-    return f"%{i.s or 'h'}.{i.r[0]}"
+        if n not in SLOT_STACK:
+            SLOT_STACK[n] = f"%stk.{n}"
+        return SLOT_STACK[n]
+    name = i.s if i.k == 1 or i.s != "" else "h"
+    table = SLOT_FLAGS if i.k == 1 else SLOT_NAMES
+    if name not in table:
+        table[name] = {}
+    known = table[name]
+    if n not in known:
+        known[n] = f"%{name}.def.{n}" if i.k == 1 else f"%{name}.{n}"
+    return known[n]
+
+
+def param_name(j: int, identity: bool) -> str:
+    # parameter j's value (%aJ), or its identity companion's (%aidJ)
+    while len(PARAMS) <= j:
+        PARAMS.append(f"%a{len(PARAMS)}")
+        PARAM_IDS.append(f"%aid{len(PARAM_IDS)}")
+    return PARAM_IDS[j] if identity else PARAMS[j]
+
+
+def address_type(t: str) -> str:
+    # &t, the type of an address of a t
+    if t not in ADDRESSES:
+        ADDRESSES[t] = "&" + t
+    return ADDRESSES[t]
 
 
 class Blk:
@@ -403,13 +437,13 @@ def value_definitions(fn: IFn, types: dict[str, str], makers: dict[str, str]) ->
     # tuple's register is its value). Symbols and constants have no definition here.
     for i in fn.slots:
         reg = slot_register(i)
-        types[reg] = i.t if i.k == 2 else "&" + i.t
+        types[reg] = i.t if i.k == 2 else address_type(i.t)
         makers[reg] = "slot"
     for j in range(len(fn.f.ptypes)):
-        types["%a" + str(j)] = fn.f.ptypes[j]
-        types["%aid" + str(j)] = "dyn"
-        makers["%a" + str(j)] = "param"
-        makers["%aid" + str(j)] = "param"
+        types[param_name(j, False)] = fn.f.ptypes[j]
+        types[param_name(j, True)] = "dyn"
+        makers[param_name(j, False)] = "param"
+        makers[param_name(j, True)] = "param"
     types["%idret"] = "&dyn"
     makers["%idret"] = "param"
     for b in fn.blocks:

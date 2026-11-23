@@ -374,17 +374,57 @@ class UnionProofTests(unittest.TestCase):
         c.ret()
         proof = UnionProof(c.fn, c.g.utags)
         left = UnionState(proof.base, proof.full)
-        left.loaded[obj] = "%owner.1"
+        left.wloaded()[obj] = "%owner.1"
         left.set("U:" + obj, ["Node"])
         left.set("MU:%owner.1", ["Node"])
         right = left.clone()
         same = union_join(left, right)
         self.assertEqual(proof.field_key(same, obj, 1, "Node"), "MF:owner.1#1")
-        del right.loaded[obj]
+        # (a copy shares its source's tables until it writes one: writes go through the writers)
+        del right.wloaded()[obj]
         changed = union_join(left, right)
         self.assertEqual(changed.eq["U:" + obj], changed.eq["MU:%owner.1"])
         self.assertNotEqual(proof.field_key(changed, obj, 1, "Node"), "MF:owner.1#1")
         self.assertFalse(left.same(right))
+
+    def test_a_copy_and_its_source_write_their_own_tables(self):
+        # (a copy shares its source's tables until either writes one, which it copies first:
+        # neither sees the other's writes, through any table, #1644)
+        def filled():
+            s = UnionState({}, ["?", "None", "int", "str"])
+            s.set("U:%t1", ["int"])
+            s.copy("U:%t2", "U:%t1")
+            s.wloaded()["%t3"] = "%x.1"
+            s.boolean("%t4", s.conditional("U:%t1", True), s.conditional("U:%t1", False))
+            s.test("%t5", "U:%t1", ["int"], ["str"])
+            return s
+
+        writes = {
+            "d": lambda s: s.narrow("U:%t1", []),
+            "eq": lambda s: s.forget("U:%t2"),
+            "loaded": lambda s: s.wloaded().pop("%t3"),
+            "bt": lambda s: s.wbt().pop("%t5"),
+            "bf": lambda s: s.wbf().pop("%t5"),
+            "truth": lambda s: s.cond("%t4", True),
+        }
+        for name, write in writes.items():
+            for writer in ("copy", "source"):
+                with self.subTest(table=name, writer=writer):
+                    source = filled()
+                    copy = source.clone()
+                    untouched = filled()
+                    write(copy if writer == "copy" else source)
+                    self.assertTrue((source if writer == "copy" else copy).same(untouched))
+                    self.assertFalse(source.same(copy))
+        # (a state that adopts another's tables takes its claim to them: the other copies first)
+        left = filled()
+        merged = union_join(left.conditional("U:%t1", True), left.conditional("U:%t1", False))
+        state = filled()
+        state.adopt(merged)
+        before = filled()
+        before.adopt(union_join(before.conditional("U:%t1", True), before.conditional("U:%t1", False)))
+        merged.narrow("U:%t1", [])
+        self.assertTrue(state.same(before))
 
     def test_union_store_into_recursive_alias_admits_all_source_members(self):
         g = Gen()
@@ -865,7 +905,10 @@ class UnionProofTests(unittest.TestCase):
                         c.g.verify(c.fn, False)
                 self.assertEqual(calls, [True])
 
-    def test_cached_graph_borrows_labels_without_mutating_shared_edges(self):
+    def test_successors_leave_shared_edges_unchanged(self):
+        # (gen_verify collects every block's successors in one list, and makes each block's own
+        # list only for the checks that read them so, #1644: it changes no op's labels, which
+        # ops may share)
         c = Case("borrowed_edges", [U])
         c.op("union.tag", "int", a=[("%a0", U)])
         c.op("cbr", a=[("true", "bool")], b=["next", "next"])
@@ -880,9 +923,6 @@ class UnionProofTests(unittest.TestCase):
         before = [(i, i.b, list(i.b)) for b in c.fn.blocks for i in b.code]
 
         def observe(fn, tags, at, successors, types, classes):
-            self.assertIs(successors[0], shared)
-            self.assertIs(successors[1], shared)
-            self.assertIs(successors[2], NOLABELS)
             self.assertEqual(successors, [["next", "next"], ["next", "next"], []])
             return simple_union_proof(fn, tags, at, successors, types, classes)
 

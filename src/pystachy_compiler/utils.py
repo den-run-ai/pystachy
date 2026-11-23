@@ -291,6 +291,11 @@ def rt_subst(sig: str, bound: dict[str, str]) -> str:
     return out
 
 
+# rt_instance_error's bindings of the type variables, emptied for each op: one table, where the
+# verifier checks every rt op after each pass and most bind nothing (#1644)
+RT_BOUND: dict[str, str] = {}
+
+
 def rt_instance_error(i: Ins, sig: list[str]) -> str:
     # What makes rt op i's operand and result types no instance of its runtime function's
     # signature sig (rtsig), or "": with one type for each type variable (rt_bind, strict), each
@@ -301,19 +306,42 @@ def rt_instance_error(i: Ins, sig: list[str]) -> str:
     # against its items here (a list write's is: list_write_error).
     if len(i.a) != len(sig) - 1:
         return f"rt {i.s} has {len(i.a)} operands, but its signature {len(sig) - 1}"
-    bound: dict[str, str] = {}
-    order = rt_operand_order(sig)
-    order.append(0)
-    for j in order:
-        s = sig[j]
-        t = i.t if j == 0 else i.a[j - 1].t
-        where = "result" if j == 0 else f"operand {j - 1}"
-        if s != t and not rt_bind(s, t, bound, True):
-            want = rt_subst(s, bound)
-            return f"rt {i.s} {where} needs {'an instance of ' + want if rt_open(want, bound) else want}, got {t or 'no type'}"
-        if s != t and t != "%slot" and t != "%ptr" and rtll(t) != rtll(s):
-            return f"rt {i.s} {where} needs the LLVM type {rtll(s)} of {s}, got {t}"
+    bound = RT_BOUND
+    if len(bound) > 0:
+        bound.clear()
+    # (rt_operand_order's order, without making its list: the verifier checks each rt op after
+    # each pass, PYSTACHY_IRCHECK, and its allocations cost most under GC stress, #1644)
+    for j in range(1, len(sig)):
+        if sig[j] != "S":
+            error = rt_place_error(i, sig, j, bound)
+            if error != "":
+                return error
+    for j in range(1, len(sig)):
+        if sig[j] == "S":
+            error = rt_place_error(i, sig, j, bound)
+            if error != "":
+                return error
+    return rt_place_error(i, sig, 0, bound)
+
+
+def rt_place_error(i: Ins, sig: list[str], j: int, bound: dict[str, str]) -> str:
+    # rt_instance_error's check of rt op i's result (j 0) or operand j - 1, which binds the
+    # variables it can (bound); its place is named only in an error
+    s = sig[j]
+    t = i.t if j == 0 else i.a[j - 1].t
+    if s == t:
+        return ""
+    if not rt_bind(s, t, bound, True):
+        want = rt_subst(s, bound)
+        return f"rt {i.s} {rt_place(j)} needs {'an instance of ' + want if rt_open(want, bound) else want}, got {t or 'no type'}"
+    if t != "%slot" and t != "%ptr" and rtll(t) != rtll(s):
+        return f"rt {i.s} {rt_place(j)} needs the LLVM type {rtll(s)} of {s}, got {t}"
     return ""
+
+
+def rt_place(j: int) -> str:
+    # where rt_instance_error found an rt op's type: its result (0) or an operand (1 on)
+    return "result" if j == 0 else f"operand {j - 1}"
 
 
 def rt_subset(k: str, ts: list[str]) -> str:

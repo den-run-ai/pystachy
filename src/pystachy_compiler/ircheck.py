@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.class_proof import ClassProof
 from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_lists, int_program
 from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
-from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, merged_blocks, operand_kind, slot_register, tmpname, value_definitions
+from src.pystachy_compiler.ir import Blk, IFn, Ins, Loop, digits, merged_blocks, operand_kind, slot_register, tmpname, value_definitions
 from src.pystachy_compiler.scalar_ir import SCALAR_INTS
 from src.pystachy_compiler.structure import Structure
 from src.pystachy_compiler.symbols import ClassInfo
@@ -223,6 +223,64 @@ CONSTRAINT_PARTS: dict[str, list[str]] = read_constraints()
 OP_KINDS: dict[str, dict[str, str]] = read_kinds()
 
 
+def branches_to(labels: list[str], sfrom: list[int], j: int, label: str) -> bool:
+    # is label one of block j's successors, labels[sfrom[j]:sfrom[j + 1]] (gen_verify)
+    for x in range(sfrom[j], sfrom[j + 1]):
+        if labels[x] == label:
+            return True
+    return False
+
+
+def holds_index(table: dict[str, int], k: int) -> bool:
+    # is k one of table's numbers (k in table.values(), without making their list, #1644)
+    for name in table:
+        if table[name] == k:
+            return True
+    return False
+
+
+def addresses(a: str, t: str) -> bool:
+    # is a the address type &t (a == "&" + t, without making it, #1644)
+    return len(a) == len(t) + 1 and a.startswith("&") and a.endswith(t)
+
+
+def label_above(l: str, n: int) -> bool:
+    # is label l, an L and its number, numbered above n: the number read in place (int(l[1:])
+    # copies it, and the verifier reads every block's label after each pass, #1644)
+    if not digits(l, 1, len(l)):
+        return int(l[1:]) > n  # (int() reads it, or raises, as it did)
+    v = 0
+    for j in range(1, len(l)):
+        v = v * 10 + ord(l[j]) - 48
+        if v > n:
+            return True
+    return False
+
+
+# Each constraint's inner part of each type it has met (constraint_inner), made once: the
+# verifier checks every op's types after each pass, and the same types recur (#1644)
+INNERS: dict[str, dict[str, str]] = {}
+
+
+def constraint_inner(c: str, t: str) -> str:
+    # the part of type t that constraint c's variable stands for: t without the text before and
+    # after the variable, or "" where t is not that text around one type or more
+    p = CONSTRAINT_PARTS[c]
+    prefix = p[0]
+    suffix = p[3]
+    if prefix == "" and suffix == "":
+        return t
+    if c not in INNERS:
+        INNERS[c] = {}
+    known = INNERS[c]
+    if t not in known:
+        inner = ""
+        if len(t) > len(prefix) + len(suffix) and t.startswith(prefix) and t.endswith(suffix):
+            inner = t[len(prefix) : len(t) - len(suffix)]
+        known[t] = inner
+    return known[t]
+
+
 def placed(j: int) -> str:
     # where a types column's variable was bound: operand j, or the result where j < 0
     return "the result" if j < 0 else f"operand {j}"
@@ -314,13 +372,14 @@ class OpTypes:
             return "" if t == c else c
         prefix = p[0]
         suffix = p[3]
+        inner = constraint_inner(c, t)
         if self.bound[name] != "":
+            # (t is prefix + the variable's type + suffix where its inner part is that type)
+            if inner == self.bound[name]:
+                return ""
             want = self.bound[name] if prefix == "" and suffix == "" else prefix + self.bound[name] + suffix
-            return "" if t == want else f"{want} (${name} is {self.bound[name]} at {placed(self.where[name])})"
+            return f"{want} (${name} is {self.bound[name]} at {placed(self.where[name])})"
         kind = self.kinds[name]
-        inner = ""
-        if len(t) > len(prefix) + len(suffix) and t.startswith(prefix) and t.endswith(suffix):
-            inner = t[len(prefix) : len(t) - len(suffix)]
         if inner == "" or (kind != "" and not self.admits(kind, inner)):
             what = TYPE_CLASSES[kind] if kind != "" else "a type"
             return what if prefix == "" and suffix == "" else f"{prefix}${name}{suffix}, ${name} {what}"
@@ -588,9 +647,12 @@ def class_members(self, fn: IFn, types: dict[str, str], reads: dict[str, dict[st
     names: dict[str, bool] = {}
     for t in list(types.values()) + [i.t for i in fn.slots] + [t for v in reads for t in reads[v]]:
         c = unopt(t)
-        for m in (umembers(c) if is_union(c) else [c]):
-            if m in self.classes:
-                names[m] = True
+        if is_union(c):
+            for m in umembers(c):
+                if m in self.classes:
+                    names[m] = True
+        elif c in self.classes:
+            names[c] = True
     out: dict[str, list[str]] = {}
     for c in names:
         out[c] = sorted([x for x in self.classes if not self.classes[x].excluded and self.classes[x].bad == "" and self.derives(x, c)])
@@ -664,8 +726,13 @@ def value_types(self, fn: IFn, types: dict[str, str] | None = None, makers: dict
         if d == "%ptr" or d == "%slot" or "?" in d or NONEVAR in d or rt_generic(d):
             loose[v] = True
     read: dict[str, str] = {}
-    first: dict[str, str] = {}
-    decided: dict[str, bool] = {}
+    firstop: dict[str, str] = {}
+    firstat: dict[str, int] = {}
+    # (decided by the types, without a string made for each operand, #1644: a view's, by d and
+    # u, two bits for each of the four ways rt ops make or read the value, known and found; and
+    # whether two operands may read one loose value at a and b)
+    views: dict[str, dict[str, int]] = {}
+    pairs: dict[str, dict[str, bool]] = {}
     for b in fn.blocks:
         for i in b.code:
             for j in range(len(i.a)):
@@ -697,22 +764,41 @@ def value_types(self, fn: IFn, types: dict[str, str] | None = None, makers: dict
                     # results' types, and a cast reads a machine word as a typed value
                     ok = (rt or (i.op == "rt" and rt_generic(u))) and ((u.startswith("&") or ref_type(u)) if d == "%ptr" else (u == "int" or u.startswith("*") or (i.op == "rt" and u == "bool")))
                 else:
-                    key = d + "|" + u + ("|1" if rt else "|0") + ("1" if i.op == "rt" else "0")
-                    if key not in decided:
-                        decided[key] = value_view(self, d, u, rt, i.op == "rt") != ""
-                    ok = decided[key]
+                    if d not in views:
+                        views[d] = {}
+                    seen = views[d].get(u, 0)
+                    known = 1 << (2 * ((2 if rt else 0) + (1 if i.op == "rt" else 0)))
+                    if seen & known == 0:
+                        seen = seen | known | ((known << 1) if value_view(self, d, u, rt, i.op == "rt") != "" else 0)
+                        views[d][u] = seen
+                    ok = seen & (known << 1) != 0
                 if not ok:
                     self.bad_ir(fn, b, f"{i.op} operand {j} reads {v} as {u}, but it is {d}")
                 if v in loose and i.op != "rt" and not u.startswith("%") and "?" not in u and NONEVAR not in u:
                     if v not in read:
                         read[v] = u
-                        first[v] = f"{i.op} operand {j}"
+                        firstop[v] = i.op
+                        firstat[v] = j
                     elif read[v] != u:
-                        key = read[v] + "|" + u + "|reads"
-                        if key not in decided:
-                            decided[key] = related_reads(self, read[v], u)
-                        if not decided[key]:
-                            self.bad_ir(fn, b, f"{i.op} operand {j} reads {v} as {u}, where {first[v]} reads it as {read[v]}")
+                        if read[v] not in pairs:
+                            pairs[read[v]] = {}
+                        if u not in pairs[read[v]]:
+                            pairs[read[v]][u] = related_reads(self, read[v], u)
+                        if not pairs[read[v]][u]:
+                            self.bad_ir(fn, b, f"{i.op} operand {j} reads {v} as {u}, where {firstop[v]} operand {firstat[v]} reads it as {read[v]}")
+
+
+def loop_label(lp: Loop, x: int) -> str:
+    # label x of loop record lp: its head, body, step, exit and then its tests
+    if x == 0:
+        return lp.head
+    if x == 1:
+        return lp.body
+    if x == 2:
+        return lp.step
+    if x == 3:
+        return lp.exit
+    return lp.tests[x - 4]
 
 
 def check_structure(self, fn: IFn, at: dict[str, int]) -> None:
@@ -721,12 +807,14 @@ def check_structure(self, fn: IFn, at: dict[str, int]) -> None:
     # loop of the flow, its body, step and tests are blocks of that loop and its exit is not. (A
     # record's head may be no loop's head, where every path through its body leaves the loop, and
     # its exit may be reached around it, from a test before the loop: neither is an error.)
-    s = Structure(fn)
+    s = Structure(fn, at)
     for e in s.irreducible():
         head = fn.blocks[e[1]].label
         self.bad_ir(fn, fn.blocks[e[0]], f"a branch to {head}, which closes a cycle that {head} does not dominate: control flow that is not structured")
     for lp in fn.loops:
-        for l in [lp.head, lp.body, lp.step, lp.exit] + lp.tests:
+        # (each label of the record, without a list of them for each record and pass, #1644)
+        for x in range(4 + len(lp.tests)):
+            l = loop_label(lp, x)
             if l != "" and l not in at:
                 self.bad_ir(fn, fn.blocks[0], f"the loop at {lp.head} names {l}, which is no block of it")
         if lp.head == "" or not s.reached(at[lp.head]):
@@ -734,7 +822,8 @@ def check_structure(self, fn: IFn, at: dict[str, int]) -> None:
         blocks = s.loop(at[lp.head])
         if len(blocks) == 0:
             continue
-        for l in [lp.body, lp.step] + lp.tests:
+        for x in range(1, 3 + len(lp.tests)):
+            l = loop_label(lp, x) if x < 3 else lp.tests[x - 3]
             if l != "" and s.reached(at[l]) and at[l] not in blocks:
                 self.bad_ir(fn, fn.blocks[at[lp.head]], f"the loop at {lp.head} names {l}, which is not one of its blocks")
         if lp.exit != "" and at[lp.exit] in blocks:
@@ -822,16 +911,17 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
             self.bad_ir(fn, fn.blocks[j], "a block named entry that is not the first, or a first that is not entry")
         if l in at:
             self.bad_ir(fn, fn.blocks[j], "a second block of that name")
-        if l.startswith("L") and int(l[1:]) > fn.n:
+        if l.startswith("L") and label_above(l, fn.n):
             self.bad_ir(fn, fn.blocks[j], f"a label above IFn.n ({fn.n})")
         at[l] = j
-    succ: list[list[str]] = []
+    # (each block's successors, by its position j: labels[sfrom[j]:sfrom[j + 1]], in one list
+    # rather than one for each block, #1644)
+    labels: list[str] = []
+    sfrom: list[int] = [0]
     types = OpTypes(fn, self.classes, union_types)
     merged = merged_blocks(fn, self.source_lines.enabled)
     for b in fn.blocks:
-        # Most blocks can borrow their terminator's labels without combining edges.
-        out: list[str] = NOLABELS
-        owned = False
+        start = len(labels)
         for j in range(len(b.code)):
             i = b.code[j]
             if i.op not in IROPS:
@@ -915,10 +1005,10 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 self.bad_ir(fn, b, f"{i.op} needs the alloc runtime declaration")
             if i.op == "field.addr":
                 ci = self.classes[i.a[0].t]
-                if i.k < 0 or (i.k >= len(ci.fields) and i.k not in ci.fflag.values() and i.k not in ci.fbox.values()):
+                if i.k < 0 or (i.k >= len(ci.fields) and not holds_index(ci.fflag, i.k) and not holds_index(ci.fbox, i.k)):
                     self.bad_ir(fn, b, "field.addr needs a declared field, assignment flag or identity box index")
-                t = ci.ftypes[ci.fields[i.k]] if i.k < len(ci.fields) else "dyn" if i.k in ci.fbox.values() else "bool"
-                if i.t != "&" + t and not (i.t == "&" + NONEVAR and lt(t) == "ptr"):
+                t = ci.ftypes[ci.fields[i.k]] if i.k < len(ci.fields) else "dyn" if holds_index(ci.fbox, i.k) else "bool"
+                if not addresses(i.t, t) and not (addresses(i.t, NONEVAR) and lt(t) == "ptr"):
                     # (but a field compiled while only None had been given to it: Gen.none_field)
                     self.bad_ir(fn, b, "field.addr result must address the declared member type")
             if i.op == "tuple.load" or i.op == "tuple.store":
@@ -988,30 +1078,21 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
             if (i.op == "call" and i.s not in self.fll and i.s not in self.externs) or (i.op == "init" and "@init." + i.s not in self.fll):
                 self.bad_ir(fn, b, f"a call of {i.s}, which is not compiled")
             if i.op != "phi" and len(i.b) > 0:
-                if len(out) == 0:
-                    out = i.b
-                else:
-                    if not owned:
-                        out = [l for l in out]
-                        owned = True
-                    out.extend(i.b)
+                labels.extend(i.b)
             if i.op == "check":
                 ck = i.x if i.x != "" else i.s
-                if not owned:
-                    out = [l for l in out]
-                    owned = True
-                out.append(fn.cold[ck] if ck in fn.cold else f"(none for {ck})")
+                labels.append(fn.cold[ck] if ck in fn.cold else f"(none for {ck})")
         if len(b.code) == 0:
             self.bad_ir(fn, b, "no terminator")
-        for l in out:
-            if l not in at or l == "entry":
-                self.bad_ir(fn, b, f"a branch to {l}, which is no block of it")
-        succ.append(out)
+        for x in range(start, len(labels)):
+            if labels[x] not in at or labels[x] == "entry":
+                self.bad_ir(fn, b, f"a branch to {labels[x]}, which is no block of it")
+        sfrom.append(len(labels))
     for b in fn.blocks:
         for i in b.code:
             if i.op == "phi":
                 for l in i.b:
-                    if l not in at or b.label not in succ[at[l]]:
+                    if l not in at or not branches_to(labels, sfrom, at[l], b.label):
                         self.bad_ir(fn, b, f"a phi from {l}, which does not branch there")
     check_structure(self, fn, at)
     if dynamic_raw:
@@ -1028,20 +1109,25 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
     narrowed = optional_reads(self, fn, defined, makers)
     ureads = union_reads(self, fn, defined)
     unions = union_proofs or (machine_tags and has_machine_union_tag(fn))
+    # (each block's successors as a list of their own, for the checks below that read them so)
+    succ: list[list[str]] = []
+    if unions or len(narrowed) > 0:
+        for j in range(len(fn.blocks)):
+            succ.append(labels[sfrom[j] : sfrom[j + 1]])
     if not unions and len(narrowed) > 0 and private_optional_reads(fn, narrowed, at, succ):
         narrowed.clear()
     if len(narrowed) > 0 or len(ureads) > 0 or (unions and not simple_union_proof(fn, self.utags, at, succ, union_types, self.classes)):
-        writes: dict[str, bool] = {}
-        raises: dict[str, bool] = {}
-        written: dict[str, int] = {}  # (the storage classes each call writes: its RAWW and wG bits)
+        # (each call op's effects, by its op, s and x, which say what it may write and whether
+        # it may raise: UnionProof.call_effects; tables rather than a string key for each, #1644)
+        calls: dict[str, dict[str, dict[str, int]]] = {}
         for b in fn.blocks:
             for i in b.code:
                 if (i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume"):
-                    key = i.op + "|" + i.s + "|" + i.x
-                    effects = self.opfx(i, fn.fa)
-                    writes[key] = effects & (RAWW | FXBIT["wG"]) != 0
-                    written[key] = effects & (RAWW | FXBIT["wG"])
-                    raises[key] = effects & FXBIT["R"] != 0
+                    if i.op not in calls:
+                        calls[i.op] = {}
+                    if i.s not in calls[i.op]:
+                        calls[i.op][i.s] = {}
+                    calls[i.op][i.s][i.x] = self.opfx(i, fn.fa)
         # (the classes of the objects whose fields fn addresses, each with those that may be the
         # same object: related, ClassInfo.overlaps, or equal; a store to one's field may change
         # another's only so)
@@ -1053,7 +1139,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         for left in kin:
             for right in kin:
                 kin[left][right] = left == right or left not in self.classes or right not in self.classes or related(self, left, right)
-        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs, self.tconstdata, narrowed, written, kin, unions, self.classes, ureads)
+        proof = UnionProof(fn, self.utags, calls, self.gtypes, self.globs, self.tconstdata, narrowed, kin, unions, self.classes, ureads)
         proof.run()
         for j in range(len(proof.bad)):
             self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])

@@ -11,6 +11,20 @@ from __future__ import annotations
 KEY_VALUES: dict[str, str] = {}
 CONSTANT_REPS: dict[str, str] = {}
 VALUE_REPS: dict[str, str] = {}
+# (the proofs' keys of values, "U:" + name and the like, by prefix and then name: made once, as
+# the verifier makes the same keys in every state, function and pass, #1644)
+PREFIXED: dict[str, dict[str, str]] = {}
+
+
+def pkey(prefix: str, name: str) -> str:
+    # prefix + name, a proof's key of a value (U: a box's tag, MU: what an address holds, B: a
+    # word's bits, T: a tag value, D: a dynamic value's type, phi: a phi's incoming fact)
+    if prefix not in PREFIXED:
+        PREFIXED[prefix] = {}
+    known = PREFIXED[prefix]
+    if name not in known:
+        known[name] = prefix + name
+    return known[name]
 
 
 def key_value(k: str) -> str:
@@ -31,6 +45,21 @@ def join_rep(domain: list[str], name: str) -> str:
     if name not in VALUE_REPS:
         VALUE_REPS[name] = "v:" + name
     return VALUE_REPS[name]
+
+
+def within(a: list[str], b: list[str]) -> bool:
+    # is every tag of domain a one of domain b's (both sorted): a is their intersection, which
+    # need not be made again (domains are immutable once shared, #1644)
+    if len(a) > len(b):
+        return False
+    j = 0
+    for t in a:
+        while j < len(b) and b[j] < t:
+            j += 1
+        if j == len(b) or b[j] != t:
+            return False
+        j += 1
+    return True
 
 
 def union_tags(a: list[str], b: list[str]) -> list[str]:
@@ -54,8 +83,10 @@ def union_tags(a: list[str], b: list[str]) -> list[str]:
 
 
 def intersect_tags(a: list[str], b: list[str]) -> list[str]:
-    if a == b:
+    if a == b or within(a, b):
         return a
+    if within(b, a):
+        return b
     out: list[str] = []
     i = 0
     j = 0
@@ -71,23 +102,103 @@ def intersect_tags(a: list[str], b: list[str]) -> list[str]:
     return out
 
 
+# UnionState's tables, each by its bit in UnionState.mine, and the empty tables that a new state
+# shares until it writes one (none ever writes them: every write copies a table it does not own)
+NO_DOMAINS: dict[str, list[str]] = {}
+NO_NAMES: dict[str, str] = {}
+NO_IMPLICATIONS: dict[str, dict[str, list[str]]] = {}
+NO_TRUTHS: dict[str, int] = {}
+# (and the facts of a boolean that has none, which are only read, and a join's table of the keys
+# that share a first representative with others: union_join makes its own where it has any)
+NO_FACTS: dict[str, list[str]] = {}
+NO_GROUPS: dict[str, dict[str, str]] = {}
+# (a domain that union_join gives each key until it gives it its own)
+NO_TAGS: list[str] = []
+OWN_D = 1
+OWN_EQ = 2
+OWN_LOADED = 4
+OWN_BT = 8
+OWN_BF = 16
+OWN_TRUTH = 32
+OWN_ALL = 63
+
+
 class UnionState:
     def __init__(self, base: dict[str, list[str]], full: list[str], source: UnionState | None = None) -> None:
         self.base = base
         self.full = full
-        self.d: dict[str, list[str]] = {} if source is None else dict(source.d)
-        self.eq: dict[str, str] = {} if source is None else dict(source.eq)
+        # A copy shares its source's tables until either writes one, which it copies first: mine
+        # has the bits (OWN_*) of the tables a state may write in place, and every write goes
+        # through wd, weq, wloaded, wbt, wbf or wtruth. The proofs copy states at each block and
+        # edge, after each pass that changes a function (PYSTACHY_IRCHECK), and most copies
+        # write a table or two, if any: copying all six cost most of their allocations (#1644)
+        # (a new state starts with the shared empty tables, NO_*, which it copies as it would a
+        # source's)
+        self.d: dict[str, list[str]] = NO_DOMAINS if source is None else source.d
+        self.eq: dict[str, str] = NO_NAMES if source is None else source.eq
         # Object loads that still name the value in a private slot or global.
         # Equal tag domains do not establish identity between two objects.
-        self.loaded: dict[str, str] = {} if source is None else dict(source.loaded)
+        self.loaded: dict[str, str] = NO_NAMES if source is None else source.loaded
         # Domains and implication maps are immutable once shared.
-        self.bt: dict[str, dict[str, list[str]]] = {} if source is None else dict(source.bt)
-        self.bf: dict[str, dict[str, list[str]]] = {} if source is None else dict(source.bf)
-        self.truth: dict[str, int] = {} if source is None else dict(source.truth)
+        self.bt: dict[str, dict[str, list[str]]] = NO_IMPLICATIONS if source is None else source.bt
+        self.bf: dict[str, dict[str, list[str]]] = NO_IMPLICATIONS if source is None else source.bf
+        self.truth: dict[str, int] = NO_TRUTHS if source is None else source.truth
         self.live: bool = True if source is None else source.live
+        self.mine = 0
+        if source is not None:
+            source.mine = 0
 
     def clone(self) -> UnionState:
         return UnionState(self.base, self.full, self)
+
+    def wd(self) -> dict[str, list[str]]:
+        # d, to write: this state's own (mine)
+        if self.mine & OWN_D == 0:
+            self.d = dict(self.d)
+            self.mine |= OWN_D
+        return self.d
+
+    def weq(self) -> dict[str, str]:
+        if self.mine & OWN_EQ == 0:
+            self.eq = dict(self.eq)
+            self.mine |= OWN_EQ
+        return self.eq
+
+    def wloaded(self) -> dict[str, str]:
+        if self.mine & OWN_LOADED == 0:
+            self.loaded = dict(self.loaded)
+            self.mine |= OWN_LOADED
+        return self.loaded
+
+    def wbt(self) -> dict[str, dict[str, list[str]]]:
+        if self.mine & OWN_BT == 0:
+            self.bt = dict(self.bt)
+            self.mine |= OWN_BT
+        return self.bt
+
+    def wbf(self) -> dict[str, dict[str, list[str]]]:
+        if self.mine & OWN_BF == 0:
+            self.bf = dict(self.bf)
+            self.mine |= OWN_BF
+        return self.bf
+
+    def wtruth(self) -> dict[str, int]:
+        if self.mine & OWN_TRUTH == 0:
+            self.truth = dict(self.truth)
+            self.mine |= OWN_TRUTH
+        return self.truth
+
+    def adopt(self, other: UnionState) -> None:
+        # take other's domains, equalities, implications and truths (not its loads), and its
+        # claim to them: other copies them before it writes them again
+        self.d = other.d
+        self.eq = other.eq
+        self.bt = other.bt
+        self.bf = other.bf
+        self.truth = other.truth
+        kept = OWN_D | OWN_EQ | OWN_BT | OWN_BF | OWN_TRUTH
+        self.mine = (self.mine & OWN_LOADED) | (other.mine & kept)
+        other.mine = other.mine & OWN_LOADED
 
     def dom(self, k: str) -> list[str]:
         return self.d.get(k, self.base.get(k, self.full))
@@ -95,7 +206,7 @@ class UnionState:
     def forget(self, k: str) -> None:
         rep = self.eq.get(k, k)
         if k in self.eq:
-            del self.eq[k]
+            del self.weq()[k]
         # (rebase what is left of k's group on its least member; the search for one allocates
         # nothing, as most keys forgotten are in no group)
         grouped = False
@@ -106,47 +217,55 @@ class UnionState:
         if grouped:
             group = sorted([x for x in self.eq if self.eq[x] == rep])
             for x in group:
-                self.eq[x] = group[0]
+                self.weq()[x] = group[0]
         if k in self.d:
-            del self.d[k]
+            del self.wd()[k]
         for b in self.bt:
             if k in self.bt[b]:
-                self.bt[b] = {x: self.bt[b][x] for x in self.bt[b] if x != k}
+                self.wbt()[b] = {x: self.bt[b][x] for x in self.bt[b] if x != k}
         for b in self.bf:
             if k in self.bf[b]:
-                self.bf[b] = {x: self.bf[b][x] for x in self.bf[b] if x != k}
+                self.wbf()[b] = {x: self.bf[b][x] for x in self.bf[b] if x != k}
 
     def set(self, k: str, domain: list[str]) -> None:
         self.forget(k)
-        self.d[k] = domain
-        self.eq[k] = k
+        self.wd()[k] = domain
+        self.weq()[k] = k
 
     def copy(self, k: str, v: str) -> None:
         if k == v:
             return
         domain = self.dom(v)
-        yes: dict[str, list[str]] = {}
-        no: dict[str, list[str]] = {}
+        implied = False
         for b in self.bt:
-            if v in self.bt[b]:
-                yes[b] = self.bt[b][v]
+            implied = implied or v in self.bt[b]
         for b in self.bf:
-            if v in self.bf[b]:
-                no[b] = self.bf[b][v]
+            implied = implied or v in self.bf[b]
+        yes: dict[str, list[str]] = NO_FACTS
+        no: dict[str, list[str]] = NO_FACTS
+        if implied:
+            yes = {}
+            no = {}
+            for b in self.bt:
+                if v in self.bt[b]:
+                    yes[b] = self.bt[b][v]
+            for b in self.bf:
+                if v in self.bf[b]:
+                    no[b] = self.bf[b][v]
         self.forget(k)
-        self.d[k] = domain
+        self.wd()[k] = domain
         if v not in self.eq:
-            self.eq[v] = v
-            self.d[v] = domain
-        self.eq[k] = self.eq[v]
+            self.weq()[v] = v
+            self.wd()[v] = domain
+        self.weq()[k] = self.eq[v]
         for b in yes:
             facts = dict(self.bt[b])
             facts[k] = yes[b]
-            self.bt[b] = facts
+            self.wbt()[b] = facts
         for b in no:
             facts = dict(self.bf[b])
             facts[k] = no[b]
-            self.bf[b] = facts
+            self.wbf()[b] = facts
 
     def narrow(self, k: str, domain: list[str]) -> None:
         rep = self.eq.get(k, k)
@@ -155,16 +274,27 @@ class UnionState:
             self.live = False
         for x in self.eq:
             if self.eq[x] == rep:
-                self.d[x] = intersect_tags(self.dom(x), want)
-        self.d[k] = want
+                self.wd()[x] = intersect_tags(self.dom(x), want)
+        self.wd()[k] = want
 
     def cond(self, b: str, yes: bool) -> None:
         mask = self.truth.get(b, 2 if b == "true" else 1 if b == "false" else 3)
         if mask & (2 if yes else 1) == 0:
             self.live = False
             return
-        self.truth[b] = 2 if yes else 1
-        facts = (self.bt if yes else self.bf).get(b, {})
+        if b not in self.truth or self.truth[b] != (2 if yes else 1):
+            self.wtruth()[b] = 2 if yes else 1
+        self.assume(self.facts(b, yes))
+
+    def facts(self, b: str, yes: bool) -> dict[str, list[str]]:
+        # what boolean b implies of keys' domains where it holds (yes) or fails: only read
+        table = self.bt if yes else self.bf
+        return table[b] if b in table else NO_FACTS
+
+    def assume(self, facts: dict[str, list[str]]) -> None:
+        # narrow the domains of facts' keys, and of the keys equal to them, to theirs (cond)
+        if len(facts) == 0:
+            return
         groups: dict[str, list[str]] = {}
         for k in facts:
             rep = self.eq.get(k, k)
@@ -173,12 +303,12 @@ class UnionState:
         for k in self.eq:
             rep = self.eq[k]
             if rep in groups:
-                self.d[k] = intersect_tags(self.dom(k), groups[rep])
+                self.wd()[k] = intersect_tags(self.dom(k), groups[rep])
                 if len(self.d[k]) == 0:
                     self.live = False
         for k in facts:
             if k not in self.eq:
-                self.d[k] = groups[k]
+                self.wd()[k] = groups[k]
                 if len(self.d[k]) == 0:
                     self.live = False
 
@@ -187,10 +317,33 @@ class UnionState:
         other.cond(b, yes)
         return other
 
+    def conditional_domains(self, b: str, yes: bool) -> UnionState:
+        # conditional(b, yes) for its domains and whether it is live, all that a join's
+        # implications read (union_join_domains, boolean): without its truth of b, and this
+        # state itself where b's facts narrow nothing (#1644)
+        mask = self.truth.get(b, 2 if b == "true" else 1 if b == "false" else 3)
+        facts = self.facts(b, yes)
+        if mask & (2 if yes else 1) != 0 and len(facts) == 0:
+            return self
+        other = self.clone()
+        if mask & (2 if yes else 1) == 0:
+            other.live = False
+        else:
+            other.assume(facts)
+        return other
+
     def boolean(self, b: str, yes: UnionState, no: UnionState) -> None:
-        self.truth[b] = (2 if yes.live else 0) | (1 if no.live else 0)
-        self.bt[b] = {k: yes.dom(k) for k in yes.d if yes.dom(k) != self.dom(k)} if yes.live else {}
-        self.bf[b] = {k: no.dom(k) for k in no.d if no.dom(k) != self.dom(k)} if no.live else {}
+        self.wtruth()[b] = (2 if yes.live else 0) | (1 if no.live else 0)
+        self.wbt()[b] = self.changed(yes) if yes.live else NO_FACTS
+        self.wbf()[b] = self.changed(no) if no.live else NO_FACTS
+
+    def changed(self, other: UnionState) -> dict[str, list[str]]:
+        # the domains of other's keys that differ from this state's, as a boolean implies them
+        # (boolean): NO_FACTS where none does, as an implication map is never written once kept
+        for k in other.d:
+            if other.dom(k) != self.dom(k):
+                return {k: other.dom(k) for k in other.d if other.dom(k) != self.dom(k)}
+        return NO_FACTS
 
     def test(self, b: str, k: str, yes: list[str], no: list[str]) -> None:
         # boolean b holds where key k's object has a class of domain yes and fails where it has
@@ -200,9 +353,9 @@ class UnionState:
         fails = intersect_tags(self.dom(k), no)
         live_yes = self.live and len(holds) > 0
         live_no = self.live and len(fails) > 0
-        self.truth[b] = (2 if live_yes else 0) | (1 if live_no else 0)
-        self.bt[b] = self.narrowed(k, holds) if live_yes else {}
-        self.bf[b] = self.narrowed(k, fails) if live_no else {}
+        self.wtruth()[b] = (2 if live_yes else 0) | (1 if live_no else 0)
+        self.wbt()[b] = self.narrowed(k, holds) if live_yes else {}
+        self.wbf()[b] = self.narrowed(k, fails) if live_no else {}
 
     def narrowed(self, k: str, want: list[str]) -> dict[str, list[str]]:
         # the domains that narrowing k to want, a part of its domain, changes: of k and of each
@@ -222,9 +375,9 @@ class UnionState:
         yes = self.conditional(v, True)
         no = self.conditional(v, False)
         # Keep incoming-edge facts too, so a join preserves a boolean phi's implication.
-        self.truth[b] = (2 if yes.live else 0) | (1 if no.live else 0)
-        self.bt[b] = dict(yes.d) if yes.live else {}
-        self.bf[b] = dict(no.d) if no.live else {}
+        self.wtruth()[b] = (2 if yes.live else 0) | (1 if no.live else 0)
+        self.wbt()[b] = dict(yes.d) if yes.live else {}
+        self.wbf()[b] = dict(no.d) if no.live else {}
 
     def same(self, other: UnionState) -> bool:
         # States in one proof share the immutable base and full domain.
@@ -242,15 +395,25 @@ class UnionState:
             if v not in values:
                 drop = True
                 break
-        if drop:
+        # (what is dropped goes from a table this state owns, in place, and from one it shares
+        # into a table of its own made without it, #1644)
+        if drop and self.mine & OWN_LOADED != 0:
+            for v in [v for v in self.loaded if v not in values]:
+                del self.loaded[v]
+        elif drop:
             self.loaded = {v: self.loaded[v] for v in self.loaded if v in values}
+            self.mine |= OWN_LOADED
         drop = False
         for k in self.d:
             if not self.needed(k, values):
                 drop = True
                 break
-        if drop:
+        if drop and self.mine & OWN_D != 0:
+            for k in [k for k in self.d if not self.needed(k, values)]:
+                del self.d[k]
+        elif drop:
             self.d = {k: self.d[k] for k in self.d if self.needed(k, values)}
+            self.mine |= OWN_D
         # Representatives can name dead values. Rebase each surviving equivalence
         # class instead of dropping its relation when that representative dies;
         # a class whose members all live and whose representative is its least
@@ -271,17 +434,56 @@ class UnionState:
                         representatives[old] = k
                     equal[k] = representatives[old]
             self.eq = equal
+            self.mine |= OWN_EQ
         drop = False
         for k in self.truth:
             if k not in values:
                 drop = True
                 break
-        if drop:
+        if drop and self.mine & OWN_TRUTH != 0:
+            for k in [k for k in self.truth if k not in values]:
+                del self.truth[k]
+        elif drop:
             self.truth = {k: self.truth[k] for k in self.truth if k in values}
+            self.mine |= OWN_TRUTH
         if self.stale(self.bt, values):
-            self.bt = {b: {k: self.bt[b][k] for k in self.bt[b] if self.needed(k, values)} for b in self.bt if b in values}
+            if self.mine & OWN_BT != 0:
+                self.drop_implications(self.bt, values)
+            else:
+                self.bt = self.kept_implications(self.bt, values)
+                self.mine |= OWN_BT
         if self.stale(self.bf, values):
-            self.bf = {b: {k: self.bf[b][k] for k in self.bf[b] if self.needed(k, values)} for b in self.bf if b in values}
+            if self.mine & OWN_BF != 0:
+                self.drop_implications(self.bf, values)
+            else:
+                self.bf = self.kept_implications(self.bf, values)
+                self.mine |= OWN_BF
+
+    def drop_implications(self, table: dict[str, dict[str, list[str]]], values: dict[str, bool]) -> None:
+        # retain's of a table of implications this state owns: the booleans no longer needed go,
+        # and an implication map that names a key no longer needed is made again without it (a
+        # map is immutable once shared)
+        for b in [b for b in table]:
+            if b not in values:
+                del table[b]
+            elif self.stale_facts(table[b], values):
+                table[b] = {k: table[b][k] for k in table[b] if self.needed(k, values)}
+
+    def kept_implications(self, table: dict[str, dict[str, list[str]]], values: dict[str, bool]) -> dict[str, dict[str, list[str]]]:
+        # a table of implications made of one this state shares, as drop_implications leaves it
+        kept: dict[str, dict[str, list[str]]] = {}
+        for b in table:
+            if b in values:
+                facts = table[b]
+                kept[b] = {k: facts[k] for k in facts if self.needed(k, values)} if self.stale_facts(facts, values) else facts
+        return kept
+
+    def stale_facts(self, facts: dict[str, list[str]], values: dict[str, bool]) -> bool:
+        # does an implication map name a key no longer needed
+        for k in facts:
+            if not self.needed(k, values):
+                return True
+        return False
 
     def stale(self, implications: dict[str, dict[str, list[str]]], values: dict[str, bool]) -> bool:
         # does retain drop something of implications: a boolean or a key no longer needed
@@ -294,39 +496,66 @@ class UnionState:
         return False
 
 
+def implied_keys(implications: dict[str, dict[str, list[str]]], d: dict[str, list[str]]) -> None:
+    # add to a join's domains each key that an implication of the table names and they lack
+    for condition in implications:
+        for k in implications[condition]:
+            if k not in d:
+                d[k] = NO_TAGS
+
+
 def union_join(a: UnionState, b: UnionState) -> UnionState:
     if not a.live:
         return b.clone()
     if not b.live:
         return a.clone()
     state = UnionState(a.base, a.full)
-    state.loaded = {v: a.loaded[v] for v in a.loaded if b.loaded.get(v, "") == a.loaded[v]}
-    keys = list(a.d)
+    # (the tables a join leaves empty are the new state's shared empty ones, #1644)
+    if len(a.loaded) > 0 and len(b.loaded) > 0:
+        state.loaded = {v: a.loaded[v] for v in a.loaded if b.loaded.get(v, "") == a.loaded[v]}
+        state.mine |= OWN_LOADED
+    # (the keys: a's, b's and those their implications name, which the new state's domains
+    # hold as they are found, and then in sorted order each its domain, #1644)
+    d = state.wd()
+    for k in a.d:
+        d[k] = NO_TAGS
     for k in b.d:
-        if k not in a.d:
-            keys.append(k)
-    present = {k: True for k in keys}
+        if k not in d:
+            d[k] = NO_TAGS
     # A parameter-backed comparison can have no unconditional override at all.
     # Its domain still has to participate in a join of the saved condition.
-    for implications in [a.bt, a.bf, b.bt, b.bf]:
-        for condition in implications:
-            for k in implications[condition]:
-                if k not in present:
-                    present[k] = True
-                    keys.append(k)
-    keys.sort()
-    groups: dict[str, dict[str, str]] = {}
+    implied_keys(a.bt, d)
+    implied_keys(a.bf, d)
+    implied_keys(b.bt, d)
+    implied_keys(b.bf, d)
+    keys = sorted(d)
+    # (each key's representative is the first key whose pair of representatives (lr, rr) it
+    # shares; most lr meet one rr alone, so a table of the others is made only where a second
+    # rr meets it, and the first key's rr is found again rather than kept, #1644)
+    first_key: dict[str, str] = {}
+    others: dict[str, dict[str, str]] = NO_GROUPS
+    eq = state.weq()
     for k in keys:
         left = a.dom(k)
         right = b.dom(k)
-        state.d[k] = union_tags(left, right)
+        d[k] = union_tags(left, right)
         lr = join_rep(left, a.eq.get(k, k))
         rr = join_rep(right, b.eq.get(k, k))
-        if lr not in groups:
-            groups[lr] = {}
-        if rr not in groups[lr]:
-            groups[lr][rr] = k
-        state.eq[k] = groups[lr][rr]
+        if lr not in first_key:
+            first_key[lr] = k
+            eq[k] = k
+        elif join_rep(b.dom(first_key[lr]), b.eq.get(first_key[lr], first_key[lr])) == rr:
+            eq[k] = first_key[lr]
+        else:
+            if len(others) == 0:
+                others = {}
+            if lr not in others:
+                others[lr] = {}
+            if rr not in others[lr]:
+                others[lr][rr] = k
+            eq[k] = others[lr][rr]
+    if len(a.truth) + len(b.truth) + len(a.bt) + len(b.bt) == 0:
+        return state
     booleans: dict[str, bool] = {}
     for v in a.truth:
         booleans[v] = True
@@ -337,8 +566,8 @@ def union_join(a: UnionState, b: UnionState) -> UnionState:
     for v in b.bt:
         booleans[v] = True
     for v in booleans:
-        yes = union_join_domains(a.conditional(v, True), b.conditional(v, True), keys)
-        no = union_join_domains(a.conditional(v, False), b.conditional(v, False), keys)
+        yes = union_join_domains(a.conditional_domains(v, True), b.conditional_domains(v, True), keys)
+        no = union_join_domains(a.conditional_domains(v, False), b.conditional_domains(v, False), keys)
         state.boolean(v, yes, no)
     return state
 
@@ -351,4 +580,5 @@ def union_join_domains(a: UnionState, b: UnionState, keys: list[str]) -> UnionSt
         return a
     state = UnionState(a.base, a.full)
     state.d = {k: union_tags(a.dom(k), b.dom(k)) for k in keys}
+    state.mine |= OWN_D
     return state

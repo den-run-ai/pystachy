@@ -307,11 +307,11 @@ class ClassProof:
 
     def forget_bool(self, s: UnionState, v: str) -> None:
         if v in s.truth:
-            del s.truth[v]
+            del s.wtruth()[v]
         if v in s.bt:
-            del s.bt[v]
+            del s.wbt()[v]
         if v in s.bf:
-            del s.bf[v]
+            del s.wbf()[v]
 
     def tagged(self, literal: str) -> list[str]:
         # the classes whose objects' class word a tag or descriptor literal is
@@ -333,8 +333,8 @@ class ClassProof:
         rep = s.eq.get(key, key)
         for x in s.eq:
             if s.eq[x] == rep:
-                s.d[x] = domain
-        s.d[key] = domain
+                s.wd()[x] = domain
+        s.wd()[key] = domain
 
     def compare(self, s: UnionState, result: str, key: str, literal: str, equal: bool) -> None:
         # a test of a class word against literal: its value is one of literal's words where it
@@ -362,7 +362,7 @@ class ClassProof:
                 s.forget(self.dkeys[v])
             self.forget_bool(s, v)
             if v in s.loaded:
-                del s.loaded[v]
+                del s.wloaded()[v]
             if v in self.owners:
                 self.forget_fields(s, -1, v)
         if len(self.owners) > 0 and (i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume"):
@@ -371,7 +371,7 @@ class ClassProof:
             s.copy(self.key(r), self.key(self.words[r]))
         elif (i.op == "mem.load" or i.op == "mach.load") and len(i.a) == 1 and i.a[0].v in self.private and r != "":
             s.copy(self.key(r), self.private[i.a[0].v])
-            s.loaded[r] = i.a[0].v
+            s.wloaded()[r] = i.a[0].v
         elif i.op == "mem.load" and len(i.a) == 1 and i.a[0].v in self.fields and r != "" and self.tracked(r):
             key = self.field_of(s, i.a[0].v)
             if key in self.base:
@@ -389,7 +389,7 @@ class ClassProof:
                         break
                 if stale:
                     for obj in [o for o in s.loaded if s.loaded[o] == addr]:
-                        del s.loaded[obj]
+                        del s.wloaded()[obj]
                 if addr in self.owners:
                     self.forget_fields(s, -1, addr)
             elif addr in self.fields:
@@ -442,11 +442,7 @@ class ClassProof:
                 yes.copy(self.key(r), self.key(i.a[1].v))
                 no.copy(self.key(r), self.key(i.a[2].v))
             merged = union_join(yes, no)
-            s.d = merged.d
-            s.eq = merged.eq
-            s.bt = merged.bt
-            s.bf = merged.bf
-            s.truth = merged.truth
+            s.adopt(merged)
             s.live = merged.live
         elif i.op == "cast" and len(i.a) == 1 and self.tracked(r):
             # (the object it reads, at another type: lowering erases it. An object cast's is one
@@ -508,9 +504,9 @@ class ClassProof:
             s.forget(self.phikey(k))
         for j in range(len(bools)):
             k = bools[j]
-            s.truth[k] = bs[j].truth[k]
-            s.bt[k] = bs[j].bt[k]
-            s.bf[k] = bs[j].bf[k]
+            s.wtruth()[k] = bs[j].truth[k]
+            s.wbt()[k] = bs[j].bt[k]
+            s.wbf()[k] = bs[j].bf[k]
 
     def flow(self, b: Blk, s: UnionState, targets: list[str], edges: list[UnionState]) -> None:
         # one block for the worklist (dataflow.forward_fixpoint): s, the facts at the block's

@@ -20,24 +20,45 @@ class Structure:
     # (each once; a label of no block of fn is left out), the blocks that entry reaches in reverse
     # postorder of a depth-first search, each block's immediate dominator (entry's is entry, an
     # unreached block's -1) and the search's retreating edges [source, target], whose target was
-    # still on the search's stack: each closes a cycle
-    def __init__(self, fn: IFn):
+    # still on the search's stack: each closes a cycle. Block j's successors are
+    # succ[sfrom[j]:sfrom[j + 1]] and its predecessors preds[pfrom[j]:pfrom[j + 1]], in two flat
+    # lists rather than a list for each block: the verifier makes this after each pass that
+    # changes a function (PYSTACHY_IRCHECK), whose allocations cost most under GC stress (#1644)
+    def __init__(self, fn: IFn, labels: dict[str, int] | None = None):
+        # (labels: each label's block's position, where the verifier has made it already)
         n = len(fn.blocks)
         at: dict[str, int] = {}
+        if labels is None:
+            for j in range(n):
+                at[fn.blocks[j].label] = j
+        else:
+            at = labels
+        self.succ: list[int] = []
+        self.sfrom: list[int] = [0] * (n + 1)
+        counts = [0] * (n + 1)
         for j in range(n):
-            at[fn.blocks[j].label] = j
-        self.succ: list[list[int]] = []
-        self.preds: list[list[int]] = []
-        for j in range(n):
-            out: list[int] = []
+            start = len(self.succ)
             for label in flow_targets(fn, fn.blocks[j]):
-                if label in at and at[label] not in out:
-                    out.append(at[label])
-            self.succ.append(out)
-            self.preds.append([])
+                if label in at:
+                    k = at[label]
+                    seen = False
+                    for x in range(start, len(self.succ)):
+                        seen = seen or self.succ[x] == k
+                    if not seen:
+                        self.succ.append(k)
+                        counts[k] += 1
+            self.sfrom[j + 1] = len(self.succ)
+        # (each block's predecessors in the order of their positions, as each appends its own)
+        self.pfrom: list[int] = [0] * (n + 1)
         for j in range(n):
-            for k in self.succ[j]:
-                self.preds[k].append(j)
+            self.pfrom[j + 1] = self.pfrom[j] + counts[j]
+        self.preds: list[int] = [0] * len(self.succ)
+        fill = [self.pfrom[j] for j in range(n)]
+        for j in range(n):
+            for x in range(self.sfrom[j], self.sfrom[j + 1]):
+                k = self.succ[x]
+                self.preds[fill[k]] = j
+                fill[k] += 1
         # (an iterative depth-first search from entry: 0 unseen, 1 on its stack, 2 done)
         post: list[int] = []
         self.retreating: list[list[int]] = []
@@ -51,9 +72,9 @@ class Structure:
         while len(stack) > 0:
             j = stack[len(stack) - 1]
             k = nexts[len(nexts) - 1]
-            if k < len(self.succ[j]):
+            if self.sfrom[j] + k < self.sfrom[j + 1]:
                 nexts[len(nexts) - 1] = k + 1
-                t = self.succ[j][k]
+                t = self.succ[self.sfrom[j] + k]
                 if state[t] == 0:
                     state[t] = 1
                     stack.append(t)
@@ -80,7 +101,8 @@ class Structure:
             for k in range(1, len(self.rpo)):
                 j = self.rpo[k]
                 new = -1
-                for p in self.preds[j]:
+                for x in range(self.pfrom[j], self.pfrom[j + 1]):
+                    p = self.preds[x]
                     if self.idom[p] == -1:
                         continue
                     if new == -1:
@@ -126,7 +148,8 @@ class Structure:
         # goes to head, which is then no loop's head
         body: dict[int, bool] = {}
         work: list[int] = []
-        for p in self.preds[head]:
+        for x in range(self.pfrom[head], self.pfrom[head + 1]):
+            p = self.preds[x]
             if self.dominates(head, p):
                 work.append(p)
         if len(work) == 0:
@@ -137,7 +160,8 @@ class Structure:
             if j in body:
                 continue
             body[j] = True
-            for p in self.preds[j]:
+            for x in range(self.pfrom[j], self.pfrom[j + 1]):
+                p = self.preds[x]
                 if self.idom[p] != -1:
                     work.append(p)
         return body
