@@ -1,9 +1,10 @@
 # A class method of a class template that assigns, through cls, a class attribute that the
-# object's class inherits. CPython gives that class an attribute of its own; here cls is still
-# the template for that attribute, as before the class had its own copy of the method, so the
-# store changes the template's (#1744). These programs print what CPython prints either way,
-# and keep compiling: the template gets the same store too, or the class between them binds the
-# attribute to the value that the template's has
+# object's class inherits. CPython gives that class an attribute of its own, which is not
+# supported: in the class's own copy of the method the store does not compile, so the program is
+# compiled without such copies, as before they were made (#1744), and the store changes the
+# template's attribute. These programs print what CPython prints that way: the template gets
+# the same store too, or the class between them binds the attribute to the value that the
+# template's has
 class Base:
     count = 0
 

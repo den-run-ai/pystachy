@@ -109,7 +109,7 @@ class FnInfo:
         self.pending = False  # inherited class method: node shares orig's body until materialize()
         # an inherited class method's copy for a class under a class template (inherit): the
         # template that defines the method, which cls named in it before those classes had copies
-        # of their own, and still names where it assigns a class attribute (materialize)
+        # of their own. Its calls through an object are accepted as they were then (cls_bound)
         self.clsdef = ""
         # a template's function: the parameters whose arguments are objects known not to be None
         # (a new object, self), which its isinstance(), hasattr() and "is None" tests read as such

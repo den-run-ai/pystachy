@@ -1378,18 +1378,23 @@ an object of the class, as through the class's name, `cls` is that class, so `cl
 class attribute its body binds again and `cls(...)` are its
 ([test](../../tests/programs/classes/template_subclass_class_method.py)), and `cls.x = v` changes
 the class's `x` where its class body binds `x`
-([test](../../tests/programs/classes/template_subclass_cls_store_own.py)). For an `x` that the
-class inherits, `cls` is still the class that defines the method, in the method's reads of `x`
-too: the store changes that class's attribute, where CPython gives the class an `x` of its own and
-any other class's store is rejected
-([#1744](https://github.com/den-run-ai/pystachy/issues/1744);
-[test](../../tests/programs/classes/template_subclass_cls_store_kept.py) of programs that this
-leaves as CPython runs them). Called through a
+([test](../../tests/programs/classes/template_subclass_cls_store_own.py)). That holds for a
+program that compiles with those copies. Where it does not, no class of the program has one and
+`cls` is the template that defines the method, as it was before
+([#1744](https://github.com/den-run-ai/pystachy/issues/1744)): what `cls(...)` makes is stored
+where a template's object is stored too
+([test](../../tests/programs/classes/template_subclass_class_method_retyped.py),
+[test](../../tests/programs/classes/template_subclass_class_method_retyped_generic.py)), the
+class's own `__init__` takes other arguments
+([test](../../tests/programs/classes/template_subclass_class_method_init.py)), or the method
+assigns through `cls` an attribute that the class inherits, of which CPython gives the class its
+own ([test](../../tests/programs/classes/template_subclass_cls_store_kept.py)). Called through a
 location typed by a class that others derive from, `cls` is that class also for an object of a
 deriving class: calls of class methods are not dispatched on the object's class. A class in
 another module than the method's, and any class where a default value of the method is evaluated
 when its def runs, has no copy of its own: through its object, `cls` is the nearest class that has
-one.
+one. A class method that a class under a template defines itself is called as any other class's
+([error test](../../tests/errors/classes/template_subclass_own_class_method.py)).
 These classes are still not values: `issubclass()` and `type[C]` reject them.
 
 The compiler rejects, with a message that names the limit: a subclass with a secondary base or a

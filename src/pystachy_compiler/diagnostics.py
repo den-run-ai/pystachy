@@ -165,20 +165,22 @@ CAPTURED: list[Diagnostic] = []
 # (Loader.keeps): an error there is no diagnostic, as driver.compile_program then compiles the
 # program again without them, which reports what it finds
 TRIAL = False
-# a compilation that has passed an object of a class deriving from a builtin container to a
-# comparison method as itself, where the one before #1736 passed its container (Gen.bkept): an
-# error after that is no diagnostic either, as driver.compile_program then compiles the program
-# from the start with the containers, which reports what it finds
-OBJECTS = False
+# a compilation that has done, on trial, what changes types elsewhere in the program: passed an
+# object of a class deriving from a builtin container to a comparison method as itself, where the
+# one before #1736 passed its container (Gen.bkept), or given a class under a class template its
+# own copy of a class method (Gen.inherit, #1744). An error after that is no diagnostic either,
+# as driver.compile_program then compiles the program from the start without either, which
+# reports what it finds
+TRYING = False
 
 
 class Untried(Exception):
-    # fail() while TRIAL or OBJECTS
+    # fail() while TRIAL or TRYING
     pass
 
 
 def fail(msg: str, line: int, context: list[str] | None = None) -> None:
-    if TRIAL or OBJECTS:
+    if TRIAL or TRYING:
         raise Untried()
     if CAPTURE:
         CAPTURED.append(Diagnostic(msg, line, [] if context is None else context))

@@ -169,8 +169,8 @@ def gen_bkeeps(self, op: str, a: Val, b: Val) -> bool:
     # reflected method where the left operand's container declines a right operand that is no
     # such container (one of the container's kind, an object of another class deriving from it
     # too, is compared by the container, which does not decline it). False where bcompared
-    # decides as CPython does, and in a compilation that hands over the containers (Gen.bobj)
-    if not self.bobj or op not in BCMP or (self.bkind(a.t) == "" and self.bkind(b.t) == ""):
+    # decides as CPython does, and in a compilation that hands over the containers (Gen.trials)
+    if not self.trials or op not in BCMP or (self.bkind(a.t) == "" and self.bkind(b.t) == ""):
         return False
     if op != "==" and op != "!=" and (self.bkind(a.t) == "dict" or self.bkind(b.t) == "dict"):
         return False
@@ -193,10 +193,10 @@ def gen_bkept(self, op: str, a: Val, b: Val) -> Val:
     # was, in the method and in whatever the method stores it in, returns it to or passes it on
     # to, so code anywhere in the program may stop compiling, or decline an attempt it made
     # (Gen.xtry), that compiled with the container: from here on the compilation is a trial
-    # (diagnostics.OBJECTS), and where any of that happens the driver compiles the program from
+    # (diagnostics.TRYING), and where any of that happens the driver compiles the program from
     # the start with the containers. Nothing of a trial is the program's then, and no program
     # that compiled with the containers stops compiling
-    diagnostics.OBJECTS = True
+    diagnostics.TRYING = True
     return self.cmp3(op, a, b)
 
 

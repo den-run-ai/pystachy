@@ -1172,7 +1172,6 @@ from src.pystachy_compiler.functions import (
     gen_function_body as functions_function_body,
     gen_receiver_fields as functions_receiver_fields,
     gen_numeric_proof as functions_numeric_proof,
-    gen_cls_kept as functions_cls_kept,
     gen_materialize as functions_materialize,
     gen_untold as functions_untold,
 )
@@ -1745,9 +1744,10 @@ class Gen:
         self.xnot: dict[str, bool] = {}
         self.newx: dict[str, bool] = {}
         # the driver's: a comparison hands a method of the program the object of a class deriving
-        # from a builtin container as itself (bkeeps), not its container; False once a pass that
-        # did failed or declined an attempt, and for the code no driver pass compiles
-        self.bobj = False
+        # from a builtin container as itself (bkeeps), not its container, and a class under a
+        # class template has its own copy of a class method (inherit); False once a pass that
+        # did either failed or declined an attempt, and for the code no driver pass compiles
+        self.trials = False
         self.xwant: dict[str, bool] = {}  # narrowings of class tuples that a function needs (narrows, err)
         self.newwant: dict[str, bool] = {}  # and those this pass found it needs
         self.ncand: dict[str, bool] = {}  # the narrowings this pass did not make (narrows)
@@ -3908,9 +3908,6 @@ class Gen:
 
     def enter(self, f: FnInfo, body: list[Node]) -> None:
         return functions_enter(self, f, body)
-
-    def cls_kept(self, d: str, ci: ClassInfo) -> dict[str, bool]:
-        return functions_cls_kept(self, d, ci)
 
     def materialize(self, f: FnInfo) -> None:
         return functions_materialize(self, f)
