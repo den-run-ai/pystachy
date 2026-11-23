@@ -8,7 +8,7 @@ WebAssembly keeps most values in locals and on the operand stack, which nothing 
 (wasm/README.md). This pass rewrites a command that wasm-ld linked from LLVM's output. Around
 each call that may reach the collector, it reserves a frame below __stack_pointer and stores in
 it every i32 and i64 local that is live after the call, and every i32 and i64 value beneath the
-call's arguments on the operand stack; the call's return releases the frame. The collector
+call's arguments on the operand stack; the call's return clears and releases the frame. The collector
 scans that stack up to __stack_high, and a frame holds only what is live while its call runs.
 Finally the pass makes runtime.c's wasi_roots_spilled return 1, which lets gc_init turn
 collection on.
@@ -771,7 +771,10 @@ class Function:
             for x in reversed(held):
                 pre.append(0x20)
                 put_uleb(pre, x)
-            post = bytearray([0x20])           # __stack_pointer = frame + size (an exception skips this:
+            post = bytearray()                 # the frame cleared, so that no later scan finds what it held
+            for o in range(0, size, 8):
+                store(post, frame, -1, I64, o)
+            post.append(0x20)                  # __stack_pointer = frame + size (an exception skips this:
             put_uleb(post, frame)              # the function that catches it restores the pointer)
             post.append(0x41)
             put_sleb(post, size)
