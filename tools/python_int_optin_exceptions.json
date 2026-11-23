@@ -853,16 +853,16 @@
       "case": "tests/programs/containers/tuple_runtime_joins.py",
       "mode": "jit",
       "category": "unsupported-storage",
-      "diagnostic": "tests/programs/containers/tuple_runtime_joins.py:24: error: pick() returns both tuple[int,int] and tuple[int] (each function has one return type) (compiling pick(int+) for the call at tests/programs/containers/tuple_runtime_joins.py:36)",
-      "reason": "Runtime-length tuples hold 64-bit ints, not promoting ints: tuples of promoting ints of other lengths do not join into one, so pick() returning (n, n), (n,) and () stays rejected.",
+      "diagnostic": "tests/programs/containers/tuple_runtime_joins.py:49: error: cannot unpack tuple[int+] into 2 targets",
+      "reason": "Runtime-length tuples hold 64-bit ints, not promoting ints: tuples of promoting ints of other lengths do not join into one, so pick() is compiled for each literal argument (docs/language/typing.md#results-chosen-by-literal-arguments) and returns a fixed tuple, and c, d = pick(1) unpacks a 1-tuple, which is rejected at compile time where CPython raises ValueError.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
       "case": "tests/programs/containers/tuple_runtime_joins.py",
       "mode": "aot",
       "category": "unsupported-storage",
-      "diagnostic": "tests/programs/containers/tuple_runtime_joins.py:24: error: pick() returns both tuple[int,int] and tuple[int] (each function has one return type) (compiling pick(int+) for the call at tests/programs/containers/tuple_runtime_joins.py:36)",
-      "reason": "Runtime-length tuples hold 64-bit ints, not promoting ints: tuples of promoting ints of other lengths do not join into one, so pick() returning (n, n), (n,) and () stays rejected.",
+      "diagnostic": "tests/programs/containers/tuple_runtime_joins.py:49: error: cannot unpack tuple[int+] into 2 targets",
+      "reason": "Runtime-length tuples hold 64-bit ints, not promoting ints: tuples of promoting ints of other lengths do not join into one, so pick() is compiled for each literal argument (docs/language/typing.md#results-chosen-by-literal-arguments) and returns a fixed tuple, and c, d = pick(1) unpacks a 1-tuple, which is rejected at compile time where CPython raises ValueError.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {

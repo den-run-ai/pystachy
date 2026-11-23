@@ -2,7 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.bigints import narrows
-from src.pystachy_compiler.diagnostics import ClassBoxes, NeedHierarchy, Rejoin, fail, int_lists
+from src.pystachy_compiler import diagnostics
+from src.pystachy_compiler.diagnostics import ClassBoxes, NeedHierarchy, NeedSelectors, Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.frames import Frame
 from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, tmpname, one_num, value_definitions
@@ -34,7 +35,9 @@ from src.pystachy_compiler.utils import (
 )
 
 
-def gen_err(self, msg: str) -> None:
+def gen_err(self, msg: str, marks: dict[str, str] | None = None) -> None:
+    # marks: the selectors that compiling the program again with may avoid this error, which no
+    # other retry below explains (templates.py's selector_fail)
     if self.xtry != "":
         # A comparison specialization may decline on the next pass. An unsupported
         # iteration protocol instead gets an explicit runtime-error arm; unused
@@ -73,6 +76,14 @@ def gen_err(self, msg: str) -> None:
             for c in want:
                 self.newwant[c] = True
             raise Rejoin()
+    if marks is not None and len(marks) > 0 and not diagnostics.TRIAL and not self.rtmode:
+        # (a template whose returns join to no type, where its parameters' literal arguments may
+        # choose which run: the next pass compiles an instance for each call's literals, whose
+        # error, if any, is reported then. Not in a pass that keeps optional imports' except
+        # clauses (TRIAL), whose errors start the program again without them, as before)
+        for key in marks:
+            self.selectors[key] = marks[key]
+        raise NeedSelectors()
     if len(self.making) > 0:
         # an error in a template's function: say which call made it compile
         for i in range(len(self.making) - 1, -1, -1):

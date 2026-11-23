@@ -1509,6 +1509,50 @@ annotation `xs: list[int | float] = [1, 2.5]` gives it, also within tuple fields
 `[("a", 1), ("b", 2.5)]` is a `list[tuple[str, int | float]]`.
 The values keep their types; integers are not converted to floats.
 
+### Results chosen by literal arguments
+
+A function without a return annotation may return values of types that no union joins, such
+as a `str` and a tuple, where a parameter's literal argument decides which returns run. The
+function then compiles once for each literal its calls pass, and each instance has the return
+type of the returns that literal reaches, as an `@overload` with `Literal[...]` parameters
+describes it to a type checker (overload stubs change nothing here):
+
+```python
+def repair(s: str, logging: bool = False):
+    fixed = s.strip()
+    if logging:
+        return fixed, ["stripped"]
+    return fixed
+
+
+print(repair(" a "))                        # a str
+value, log = repair(" b ", logging=True)    # a tuple
+```
+
+Such a parameter, a **selector**, is one that an `if`, `elif`, `while`, assertion or
+conditional expression of the body tests and that the body never binds again (by an
+assignment, `del`, an import or a nested function's `nonlocal`). Its argument is `True`,
+`False`, `None`, an `int` from `-(2**63 - 1)` to `2**63 - 1` or a `str` of ASCII characters,
+given as a literal by position or keyword (a positional-only parameter's name as a keyword
+is a `**kwargs` key), or left to its literal default. The instance decides its tests of the
+selector: truth, `==`, `!=`, `<`, `<=`, `>`, `>=`, `in`, `not`, `and`, `or`, and `is` or
+`is not` with `None`, `True` or `False`. An optional parameter given a value holds only that
+value's type, so `if key is None: return xs` leaves `key` an `int` after it for the call
+`find(xs, 5)`. A call inside such an instance that passes its own selector on
+(`return repair(s, logging)`) makes the caller compiled for each literal too, and its caller
+where that passes on its own parameter in turn. Calls through
+the function as a value, as `map(repair, xs)` and a `Callable` parameter make them, leave a
+selector they do not pass to its literal default.
+
+This applies to module-level and nested functions and to instance methods of classes that
+take part in no inheritance, also in modules that opt in to dynamic `Any` (where `-> Any`
+still returns `Any` values) or to promoting ints. The compiler looks for selectors only where
+the returns do not join, so other functions compile as before. A call that gives a selector
+no literal (a variable, a module constant, `*args` or `**kwargs`) is rejected with the
+parameter's name. Static and class methods, methods of classes in a hierarchy, a `match`
+statement on the selector (it tests a copy) and one return of a conditional expression whose
+arms have different types keep one return type.
+
 ## Class templates and generic classes
 
 In modules opting in to [dynamic `Any`](../dynamic-any.md), a stored class can

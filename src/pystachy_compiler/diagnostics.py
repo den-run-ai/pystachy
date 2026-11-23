@@ -197,6 +197,14 @@ class NeedHierarchy(Rejoin):
     pass
 
 
+class NeedSelectors(Rejoin):
+    # A template's instance returned values of two types that no union joins, where parameters
+    # its tests read may take literals (or one of them is forwarded to it by its caller's own
+    # parameter): Gen.selectors names them, and the program is compiled again with an instance for
+    # each call's literal arguments, whose tests of them are decided (templates.py's selectors)
+    pass
+
+
 class NeedSliceEH(Rejoin):
     # A dynamic slice needs to catch an iterator callback's TypeError, or a lookup the
     # AttributeError that a class's __getattr__ answers or raises (reflection.py). Start

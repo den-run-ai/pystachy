@@ -976,7 +976,10 @@ def gen_stmt_main(self, n: Node) -> None:
                     self.joinsrc = src
                     self.join_at(was[0], was[1], was[2])
                     if not joined:
-                        self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
+                        # (where literal arguments may choose which returns run: compiled again so,
+                        # templates.py's selector_fail)
+                        marks: dict[str, str] = {}
+                        self.err(self.selector_fail(self.ret, v.t, marks), marks)
                     v = Val("undef", self.ret)
             if ann_site(self.ret) and ann_takes(self, self.ret, v.t) and ann_returns(self.curfn):
                 # (-> float that returns an int, -> int or -> str that returns an enum member, as

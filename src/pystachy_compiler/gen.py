@@ -1506,6 +1506,11 @@ from src.pystachy_compiler.templates import (
     gen_lit_context as templates_lit_context,
     gen_const_of as templates_const_of,
     gen_const_fields as templates_const_fields,
+    gen_selector_key as templates_selector_key,
+    gen_selector_args as templates_selector_args,
+    gen_selector_type as templates_selector_type,
+    gen_selector_fail as templates_selector_fail,
+    gen_selector_const as templates_selector_const,
 )
 from src.pystachy_compiler.utils import RtFn, fxmask
 from src.pystachy_compiler.variables import (
@@ -1856,6 +1861,10 @@ class Gen:
         # the greatest class tag: those assigned as classes are declared, then those of a template
         # hierarchy's specializations, made later (templates.new_tag); never reused
         self.ntag = 0
+        # the templates (by selector_key) whose instances are keyed by their calls' literal arguments
+        # of the parameters named (space-separated): the driver's, which a pass whose only other
+        # outcome was an error extends (gen_err, NeedSelectors); empty in all other programs
+        self.selectors: dict[str, str] = {}
         self.cnodes: dict[int, Node] = {}  # every module-level class or subclass statement, by line
         self.hooks: dict[str, str] = {}  # see hook()
         self.chooks: dict[int, str] = {}
@@ -3047,8 +3056,8 @@ class Gen:
         return reflection_refl_derived_only(self, x, a)
 
     # ---- emission helpers
-    def err(self, msg: str) -> None:
-        return emission_err(self, msg)
+    def err(self, msg: str, marks: dict[str, str] | None = None) -> None:
+        return emission_err(self, msg, marks)
 
     def save(self) -> Frame:
         return emission_save(self)
@@ -6041,6 +6050,21 @@ class Gen:
     def const_of(self, n: Node, env: dict[str, Node], live: bool) -> Node | None:
         return templates_const_of(self, n, env, live)
 
+    def selector_key(self, f: FnInfo) -> str:
+        return templates_selector_key(self, f)
+
+    def selector_args(self, f: FnInfo, npre: int, args: list[Node], lits: dict[str, Node], fwd: dict[str, str]) -> str:
+        return templates_selector_args(self, f, npre, args, lits, fwd)
+
+    def selector_type(self, t: str, n: Node) -> str:
+        return templates_selector_type(self, t, n)
+
+    def selector_fail(self, a: str, b: str, marks: dict[str, str]) -> str:
+        return templates_selector_fail(self, a, b, marks)
+
+    def selector_const(self, n: Node) -> Node | None:
+        return templates_selector_const(self, n)
+
     def const_fields(self, s: ClassInfo, init: FnInfo) -> None:
         return templates_const_fields(self, s, init)
 
@@ -6089,8 +6113,8 @@ class Gen:
     def fn_typevar(self, f: FnInfo, name: str) -> str:
         return templates_fn_typevar(self, f, name)
 
-    def instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "", nullable_self: bool = False) -> FnInfo:
-        return templates_instance(self, f, ts, nnp, want, resultsoft, cmpfields, nullable_self)
+    def instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "", nullable_self: bool = False, lits: dict[str, Node] | None = None, fwd: dict[str, str] | None = None, frm: str = "") -> FnInfo:
+        return templates_instance(self, f, ts, nnp, want, resultsoft, cmpfields, nullable_self, lits, fwd, frm)
 
     def dotted(self, n: Node) -> str:
         return builtins_dotted(self, n)

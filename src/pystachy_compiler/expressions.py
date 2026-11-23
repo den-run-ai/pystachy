@@ -283,6 +283,8 @@ def gen_static(self, n: Node) -> int:
         return refl_fold(n)  # (a test of the literals an unrolled copy reads: reflection.py)
     k = n.kind
     c = self.const_of(n, {}, True) if self.lit_context() and k != "name" else None
+    if c is None and len(self.curfn.lits) > 0:
+        c = self.selector_const(n)  # (a test of the literal arguments an instance was compiled for)
     if c is not None:
         # (a test of the constants of a class that specializes on literals)
         held = c.kind == "True" or (c.kind == "tuple" and len(c.kids) > 0) or (c.kind == "str" and c.s != "") or (c.kind == "int" and c.s != "0") or c.kind == "unary"

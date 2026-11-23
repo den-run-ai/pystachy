@@ -540,8 +540,11 @@ Other rejections:
   fit and whose context supplies none. See [inference](typing.md#variables-and-empty-containers)
   and [contextual results](typing.md#contextual-template-results).
 - **Type joins:** incompatible storage/return types, a joined union used where it is not
-  accepted, or `None` joined with an unfilled empty container. Recursive calls must follow
-  the returns establishing the complete return type, including optionality.
+  accepted, or `None` joined with an unfilled empty container. Returns that a parameter's
+  literal argument chooses between compile once per literal instead
+  ([results chosen by literal arguments](typing.md#results-chosen-by-literal-arguments)).
+  Recursive calls must follow the returns establishing the complete return type, including
+  optionality.
   See [inferred unions](typing.md#inferred-unions) and, for an `int` given where `float` is
   annotated, [`int` values in `float` locations](typing.md#int-values-in-float-locations).
 - **`None` specialization:** unsupported operations such as `p.upper()` or `p[0]`, even

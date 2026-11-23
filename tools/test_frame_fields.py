@@ -65,6 +65,8 @@ NOT_RESET = {
 # bsubn and bsub are each builtin subclass's base and its type (builtin_bases.py): a nested compile
 # or dry() that finds a bare base's type by a first fill leaves it for the function it interrupts,
 # which needs it; the next pass starts from the hint that the find leaves in newhints.
+# selectors is the driver's record of templates keyed by literal arguments: every pass reads it, and
+# only an error that would end the compilation extends it (gen_err, NeedSelectors).
 PROGRAM = """
     pipeline classes tmpl compiling utags specdone funcs aliases imports fglobals mvars gtypes globs gcroots
     consts fieldnames bconsts tconsts tconstdata lconsts strs bstrs strvals vnodes cmexit rtfns opfxs out source_lines fns fll callsites summaries xcls xvals
@@ -84,6 +86,7 @@ PROGRAM = """
     genargs earlycopies sentinelglobals globvalues globowners globalts pseq pcall pstamps plogk plogv pdry
     implicitgen iterabc clsany clsused clsbodies clsannfiles clsann bsubn bsub
     ifaces itabs ifgeneric ifnodes ifmods ifmade ifspecs ifbad
+    selectors
 """.split()
 # Gen's fields that hold a module's state, one lowering's, or one operation's, which the operation
 # sets and then restores or clears: a nested compile that starts inside the operation sees them.
