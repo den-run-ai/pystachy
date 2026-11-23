@@ -64,6 +64,9 @@ NOT_RESET = {
 # bsubn and bsub are each builtin subclass's base and its type (builtin_bases.py): a nested compile
 # or dry() that finds a bare base's type by a first fill leaves it for the function it interrupts,
 # which needs it; the next pass starts from the hint that the find leaves in newhints.
+# holeops and holefns keep the op of each hole and its function, as holes keeps its type, which
+# Gen.decide_hole gives the op whichever function decides it; openfns the built functions a
+# placeholder was left in, which gen_settle_program revisits once the program is built.
 PROGRAM = """
     pipeline classes tmpl compiling utags specdone funcs aliases imports fglobals mvars gtypes globs gcroots
     consts fieldnames bconsts tconsts tconstdata lconsts strs bstrs strvals vnodes cmexit rtfns opfxs out source_lines fns fll callsites summaries xcls xvals
@@ -74,7 +77,7 @@ PROGRAM = """
     constflags late ext libdir prefix moddirs csyms csymline cdirect extvars rtmode rtdefs
     rtcache externs deps comp flowctx closures clokeys adapters adrets ncv dispatchers cacheforms decorated
     decoexprs cvos ngenexp vowned gendrops gproto excread causeread coros tbaa tbaacls vrets vconst vcalls ncasts keykinds builtkinds
-    gkk holes twin_of twin_set origin inits mfile compiled pending qret qholes qused qforward qroot
+    gkk holes holeops holefns openfns twin_of twin_set origin inits mfile compiled pending qret qholes qused qforward qroot
     inited guessed galias nts cnts ntdflts hasfrozen cvars typevars tvtuples tvdefaults tparams
     pep695 taliases recursive reflrecs reflstores refllate refltexts rtdatas dyntypes dynclasses
     dynfns dynkeys dynlines dynsig dynfuncs dynfnt dynboxes dynwide dynrets dynrline dynseen gidbox

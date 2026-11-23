@@ -359,22 +359,28 @@ def ref_type(t: str) -> bool:
 
 
 def held_none(t: str) -> bool:
-    # may a local first assigned None, whose slot keeps NONEVAR once inference has typed it,
-    # hold a t: a pointer, null for None, but a union's or a dyn's box
+    # may a value first given None (NONEVAR, NONE_ITEM), whose None is a null pointer, be a t once
+    # a later use decides its type (Gen.settle): a pointer, null for None, but a union's or a
+    # dyn's box
     return ref_type(t) and t != "dyn" and not t.startswith("union[") and not t.startswith("opt[dyn")
+
+
+def placeholder(t: str) -> bool:
+    # does type t hold a placeholder of the frontend's: an empty container's (?, NONE_ITEM's
+    # too) or a first None's (NONEVAR), which a later use decides (Gen.settle)
+    return "?" in t or NONEVAR in t
 
 
 def type_view(self, a: str, b: str, generic: bool, parent: str) -> str:
     # The view of specs.TYPE_VIEWS that reads type a as type b, both of them perhaps inside a
-    # type's brackets, or "": same, instance (a placeholder, or a runtime type variable that names no
-    # class or, where generic, any, stands for any one type), alias, optional or class. generic:
+    # type's brackets, or "": same, instance (a runtime type variable that names no class or, where
+    # generic, any, stands for any one type; value_types reads placeholders), alias, optional or
+    # class. generic:
     # an rt op defines the value or reads it, so the types may be its signature's; parent: the
     # name of the type whose brackets hold them, "" for none
     if a == b:
         return "same"
-    if a == "?" or b == "?" or (a in RT_VARS and (generic or a not in self.classes)) or (b in RT_VARS and (generic or b not in self.classes)):
-        return "instance"
-    if (a == NONEVAR and held_none(b)) or (b == NONEVAR and held_none(a)):
+    if (a in RT_VARS and (generic or a not in self.classes)) or (b in RT_VARS and (generic or b not in self.classes)):
         return "instance"
     if (a == "str" and b == "bytes") or (a == "bytes" and b == "str") or (a == "exc" and b == "exctype") or (a == "exctype" and b == "exc"):
         return "alias"
@@ -697,11 +703,17 @@ def value_types(self, fn: IFn, types: dict[str, str] | None = None, makers: dict
                     # a machine word, an rt op's result too (its RUNTIME result type), through a bits
                     # cast (Gen.settle)
                     ok = i.op == "rt" and rt_generic(u) and ((u.startswith("&") or ref_type(u)) if d == "%ptr" else (u == "int" or u.startswith("*") or u == "bool"))
-                elif "?" in d and "?" not in u and not (i.op == "rt" and rt_generic(u)) and "opt[?]" not in d:
-                    # (an empty container's placeholder that a use decided is the type its uses read
-                    # it at: Gen.settle; a runtime signature's variable reads one that none did, and
-                    # a None's, opt[?], may be read as the reference it holds: instance)
-                    ok = False
+                elif "?" in d or "?" in u:
+                    # (an empty container's placeholder has the type the frontend decided for it,
+                    # Gen.settle, and no use reads it at another: only a runtime signature's
+                    # variable reads one that nothing decided, as a template's empty result is,
+                    # Gen.typed_empty. A None is read as a first None's opt[None], the type of a
+                    # location that only None reached)
+                    ok = "?" in d and i.op == "rt" and rt_generic(u)
+                elif NONEVAR in d and NONEVAR not in u:
+                    # (and a location that only None reached, a first None that nothing gave another
+                    # value, is read as such, or by a runtime signature's variable)
+                    ok = i.op == "rt" and rt_generic(u)
                 else:
                     key = d + "|" + u + ("|1" if rt else "|0") + ("1" if i.op == "rt" else "0")
                     if key not in decided:
@@ -924,8 +936,9 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 if i.k < 0 or (i.k >= len(ci.fields) and i.k not in ci.fflag.values() and i.k not in ci.fbox.values()):
                     self.bad_ir(fn, b, "field.addr needs a declared field, assignment flag or identity box index")
                 t = ci.ftypes[ci.fields[i.k]] if i.k < len(ci.fields) else "dyn" if i.k in ci.fbox.values() else "bool"
-                if i.t != "&" + t and not (i.t == "&" + NONEVAR and lt(t) == "ptr"):
-                    # (but a field compiled while only None had been given to it: Gen.none_field)
+                if i.t != "&" + t:
+                    # (also a field compiled while only None had been given to it, Gen.none_field:
+                    # once the program is built, gen_settle_program gives it the type a store gave it)
                     self.bad_ir(fn, b, "field.addr result must address the declared member type")
             if i.op == "tuple.load" or i.op == "tuple.store":
                 t = i.a[0].t

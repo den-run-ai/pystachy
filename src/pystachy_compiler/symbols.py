@@ -29,6 +29,14 @@ class FnBuild:
         self.idpass = False  # a copy or argument moves a local (Gen.id_move)
         self.movebit: dict[str, int] = {}  # locals a read may move: their bits in lazymasks
         self.idstmt: Node | None = None  # the statement being compiled, where movebit has any
+        # the type the frontend decided for each slot or value it first typed with a placeholder,
+        # by the slot's register or the value's name: an empty container's local and a [None]
+        # list's (Gen.refine), a first None's (Gen.none_resolve), a template's empty result where
+        # a call takes it (Gen.typed_empty). Gen.settle gives them, and the values that flow
+        # from them, those types
+        self.decided: dict[str, str] = {}
+        self.settle = False  # it decided one of those, or a hole's (Gen.decide_hole): Gen.settle runs
+        self.reopened = False  # and once the program is built, as another function decided one (Gen.reopen)
 
 
 class FnInfo:

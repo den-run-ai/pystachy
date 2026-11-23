@@ -2494,7 +2494,7 @@ def gen_drain(self, it: Val) -> Val:
     self.br(lc)
     self.stop_landing(c, le)
     self.place(le)
-    self.holes[h.k] = lt
+    self.decide_hole(h.k, lt)
     return Val(res, lt)
 
 # ---- narrowing: optional locals known not to be None

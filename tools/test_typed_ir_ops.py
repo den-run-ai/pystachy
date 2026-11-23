@@ -276,8 +276,8 @@ class ValueTypeTests(unittest.TestCase):
                 ("bits", [made("slot.pack", "%slot", 1, [("%a0", "int")]), typed("rt", "opt[int]", [("%t1", "*T")], "box")], ["int"], ()),
                 ("bits", [made("rt", "%ptr", 1, [], "x"), typed("rt", "vtuple[T]", [("%t1", "list[T]")], "vtuple.new")], (), ()),
                 ("instance", [made("rt", "list[T]", 1, [("3", "int")], "list.new"), typed("list.len", "int", [("%t1", "list[str]")])], (), ()),
-                ("instance", [typed("list.len", "int", [("%a0", "list[?]")])], ["list[int]"], ()),
-                ("instance", [typed("mem.load", "str", [("%x.1", "&str")])], (), [slot("x", "opt[None]", 1)]),
+                # (a template's empty result, which nothing decided, read by a runtime signature's variable)
+                ("instance", [made("rt", "list[?]", 1, [("0", "int")], "list.new"), typed("rt", "int", [("%t1", "list[T]")], "list.len")], (), ()),
                 ("instance", [typed("rt", "int", [("%a0", "S")], "dict.len")], ["dict[str,int]"], ()),
                 ("alias", [typed("ret", "", [("%a0", "bytes")])], ["str"], ()),
                 ("alias", [typed("slot.pack", "%slot", [("%a0", "tuple[int,str]")])], ["tuple[bool,str]"], ()),
@@ -319,6 +319,10 @@ class ValueTypeTests(unittest.TestCase):
                 ([made("rt", "%ptr", 1, [], "x"), typed("mem.load", "int", [("%t1", "&int")])], (), (), "mem.load operand 0 reads %t1 as &int, but it is %ptr"),
                 ([typed("mem.load", "list[str]", [("%x.1", "&list[str]")])], (), [slot("x", "list[?]", 1)],
                  "mem.load operand 0 reads %x.1 as &list[str], but it is &list[?]"),
+                # (nor at a placeholder once it is decided, nor is a first None read as what replaced it:
+                # each has the type the frontend decided for it, Gen.settle)
+                ([typed("list.len", "int", [("%a0", "list[?]")])], ["list[int]"], (), "list.len operand 0 reads %a0 as list[?], but it is list[int]"),
+                ([typed("mem.load", "str", [("%x.1", "&str")])], (), [slot("x", "opt[None]", 1)], "mem.load operand 0 reads %x.1 as &str, but it is &opt[None]"),
                 ([made("mach.load", "%ptr", 1, [("%a0", "%ptr")]), typed("ret", "", [("%t1", "str")])], ["str"], (),
                  "ret operand 0 reads %t1 as str, but it is %ptr"),
                 ([made("slot.pack", "%slot", 1, [("%a0", "float")]), typed("num.cast", "float", [("%t1", "int")])], ["float"], (),

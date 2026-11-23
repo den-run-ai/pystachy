@@ -83,6 +83,7 @@ def gen_analyze_program(self) -> None:
     self.pipeline.begin("analyze")
     phase = "runtime" if self.rtmode else "program"
     started = timing_start()
+    self.settle_program()  # (before any copy of a function: what was decided after it was built)
     # The completed adapter set makes candidate discovery independent of which
     # caller first compiled a kernel. Versions add no frontend inference state.
     if not self.rtmode and "callbacks" in self.opts:

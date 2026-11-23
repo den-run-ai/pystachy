@@ -792,6 +792,11 @@ from src.pystachy_compiler.emission import (
     gen_err as emission_err,
     gen_guard as emission_guard,
     gen_hole as emission_hole,
+    gen_decide_hole as emission_decide_hole,
+    gen_settle_program as emission_settle_program,
+    gen_reopen as emission_reopen,
+    gen_decide_global as emission_decide_global,
+    gen_decide_value as emission_decide_value,
     gen_incoming as emission_incoming,
     gen_iop as emission_iop,
     gen_jump as emission_jump,
@@ -1895,6 +1900,14 @@ class Gen:
         self.lkk: dict[str, str] = {}  # a local's holes, space-separated
         self.gkk: dict[str, str] = {}  # a global's
         self.holes: list[str] = [""]  # each hole's type, "" until a use shows it (0: no hole)
+        # the op that holds each hole (Gen.hole's rt op, typed_empty's empty.kind), which Gen.decide_hole
+        # gives the hole's type as it is decided; like holes, it only grows (dry() and a discarded
+        # body leave theirs unreachable), and the next pass of the program starts afresh
+        self.holeops: list[Ins | None] = [None]
+        self.holefns: list[IFn | None] = [None]  # (and the function each hole's op is in)
+        # the functions built so far that Gen.settle left a placeholder in, which the frontend may
+        # still decide (a module global's type, a template's return): gen_settle_program
+        self.openfns: list[IFn] = []
         # the key kinds that lowering stores for those of dicts and sets, by the container's type:
         # a new one's (rt dict.new, set.new) and a result's (empty.kind, built). Gen.key_kinds
         # fills them once the typed program is final, and only lowering reads them: no frontend
@@ -3085,6 +3098,21 @@ class Gen:
 
     def hole(self, kind: str) -> Ins:
         return emission_hole(self, kind)
+
+    def decide_hole(self, k: int, t: str) -> None:
+        emission_decide_hole(self, k, t)
+
+    def settle_program(self) -> None:
+        emission_settle_program(self)
+
+    def reopen(self, fn: IFn) -> None:
+        emission_reopen(self, fn)
+
+    def decide_global(self, name: str, t: str) -> None:
+        emission_decide_global(self, name, t)
+
+    def decide_value(self, v: Val, t: str) -> None:
+        emission_decide_value(self, v, t)
 
     def checked(self, op: str, a: str, b: str) -> list[str]:
         return emission_checked(self, op, a, b)

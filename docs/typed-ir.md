@@ -332,15 +332,22 @@ to read it at the type its definition gives, or by one of the views of the third
 packed slot `*int` or a class read as its base. Any other difference is an error: an `int`
 read as a `float`, a `list[int]` as a `list[str]`, a class as an unrelated class, a `%ptr`
 as a `str`. A [cast](#casts) makes the reading explicit instead.
-Once a function is built, `Gen.settle` gives each value one type where the frontend left its
-type open before a later use decided it. An empty container's placeholder takes the type that
-the use which decided its hole gave it, so the list that `xs = []` makes is a `list[str]`
-where `xs.append(s)` decides that, and with it the slot of `xs` and its loads; a value that
-another position of its op's types column binds (`mem.load`'s `&$T` and `$T`, a runtime
-signature's variables) follows. A runtime call's word (`%ptr`, `%slot`) that an operand reads
-as a typed value is read through a `cast bits` right after the call, as a closure's `alloc`
-cell is read as `&int`; only a runtime signature's operand of a type variable reads the word
-itself. An empty container that a use reads at its placeholder is then an error.
+The frontend may build a value before a later use decides its type: an empty container
+(`list[?]`), a `[None]` list's item (`opt[?]`), the slot of a local first assigned `None`
+(`opt[None]`). It gives each the type it decides where it decides it, as an elaboration ahead
+of building would ([#1718](https://github.com/den-run-ai/pystachy/issues/1718)): the op that
+makes an empty container takes its hole's type (`Gen.decide_hole`), and a slot, a module
+global or a value the type of the fill, the first other value, the conversion or the call
+that decided it (`FnBuild.decided`, `Gen.decide_global`). So the list that `xs = []` makes is
+a `list[str]` where `xs.append(s)` decides that, and the slot of `b = None` a `P` once
+`b = P()` gives it one. Once a function is built, `Gen.settle` gives those types to the values
+that flow from them along their ops' types columns (`mem.load`'s `&$T` and `$T`, a runtime
+signature's variables), and once the program is built to the values of a module global, a
+field or a template's return that a later function decided (`gen_settle_program`). No use
+decides a placeholder: one that a use reads at another type is an error. A runtime call's word
+(`%ptr`, `%slot`) that an operand reads as a typed value is read through a `cast bits` right
+after the call, as a closure's `alloc` cell is read as `&int`; only a runtime signature's
+operand of a type variable reads the word itself.
 An address has a type of its own, `&T`, and a packed slot (an eight-byte word that holds a
 `T`) the type `*T`, so no view reads one as the other: a slot's register, `field.addr` and the
 identity result's `%idret` define addresses, which memory ops, compiled calls and phis read.
@@ -356,9 +363,10 @@ that its value's class need not derive from, which the class proof must show to 
 class, as must a member cast's value wherever it is read; and a closed union read as a union
 without some of its members (see [reads at narrower classes](#reads-at-narrower-classes)).
 A word is read as a typed value by the fourth table's `cast bits`, the cast that MLIR writes
-as an op. A `None` whose type a later use decides, the slot of a local first assigned `None`
-(`opt[None]`) or a `[None]` list's item (`opt[?]`), is still read as the reference it holds
-by the `instance` view, without a proof.
+as an op. Two placeholders remain, which only a runtime signature's variable reads at another
+type: a local that only ever holds `None` keeps `opt[None]`, the type of a location that only
+`None` reached, and a template's empty result stays `list[?]` in the template's own IR, as each
+call gives it its own type (`Gen.typed_empty`).
 
 Some result numbers only name an intermediate LLVM value of their operation's lowering:
 `ovf`'s `{i64, i1}` pair, the three addresses of `list.load`, the address of a `tuple.load`.
@@ -454,7 +462,7 @@ one, whatever block defines it.
 |---|---|
 | `machine` | U is D's machine type: %ptr for a reference, an address &T or None (null), %slot for a packed slot *T or an int, %addr for a slot's address |
 | `bits` | D is %ptr, read as a reference or an address &T, or %slot, read as an int, a packed slot *T or a bool, by an rt op's operand of a runtime type variable (*T, S), as the runtime reads it; any other op reads a word, an rt op's result too, through a bits cast (Gen.settle) |
-| `instance` | D or U holds a runtime type variable (T K V S U R) that nothing binds (Gen.instantiate, Gen.settle), in an rt op's result or operand or where no class has its name, or U an empty container's placeholder (list[?]), or D one that no use decided read by an rt op's variable, or a None's (opt[?], and opt[None] for a local first assigned None) read as the reference it holds: each stands for one type |
+| `instance` | D or U holds a runtime type variable (T K V S U R) that nothing binds (Gen.instantiate, Gen.settle), in an rt op's result or operand or where no class has its name, or D a placeholder that nothing decided (a template's empty result, list[?], or a location that only None reached, opt[None]) read by an rt op's variable: each stands for one type |
 | `alias` | one object by two types: a str and a bytes, an exc and its exctype, a recursive alias rec[A] and A's definition (or a union of fewer members stored in it), a set, a frozenset and an AbstractSet, a fixed tuple and a keyword record (kw[...]), a generator with and without its return type; inside brackets an int and an int+, and inside a tuple's a bool read as an int |
 | `int slot` | an int read as a packed slot *int, which holds its value, and back |
 | `optional` | D read as opt[D] of a reference D, None as any reference or opt[...], or opt[U] as U where the closed-union proof shows the value not None (ircheck.optional_reads) |
@@ -502,9 +510,9 @@ into it is checked against its items only for lists (`list_write_error`). A comp
 operands are `*T` and `*U`, and another container than the receiver is `U`, as they need not
 share a type. A variable still stands for any type where nothing binds it and in the rt ops that
 a pass adds later (`dictfuse`'s lookups, the operands of `unionslots`' boxes). An empty
-container's placeholder (`list[?]`) takes, once the function is built, the type of the use
-that decided it (`Gen.settle`), which then binds the variables of the calls that read it: the
-`*V` of `d["a"] = 1` on a new dict is `*int`. A runtime function that may return what its
+container's placeholder (`list[?]`) takes the type that the frontend decided for it
+(`Gen.decide_hole`, `Gen.settle`), which then binds the variables of the calls that read it:
+the `*V` of `d["a"] = 1` on a new dict is `*int`. A runtime function that may return what its
 type excludes keeps `%ptr`, which an operand reads through a `cast bits`: iteration's
 `dyn.next` returns null at the end, and `exc.id` a user exception's object.
 
@@ -1001,8 +1009,9 @@ before the next pass. Normal compilation does not add these verification scans.
 | `allocelide` | Allocate an object or fixed tuple that holds no reference (every field or item an `int`, a `float` or a `bool`) with `pys_new`, a call that LLVM may delete when nothing keeps its object (`allockind`); the others keep `pys_alloc`, as without it, so that one the program still reads keeps what it holds. AOT builds inline the allocator's fast path into the calls left ([#1017](https://github.com/den-run-ai/pystachy/issues/1017), [internals](internals.md#whole-program-optimization)) |
 
 `unionslots` also splits private `int | None`, `float | None` and `bool | None`
-locals into a presence slot (zero or one) and a payload slot. Inferred None-first
-locals whose slot still has the provisional `opt[None]` type use the same checks.
+locals into a presence slot (zero or one) and a payload slot. A None-first local's
+slot has its first other value's type, and one that only holds `None` keeps
+`opt[None]`; both use the same checks.
 Stores must come from `None`, scalar `box` operations, phis of those values,
 or the eligible dictionary lookup described below. Loads may only test against
 `None` or read the packed scalar payload; no nullable pointer is dereferenced to
@@ -1473,11 +1482,12 @@ compiler's LLVM. It does not hold yet an extension module's entry points (`Gen.f
 (`PYSTACHY_DEBUG_LINES=1`), which `compile` refuses; its tables follow `Gen`'s, and its
 [version](#versions-and-grammar) changes with its form. Further backend neutrality needs shared compiler/runtime layout definitions and a
 clearer separation of frontend elaboration from machine contracts. A value has one type, as
-MLIR's do, but where a view of `TYPE_VIEWS` reads it: empty containers and runtime calls'
-words take theirs by `Gen.settle` and `cast bits`, and `opt[U]` read as `U`, a narrower
-class and a narrower union need a proof (see [reads of optional values](#reads-of-optional-values)).
-A `None` whose type a later use decides (`opt[None]`, `opt[?]`) is still read as the
-reference it holds without one. WebAssembly GC, more general check elimination and a
+MLIR's do, but where a view of `TYPE_VIEWS` reads it: an empty container or a first `None`
+takes the type the frontend decides for it and a runtime call's word is read by `cast bits`,
+and `opt[U]` read as `U`, a narrower class and a narrower union need a proof (see
+[reads of optional values](#reads-of-optional-values)). The frontend still decides those
+types while it builds, though: separating elaboration from building is
+[#1718](https://github.com/den-run-ai/pystachy/issues/1718). WebAssembly GC, more general check elimination and a
 Python-object representation backend are design possibilities, not supported modes.
 
 CPython extension modules **are supported** through `pystachy ext` and boundary wrappers.

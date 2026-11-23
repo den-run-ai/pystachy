@@ -4,9 +4,9 @@ from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.bigints import narrows
 from src.pystachy_compiler.diagnostics import ClassBoxes, NeedHierarchy, Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.ircheck import CONSTRAINT_PARTS, native_type, ref_type, value_view
+from src.pystachy_compiler.ircheck import CONSTRAINT_PARTS, held_none, native_type, placeholder, ref_type, value_view
 from src.pystachy_compiler.ir import slot_register
-from src.pystachy_compiler.specs import NONEVAR, OP_OPERAND_TYPES, OP_RESULT_TYPE, OP_TEMPS
+from src.pystachy_compiler.specs import NONE_ITEM, NONEVAR, OP_OPERAND_TYPES, OP_RESULT_TYPE, OP_TEMPS
 from src.pystachy_compiler.frames import Frame
 from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, tmpname, one_num, value_definitions
 from src.pystachy_compiler.specs import BIGOPT, CHECKED, EMPTYFS, LIST_READS, LIST_WRITES, NARROWED, PATH_OPS, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS
@@ -267,6 +267,8 @@ def gen_mem_store(self, a: Val, v: Val) -> None:
     i = Ins("mem.store", "", "")
     i.a = [a, v]
     self.add(i)
+    if a.v[:3] == "@g." and placeholder(a.t):
+        self.fn.build.settle = True  # (a module global that only an empty container or None gave a type yet)
 
 def gen_place(self, l: str) -> None:
     if not self.term:
@@ -504,9 +506,9 @@ def makes_hole(i: Ins) -> bool:
 
 
 def open_type(t: str, rt: bool, classes: dict[str, bool]) -> bool:
-    # does type t leave a part open: an empty container's placeholder (?), or a runtime type
-    # variable (RT_VARS) that names no class or, in an rt op's result (rt), any
-    if "?" in t:
+    # does type t leave a part open: a placeholder, or a runtime type variable (RT_VARS) that
+    # names no class or, in an rt op's result (rt), any
+    if placeholder(t):
         return True
     if not rt_generic(t):
         return False
@@ -525,6 +527,8 @@ def fills(pattern: str, t: str, rt: bool, classes: dict[str, bool]) -> bool:
         return True
     if pattern == "?" or (pattern in RT_VARS and (rt or pattern not in classes)):
         return True
+    if pattern == NONEVAR or pattern == NONE_ITEM:
+        return held_none(t)  # (T | None, whose None is a null pointer: a class's, an opt[T]'s)
     if pattern[:1] == "*" or pattern[:1] == "&":
         return t[:1] == pattern[:1] and fills(pattern[1:], t[1:], rt, classes)
     h = pattern.find("[")
@@ -572,23 +576,26 @@ class Settling:
         self.holes = holes
         self.classes = classes
         self.late = late
+        # (a template's function whose return stays open, as each call types its empty result:
+        # Gen.typed_empty; what it returns takes no type from a hole that a caller decided)
+        self.poly = placeholder(fn.f.ret)
         # (only the values whose definitions leave their types open, as ir.value_definitions types
-        # them: no other value's type changes, nor is read here. A placeholder's, and once
-        # Gen.instantiate has run an rt op's result's variable: a value another op copies one to
-        # keeps it, as the instance view reads it)
+        # them: no other value's type changes, nor is read here. A placeholder's, and an rt op's
+        # result's variable, which before Gen.instantiate only what the frontend decided reaches:
+        # a value another op copies one to keeps it, as the instance view reads it)
         self.types: dict[str, str] = {}
         self.makers: dict[str, str] = {}
         self.defs: dict[str, Ins] = {}
         self.readers: dict[str, list[Ins]] = {}
         for i in fn.slots:
-            if "?" in i.t:
+            if placeholder(i.t):
                 reg = slot_register(i)
                 self.types[reg] = i.t if i.k == 2 else "&" + i.t
                 self.makers[reg] = "slot"
                 self.defs[reg] = i
         for b in fn.blocks:
             for i in b.code:
-                if len(i.r) > 0 and ("?" in i.t or (late and i.op == "rt" and rt_generic(i.t))):
+                if len(i.r) > 0 and (placeholder(i.t) or (i.op == "rt" and rt_generic(i.t))):
                     named: list[int] = []
                     for j in range(len(i.r)):
                         if not (i.op in OP_TEMPS and j in OP_TEMPS[i.op]):
@@ -598,6 +605,9 @@ class Settling:
                         self.types[v] = i.t
                         self.makers[v] = i.op
                         self.defs[v] = i
+        # (and the operands that read a value whose type is no longer open at a placeholder: a
+        # container that Gen.decide_hole typed after a store into its local's slot read it)
+        self.closed: list[Ins] = []
         for b in fn.blocks:
             for i in b.code:
                 for a in i.a:
@@ -606,19 +616,32 @@ class Settling:
                             self.readers[a.v] = []
                         if len(self.readers[a.v]) == 0 or self.readers[a.v][len(self.readers[a.v]) - 1] is not i:
                             self.readers[a.v].append(i)
+                    elif placeholder(a.t) and (a.v.startswith("%") or a.v.startswith("@g.")) and (len(self.closed) == 0 or self.closed[len(self.closed) - 1] is not i):
+                        self.closed.append(i)
         self.follow: list[str] = []
 
     def rt(self, v: str) -> bool:
         return self.makers[v] == "rt"
 
+    def open_left(self) -> bool:
+        # does a placeholder remain: a value's that nothing the frontend decided reached, or an
+        # operand's that reads a module global or a field decided after this function was built
+        for v in self.types:
+            if placeholder(self.types[v]):
+                return True
+        for i in self.closed:
+            for a in i.a:
+                if placeholder(a.t):
+                    return True
+        return False
+
     def unsettled(self, v: str) -> bool:
-        # is v's type open where this settling may decide it: not a local's first None (whose
-        # slot keeps NONEVAR: specs.TYPE_VIEWS' instance), nor, before Gen.instantiate, an rt
+        # is v's type open where this settling may decide it: not, before Gen.instantiate, an rt
         # op's result whose type is still its signature's
         d = self.types[v]
-        if NONEVAR in d or v not in self.defs or not open_type(d, self.rt(v), self.classes):
+        if v not in self.defs or not open_type(d, self.rt(v), self.classes):
             return False
-        return self.late or "?" in d or not self.rt(v)
+        return self.late or placeholder(d) or not self.rt(v)
 
     def hole(self, i: Ins, d: str, tries: list[str]) -> None:
         # the type that a use gave the hole of op i (Gen.holes), which makes or reads a value of
@@ -640,9 +663,14 @@ class Settling:
         self.follow.append(v)
 
     def operand(self, i: Ins, j: int, t: str) -> None:
-        # op i reads its operand j at type t, and the positions that bind it so take what t gives
+        # op i reads its operand j at type t, and the positions that bind it so take what t gives;
+        # a value whose definition leaves a placeholder that t fills takes t too (a [None] list
+        # stored into the slot that refine typed, a template's empty result: Gen.typed_empty)
         i.a[j] = retyped(i.a[j], t)
         self.tie(i, j, t)
+        v = i.a[j].v
+        if v in self.defs and self.types[v] != t and (placeholder(self.types[v]) or self.rt(v)) and open_type(self.types[v], self.rt(v), self.classes) and fills(self.types[v], t, self.rt(v), self.classes):
+            self.define(v, t)  # (also an rt op's result that its signature still types: [None] * n)
 
     def tie(self, i: Ins, j: int, t: str) -> None:
         # The positions of op i that its row's types column binds by the variable that position j
@@ -693,8 +721,8 @@ class Settling:
             if not rt_generic(s) or rt_open(s, bound):
                 continue
             want = rt_subst(s, bound)
-            if a.t != want and "?" in a.t and fills(a.t, want, True, self.classes):
-                self.operand(i, j, want)
+            if a.t != want and open_type(a.t, True, self.classes) and fills(a.t, want, True, self.classes):
+                self.operand(i, j, want)  # (also one its signature still types: S of list.mul)
         if len(i.r) > 0 and rt_generic(sig[0]) and not rt_open(sig[0], bound) and "?" in i.t:
             want = rt_subst(sig[0], bound)
             v = tmpname(i.r[0])
@@ -703,23 +731,33 @@ class Settling:
 
 
 def settle_decide(self, s: Settling, v: str) -> str:
-    # The one type that v's open type leaves to give it, or "" for none: the type that the
-    # use which decided an empty container's hole gave it (Gen.holes), where that is the
-    # container's op, else that of the first operand that reads v at a type which leaves
-    # nothing open and is more than a machine word, but a runtime signature's operand. Each
-    # other such operand must read it at that type or by a view (ircheck.value_view): the
-    # runtime reads a bytes as a str
+    # The one type that v's open type leaves to give it, or "" for none. A placeholder takes only
+    # what the frontend decided: the type the use that decided an empty container's hole gave it
+    # (Gen.holes), where that is the container's op or an empty.kind of a template's empty
+    # result (Gen.typed_empty). A runtime type variable that Gen.instantiate bound to nothing
+    # takes the type of the first operand that reads v at a type which leaves nothing open and
+    # is more than a machine word, but a runtime signature's operand; each other such operand
+    # must read it at that type or by a view (ircheck.value_view): the runtime reads a bytes as
+    # a str
     d = s.types[v]
     rt = s.rt(v)
-    reads: list[str] = []
-    by_rt: list[bool] = []
     tries: list[str] = []
     i = s.defs[v]
+    if s.poly and placeholder(d):
+        return ""
     if makes_hole(i):
         s.hole(i, d, tries)
     for r in s.readers.get(v, []):
         if r.op == "empty.kind":
             s.hole(r, d, tries)  # (what a template's call returns: Gen.typed_empty)
+    if placeholder(d):
+        for t in tries:
+            if fills(d, t, rt, s.classes):
+                return t
+        return ""
+    reads: list[str] = []
+    by_rt: list[bool] = []
+    for r in s.readers.get(v, []):
         for a in r.a:
             if a.v == v and not a.t.startswith("%") and not open_type(a.t, r.op == "rt", s.classes):
                 reads.append(a.t)
@@ -744,8 +782,39 @@ def settle_decide(self, s: Settling, v: str) -> str:
 
 
 def settle_run(self, s: Settling) -> None:
-    # decide the open values until none is left that a round can decide, each round after
-    # the operands that read the values it gave types follow them
+    # Give the open values the types the frontend decided, and those that flow from them along
+    # their ops' ties: each slot or value that it typed with a placeholder the type it decided
+    # for it (FnBuild.decided), each operand that reads a value whose type is no longer open at a
+    # placeholder that value's type (a module global's, Gen.gtypes); then decide the open values
+    # until none is left that a round can decide, each round after the operands that read the
+    # values it gave types follow them
+    decided = s.fn.build.decided
+    for v in list(s.types):
+        i = s.defs[v]
+        if i.op == "field.addr" and placeholder(s.types[v]) and i.a[0].t in self.classes:
+            # (a field that only None had been given where this function addressed it: the type
+            # a later store gave it, Gen.refine_field)
+            ci = self.classes[i.a[0].t]
+            if i.k >= 0 and i.k < len(ci.fields) and not placeholder(ci.ftypes[ci.fields[i.k]]) and fills(s.types[v], "&" + ci.ftypes[ci.fields[i.k]], False, s.classes):
+                s.define(v, "&" + ci.ftypes[ci.fields[i.k]])
+        if v in decided and placeholder(s.types[v]):
+            for x in [decided[v], unopt(decided[v])]:
+                t = "&" + x if s.makers[v] == "slot" and s.defs[v].k != 2 else x
+                if fills(s.types[v], t, s.rt(v), s.classes):
+                    s.define(v, t)
+                    break
+    if len(s.closed) > 0:
+        types: dict[str, str] = {}
+        makers: dict[str, str] = {}
+        value_definitions(s.fn, types, makers)
+        for i in s.closed:
+            for j in range(len(i.a)):
+                a = i.a[j]
+                t = types.get(a.v, "")
+                if a.v.startswith("@g.") and a.v[3:] in self.gtypes:
+                    t = "&" + self.gtypes[a.v[3:]]  # (a module global's, Gen.decide_global)
+                if a.v not in s.defs and placeholder(a.t) and t != "" and t != a.t and fills(a.t, t, i.op == "rt", s.classes):
+                    s.operand(i, j, t)
     pending: list[str] = []
     for v in s.types:
         if s.unsettled(v):
@@ -831,34 +900,53 @@ def words_cast(self, fn: IFn, words: dict[str, str]) -> None:
 
 def gen_settle(self, fn: IFn, late: bool) -> None:
     # Give each value of fn, once it is built, one type (docs/typed-ir.md#operation-reference), as an MLIR
-    # value has one: an open type (open_type) the frontend gave it before a later use decided
-    # it, an empty container's placeholder (list[?]: Gen.hole) or a runtime type variable that
-    # Gen.instantiate bound to nothing, takes the one type its uses read it at (Settling), and,
-    # once instantiate has run (late), an rt op's machine word that an operand reads as a typed
-    # value is read through a bits cast (words_cast). Before instantiate, the rt ops' operands
-    # bind their variables to what is decided here: the values that empty containers hold. Most
-    # functions hold neither, which one look at their ops' types tells
+    # value has one. A placeholder the frontend gave a value before a later use decided its type
+    # (an empty container's list[?], Gen.hole; a [None] list's NONE_ITEM; a first None's NONEVAR)
+    # takes the type that the frontend decided (Settling: the hole's, Gen.decide_hole, and the
+    # slot's or value's, FnBuild.decided) and the values that flow from it take theirs; a
+    # runtime type variable that Gen.instantiate bound to nothing takes the one type its uses
+    # read it at; and, once instantiate has run (late), an rt op's machine word that an operand
+    # reads as a typed value is read through a bits cast (words_cast). Before instantiate, the rt
+    # ops' operands bind their variables to what is decided here: the values that empty
+    # containers hold. Most functions hold neither, which one look at their ops' types (and
+    # FnBuild.settle) tells
     open_ = False
     words: dict[str, str] = {}
     for i in fn.slots:
-        if "?" in i.t:
+        if placeholder(i.t):
             open_ = True
     for b in fn.blocks:
         for i in b.code:
-            if "?" in i.t:
+            if placeholder(i.t):
                 open_ = True
             elif late and i.op == "rt" and len(i.r) > 0:
                 if i.t == "%ptr" or i.t == "%slot":
                     words[tmpname(i.r[0])] = i.t
                 elif rt_generic(i.t):
                     open_ = True
+    if fn.build.settle:
+        open_ = True  # (the frontend decided a placeholder of fn's: ops built before read it so)
     if open_:
-        classes: dict[str, bool] = {}
-        for c in self.classes:
-            classes[c] = True
-        settle_run(self, Settling(fn, self.holes, classes, self.rtfns, late))
+        s = Settling(fn, self.holes, class_names(self), self.rtfns, late)
+        settle_run(self, s)
+        if late and s.open_left() and not fn.build.reopened:
+            fn.build.reopened = True
+            self.openfns.append(fn)  # (for what is decided once it is built: gen_settle_program)
     if len(words) > 0:
         words_cast(self, fn, words)
+
+
+def gen_settle_program(self) -> None:
+    # Once the whole program is built, give the functions that a placeholder was left in (Gen.openfns)
+    # what the frontend decided after them: a module global's type (Gen.decide_global), a hole that
+    # a template's later return decided (Gen.decide_hole), a field's that only None had been given
+    # (Gen.refine_field)
+    if len(self.openfns) == 0:
+        return
+    classes = class_names(self)
+    for fn in self.openfns:
+        settle_run(self, Settling(fn, self.holes, classes, self.rtfns, True))
+    self.openfns = []
 
 
 def instantiate_op(i: Ins, sig: list[str], types: dict[str, str], pending: dict[str, bool], lates: list[str]) -> bool:
@@ -982,9 +1070,63 @@ def gen_hole(self, kind: str) -> Ins:
         i.a.append(Val("0", "int"))
     i.k = len(self.holes)
     self.holes.append("")
+    self.holeops.append(i)
+    self.holefns.append(self.fn)
     self.runtime(f"pys_{kind}_new")
     self.put(i, 1)
     return i
+
+def class_names(self) -> dict[str, bool]:
+    # the names of the program's classes (Gen.classes), as fills and open_type take them
+    classes: dict[str, bool] = {}
+    for c in self.classes:
+        classes[c] = True
+    return classes
+
+
+def gen_decide_global(self, name: str, t: str) -> None:
+    # module global name holds a t from here on, which only an empty container or None had given
+    # it: so does its declaration (Gen.globs), and Gen.settle gives the ops compiled before that
+    # read or store it at the placeholder its type (Gen.gtypes)
+    g = "@g." + name
+    for v in self.globs:
+        if v.v == g and placeholder(v.t) and fills(v.t, t, False, class_names(self)):
+            v.t = t
+
+
+def gen_decide_value(self, v: Val, t: str) -> None:
+    # the frontend reads value v, which an op whose type leaves a placeholder open may define, as
+    # a t (a conversion's, a typed location's, the list that list(()) makes): that is the type
+    # it decided for v, which Gen.settle gives v where it is defined (FnBuild.decided), or t's T
+    # where t is a T | None
+    if v.v.startswith("%") and not placeholder(t):
+        self.fn.build.decided[v.v] = t
+        self.fn.build.settle = True
+
+
+def gen_decide_hole(self, k: int, t: str) -> None:
+    # hole k holds a t (a list's, dict's or set's type) from here on: so does the result of the
+    # op that makes its container (Gen.hole), at once, as no use reads it before its type is
+    # decided but at the placeholder (its local's slot and the reads of it: Gen.settle gives
+    # those the type the frontend decided for the slot, FnBuild.decided)
+    self.holes[k] = t
+    i = self.holeops[k]
+    fn = self.holefns[k]
+    if i is None or fn is None or i.op != "rt" or "?" not in i.t or not same_kind(i.t, t):
+        return
+    if placeholder(fn.f.ret) and fn is not self.fn:
+        return  # (a template's empty result that it returns open: each call types it, Gen.typed_empty)
+    i.t = t
+    self.reopen(fn)
+
+
+def gen_reopen(self, fn: IFn) -> None:
+    # the frontend decided a placeholder in fn's IR: Gen.settle gives the ops built before it that
+    # read it the type decided, at fn's end, or once the program is built where fn is (openfns)
+    fn.build.settle = True
+    if fn is not self.fn and not fn.build.reopened:
+        fn.build.reopened = True
+        self.openfns.append(fn)
 
 def gen_checked(self, op: str, a: str, b: str) -> list[str]:
     # [result, overflowed] of 64-bit a op b (op: + - *), from llvm.s<op>.with.overflow.i64
