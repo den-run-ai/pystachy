@@ -16,7 +16,9 @@ A function's blocks are laid out in forward order inside nested blocks. Function
 backedge also have a dispatch loop: a backward branch sets the next block's index and
 continues the loop, whose br_table dispatches it. A phi's values are assigned on each edge, all read first.
 
-It lowers scalar code, runtime calls and exception handlers (wasm/README.md).
+It lowers scalar code, runtime calls and exception handlers (wasm/README.md). Around each call that
+may collect and then return, a frame on the reactor's stack keeps the live values that may be
+references, where the collector's stack scan finds them (WASM_GUEST_ROOTS=0: none, and no collection).
 Generators can suspend in code that requires no cleanup at a yield.
 Dynamic dispatch still requires LLVM. For an unsupported operation it exits with status 3 after one
 line `tir_wasm: refused: WHAT` on stderr, and wasm/build.sh then compiles the program through
@@ -40,6 +42,24 @@ VOID = 0x40
 # The reactor handles the other recursion operations. In particular, a failed
 # resume must finish the generator before raising on depth or stack exhaustion.
 INLINE_RECURSION = ("recursion.depth", "recursion.restore", "recursion.enter")
+# typed-IR value types that never hold a reference (guest roots leave them out)
+SCALARS = ("int", "bool", "float")
+# Runtime entries that may collect only on their way to raising, never and then return: a function
+# whose other calls cannot either needs no guest roots (rooted_functions). wasm/check_no_collect.py,
+# which wasm/build.sh runtime-wasm runs, proves each against runtime.wasm's code.
+RETURNS_UNCOLLECTED = (
+    "ceil", "exc.in", "f2i", "fdiv", "ffloordiv", "floor", "floordiv", "fmod", "fpow", "idiv", "mod", "ord", "pow",
+    "powmod", "round", "round_int", "shl", "shr",
+    "dict.key", "dict.next", "dict.val", "list.clear", "list.del", "list.get", "list.pop", "list.reverse",
+    "list.set", "range.has", "range.len", "set.key", "set.next", "vtuple.get",
+    "str.contains", "str.count", "str.endswith", "str.find", "str.index", "str.rfind", "str.rindex",
+    "str.startswith", "text.len", "text.ord_at",
+    "m.acos", "m.acosh", "m.asin", "m.asinh", "m.atan", "m.atan2", "m.atanh", "m.cbrt", "m.copysign", "m.cos",
+    "m.cosh", "m.degrees", "m.erf", "m.erfc", "m.exp", "m.exp2", "m.expm1", "m.fabs", "m.fmod", "m.gamma",
+    "m.gcd", "m.hypot", "m.isclose", "m.isfinite", "m.isinf", "m.isnan", "m.isqrt", "m.ldexp", "m.lgamma",
+    "m.log", "m.log10", "m.log1p", "m.log2", "m.pow", "m.radians", "m.remainder", "m.sin", "m.sinh", "m.sqrt",
+    "m.tan", "m.tanh", "m.trunc",
+)
 
 
 # LLVM's ordered fcmp predicates and une, as WebAssembly's f64 comparisons
@@ -77,6 +97,7 @@ class Inst:
         self.args: list[Operand] = []
         self.targets: list[str] = []
         self.t = ""
+        self.keep: list[str] = []   # the values a frame keeps during its call (Emitter.spill_sets)
 
     def is_invoke(self) -> bool:
         return len(self.targets) != 0 and self.op in ("rt", "call", "icall", "init", "gen.resume")
@@ -981,8 +1002,12 @@ class Emitter:
         self.generator_handles: set[str] = set()
         self.standard_exceptions = standard_exceptions
         self.guest_roots = guest_roots
-        self.root_offsets: dict[int, int] = {}
-        self.parent_stack = -1
+        self.rooted: set[str] = set()   # the functions whose calls may collect and then return (rooted_functions)
+        self.collecting: set[str] = set()   # the functions whose calls may collect at all
+        self.refs: set[int] = set()     # this function's locals that may hold a reference
+        self.spills = False             # whether this function's calls keep values in frames (spill_sets)
+        self.spill_local = -1           # the address of the call frame that keeps them
+        self.late: list[str] = []       # kept values whose locals a call's frame needed before their definition
         self.types = Types()
         self.imports: dict[str, Import] = {}
         self.import_order: list[str] = []
@@ -1211,6 +1236,69 @@ class Emitter:
         self.imports[sym] = Import(sym, ["void", "ptr", "i32"], self.types.of([I32, I32], []))
         self.import_order.append(sym)
 
+    def rooted_functions(self) -> set[str]:
+        # The functions whose activations a collection can find running below them and still need:
+        # those whose calls may collect and then return, and those with a handler whose calls may
+        # collect on their way to it. A runtime call counts as collecting and returning unless
+        # RETURNS_UNCOLLECTED names it; one that collects only as it raises (a recursion limit's
+        # RecursionError, raise) does not return.
+        ret: dict[str, bool] = {}
+        any_: dict[str, bool] = {}
+        caught: dict[str, bool] = {}
+        callees: dict[str, list[str]] = {}
+        for fn in self.funcs:
+            r = fn.coroutine or (fn.name == "@main.init" and "@g.atexit$_hook" in self.m.globals)
+            a = r or fn.frame_bytes > 0
+            c = False
+            out: list[str] = []
+            for b in fn.blocks:
+                for i in b.code:
+                    if i.is_invoke():
+                        c = True
+                    if i.op == "rt":
+                        key = i.fields.get("entry", "")
+                        if key in INLINE_RECURSION:
+                            a = a or key == "recursion.enter"
+                        elif key != "fabs":
+                            a = True
+                            r = r or self.rt_key(i) not in RETURNS_UNCOLLECTED
+                    elif i.op in ("icall", "gen.resume", "alloc.fixed", "vtuple.make"):
+                        r = True
+                    elif i.op == "exc.match":
+                        a = True
+                    elif i.op in ("raise", "throw"):
+                        a = True
+                    elif i.op == "call":
+                        out.append(i.fields.get("callee", ""))
+                    elif i.op == "init":
+                        out.append("@init." + i.fields.get("module", ""))
+            ret[fn.name] = r or (c and a)   # (a handler that takes a collection's exception may return)
+            any_[fn.name] = a or r
+            caught[fn.name] = c
+            callees[fn.name] = out
+        changed = True
+        while changed:
+            changed = False
+            for name in callees:
+                for callee in callees[name]:
+                    if callee not in ret:
+                        if not ret[name]:   # (refused at the call; meanwhile, unknown)
+                            ret[name] = any_[name] = changed = True
+                    else:
+                        if ret[callee] and not ret[name]:
+                            ret[name] = changed = True
+                        if any_[callee] and not any_[name]:
+                            any_[name] = changed = True
+                if caught[name] and any_[name] and not ret[name]:
+                    ret[name] = changed = True
+        out_set: set[str] = set()
+        for name in ret:
+            if ret[name]:
+                out_set.add(name)
+            if any_[name]:
+                self.collecting.add(name)
+        return out_set
+
     def collect_imports(self) -> None:
         # every runtime function the functions call, before function indexes are assigned
         if "@g.atexit$_hook" in self.m.globals:
@@ -1219,8 +1307,11 @@ class Emitter:
             self.import_table_setter("pys_wasi_set_object_dispatch")
         if self.m.roots:
             self.import_table_setter("pys_wasi_set_global_roots")
+        if self.guest_roots:
+            self.imports["pys_wasi_set_guest_roots"] = Import("pys_wasi_set_guest_roots", ["void"], self.types.of([], []))
+            self.import_order.append("pys_wasi_set_guest_roots")
         for fn in self.funcs:
-            if fn.frame_bytes or self.guest_roots:
+            if fn.frame_bytes or (self.guest_roots and fn.name in self.collecting):
                 self.stack_frames = True
                 self.runtime("recursion.stack")
             for b in fn.blocks:
@@ -1257,12 +1348,13 @@ class Emitter:
         return key
 
     # -- functions --
-    def local(self, name: str, wt: int) -> int:
+    def local(self, name: str, wt: int, ref: bool = True) -> int:
+        # ref: the value may be a reference, which guest roots keep where the collector's scan reads
         if name not in self.locals:
             self.locals[name] = len(self.ltypes)
             self.ltypes.append(wt)
-            if self.guest_roots and wt != F64:
-                self.root_offsets[self.locals[name]] = self.fn.frame_bytes + 8 * len(self.root_offsets)
+            if wt != F64 and ref:
+                self.refs.add(self.locals[name])
         return self.locals[name]
 
     def scratch(self, wt: int) -> int:
@@ -1287,18 +1379,151 @@ class Emitter:
 
     def set(self, k: int) -> None:
         self.local_op(0x21, k)
-        if k in self.root_offsets:
-            self.spill_root(k)
 
-    def spill_root(self, k: int) -> None:
-        # i64 locals can hold packed references. The conservative wasm32 scan
-        # finds their low word as well as pointers held directly in i32 locals.
-        self.get(self.frame_local)
-        self.get(k)
-        if self.ltypes[k] == I32:
-            self.mem(0x36, 2, self.root_offsets[k])
-        else:
-            self.mem(0x37, 3, self.root_offsets[k])
+    def spill(self, i: Inst) -> int:
+        # Below the stack pointer, a frame that keeps the values a call may need once it has
+        # collected, where the collector's stack scan reads them; its size, released after the call
+        # (an exception's handler restores the stack pointer). i64 locals can hold packed
+        # references: the conservative wasm32 scan finds their low word, as an i32 local's pointer.
+        ks: list[int] = []
+        for name in i.keep:
+            if name not in self.locals:
+                self.late.append(name)   # (defined further on: function emits fn again)
+                continue
+            k = self.locals[name]
+            if k in self.refs and k not in ks:
+                ks.append(k)
+        if not ks:
+            return 0
+        size = (8 * len(ks) + 15) // 16 * 16
+        self.op(0x23)  # global.get rt.__stack_pointer
+        uleb(self.code, 2)
+        self.i32c(size)
+        self.op(0x6B)  # i32.sub
+        self.local_op(0x22, self.spill_local)
+        self.op(0x24)  # global.set rt.__stack_pointer
+        uleb(self.code, 2)
+        for j in range(len(ks)):
+            self.get(self.spill_local)
+            self.get(ks[j])
+            if self.ltypes[ks[j]] == I32:
+                self.op(0xAD)  # i64.extend_i32_u: the whole slot, no stale upper word
+            self.mem(0x37, 3, 8 * j)
+        if 8 * len(ks) < size:
+            self.get(self.spill_local)
+            self.i64c(0)
+            self.mem(0x37, 3, 8 * len(ks))
+        return size
+
+    def release(self, size: int) -> None:
+        if size:
+            self.get(self.spill_local)
+            self.i32c(size)
+            self.op(0x6A)
+            self.op(0x24)  # global.set rt.__stack_pointer
+            uleb(self.code, 2)
+
+    def spill_sets(self, fn: Func) -> bool:
+        # Sets Inst.keep for each call in fn that may collect and then return, or that may collect
+        # on its way to a handler here: the parameters, slots and values live after it, and the
+        # operands vtuple.make stores after its allocation (other calls' callees keep their own).
+        # A call that cannot collect needs no frame. Whether any call has one.
+        out = False
+        for blk in fn.blocks:
+            for i in blk.code:
+                i.keep = []
+        if not self.guest_roots or fn.name not in self.collecting:
+            return out
+        values: dict[str, int] = {}
+        for j in range(len(fn.ptypes)):
+            values[f"%a{j}"] = j
+        for slot in fn.slots:
+            values[slot] = len(values)
+        for blk in fn.blocks:
+            for i in blk.code:
+                for name in i.res:
+                    if name not in values:
+                        values[name] = len(values)
+        names = [name for name in values]
+        count = len(fn.blocks)
+        uses: list[set[int]] = [set() for _ in range(count)]
+        defs: list[set[int]] = [set() for _ in range(count)]
+        live_out: list[set[int]] = [set() for _ in range(count)]
+        successors: list[set[int]] = [set() for _ in range(count)]
+        for bi in range(count):
+            for i in fn.blocks[bi].code:
+                if i.op == "phi":
+                    for j in range(len(i.args)):   # (read at the end of the edge's source)
+                        if i.args[j].v in values:
+                            live_out[self.bindex[i.targets[j]]].add(values[i.args[j].v])
+                else:
+                    for v in self.reads(i, values):
+                        if v not in defs[bi]:
+                            uses[bi].add(v)
+                    for label in i.targets:
+                        successors[bi].add(self.bindex[label])
+                    if i.op == "check":
+                        successors[bi].add(self.bindex[fn.cold[i.fields.get("key", "") or i.fields.get("message", "")]])
+                for v in self.writes(i, values):
+                    defs[bi].add(v)
+        live_in = [u.copy() for u in uses]
+        changed = True
+        while changed:
+            changed = False
+            for bi in range(count - 1, -1, -1):
+                for succ in successors[bi]:
+                    live_out[bi].update(live_in[succ])
+                before = uses[bi] | (live_out[bi] - defs[bi])
+                if before != live_in[bi]:
+                    live_in[bi] = before
+                    changed = True
+        for bi in range(count):
+            live = live_out[bi].copy()
+            code = fn.blocks[bi].code
+            for j in range(len(code) - 1, -1, -1):
+                i = code[j]
+                if i.op == "phi":
+                    continue
+                written = self.writes(i, values)
+                if self.collects(i):
+                    i.keep = [names[v] for v in sorted(live) if v not in written]
+                    if i.op == "vtuple.make":
+                        i.keep += [a.v for a in i.args if a.v in values]
+                    out = True
+                for v in written:
+                    live.discard(v)
+                for v in self.reads(i, values):
+                    live.add(v)
+        return out
+
+    def reads(self, i: Inst, values: dict[str, int]) -> list[int]:
+        # the parameters, slots and values i reads (store and landing write their first operand's slot)
+        out: list[int] = []
+        for j in range(len(i.args)):
+            v = i.args[j].v
+            if v in values and not (j == 0 and v in self.fn.slots and i.op in ("store", "landing")):
+                out.append(values[v])
+        return out
+
+    def writes(self, i: Inst, values: dict[str, int]) -> list[int]:
+        out = [values[name] for name in i.res if name in values]
+        if i.op in ("store", "landing") and i.args and i.args[0].v in self.fn.slots:
+            out.append(values[i.args[0].v])
+        return out
+
+    def collects(self, i: Inst) -> bool:
+        # whether a collection during i's call may need this function's values: it may collect and
+        # return, or i has a handler here and may collect at all (rooted_functions' rules)
+        invoke = i.is_invoke()
+        if i.op == "rt":
+            key = i.fields.get("entry", "")
+            if key in INLINE_RECURSION or key == "fabs":
+                return False
+            return invoke or self.rt_key(i) not in RETURNS_UNCOLLECTED
+        if i.op in ("call", "init"):
+            callee = i.fields.get("callee", "") if i.op == "call" else "@init." + i.fields.get("module", "")
+            return callee not in self.fnindex or callee in self.rooted or (invoke and callee in self.collecting)
+        return i.op in ("icall", "gen.resume", "alloc.fixed", "vtuple.make")
 
     def i32c(self, v: int) -> None:
         self.code.append(0x41)
@@ -1391,11 +1616,24 @@ class Emitter:
             self.i32c(int(v))
 
     def define(self, name: str, t: str) -> int:
-        return self.local(name, wasm_type(value_ll(t)))
+        return self.local(name, wasm_type(value_ll(t)), t not in SCALARS)
 
     def function(self, fn: Func) -> bytearray:
+        # Blocks follow the IR's order, which need not put a definition before every call its value
+        # is live across: a second pass declares those values' locals first (spill)
+        out = self.emit_function(fn, [])
+        if self.late:
+            late = [(name, self.ltypes[self.locals[name]], self.locals[name] in self.refs)
+                    for name in self.late if name in self.locals]
+            out = self.emit_function(fn, late)
+            if self.late:
+                raise Refused(f"guest root {self.late[0]} without a definition in {fn.name}")
+        return out
+
+    def emit_function(self, fn: Func, late: list[tuple[str, int, bool]]) -> bytearray:
         self.fn = fn
-        self.root_offsets = {}
+        self.refs = set()
+        self.late = []
         self.locals = {}
         self.remap = []
         self.local_sites = []
@@ -1406,18 +1644,21 @@ class Emitter:
         # (a parameter of type None is not passed, as lowering's IFn.ps: its uses read a null local)
         for j in range(len(fn.ptypes)):
             if fn.ptypes[j] != "None":
-                self.local(f"%a{j}", wasm_type(value_ll(fn.ptypes[j])))
+                self.local(f"%a{j}", wasm_type(value_ll(fn.ptypes[j])), fn.ptypes[j] not in SCALARS)
         self.nparams = len(self.ltypes)
         for j in range(len(fn.ptypes)):
             if fn.ptypes[j] == "None":
                 self.local(f"%a{j}", I32)
         for s in fn.slots:
-            self.local(s, wasm_type(value_ll(fn.slots[s])))
-        self.frame_local = self.scratch(I32) if fn.frame_bytes or self.guest_roots else -1
-        self.parent_stack = self.scratch(I32) if self.guest_roots else -1
+            self.local(s, wasm_type(value_ll(fn.slots[s])), fn.slots[s] not in SCALARS)
+        for name, wt, ref in late:
+            self.local(name, wt, ref)
+        self.frame_local = self.scratch(I32) if fn.frame_bytes else -1
         self.exception_local = -1
         self.handler_stack = -1
         self.bindex = fn.block_indices()
+        self.spills = self.spill_sets(fn)
+        self.spill_local = self.scratch(I32) if self.spills else -1
         self.phis = {}
         # Finalization marks functions whose activations can recur with recursion.enter.
         # Compact only those frames, so ordinary one-shot calls keep the short lowering path.
@@ -1518,7 +1759,7 @@ class Emitter:
     def enter_frame(self) -> None:
         # Reserve an ABI-aligned frame on the reactor's linear-memory stack. Its
         # pys_on_stack check must recognize *args tuples before a callee keeps them.
-        size = (self.fn.frame_bytes + 8 * len(self.root_offsets) + 15) // 16 * 16
+        size = (self.fn.frame_bytes + 15) // 16 * 16
         self.op(0x23)  # global.get rt.__stack_pointer (global 2)
         uleb(self.code, 2)
         self.op(0xAD)  # i64.extend_i32_u, so subtracting a large frame cannot wrap
@@ -1535,21 +1776,11 @@ class Emitter:
         self.op(0x0B)
         self.op(0x23)
         uleb(self.code, 2)
-        if self.guest_roots:
-            self.local_op(0x22, self.parent_stack)
         self.i32c(size)
         self.op(0x6B)  # i32.sub
         self.local_op(0x22, self.frame_local)  # local.tee frame
         self.op(0x24)  # global.set rt.__stack_pointer
         uleb(self.code, 2)
-        if self.root_offsets:
-            self.get(self.frame_local)
-            self.i32c(0)
-            self.i32c(size)
-            self.code.extend(b"\xfc\x0b\x00")  # memory.fill: clear reused stack slots
-            for k in range(self.nparams):
-                if k in self.root_offsets:
-                    self.spill_root(k)
 
     def goto(self, label: str, extra_depth: int) -> None:
         # from block self.cur, to label: its phis' values (all read, then all set), then a br
@@ -1635,6 +1866,11 @@ class Emitter:
         self.push(a, "ptr")
 
     def inst(self, i: Inst) -> None:
+        size = self.spill(i)
+        self.operation(i)
+        self.release(size)
+
+    def operation(self, i: Inst) -> None:
         op = i.op
         if op == "phi":
             return
@@ -2002,12 +2238,9 @@ class Emitter:
 
     def restore_frame(self) -> None:
         if self.frame_local >= 0:
-            if self.guest_roots:
-                self.get(self.parent_stack)
-            else:
-                self.get(self.frame_local)
-                self.i32c((self.fn.frame_bytes + 15) // 16 * 16)
-                self.op(0x6A)
+            self.get(self.frame_local)
+            self.i32c((self.fn.frame_bytes + 15) // 16 * 16)
+            self.op(0x6A)
             self.op(0x24)
             uleb(self.code, 2)
         if self.depth_local >= 0:
@@ -2291,6 +2524,10 @@ class Emitter:
             # Start hands the reactor the table address. The loader relocates its
             # entries before pys_wasi_run uses them to initialize the collector.
             self.register_table("pys_wasi_set_global_roots", self.root_table, len(self.m.roots))
+        if self.guest_roots:
+            # Tell the reactor that this module's frames hold its references: it collects only then.
+            self.op(0x10)
+            uleb(self.code, self.fnindex["pys_wasi_set_guest_roots"])
         self.op(0x0B)
         out = bytearray()
         uleb(out, len(self.code))
@@ -2309,6 +2546,7 @@ class Emitter:
             if table in attrs and attrs[table] != "[]":
                 raise Refused(f"module attribute {table}")
         self.funcs = generator_functions(self.m, self.generator_targets, self.generator_handles)
+        self.rooted = self.rooted_functions()
         self.lay_out_data()
         self.collect_imports()
         tag_type = self.types.of([I32], []) if self.catches else -1
@@ -2329,7 +2567,7 @@ class Emitter:
         bodies: list[bytearray] = []
         for fn in self.funcs:
             bodies.append(self.function(fn))
-        if self.callbacks or self.m.roots:
+        if self.callbacks or self.m.roots or self.guest_roots:
             own.append(self.types.of([], []))
             bodies.append(self.initializer())
         out = bytearray(b"\x00asm\x01\x00\x00\x00")
@@ -2386,7 +2624,7 @@ class Emitter:
         exp.append(0x00)
         uleb(exp, self.fnindex["@main.init"])
         section(out, 7, exp)
-        if self.callbacks or self.m.roots:
+        if self.callbacks or self.m.roots or self.guest_roots:
             start = bytearray()
             uleb(start, len(self.import_order) + len(self.funcs))
             section(out, 8, start)
@@ -2510,7 +2748,7 @@ def main() -> None:
     text = f.read()
     f.close()
     try:
-        out = Emitter(parse(text), standard_eh(), os.getenv("WASM_GUEST_ROOTS") == "1").module()
+        out = Emitter(parse(text), standard_eh(), os.getenv("WASM_GUEST_ROOTS") != "0").module()
     except Refused as e:
         sys.stderr.write(f"tir_wasm: refused: {e.what}\n")
         sys.exit(3)

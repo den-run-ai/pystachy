@@ -408,6 +408,7 @@ __attribute__((noinline, no_sanitize("address"))) static void scan(const W *p, c
    stack, which the scan reads (wasm/README.md). The pass replaces this body; the volatile read
    keeps callers from folding it */
 __attribute__((noinline)) static int wasi_roots_spilled(void) { static volatile int spilled; return spilled; }
+int wasi_guest_unrooted;           /* wasm/reactor.c: a direct program whose locals the scan cannot see */
 #endif
 __attribute__((noinline, no_sanitize("address"))) static void mark_roots(void) {
   scan((const W *)((uintptr_t)__builtin_frame_address(0) & ~(uintptr_t)7), (const W *)gc_bottom);
@@ -969,7 +970,8 @@ static void gc_init(char *sb, I **roots, I nroots) {
 #endif
   gc_off = e && !strcmp(e, "off");
 #ifdef __wasi__
-  if (!wasi_roots_spilled()) gc_off = 1;   /* (WASI: the stack scan cannot see WebAssembly's locals without it) */
+  if (!wasi_roots_spilled() || wasi_guest_unrooted) gc_off = 1;   /* (WASI: the stack scan cannot see
+                                                                         WebAssembly's locals without them) */
 #endif
   gc_stats = e && !strcmp(e, "stats");
   if (!gc_off && (e = getenv("PYSTACHY_GC_STRESS")) && decnum(e, 0) > 0) gc_stress = decnum(e, 0);

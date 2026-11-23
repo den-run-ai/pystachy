@@ -85,11 +85,19 @@ void pys_wasi_set_global_roots(I **roots, uint32_t count) {
   program_nroots = count;
 }
 
+/* The guest's start function calls this when the program keeps its reference locals where the
+   collector's stack scan reads them (tir_wasm.py's guest roots). Without it, collection stays off. */
+extern int wasi_guest_unrooted;
+static int guest_rooted;
+__attribute__((export_name("pys_wasi_set_guest_roots")))
+void pys_wasi_set_guest_roots(void) { guest_rooted = 1; }
+
 __attribute__((export_name("pys_wasi_run"))) int pys_wasi_run(void) {
   __wasi_size_t argc, size;
   if (__wasi_args_sizes_get(&argc, &size)) abort();
   char **argv = calloc(argc + 1, sizeof *argv), *buf = malloc(size);
   if (!argv || !buf || __wasi_args_get((uint8_t **)argv, (uint8_t *)buf)) abort();
+  wasi_guest_unrooted = !guest_rooted;
   pys_init((int)argc, argv, __builtin_frame_address(0), program_roots, program_nroots);
   program_init();
   pys_finish();

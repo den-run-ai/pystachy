@@ -202,7 +202,7 @@ worker() {
 # the cached runtime is built once, before the workers start (each would rebuild a stale one);
 # so is the WebAssembly runtime of mode wasm (wasm/README.md)
 # (a WebAssembly program that runs past 120 s is stopped: a busy loop on what WASI cannot do)
-WASMRUN="node --disable-warning=ExperimentalWarning wasm/run.mjs"
+WASMRUN="node --disable-warning=ExperimentalWarning wasm/run.mjs --runtime ${WASM_RUNTIME:-build/wasm}/runtime.wasm"
 if command -v timeout > /dev/null 2>&1; then WASMRUN="timeout 120 $WASMRUN"; fi
 case " $MODES " in
   *" wasm "* | *" wasm-tir "*) PYSTACHY=$PYS wasm/build.sh runtime || { echo "tests/run.sh: cannot build the WebAssembly runtime" >&2; exit 1; } ;;

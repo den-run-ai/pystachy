@@ -11,8 +11,7 @@
 #   select        no select()
 #   thread        no threads
 #   closed-stdio  a standard descriptor closed at the start is open in the guest
-#   gc            the collector is off in directly emitted programs: weak references stay alive and
-#                 dropped files stay open
+#   gc            the collector is off: weak references stay alive and dropped files stay open
 #   libm          wasi-libc's libm differs from glibc's in the last place of some results
 #   unexplained   a difference not yet diagnosed
 #   #N            a bug that pull request #N fixes
@@ -65,7 +64,7 @@ file_descriptor_inheritance process
 files_stdin process
 io_and_exit process
 io_close_pipe process
-io_dropped_buffers process wasm
+io_dropped_buffers process
 io_latin1_codepoints process
 io_latin1_read process
 io_stdout_system process
@@ -97,18 +96,6 @@ lib_thread thread
 io_input_closed_stderr closed-stdio
 io_input_closed_stdin closed-stdio
 io_input_closed_stdout closed-stdio
-
-io_dropped_buffers gc wasm-tir
-lib_gc_collect gc wasm-tir
-lib_weakref_callback gc wasm-tir
-lib_weakref_callback_nested gc wasm-tir
-lib_weakref_callback_order gc wasm-tir
-lib_weakref_callback_raise gc wasm-tir
-lib_weakref_dead gc wasm-tir
-lib_weakref_dead_eq gc wasm-tir
-lib_weakref_transition gc wasm-tir
-rt_list_vacated gc wasm-tir
-upstream_weakref gc wasm-tir
 
 float_power_rounding libm
 lib_random_distributions libm

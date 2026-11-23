@@ -142,7 +142,8 @@ program() ( # source|ir INPUT OUTPUT (a dash streams IR input or Wasm output)
 runtime_wasm() {
   runtime "$@"
   SYS=$(sysroot)
-  if [ -f "$RT/runtime.wasm" ] && [ -z "$(find "$RT/runtime.o" "$RT/stubs.o" wasm/reactor.c -newer "$RT/runtime.wasm" | head -1)" ]; then
+  if [ -f "$RT/runtime.wasm" ] && [ -z "$(find "$RT/runtime.o" "$RT/stubs.o" wasm/reactor.c wasm/spill_roots.py \
+    wasm/check_no_collect.py wasm/tir_wasm.py -newer "$RT/runtime.wasm" | head -1)" ]; then
     return 0
   fi
   t=$(mktemp -d "$RT/rtw.XXXXXX")
@@ -152,7 +153,11 @@ runtime_wasm() {
   # and the recursion state by name. Object callbacks use the two modules' shared table.
   # shellcheck disable=SC2086
   "${LLVM}clang" --target=$TARGET --sysroot="$SYS" -mexec-model=reactor "$t/reactor.o" "$RT/runtime.o" "$RT/stubs.o" \
-    -o "$t/runtime.wasm" -Wl,--export-all -Wl,--growable-table -Wl,--export=__stack_pointer -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
+    -o "$t/linked.wasm" -Wl,--export-all -Wl,--growable-table -Wl,--export=__stack_pointer -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
+  # (as program's: the runtime's frames keep its references where the collector's scan reads them)
+  "$PY" wasm/spill_roots.py ${WASM_SPILL_CONTROL:+--no-spill} "$t/linked.wasm" "$t/runtime.wasm"
+  # (the runtime calls after which the direct emitter keeps no roots must not collect and return)
+  PYTHONPATH=.${PYTHONPATH:+:$PYTHONPATH} "$PY" wasm/check_no_collect.py "$t/runtime.wasm"
   mv "$t/runtime.wasm" "$RT/runtime.wasm"
   rm -rf "$t"; trap - EXIT
 }
