@@ -704,7 +704,8 @@ See [optional operations and narrowing](typing.md#optional-values-and-narrowing)
 
 - Nullable keys/elements except user objects; tuple keys containing unsupported members
   such as floats, lists, NamedTuples or frozensets; NamedTuple or exception keys/elements;
-  hashing these types except NamedTuples and frozensets; classes with nonmethod `__hash__` /
+  hashing these types except NamedTuples, frozensets and exceptions (by identity, or their
+  class's `__hash__`); classes with nonmethod `__hash__` /
   `__eq__`; unions of classes as keys/elements where a member's classes define `__hash__` or
   `__eq__`, and such unions as tuple-key items or as the keys of dicts compared with `==`.
 - Bool stored as int, including set elements, dict keys, tuple-key members, `setdefault` and
@@ -748,11 +749,13 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
 - **`object` values:** any operation of a [value of `object`](typing.md#object) but `str()`,
   `repr()`, `format()`, truth, `==`, `!=`, `is`, `hash()`, `type(x).__name__`, `callable()`
   and `isinstance()` until `isinstance()` narrows it (the message says so), which a test of a
-  container type, and in a module that opts in to promoting ints a test of `int`, does not;
-  values of `object` as dict keys or set elements, or in a list or tuple that the runtime
-  searches, sorts or compares; functions, `Callable` values, exceptions, exception classes and
-  protocol values as values of `object`, and an empty display; `==` of two values of `object`
-  where two of the stored types do not compare (a list of one class and of another); with
+  container type does to a read-only view, and in a module that opts in to promoting ints a test
+  of `int` does not; values of `object` as dict keys or set elements, or in a list or tuple that
+  the runtime searches, sorts or compares; functions, bound methods, lambdas and other `Callable`
+  values as values of `object`, and `isinstance(x, type)` narrowing one that may hold an
+  exception class; `==` of two values of `object` where the method CPython calls is annotated to
+  take only its own class, or two of the stored types do not compare (a list of one class and of
+  another); with
   dynamic `Any`, a stored type that cannot become an `Any` value once a value of `object` meets
   one; and, in a module that does not opt in to promoting ints, narrowing to `int` a value that
   may hold a promoting int ([error tests](../../tests/errors/classes/object_storage_arith.py)).

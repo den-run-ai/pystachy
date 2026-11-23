@@ -1,0 +1,10 @@
+Eq True True False False False False True True
+Ne False False True True False False False False
+Both True True True True False False False False
+Point True True False False False False True True
+Plain False False True True True True False False
+Fault True True False False False False True True
+Mode False False True True True True False False
+Derived True True False False False False True True
+Holder True True False False False False True True
+[exit 0]

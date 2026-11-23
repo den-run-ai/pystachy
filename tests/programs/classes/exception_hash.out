@@ -1,0 +1,6 @@
+True False
+True 7
+True
+TypeError unhashable type: 'Compared'
+[True, True, True, True, True] 7
+[exit 0]

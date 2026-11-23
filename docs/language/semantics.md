@@ -898,7 +898,9 @@ Additional inheritance, constructor and attribute restrictions are in
 
 An exception class, builtin or of the program, is a value: `k = KeyError`, a default
 (`category=UserWarning`), an argument, a field, an item of a list, tuple or set, a dict's key
-or value (`{KeyError: 1}`, `(text, category, lineno)`). `type[E]`, with `| None`, annotates it.
+or value (`{KeyError: 1}`, `(text, category, lineno)`). `type[E]`, with `| None`, annotates it,
+and a [value of `object`](typing.md#object) may hold it
+([test](../../tests/programs/classes/object_exception_classes.py)).
 Each class has one class object, so `is`, `==` and `hash()` compare and hash it by identity
 (`IOError is OSError`). `type(e)` of an exception, and the class an `__exit__` takes, are its
 class's class object. `type(e)` of an exception that is `None` is `NoneType`'s, which is

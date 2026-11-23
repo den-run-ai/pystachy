@@ -1095,16 +1095,23 @@ implementations may meet at run time, so `==` and `!=` are compiled for each pai
 [objects of two classes compare](semantics.md#object-protocols): plain classes, dataclasses,
 NamedTuples and builtin values need nothing
 ([tests](../../tests/programs/classes/protocol_equality_pairs.py),
-[records](../../tests/programs/classes/protocol_equality_records.py)). An implementation whose
+[records](../../tests/programs/classes/protocol_equality_records.py)). Where neither
+implementation's comparison takes the other (an exception class and a dataclass, an enum and a
+NamedTuple) and neither defines `__eq__`, CPython's identity answers, `False` (`True` for
+`!=`), and a class's `__eq__` that takes `object` is called, reflected where the other declines
+([test](../../tests/programs/classes/protocol_eq_implementers.py)). An implementation whose
 `__eq__` is annotated to take only its own class (`other: "Money"`), which CPython would call
 with any object, rejects the comparison of the protocol's values: annotate `other: object` and
-test it with `isinstance()`. So does an implementation of a library class or an exception class
-that has no method for another implementation.
+test it with `isinstance()`. So does an implementation of a library class that has no method
+for another implementation.
 Orderings, dict keys and set elements, searches and sorts of containers of protocol values
 (`in` a list, `count()`, `index()`, `sort()`, `min()`, `max()`), `id()`, `type()` and other
 reflection, `isinstance()` with another type and class patterns are compilation errors.
-Converting one protocol's value to another protocol, and to or from a dynamic `Any` value, is
-not supported. A union's value converts once narrowed to one class; functions and `Callable`
+A protocol's value stored as [`object`](#object), or given to a dynamic `Any` value, is its
+object, as if the object had been stored ([test](../../tests/programs/classes/protocol_as_object.py),
+[`Any`](../../tests/programs/classes/protocol_as_any.py)); converting one protocol's value to
+another protocol, and an `Any` value to a protocol's, is not supported. A union's value converts
+once narrowed to one class; functions and `Callable`
 values are not implementations (annotate a callback with `Callable[[A], R]` rather than a
 protocol with `__call__`).
 
@@ -1152,9 +1159,15 @@ values: list[object] = [1, 2.5, True, "s", b"b", [1], Point(0, 0), int, None]
 It is the stored interface that every type implements, with no method of its own: a value of
 `object` holds the value it was given, not a copy, so a list stored as `object` and changed
 through its typed name shows the change. Numbers, strs, bytes, containers, objects of the
-program's classes, class objects, exceptions, `None` and `Any` values can be values of `object`;
-functions and `Callable` values, exception classes, and values of a protocol (convert the object
-itself) cannot. A list, dict or set display stored as `object` that is empty, or whose items no
+program's classes, class objects (an exception class's too), exceptions, `None`, `Any` values and
+values of a protocol (their object) can be values of `object`; functions, bound methods, lambdas
+and other `Callable` values cannot
+([error test](../../tests/errors/classes/object_storage_function.py)). An exception class prints,
+compares and hashes as a class object does
+([test](../../tests/programs/classes/object_exception_classes.py)), but `isinstance(x, type)`
+does not narrow a value of `object` that may hold one
+([error test](../../tests/errors/classes/object_storage_exception_class.py)).
+A list, dict or set display stored as `object` that is empty, or whose items no
 one type or union holds, holds values of `object` (a dict's keys are strs where it has none)
 ([test](../../tests/programs/classes/object_displays.py)); in a module that opts in to
 [dynamic `Any`](../dynamic-any.md), an empty list or dict display holds `Any` values, as its
@@ -1167,7 +1180,24 @@ a protocol's value above, each by its value's type
 
 - `str()`, `repr()`, printing, f-strings, `format()`, `%s`, `%r` and `%a`, and truth tests;
 - `==` and `!=` with a value of any type: numbers by their values (`1 == 1.0`, `True == 1`),
-  values of builtin types of two kinds (a number and a str, a list and a tuple) unequal;
+  values of builtin types of two kinds (a number and a str, a list and a tuple) unequal, and any
+  two values of `object` whatever they hold: where neither type's comparison takes the other (a
+  range and a bool, a generator and a list, a dataclass and an exception) and no method of the
+  program decides, as CPython by identity, `False` (`True` for `!=`); a library type whose
+  comparison takes only its own kind (a range, a deque, a date, a time, a timedelta) declines
+  another value, an IntEnum's member too, as CPython's does
+  ([test](../../tests/programs/classes/object_eq_library.py)). Where an object's class
+  defines or inherits the method CPython calls, `__eq__` (`__ne__` for `!=`), only that method
+  answers, reflected where the other operand's type declines
+  ([test](../../tests/programs/classes/object_eq_pairs.py),
+  [classes](../../tests/programs/classes/object_eq_own_methods.py)); for `!=` a class without
+  `__ne__` inverts its `__eq__`, but a list's or dict's subclass, a NamedTuple, an `IntEnum`, an
+  `IntFlag` and a `StrEnum` keep their builtin type's `__ne__`, which declines another kind of
+  value ([test](../../tests/programs/classes/object_eq_builtin_ne.py)). Such a method annotated to
+  take only its own class rejects the program where a value of `object` of another type may meet
+  it, also in a list's or dict's subclass: annotate its parameter `object` and narrow it with
+  `isinstance()` ([error test](../../tests/errors/classes/object_eq_strict.py),
+  [list](../../tests/errors/classes/object_eq_list_own.py));
 - `hash()`, alike for equal numbers;
 - `is` and `is not`: `None` is only `None`; an object, a str, a container or a class object is
   itself; a number is an equal number of its type, a float by its bits, as in PyPy, which is
@@ -1176,14 +1206,17 @@ a protocol's value above, each by its value's type
   equal numbers computed apart ([deviation](../../tests/deviations/object_number_identity.py));
 - `type(x).__name__`, `__qualname__` and `__module__`, and `callable(x)`;
 - `isinstance(x, C)` with the program's classes and the builtin types `int`, `float`, `bool`,
-  `str`, `bytes`, `list`, `dict`, `tuple`, `set`, `frozenset` and `type` (or a tuple of them),
-  which narrows `x` as an `if`, an early `return`, a `continue` or a `while` narrows a union: to
-  the class, to `bool`, `float`, `str`, `bytes` or `type[object]`, and to `int | bool` for `int`,
-  whose test a bool passes, keeping its own `repr()`
+  `str`, `bytes`, `list`, `dict`, `tuple`, `set`, `frozenset`, `type`, `complex` and `range` (or
+  a tuple of them), which narrows `x` as an `if`, an early `return`, a `continue` or a `while`
+  narrows a union: to the class, to `bool`, `float`, `str`, `bytes`, `complex`, `range` or
+  `type[object]` ([`complex` and `range`](../../tests/programs/classes/object_complex_range.py)),
+  and to `int | bool` for `int`, whose test a bool passes, keeping its own `repr()`
   ([test](../../tests/programs/classes/object_storage_narrow.py)), which indexes, counts and
   shifts as its int ([`bool | int`](#closed-scalar-unions)); where an `int` variable or
   parameter takes it, `not isinstance(x, bool)` narrows that to `int`, or `int(x)` converts it
-  ([test](../../tests/programs/classes/object_storage_int.py)).
+  ([test](../../tests/programs/classes/object_storage_int.py)). As for a union, a test narrows a
+  function's variable, not a module's, which the error says
+  ([error test](../../tests/errors/classes/object_module_narrow.py)).
 
 A test of a container type narrows `x` to a read-only view of the container it holds, whose
 items' types are not known: `list` or `tuple` (or both) to `Sequence[object]`, `set` or
@@ -1907,7 +1940,10 @@ An annotated `NamedTuple` class supports defaults, methods, unpacking, constant 
 iteration, length, comparisons with tuples, `hash()` (its fields' tuple's), `_make()` (of an
 iterable with as many items as it has fields, else CPython's `TypeError`), `_replace()`, `_fields`
 and `_asdict()` when all fields share a type. Only construction can assign its fields. There is
-no functional `NamedTuple("Name", ...)` form, slicing, or a NamedTuple without fields.
+no functional `NamedTuple("Name", ...)` form, slicing, or a NamedTuple without fields. A class
+that defines `__eq__` but not `__ne__` keeps tuple's `!=`, which compares a tuple and declines
+another value, as an `IntEnum`'s, `IntFlag`'s or `StrEnum`'s keeps int's or str's
+([test](../../tests/programs/classes/ne_builtin_base.py)).
 
 `collections.namedtuple()` makes such a class at compile time: a module's top-level
 `NAME = namedtuple(typename, field_names, *, rename=False, defaults=None, module=None)` with

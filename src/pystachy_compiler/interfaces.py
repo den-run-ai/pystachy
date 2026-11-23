@@ -9,15 +9,16 @@ their table entry with the object, as a Callable's call calls its code with its 
 calls through the interface use (iface_finish): an implementation needs only what is called.
 """
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import dynamic_program, where
+from src.pystachy_compiler.diagnostics import ClassBoxes, NeedHandlers, NeedHierarchy, NeedSliceEH, Rejoin, TupleBoxes, dynamic_program, where
+from src.pystachy_compiler.frames import Frame
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.names import MAPVIEW, OBJECT, SEQVIEW, SETVIEW, VIEWSHOW, short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
-from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, EMPTYFS, OBJECTC, SPECSHOW, is_excname
+from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, EMPTYFS, OBJECTC, RANGEC, SPECSHOW, is_excname
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.utils import clone, elem, gelem, identity_abi, is_callable, is_clsval, is_dict, is_fset, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_union, is_vtuple, lt, numeric_identity, selem, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import clone, elem, gelem, identity_abi, is_callable, is_clsval, is_dict, is_fset, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_union, is_vtuple, lib_file, lt, numeric_identity, selem, targs, tname, typestr, umembers, unopt
 
 # the intrinsic that an interface method's body calls: its table entry (iface_call)
 IFACE_CALL = "__pystachy_iface__"
@@ -44,7 +45,11 @@ ITERABLE = "typing$Iterable"
 # the builtin types whose names isinstance() takes beside the program's classes for a value of
 # an interface (iface_classes), and those a test narrows such a value to, as the type it is then
 # (iface_narrow: an int may be a bool, which keeps its own repr and truth)
-BUILTIN_TESTS = ["int", "float", "bool", "str", "bytes", "list", "dict", "tuple", "set", "frozenset", "type"]
+BUILTIN_TESTS = ["int", "float", "bool", "str", "bytes", "list", "dict", "tuple", "set", "frozenset", "type", "complex", "range"]
+
+# the builtin types of BUILTIN_TESTS whose objects are those of a class of lib/ (builtin_backed),
+# which a test narrows such a value to (iface_narrow)
+BUILTIN_LIB = {"complex": COMPLEXC, "range": RANGEC}
 
 # the read-only view (names.py's VIEWSHOW) that a test of each builtin container type narrows a
 # value of object to (iface_narrow): its items are values of object, read through the view's
@@ -434,16 +439,20 @@ def gen_is_object(self, t: str) -> bool:
 
 def gen_object_note(self, ts: list[str]) -> str:
     # what an error of an operation that its operands' types ts do not take adds where one is
-    # object's (OBJECT), whose value takes only the operations of every value: "" otherwise
+    # object's (OBJECT), whose value takes only the operations of every value: "" otherwise. At a
+    # module's level, where a test narrows no variable (a global, as a union's is not narrowed
+    # there: narrowable), it says so
+    ops = "it takes only str(), repr(), format(), hash(), len(), int(), float(), % formatting, ==, !=, is, isinstance() and a truth test otherwise"
+    mod = "; a test does not narrow a module's variable: test it in a function" if self.modlevel else ""
     for t in ts:
         if self.is_view(t):
-            ops = "x[i], index(), count()" if t == SEQVIEW else "x[key], get(), keys(), values(), items()" if t == MAPVIEW else ""
-            return f" ({typestr(t)} is a read-only view of {view_kind(t)} that a value of object holds, which isinstance() narrowed it to: it takes len(), iteration, in, {ops + ', ' if ops != '' else ''}str(), repr(), ==, != and is, which give its items as values of object, and changes nothing; change the container through a variable of its own type)"
+            vops = "x[i], index(), count()" if t == SEQVIEW else "x[key], get(), keys(), values(), items()" if t == MAPVIEW else ""
+            return f" ({typestr(t)} is a read-only view of {view_kind(t)} that a value of object holds, which isinstance() narrowed it to: it takes len(), iteration, in, {vops + ', ' if vops != '' else ''}str(), repr(), ==, != and is, which give its items as values of object, and changes nothing; change the container through a variable of its own type)"
         if t == OBJECT and self.int_policy(self.line):
             # (iface_narrow: an int there is a promoting int, which a bool that passes the test is not)
-            return " (narrow a value of object with isinstance() to float, bool, str, bytes, list, tuple, dict, set, frozenset, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), len(), int(), float(), % formatting, ==, !=, is, isinstance() and a truth test otherwise)"
+            return f" (narrow a value of object with isinstance() to float, bool, str, bytes, list, tuple, dict, set, frozenset, type, complex, range or a class of the program first, not to int in a module that opts in to promoting ints: {ops}{mod})"
         if t == OBJECT:
-            return " (narrow a value of object with isinstance() to int, float, bool, str, bytes, list, tuple, dict, set, frozenset, type or a class of the program first: it takes only str(), repr(), format(), hash(), len(), int(), float(), % formatting, ==, !=, is, isinstance() and a truth test otherwise)"
+            return f" (narrow a value of object with isinstance() to int, float, bool, str, bytes, list, tuple, dict, set, frozenset, type, complex, range or a class of the program first: {ops}{mod})"
     return ""
 
 
@@ -508,21 +517,18 @@ def gen_iface_impl(self, t: str) -> str:
 
 def gen_object_impl(self, t: str) -> str:
     # why a value of type t cannot be a value of object (OBJECT), or "": any value, but a
-    # function or Callable value, an exception and a value of another interface (whose box is not
-    # its object), each as to_object holds it
+    # function or Callable value (whose value is made anew where it is converted, and has no
+    # repr() or hash() of its own here), each as to_object holds it: an exception class as its
+    # class object (exctype), a value of another interface as its object (protocol_object)
     u = unopt(t)
     if t == "dyn":
         return ""  # (an Any value: dyn_object)
     if self.refl_builtin_class(t) != "":
         return ""  # (a builtin class named, as its class object: to_object)
     if t.startswith("fn[") or is_callable(u):
-        return f"a function or Callable value as a value of object is not supported yet: call it, or store a {typestr(t)} where one is expected"
-    if t == "exctype" or u == "exctype":
-        return "an exception class as a value of object is not supported yet (an exception object is)"
-    if self.is_view(u):
-        return ""  # (a view of a value of object's container: that value, view_slot)
-    if self.is_iface(u):
-        return f"a value of {typestr(u)} as a value of object is not supported: convert the object itself"
+        return f"a function, bound method or lambda (a Callable value) as a value of object is not supported yet: call it, or store a {typestr(t)} where one is expected"
+    if self.is_view(u) or self.is_iface(u):
+        return ""  # (a view of a value of object's container: that value, view_slot; a protocol's value: its object, protocol_object)
     if is_union(u):
         for m in umembers(u):
             why = self.object_impl(m)
@@ -544,6 +550,8 @@ def gen_to_object(self, v: Val) -> Val:
         return v
     if self.is_view(v.t):
         return self.cast(v, OBJECT, "view")
+    if self.is_iface(unopt(v.t)):
+        return protocol_object(self, Val(v.v, unopt(v.t)))
     why = self.object_impl(v.t)
     if why != "":
         self.err(f"expected object, got {typestr(v.t)}: {why}")
@@ -583,6 +591,15 @@ def gen_to_object(self, v: Val) -> Val:
     self.br(end)
     self.place(end)
     return Val(self.phi(ph), OBJECT)
+
+
+def protocol_object(self, v: Val) -> Val:
+    # v, a value of a protocol, as a value of object: None as None, else its object, by the entry
+    # of its implementation's table, which makes a value of object of it as to_object makes one of
+    # a value of its type (the protocol's box is not the object's: its table is the protocol's)
+    self.object_iface()  # (object's, which a program that stores no value as object has not made)
+    e = mk("name", "_o", self.line, [])
+    return self.iface_apply(v, "object()", [], OBJECT, e, "object", [], "object", v, v)
 
 
 def gen_dyn_object(self, v: Val) -> Val:
@@ -762,6 +779,8 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
         a.append(x if m is None or m.npos < 0 or j + 1 < m.npos else mk("kw", m.params[j + 1], line, [x]))
     parts = op.split("|", 2) if derived else []
     bad = ""
+    tried = ""  # (the attempt of a comparison that may not compile: eq_how)
+    note = ""  # (what an error of the entry's comparison says to do: eq_note)
     body: list[Node] = []
     if derived and parts[0] == "as":
         # (a narrowing, iface_narrowed: the object as the type the test proved, of an
@@ -771,6 +790,10 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
         if held == BIG and nt == "int":
             # (as|bool and the others never reach a promoting int: their tests fail for it)
             bad = f"narrowing a value of {typestr(tab.iface)} to {typestr(self.union_type(['int', 'bool']))} by isinstance() is not supported where it may hold a promoting int (a module that opts in to promoting ints stored one), which {typestr(self.union_type(['int', 'bool']))} holds only within 64 bits"
+        if held == "exctype" and nt == "type[object]":
+            # (an exception class, whose test of type passes: its class object is exceptions.py's,
+            # which no type[object], a class's reflection record, is)
+            bad = f"narrowing a value of {typestr(tab.iface)} to type by isinstance() is not supported where it may hold an exception class (a {typestr(held)}): test it with isinstance() of the classes it may be, or compare it with 'is'"
         ok = held == nt or held == "dyn" or (is_union(nt) and held in umembers(nt)) or (nt == "type[object]" and held.startswith("type["))
         ok = ok or (held in self.classes and nt in self.classes and not self.is_iface(nt) and self.derives(held, nt))
         # (an exception object of a class of the program as the exception that raises it, as a
@@ -814,6 +837,14 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
                 # (a class object, or object()'s object, and an object of a class: CPython asks the
                 # class's __eq__ or __ne__, reflected, as the object on the left asks it first)
                 e.kids = [e.kids[1], e.kids[0]]
+        how = eq_how(self, tab, op, e)
+        if how != "":
+            tried = "objeq:" + self.stable(f"{tab.iface}|{tab.impl}|{op}")
+        if tried != "" and tried in self.xnot:
+            # (a comparison of two types that no comparison of the compiler takes, a pass found:
+            # CPython's default answer, or the other operand's method that CPython calls reflected)
+            e = eq_default_expr(how, e, line)
+        note = eq_note(self, tab, op, e)
     elif op in face.props:
         e = mk("attr", op, line, [o])
     elif op in BUILTIN_FORMS and len(ps) == 0 and (op in IMPLICIT or tab.impl not in self.classes or op == "__next__" or op == "__iter__"):
@@ -834,6 +865,8 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
         msg = mk("str", f"{'format' if op == 'format()' else op[2:-2]}() of {what} held by a value of {typestr(tab.iface)} is not supported", line, [])
         body = [mk("raise", "", line, [mk("call", "", line, [mk("name", "NotImplementedError", line, []), msg])])]
     f.node.kids = [mk("params", "-1,-1", line, []), mk("noann", "", line, []), mk("block", "", line, body)]
+    if note != "":
+        self.making.append(note)  # (said after the table's making, as an error says the innermost first: err)
     self.making.append(f"making the table of {typestr(tab.impl)} as {typestr(tab.iface)} (for {face.dshow[op] if derived else op}), converted at {where(line)}")
     if bad != "":
         self.err(bad)
@@ -841,10 +874,185 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
     self.modlevel = False
     self.lenient = False
     self.line = line
-    self.function(f, body)
+    if tried != "" and tried not in self.xnot:
+        eq_try(self, f, body, tried, fr)
+    else:
+        self.function(f, body)
     self.restore(fr)
+    if note != "":
+        self.making.pop()
     self.making.pop()
     return ll
+
+
+def eq_try(self, f: FnInfo, body: list[Node], tried: str, fr: Frame) -> None:
+    # compile entry f, a comparison that eq_default could answer, as an attempt (Gen.xtry) named
+    # tried: where it does not compile, this pass goes on, to find the other comparisons that do
+    # not (an error after it starts the next pass instead: gen_err), and ends, and the next pass
+    # compiles CPython's default answer from the start (iface_adapter); the partial compilation
+    # of the entry is dropped with this pass
+    previous = self.xtry
+    making = len(self.making)
+    sel = self.selfcls
+    self.xtry = tried
+    try:
+        self.function(f, body)
+    except Rejoin as retry:
+        if isinstance(retry, NeedHandlers) or isinstance(retry, NeedHierarchy) or isinstance(retry, ClassBoxes) or isinstance(retry, NeedSliceEH) or isinstance(retry, TupleBoxes) or tried not in self.newx:
+            raise
+        self.restore(fr)
+        while len(self.making) > making:
+            self.making.pop()
+        self.selfcls = sel
+    self.xtry = previous
+
+
+def eq_family(self, t: str, op: str) -> str:
+    # the family of a value of type t for op (== or !=) with a value of another family, which
+    # CPython's comparisons of the two kinds both decline (NotImplemented), so that it compares
+    # them by identity: "num" (a number), "str", "bytes", "None", "list" and "dict" (an object of a
+    # class that derives from one too), "tuple" (a NamedTuple's object too), "set" (a frozenset
+    # too), "range", "dc:C" (an object of dataclass C, whose generated __eq__ declines another
+    # class's), "id:T" (a value equal only to itself: a generator, a class object, an exception,
+    # an enum member, object()'s object, an object of a class without a method for op); "" where
+    # the method that CPython calls for op is the program's (user_cmp), which alone answers, or
+    # for another type, whose comparison is the compiler's own
+    u = unopt(t) if is_sopt(t) else t
+    if u == "int" or u == "float" or u == "bool" or u == BIG or u == COMPLEXC:
+        return "num"
+    if u == "str" or u == "bytes" or u == "None":
+        return u
+    if u == RANGEC:
+        return "range"
+    if is_list(u):
+        return "list"
+    if is_dict(u):
+        return "dict"
+    if is_set(u) or u == EMPTYFS:
+        return "set"
+    if is_tuple(u) or is_vtuple(u):
+        return "tuple"
+    if is_gen(u) or is_clsval(u) or u == "exctype" or u == "exc":
+        return "id:" + u
+    if u not in self.classes or user_cmp(self, u, op):
+        return ""
+    if self.bkind(u) != "":
+        return self.bkind(u)  # ("list" or "dict": the builtin's own comparison, which its class keeps)
+    if u in self.nts:
+        return "tuple"
+    if self.is_dc(u) and "no-eq" not in self.classes[u].dcopts:
+        return "dc:" + u
+    return "id:" + u
+
+
+def user_method(self, c: str, m: str) -> bool:
+    # does class c, or a class it derives from (its template's, for a specialization), define
+    # method m (not one the compiler writes for a dataclass, nor one of lib/ that declines what
+    # it does not take: lib_declines)
+    seen: dict[str, bool] = {}
+    todo = [c]
+    while len(todo) > 0:
+        x = todo.pop()
+        if x in seen or x not in self.classes:
+            continue
+        seen[x] = True
+        ci = self.classes[x]
+        if m in ci.methods and not ci.methods[m].synthetic:
+            return not lib_declines(self, ci.methods[m])
+        todo.extend([ci.base, ci.origin] + ci.roles)
+    return False
+
+
+def lib_declines(self, f: FnInfo) -> bool:
+    # is f a comparison method of a class of lib/ annotated to take one type (range's, a deque's,
+    # a date's, a timedelta's, a weak reference's): it stands for a method of CPython's type, which
+    # returns NotImplemented for a value of another type, so that the other operand's method, else
+    # identity, answers (as cmp_pick skips it)
+    t = f.ptypes[1] if len(f.ptypes) == 2 else ""
+    return lib_file(f.node.line, self.libdir) and t != "" and t != "dyn" and not self.is_object(t)
+
+
+def user_cmp(self, c: str, op: str) -> bool:
+    # is the method that CPython calls for an object of class c op a value (== or !=) one of the
+    # program: an __eq__ that c defines or inherits for ==; for !=, an __ne__ so defined, or c's
+    # __eq__, which object's __ne__ inverts, but not for a class that derives from list or dict,
+    # or a NamedTuple, whose __ne__ is the builtin's (it declines another kind, and identity then
+    # answers: eq_family). (An IntEnum's, IntFlag's or StrEnum's are lib/enum.py's, which take
+    # any value)
+    if user_method(self, c, "__ne__" if op == "!=" else "__eq__"):
+        return True
+    return op == "!=" and self.bkind(c) == "" and c not in self.nts and user_method(self, c, "__eq__")
+
+
+def eq_default(self, a: str, b: str, op: str) -> str:
+    # CPython's answer to a op b (op == or !=), a of type a and b of type b, where the comparison
+    # of a declines b (eq_family): "swap" where the method that CPython calls for b is the
+    # program's (user_cmp), reflected, as b op a calls it first; where the comparison of b
+    # declines a too, "is" where one object may have both types (one class, or a class and a
+    # class it derives from), "false" where none may; "" where a comparison decides (of numbers,
+    # of strs, of containers item by item, a dataclass's, a's method of the program)
+    fa = eq_family(self, a, op)
+    fb = eq_family(self, b, op)
+    if fa != "" and fb == "" and b in self.classes and user_cmp(self, b, op):
+        return "swap"
+    if fa == "" or fb == "":
+        return ""
+    if fa == fb:
+        return "is" if fa.startswith("id:") else ""
+    ua = fa[3:]
+    ub = fb[3:]
+    if (fa.startswith("id:") or fa.startswith("dc:")) and (fb.startswith("id:") or fb.startswith("dc:")) and ua in self.classes and ub in self.classes and (self.derives(ua, ub) or self.derives(ub, ua)):
+        return "is"
+    return "false"
+
+
+def eq_how(self, tab: ITab, op: str, e: Node) -> str:
+    # how CPython answers comparison e of entry op ("==|l|T", "!=|r|T", ...) of implementation
+    # tab.impl with a value of type T, where the compiler's own comparison of the two types does
+    # not compile (eq_default: the entry tries it, eq_try); "" where that comparison decides
+    parts = op.split("|", 2)
+    if len(parts) != 3 or (parts[0] != "==" and parts[0] != "!=") or parts[2] == "None":
+        return ""
+    if self.is_iface(unopt(parts[2])) or self.is_iface(tab.impl) or e.kind != "cmp" or len(e.kids) != 2 or e.kids[0].kind != "name" or e.kids[1].kind != "name":
+        return ""
+    ts = [tab.impl if x.s == "_o" else parts[2] for x in e.kids]
+    return eq_default(self, ts[0], ts[1], e.s)
+
+
+def eq_note(self, tab: ITab, op: str, e: Node) -> str:
+    # what an error of comparison e of entry op of implementation tab.impl says to do, where its
+    # left operand's class defines the method CPython calls (__eq__, or __ne__ for !=) annotated
+    # to take a type that the right operand's is not: "" for another entry
+    parts = op.split("|", 2)
+    if len(parts) != 3 or (parts[0] != "==" and parts[0] != "!=") or e.kind != "cmp" or len(e.kids) != 2 or e.kids[0].kind != "name" or e.kids[1].kind != "name":
+        return ""
+    ts = [tab.impl if x.s == "_o" else parts[2] for x in e.kids]
+    c = ts[0]
+    seen: dict[str, bool] = {}
+    while c in self.classes and c not in seen:
+        # (the class and its bases, nearest first)
+        seen[c] = True
+        ci = self.classes[c]
+        for m in (["__ne__", "__eq__"] if parts[0] == "!=" else ["__eq__"]):
+            if m in ci.methods and not ci.methods[m].synthetic:
+                f = ci.methods[m]
+                t = f.ptypes[1] if len(f.ptypes) == 2 else ""
+                if t == "" or self.is_object(t) or t == "dyn" or t == ts[1] or lib_file(f.node.line, self.libdir):
+                    return ""  # (and a method of lib/, which the program cannot annotate)
+                return f"{short(c)}.{m}() takes only {typestr(t)}, where CPython calls it with any value that a value of {typestr(tab.iface)} holds: annotate its parameter object and narrow it with isinstance()"
+        c = ci.base
+    return ""
+
+
+def eq_default_expr(how: str, e: Node, line: int) -> Node:
+    # comparison e, _o op _a0 or _a0 op _o (op "==" or "!="), as how (eq_default) answers it: its
+    # operands' identity ("is"), False for == and True for != ("false"), or the operands swapped
+    # ("swap": the right operand's method, which CPython calls reflected)
+    if how == "swap":
+        return mk("cmp", e.s, line, [clone(e.kids[1]), clone(e.kids[0])])
+    if how == "is":
+        return mk("cmp", "is" if e.s == "==" else "is not", line, [clone(e.kids[0]), clone(e.kids[1])])
+    return mk("False" if e.s == "==" else "True", "", line, [])
 
 
 def operator_form(op: str, n: int) -> str:
@@ -1168,6 +1376,8 @@ def gen_iface_none(self, none: str, a: Val, b: Val) -> Val:
         return Val(self.sconst("None"), "str")
     if none == "dyn":
         return Val(self.rtdata("pys_dyn_none_box"), "dyn")  # (None as an Any value: object_dyn)
+    if none == "object":
+        return Val("null", OBJECT)  # (None as a value of object: protocol_object)
     if none.startswith("type()."):
         return Val(self.sconst("builtins" if none == "type().__module__" else "NoneType"), "str")  # (object_type_attr)
     if none.startswith("raise:"):
@@ -1480,7 +1690,8 @@ def gen_iface_isinst(self, v: Val, c: Node) -> Val:
 def gen_iface_narrow(self, c: Node, t: str) -> str:
     # the type that a value of interface t holds where isinstance(x, c) is true, which its reads
     # take (iface_narrowed): c's, where it names one class that has one layout (not a class
-    # template's, whose objects' types its specializations are), bool, float, str or bytes; int
+    # template's, whose objects' types its specializations are), bool, float, str or bytes, lib/'s
+    # class for complex and range (BUILTIN_LIB); int
     # | bool for int, whose test a bool passes (keeping its own repr and truth), but in a module
     # that opts in to promoting ints, whose union would hold 64-bit ints; any class's class
     # object for type; for a value of object, the read-only view of the list or tuple, the set or
@@ -1493,6 +1704,8 @@ def gen_iface_narrow(self, c: Node, t: str) -> str:
     k = cs[0]
     if k in self.classes:
         return k
+    if k in BUILTIN_LIB and BUILTIN_LIB[k] in self.classes:
+        return BUILTIN_LIB[k]  # (a complex number, a range: lib/'s object)
     if k == "int":
         return "" if self.int_policy(self.line) else self.union_type(["int", "bool"])
     if k == "bool" or k == "float" or k == "str" or k == "bytes":

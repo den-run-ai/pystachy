@@ -340,10 +340,8 @@ def gen_dyn_boxable(self, t: str) -> str:
         # (an Any value's operations are its box's class's: the builtin container's own, which
         # the class leaves to it, would not be found there: builtin_bases.py)
         return f"an object of {short(t)}, a class that derives from {self.bkind(t)}, as an Any value is not supported yet: its class would be lost"
-    if self.is_object(t) or self.is_view(t):
-        return ""  # (a value of object, or a view of its container: its object as an Any value, dyn_box)
-    if self.is_iface(t):
-        return f"a value of {typestr(t)}, an interface, cannot become an Any value yet (its box is not its object)"
+    if self.is_object(t) or self.is_view(t) or self.is_iface(t):
+        return ""  # (a value of object, a view of its container or a protocol's value: its object as an Any value, dyn_box)
     if t in self.classes and t not in self.tmpl:
         if self.classes[t].exc != "":
             return f"an exception object ({typestr(t)}) as Any is not supported yet"
@@ -1699,8 +1697,8 @@ def gen_dyn_box(self, v: Val) -> Val:
         return box_big(self, v)
     if t == DYN:
         return v
-    if self.is_object(t) or self.is_view(t):
-        return self.object_dyn(self.to_object(v))  # (its object as an Any value: interfaces.py)
+    if self.is_object(t) or self.is_view(t) or self.is_iface(t):
+        return self.object_dyn(self.to_object(v))  # (its object as an Any value, a protocol's value's by its object: interfaces.py)
     builtin_class = self.refl_builtin_class(t)
     if builtin_class != "":
         return self.refl_class_value(builtin_class)
