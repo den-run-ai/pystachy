@@ -1935,7 +1935,18 @@ def gen_cls_bound(self, f: FnInfo, c: str, obj: bool) -> None:
                 self.err(f"calling {'static' if f.deco == 'staticmethod' else 'class'} method {f.name}() on an object of {short(c)}, which may be one of {short(x.name)}, is not supported: {short(x.name)} overrides it (calls are not dispatched on the object's class; call {short(c)}.{f.name}() or {short(x.name)}.{f.name}())")
     if f.deco != "classmethod" or not f.clsuse:
         return
-    subs = [x.name for x in self.classes.values() if obj and x.name != c and self.derives(x.name, c)]
+    k = c
+    if f.clsdef != "" and c in self.classes and self.classes[c].origin in self.classes:
+        # (the copy that a class under a class template has of the template's class method,
+        # #1744, is called as any class's class method is: through an object only of a class
+        # that no class derives from, and that has the copy. Elsewhere cls would be another
+        # class than the object's, and not the template either, which it was before the copies
+        # and with which a program may print what CPython prints: the error then ends the trial
+        # the copies are (inherit), and the program is compiled without them. The classes that
+        # derive from a specialization's class are its template's, which the source names: a
+        # specialization of one may be made after this call)
+        k = self.classes[c].origin
+    subs = [x.name for x in self.classes.values() if obj and x.name != k and self.derives(x.name, k)]
     if f.cls != c:
         self.err(f"calling class method {short(c)}.{f.name}() is not supported: it uses cls, and is compiled only for {short(f.cls)}, which defines it (a class that inherits it has its own only where no default value of it is evaluated when its def runs, and in the same module)")
     if len(subs) > 0:

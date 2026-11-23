@@ -1744,9 +1744,12 @@ class Gen:
         self.xnot: dict[str, bool] = {}
         self.newx: dict[str, bool] = {}
         # the driver's: a comparison hands a method of the program the object of a class deriving
-        # from a builtin container as itself (bkeeps), not its container; False once a pass that
-        # did failed or declined an attempt, and for the code no driver pass compiles
-        self.bobj = False
+        # from a builtin container as itself (bkeeps), not its container (trials), and a class
+        # under a class template has its own copy of a class method (inherit: copies); each
+        # False once a pass that did so failed or declined an attempt, the copies first, and
+        # for the code no driver pass compiles
+        self.trials = False
+        self.copies = False
         self.xwant: dict[str, bool] = {}  # narrowings of class tuples that a function needs (narrows, err)
         self.newwant: dict[str, bool] = {}  # and those this pass found it needs
         self.ncand: dict[str, bool] = {}  # the narrowings this pass did not make (narrows)

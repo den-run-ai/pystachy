@@ -3,6 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
 from src.pystachy_compiler.builtin_bases import builtin_base
 from src.pystachy_compiler.analysis import all_imports, chk_names, collect, constant_writes, defines, module_anns, module_ints, module_reads, module_strs, module_values, name_nodes, needs_eh, none_assigns, reads_builtin
+from src.pystachy_compiler import diagnostics
 from src.pystachy_compiler.diagnostics import NeedHierarchy, Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
@@ -464,30 +465,50 @@ def gen_inherit(self, ci: ClassInfo) -> None:
         f = b.methods[m]
         if f.acc != "" and m not in ci.methods and f.node.s in ci.methods and ci.methods[f.node.s].cls == ci.name:
             continue  # (its own @property def makes a new property, without the base's setter and deleter)
-        if m not in ci.methods and f.clsuse and f.mod == ci.mod and len([x for x in f.defaults if not is_const(x) and x.kind != "noann"]) == 0:
-            self.line = f.node.line
-            self.lib = f.mod != ""
+        src = f
+        defined = f.clsdef
+        if self.copies and m not in ci.methods and not f.clsuse and f.deco == "classmethod" and b.origin in self.classes and m in self.classes[b.origin].methods:
+            # (a specialization's class method is declared again from its template's def, in
+            # which cls already reads the template's name: the template's is the one that uses
+            # cls, and a class deriving from the specialization gets its own copy of it, as
+            # from any other base. Its cls names the class, or its template: materialize, #1744)
+            tf = self.classes[b.origin].methods[m]
+            if tf.deco == "classmethod" and tf.clsuse and tf.node is f.node:
+                src = tf
+                defined = tf.cls
+        if m not in ci.methods and src.clsuse and src.mod == ci.mod and len([x for x in src.defaults if not is_const(x) and x.kind != "noann"]) == 0:
+            self.line = src.node.line
+            self.lib = src.mod != ""
             self.selfcls = ci.name
             # Clone the declaration only. Its immutable body is shared until the method
             # is needed; declaring and flowing a copy per subclass costs body * subclasses
             # even when no inherited method is called.
-            d = Node(f.orig.kind, f.orig.s, f.orig.line, [f.orig.kids[i] if i == 2 else clone(f.orig.kids[i]) for i in range(len(f.orig.kids))])
+            d = Node(src.orig.kind, src.orig.s, src.orig.line, [src.orig.kids[i] if i == 2 else clone(src.orig.kids[i]) for i in range(len(src.orig.kids))])
             g = self.declare_fn(d, ci.name, True)
             if g.tvret == "":
                 # (f.orig was cloned after its declaration erased the TypeVar annotations: their
                 # binding plan, over the same parameters, carries over: tv_plan)
-                g.tvret = f.tvret
-                g.tvbparams = list(f.tvbparams)
-                g.tvbclass = list(f.tvbclass)
-                g.tvbpos = list(f.tvbpos)
-            g.orig = f.orig
+                g.tvret = src.tvret
+                g.tvbparams = list(src.tvbparams)
+                g.tvbclass = list(src.tvbclass)
+                g.tvbpos = list(src.tvbpos)
+            g.orig = src.orig
             g.clsuse = True
+            g.clsdef = defined
+            if defined != "":
+                # (in this copy cls is the class where it was the template: what cls(...) makes
+                # and takes, and what the method stores through cls, are the class's now, so code
+                # here or anywhere that compiled with the template's may not. From here on the
+                # compilation is a trial, which the driver gives up for the one without these
+                # copies where a pass fails or declines an attempt: diagnostics.TRYING)
+                diagnostics.TRYING = True
+                diagnostics.COPIED = True
             g.pending = True
-            g.bad = g.bad if g.bad != "" else f.bad  # the defining declaration checked the body
+            g.bad = g.bad if g.bad != "" else src.bad  # the defining declaration checked the body
             ci.methods[m] = g
             self.selfcls = ""
             self.lib = False
-            ci.methods[m].mod = f.mod
+            ci.methods[m].mod = src.mod
             self.lazy[ci.methods[m].ll] = ci.methods[m]  # (compiled only if called: cls(...) may not fit this class)
         elif m not in ci.methods:
             ci.methods[m] = f
