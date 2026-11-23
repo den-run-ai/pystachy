@@ -238,6 +238,49 @@ out=$(mktemp -d)
   "$out/triage.json" "$out/methods")
 ```
 
+### v0.6.1 to v0.7.0-rc.2
+
+The checksum-verified Linux x86-64 release binaries at `37512410` (v0.6.1) and
+`a130cf51` (v0.7.0-rc.2), each with its shipped library, ran in JIT mode with
+LLVM 18.1.3. The pinned extractor at `b2182a4f` reproduced all 9,855 identities
+from the checked sources. Under CPython 3.13.18, the same 5,905 methods qualified
+for both, as the qualification file above selects.
+
+| JIT outcome on the same 5,905 methods | v0.6.1 | v0.7.0-rc.2 |
+| --- | ---: | ---: |
+| Matching, including promoting integers | 655 | 686 |
+| Matching only with promoting integers | 7 | 7 |
+| Compile rejection | 5,226 | 5,192 |
+| Runtime difference | 24 | 27 |
+| Timeout | 0 | 0 |
+
+All 655 previous matches still matched, and every previous runtime difference
+still differed. The 31 gains comprise 10 language and built-in methods and 21 library methods:
+
+- `test_bool`: `BoolTest.test_bool_called_at_least_once`
+- `test_copy`: `TestCopy.test_copy_inst_vanilla`, `test_deepcopy_deepcopy`,
+  `test_deepcopy_inst_deepcopy`, `test_deepcopy_inst_vanilla`
+- `test_dataclasses`: `TestEq.test_eq_field_by_field`, `test_eq_nan_field`, `test_eq_type_check`
+- `test_deque`: `TestSubclass.test_basics`, `test_strange_subclass`
+- `test_enum`: `TestHelpers.test_dunder`, `test_is_private`, `test_iter_bits_lsb`,
+  `test_sunder`; `TestInternals.test_dunder`, `test_is_private`, `test_sunder`
+- `test_functools`: `TestTotalOrdering.test_total_ordering_ge`, `_gt`, `_le`, `_lt`
+- `test_list`: `ListTest.test_list_index_modifing_operand`
+- `test_named_expressions`: `NamedExpressionScopeTest.test_named_expression_scope_mangled_names`
+- `test_patma`: `TestPatma.test_patma_111`, `test_patma_232`
+- `test_raise`: `TestCause.test_erroneous_cause`, `TestRaise.test_erroneous_exception`
+- `test_string`: `ModuleTest.test_override_convert_field`
+- `test_type_params`: `TypeParamsAccessTest.test_super`
+- `test_with`: `ExitSwallowsExceptionTestCase.testExitFalseDoesntSwallowException`,
+  `testExitTrueSwallowsException`
+
+Three previously rejected methods now compile and differ. `TestPatma.test_patma_198`
+and `test_patma_199` raise `RuntimeError` where their nested function falls through,
+as in alpha.1 ([#1689](https://github.com/den-run-ai/pystachy/pull/1689)).
+`TestCounter.test_copy_subclass` fails an assertion because `copy()` of a `Counter`
+subclass returns a `Counter`, a silent wrong result since alpha.3
+([#1741](https://github.com/den-run-ai/pystachy/issues/1741)).
+
 ### Delivered programs
 
 The corpus takes the passing methods of the 20 files that no earlier adaptation covers, one
