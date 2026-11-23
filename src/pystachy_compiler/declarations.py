@@ -3734,6 +3734,8 @@ def gen_fgep(self, o: Val, i: int) -> str:
     op.k = i
     op.a = [o]
     self.put(op, 1)
+    if t == NONEVAR:
+        self.fn.build.settle = True  # (a field that only None was given yet: Gen.settle, gen_settle_program)
     r = tmpname(op.r[0])
     self.fn.fa[r] = True
     return r

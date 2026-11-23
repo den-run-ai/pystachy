@@ -842,7 +842,7 @@ L4:
         self.assertEqual(text.verify_errors(source), [])
         expected = text.expectations(source)
         admitted = [r["symbol"] for r, e in zip(text.parse_functions(source), expected, strict=True) if not e]
-        self.assertEqual((len(admitted), len(expected) - len(admitted)), (7, 7))
+        self.assertEqual((len(admitted), len(expected) - len(admitted)), (6, 8))
         self.assertEqual({e["message"] for found in expected for e in found},
                          {"field.addr result must address the declared member type",
                           "field.addr needs a declared field, assignment flag or identity box index"})
@@ -902,18 +902,21 @@ L4:
 
 class SettleTests(unittest.TestCase):
     # Gen.settle, once a function is built: each value whose type the frontend left open takes
-    # the one type its uses read it at, and a runtime call's word that an operand reads as a
-    # typed value is read through a bits cast. Each settled function verifies.
-    def settle(self, source, holes=()):
+    # the type the frontend decided for it (a hole's, Gen.decide_hole; a slot's or a value's,
+    # FnBuild.decided) and the values that flow from it theirs, a runtime type variable that
+    # nothing binds takes the one type its uses read it at, and a runtime call's word that an
+    # operand reads as a typed value is read through a bits cast. Each settled function verifies.
+    def settle(self, source, holes=(), decided=None, errors=()):
         fn = text.to_ifn(text.parse_function(source))
         gen = text.gen_for(fn)
         gen.holes = [""] + list(holes)
         gen.n = 100
+        fn.build.decided = dict(decided or {})
         gen.settle(fn, False)
         gen.instantiate(fn)
         gen.settle(fn, True)
         out = text.format_function(text.from_ifn(fn))
-        self.assertEqual(text.verify_errors(out), [], out)
+        self.assertEqual(text.verify_errors(out), list(errors), out)
         return fn, out
 
     def test_an_empty_list_takes_the_type_its_use_decided(self):
@@ -978,7 +981,7 @@ entry:
         self.assertIn("  %t1 = rt entry=alloc (int 8) : %ptr\n  %t101 = cast bits (%ptr %t1) : &int\n  mem.store(&int %t101, int 0)\n", out)
         self.assertIn("%t2 = mem.load(&int %t101) : int", out)
 
-    def test_a_locals_first_none_and_a_placeholder_no_use_decides_stay_open(self):
+    def test_a_placeholder_the_frontend_decided_nothing_for_stays_open(self):
         source = """function @h() -> str {
   %b.1 = slot name=b : opt[None]
 entry:
@@ -989,8 +992,154 @@ entry:
   ret(str %t2)
 }
 """
-        _, out = self.settle(source, [""])
+        _, out = self.settle(source, [""], errors=["@h: unexpected error in block entry: mem.load operand 0 reads %b.1 as &str, but it is &opt[None]"])
         self.assertEqual(out.split("\n", 1)[1], source.split("\n", 1)[1])  # (its body: not its effects)
+
+    def test_a_use_that_reads_a_placeholder_decides_nothing(self):
+        # (no reader's type decides a placeholder: the verifier rejects the read instead)
+        _, out = self.settle("""function @u(s: str) -> None {
+  %xs.1 = slot name=xs : list[?]
+entry:
+  %t2 = rt entry=list.new hole=1 (int 0) : list[?]
+  mem.store(&list[?] %xs.1, list[?] %t2)
+  %t3 = mem.load(&list[?] %xs.1) : list[?]
+  %t4 = slot.pack(str %a0) : *str
+  rt entry=list.append (list[str] %t3, *str %t4) : None
+  ret.none
+}
+""", [""], errors=["@u: unexpected error in block entry: rt operand 0 reads %t3 as list[str], but it is list[?]"])
+        self.assertIn("%xs.1 = slot name=xs : list[?]", out)
+
+    def test_a_first_nones_slot_takes_the_type_the_frontend_decided(self):
+        _, out = self.settle("""function @n(s: opt[str]) -> opt[str] {
+  %b.1 = slot name=b : opt[None]
+entry:
+  mem.store(&opt[None] %b.1, opt[None] null)
+  mem.store(&opt[str] %b.1, opt[str] %a0)
+  %t2 = mem.load(&opt[str] %b.1) : opt[str]
+  ret(opt[str] %t2)
+}
+""", decided={"%b.1": "opt[str]"})
+        self.assertNotIn("opt[None]", out)
+        self.assertIn("%b.1 = slot name=b : opt[str]", out)
+        self.assertIn("mem.store(&opt[str] %b.1, opt[str] null)", out)
+
+    def test_a_none_lists_items_take_the_type_its_local_was_given(self):
+        _, out = self.settle("""function @l(s: str) -> list[opt[str]] {
+  %xs.1 = slot name=xs : list[opt[?]]
+entry:
+  %t2 = rt entry=list.new (int 1) : list[opt[?]]
+  rt entry=list.append (list[opt[?]] %t2, *opt[?] 0) : None
+  mem.store(&list[opt[?]] %xs.1, list[opt[?]] %t2)
+  %t3 = mem.load(&list[opt[str]] %xs.1) : list[opt[str]]
+  ret(list[opt[str]] %t3)
+}
+""", decided={"%xs.1": "list[opt[str]]"})
+        self.assertNotIn("?", out)
+        self.assertIn("%t2 = rt entry=list.new (int 1) : list[opt[str]]", out)
+        self.assertIn("rt entry=list.append (list[opt[str]] %t2, *opt[str] 0) : None", out)
+
+    def test_a_value_takes_the_type_the_frontend_read_it_at(self):
+        # (list(()) makes a list that its caller types: Gen.decide_value)
+        _, out = self.settle("""function @c() -> list[str] {
+entry:
+  %t1 = rt entry=list.new (int 0) : list[?]
+  %t2 = rt entry=list.copy (list[?] %t1) : list[?]
+  ret(list[str] %t2)
+}
+""", decided={"%t1": "list[str]"})
+        self.assertNotIn("?", out)
+        self.assertIn("%t2 = rt entry=list.copy (list[str] %t1) : list[str]", out)
+
+
+class DecidedTypesTests(unittest.TestCase):
+    # The frontend gives each placeholder of a function the type it decides for it before the
+    # function is built: an empty container's, a comprehension's, a [None] list's and a first
+    # None's (docs/typed-ir.md#operand-types). Only a template's empty result, which each call
+    # types (Gen.typed_empty), stays open in the template's own IR.
+    SOURCE = """class P:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+
+class Count:
+    def __init__(self, n: int) -> None:
+        self.i = 0
+        self.n = n
+
+    def __iter__(self) -> "Count":
+        return self
+
+    def __next__(self) -> int:
+        if self.i >= self.n:
+            raise StopIteration
+        self.i += 1
+        return self.i
+
+
+def evens(n: int) -> list[int]:
+    xs = []
+    for i in range(n):
+        if len(xs) > 3:
+            break
+        xs.append(i * 2)
+    return xs
+
+
+def best(n: int) -> int:
+    b = None
+    for i in range(n):
+        p = P(i)
+        if b is None or p.x > b.x:
+            b = p
+    return b.x if b is not None else -1
+
+
+def counts(ws: list[str]) -> dict[str, int]:
+    d = {}
+    for w in ws:
+        d[w] = d.get(w, 0) + 1
+    return d
+
+
+def slots(n: int) -> list[str | None]:
+    out = [None] * n
+    out[0] = "a"
+    return out
+
+
+def empty(n):
+    return []
+
+
+names: list[str] = empty(1)
+names.append("x")
+print(evens(5), best(4), counts(["a", "b", "a"]), slots(2), [x * x for x in range(3)], names, list(Count(3)))
+"""
+
+    def test_no_placeholder_reaches_a_built_function(self):
+        # (each function's types as its building ends: later passes promote its slots)
+        slot_types = {}
+        open_types = {}
+        settle = Gen.settle
+
+        def capture(g, fn, late):
+            settle(g, fn, late)
+            if late:
+                for i in fn.slots:
+                    slot_types[(fn.f.name, i.s)] = i.t
+                types = [i.t for i in fn.slots] + [i.t for b in fn.blocks for i in b.code] + [a.t for b in fn.blocks for i in b.code for a in i.a]
+                open_types[fn.f.name] = sorted({t for t in types if "?" in t or "opt[None]" in t})
+
+        with patch.object(Gen, "settle", capture):
+            Gen().program(Loader([]).program("decided.py", self.SOURCE))
+        self.assertTrue({"evens", "best", "counts", "slots", "empty"}.issubset(open_types), sorted(open_types))
+        self.assertEqual(slot_types[("evens", "xs")], "list[int]")
+        self.assertEqual(slot_types[("best", "b")], "P")
+        self.assertEqual(slot_types[("counts", "d")], "dict[str,int]")
+        self.assertEqual(slot_types[("slots", "out")], "list[opt[str]]")
+        for name in open_types:
+            self.assertEqual(open_types[name], ["list[?]"] if name == "empty" else [], name)
 
 
 if __name__ == "__main__":

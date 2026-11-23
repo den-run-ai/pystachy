@@ -62,19 +62,20 @@ entry:
   ret(str %t2)
 }
 
-function @a_reference_field_while_only_none_reached_it(c: Config) -> None {
-entry:
-  %t1 = field.addr(Config %a0) : &opt[None]
-  mem.store(&opt[None] %t1, opt[None] null)
-  ret.none
-}
-
 ; ---- readings they reject
 
 function @a_field_at_another_type(p: Point) -> None {
 entry:
   ; expected-error {{field.addr result must address the declared member type}}
   %t1 = field.addr index=1 (Point %a0) : &int
+  ret.none
+}
+
+function @a_reference_field_at_its_first_none(c: Config) -> None {
+entry:
+  ; expected-error {{field.addr result must address the declared member type}}
+  %t1 = field.addr(Config %a0) : &opt[None]
+  mem.store(&opt[None] %t1, opt[None] null)
   ret.none
 }
 

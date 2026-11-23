@@ -590,6 +590,9 @@ def gen_none_resolve(self, name: str, t: str) -> None:
         if self.final or self.rtmode or name in self.compvars:
             self.err(f"cannot infer the type of '{name}' from None here; annotate it ({name}: T | None)")
         self.newhints[f"none:{self.fnkey(self.curfn)}|{name}"] = t
+    if t != NONEVAR:
+        self.fn.build.decided[self.lreg[name]] = t  # (the type of its slot, which it took None first in)
+        self.fn.build.settle = True
     self.ltype[name] = t
 
 
@@ -686,6 +689,8 @@ def gen_none_global_resolve(self, name: str, t: str) -> None:
             self.err(f"cannot infer the type of '{short(name)}' from None here; annotate it{self.where_def(name)} ({short(name)}: T | None = None)")
         self.newhints["none-global:" + name] = t
     self.gtypes[name] = t
+    if t != NONEVAR:
+        self.decide_global(name, t)
 
 def gen_none_arms(self, name: str) -> str:
     # T | None for an arm of a value (a if c else b, a or b) that the code of this function (or
@@ -1225,6 +1230,8 @@ def gen_refine(self, name: str, t: str, glob: bool = False) -> None:
     toks = ""
     if name in self.ltype and not glob:
         self.ltype[name] = t
+        self.fn.build.decided[self.lreg[name]] = t
+        self.fn.build.settle = True
         toks = self.lkk.pop(name, "")
         if "?" in self.ret and name in self.qret.get(self.curfn.ll, "").split():
             self.adopt(t)  # the function returned it: so it returns t
@@ -1236,13 +1243,14 @@ def gen_refine(self, name: str, t: str, glob: bool = False) -> None:
         for nm in [name] + self.twins(name):
             if nm == name or "?" in self.gtypes[nm]:
                 self.gtypes[nm] = t
+                self.decide_global(nm, t)
                 toks += " " + self.gkk.pop(nm, "")
     if is_dict(t) and self.key_problem(targs(t)[0]) != "":
         self.err(self.key_problem(targs(t)[0]))
     if is_set(t) and self.elem_problem(selem(t)) != "":
         self.err(self.elem_problem(selem(t)))
     for h in toks.split():
-        self.holes[int(h)] = t
+        self.decide_hole(int(h), t)
         if is_dict(t) or is_set(t):
             self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t))  # (a tuple key's descriptor, a string constant from here on, which lowering prints)
 
@@ -1381,7 +1389,7 @@ def gen_adopt(self, t: str) -> None:
         if "?" in self.ltype[nm]:
             self.refine(nm, t)
     for h in self.qholes.get(self.curfn.ll, []):
-        self.holes[h] = t
+        self.decide_hole(h, t)
         if is_dict(t) or is_set(t):
             self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t))
     for k in self.qroot:
@@ -1392,7 +1400,7 @@ def gen_adopt(self, t: str) -> None:
             for g in self.qchain(self.qroot[k]):
                 if g.ll == self.curfn.ll:
                     for h in self.qholes[k]:
-                        self.holes[h] = t
+                        self.decide_hole(h, t)
                     if is_dict(t) or is_set(t):
                         self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t))
 
@@ -1431,6 +1439,8 @@ def gen_typed_empty(self, v: Val, want: str, f: FnInfo) -> Val:
             i.a = [v]
             i.k = len(self.holes)
             self.holes.append("")
+            self.holeops.append(i)
+            self.holefns.append(self.fn)
             if self.curfn.ll not in self.qholes:
                 self.qholes[self.curfn.ll] = []
             self.qholes[self.curfn.ll].append(i.k)
@@ -1448,6 +1458,8 @@ def gen_typed_empty(self, v: Val, want: str, f: FnInfo) -> Val:
         i = Ins("empty.kind", "", "")
         i.a = [Val(v.v, t)]
         self.put(i, 1)
+    self.fn.build.decided[v.v] = t  # (this call's result, which the template's IR leaves open)
+    self.fn.build.settle = True
     return Val(v.v, t)
 
 def gen_fills(self, body: list[Node], name: str, found: list[Node]) -> bool:

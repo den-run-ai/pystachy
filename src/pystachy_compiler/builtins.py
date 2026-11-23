@@ -967,6 +967,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         vals = [self.as_list(v0, name)]
         fresh = fresh or is_set(v0.t) or self.iter_object(v0.t)  # (the list of a set's elements, or an iterator's items, is a new one)
         if v0.t == "tuple[]" and is_list(w):
+            self.decide_value(vals[0], w)
             vals[0] = Val(vals[0].v, w)  # (list(()) has no item to type: it is the list wanted)
         self.close_temp(args[0], v0)
     elif (name == "sum" or name == "math.prod") and npos == 2 and (self.iterator_call(args[0]) or (args[0].kind == "listcomp" and args[0].s == "gen")):
@@ -2470,6 +2471,8 @@ def gen_as_list(self, v: Val, name: str) -> Val:
         # type it as the list they want, list(()) where a list[str] goes: an atomic array would hide
         # that list's strs from the collector)
         r = self.rt("pys_list_new_atomic" if len(ts) > 0 and atomic_list(self.ctype("list", [et])) else "pys_list_new", "ptr", [f"i64 {len(ts)}"], t=self.ctype("list", [et]) if len(ts) > 0 else "list[?]")
+        if len(ts) == 0:
+            self.decide_value(Val(r, "list[?]"), self.ctype("list", [et]))  # (unless a caller decides another)
         for i in range(len(ts)):
             item = self.tget(v, i)
             if self.ctype("list", [et]) == "list[dyn]":

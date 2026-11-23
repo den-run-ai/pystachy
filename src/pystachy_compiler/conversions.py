@@ -217,6 +217,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return Val("undef", t)
     if v.t == t:
         return v
+    if "?" in v.t:
+        self.decide_value(v, t)  # (an empty container that a typed location takes)
     if t == "dyn":
         # Any has its own integer representation. Preserve the promoting value
         # before the checked conversions into fixed-width storage below.

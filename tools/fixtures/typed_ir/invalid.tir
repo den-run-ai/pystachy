@@ -256,6 +256,23 @@ entry:
   ret(int %t2)
 }
 
+function @a_first_nones_slot_read_as_a_str() -> str {
+  %b.1 = slot name=b : opt[None]
+entry:
+  mem.store(&opt[None] %b.1, opt[None] null)
+  ; expected-error {{mem.load operand 0 reads %b.1 as &str, but it is &opt[None]}}
+  %t2 = mem.load(&str %b.1) : str
+  ret(str %t2)
+}
+
+function @a_list_read_at_a_placeholder() -> int {
+entry:
+  %t1 = rt entry=list.new (int 0) : list[int]
+  ; expected-error {{list.len operand 0 reads %t1 as list[?], but it is list[int]}}
+  %t2 = list.len(list[?] %t1) : int
+  ret(int %t2)
+}
+
 function @another_ops_word_read_as_a_typed_value(s: str) -> str {
   %s.2 = slot name=s : str
 entry:

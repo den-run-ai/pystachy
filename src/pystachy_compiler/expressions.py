@@ -3927,7 +3927,7 @@ def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: 
         self.err("cannot infer the element type of this comprehension")
     t = et if kind == "dict" else self.ctype("list" if kind == "list" else "set", [et])
     if into == "":
-        self.holes[h.k] = t
+        self.decide_hole(h.k, t, False)
         if kind != "list":
             self.key_kind(targs(et)[0] if kind == "dict" else et, kind == "dict")  # (a tuple key's descriptor, a string constant, which lowering prints)
     return Val(res, t)
