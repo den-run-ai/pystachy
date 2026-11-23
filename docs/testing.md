@@ -108,7 +108,9 @@ A traceback containing that message does not pass. Syntax cases also exercise th
 
 `tests/deviations/*.py` use hand-written expectations for the
 [documented differences](language/compatibility.md#deviations-from-cpython). They are kept apart
-from CPython-recorded outputs. The suite covers language behavior, compiler diagnostics,
+from CPython-recorded outputs. An executable's traceback, which names the checkout's files, is
+removed before the comparison, so an uncaught error's expectation is its last line. The suite
+covers language behavior, compiler diagnostics,
 library APIs, upstream-derived cases, files, exceptions and collector stress. Exact current
 counts come from the files and the verification report, rather than a fixed number in this guide.
 
@@ -208,12 +210,17 @@ Use `FILES="..."` to select cases; otherwise the corpus includes the compiler, r
 differential tests, deviations, benchmarks and compile-only IR probes.
 
 The oracle compares emitted IR byte for byte, rejection messages and exit statuses.
-It normalizes each compiler's own library prefix to `lib/` in diagnostic source locations;
-diagnostic text, line numbers, unrelated paths and IR remain significant. Each compiler
+It normalizes each compiler's own library prefix to `lib/` in diagnostic source locations.
+In IR, a string constant whose text is the compiler's real library directory, its home, a
+library module's file or the `ImportError` message naming one becomes `<lib>` or `<home>`,
+with the constant's sizes recomputed. No compiler emits those placeholders, so a relative
+path where the other compiler embeds a real one still differs. Diagnostic text, line
+numbers, unrelated paths and other IR remain significant. Each compiler
 still reads its own library and runtime inputs. Direct executables and Python script
 commands have their homes recognized; unfamiliar wrappers keep raw comparisons.
 Messages with quoted library paths or ambiguous quoting also stay raw so normalization
-cannot hide a change to diagnostic prose.
+cannot hide a change to diagnostic prose; possessives such as `CPython's` and `f()'s` are
+prose, not quotes.
 Use it when a refactor should preserve code generation. An intentional optimization can
 change IR and needs behavioral tests instead.
 
@@ -624,7 +631,7 @@ from the budget. Each test runner uses at most four processes within its worker.
 
 | PR work | Jobs | Coverage |
 |---|---:|---|
-| Linux bootstrap | 1 | x86-64 compiler/runtime fixed points and verified compiler bundle. |
+| Linux bootstrap | 1 | x86-64 compiler/runtime fixed points, one inference attempt for the compiler's source and verified compiler bundle. |
 | Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata. |
 | Native AOT | 4 | Disjoint quarters of the **complete** corpus in AOT; the third worker then runs both runtime-cache checks, side by side, and the fourth checks scaling's second half. |
 | Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers; the first then checks native program-cache invalidation and execution, the second runtime ABI, cache and GC controls. |
@@ -651,7 +658,8 @@ remain independent. Pip downloads are cached by the pinned dependency files.
 The separate full-run qualification job reuses that run's x86-64 bundle and runs
 `python3 tools/check_bootstrap_tier.py build/ci-bootstrap`.
 It forces the production Make recipe to rebuild with an O1 temporary compiler and an O2 final
-compiler, using the same checkout and a private runtime cache. All three compiler and all three
+compiler, using the same checkout and a private runtime cache, with `PYSTACHY_DEBUG_LINES=0` because
+the bundle's `ir` stages have no line tables. All three compiler and all three
 runtime witnesses must match the standard bundle byte for byte; no path normalization is used.
 The check revalidates source, toolchain and run identity after the build and requires the standard
 bundle and verification report to remain unchanged. Consumers continue using the standard O2
@@ -1035,6 +1043,13 @@ prints their logs separately in that order and fails if any suite fails; the sam
 coverage runs for documentation PRs, main and manual runs. The coordinator preserves
 normal SIGINT handling, cancels every process group and reaps the suite processes
 before returning from SIGINT or SIGTERM cancellation.
+
+The verification-harness tests run the real `tests/verify.sh` and Makefile bootstrap with
+compiler doubles. The doubles take their bootstrap stage (`build`, the fixed points' `ir`
+and `rt`, and stage 3's one inference attempt) and the scripts the bootstrap runs from
+`tools/verify_doubles.py`; `tools/test_verify_doubles.py` checks both against
+`tools/self_compile_once.sh`, `tests/verify.sh` and the Makefile. A change to the
+bootstrap's interface is then made in that module, not in each double.
 
 Generated-user and generated-runtime ASan controls run in the existing x86-64
 `safety-1` worker on code PRs and `gc-jit-0` on main pushes and manual runs, using

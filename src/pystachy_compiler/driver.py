@@ -13,6 +13,7 @@ from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.lower_module import OBJHOOKS, OBJHOOKS_MAIN, address_runtime_ir, jit_alloc, unprofiled_generators
 from src.pystachy_compiler.names import RENAMED
 from src.pystachy_compiler.parser import Parser
+from src.pystachy_compiler.source_lines import PROGRAM, SourceLines, wanted
 from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
 from src.pystachy_compiler.syntax import LAMBDAS
 from src.pystachy_compiler.utils import optimizations, timing_end, timing_start
@@ -51,6 +52,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/builtins.py',
     'src/pystachy_compiler/calls.py',
     'src/pystachy_compiler/cached_run.py',
+    'src/pystachy_compiler/class_proof.py',
     'src/pystachy_compiler/class_values.py',
     'src/pystachy_compiler/cache_toolchain.py',
     'src/pystachy_compiler/containers.py',
@@ -95,6 +97,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/specs.py',
     'src/pystachy_compiler/statements.py',
     'src/pystachy_compiler/structs.py',
+    'src/pystachy_compiler/structure.py',
     'src/pystachy_compiler/symbols.py',
     'src/pystachy_compiler/syntax.py',
     'src/pystachy_compiler/templates.py',
@@ -156,6 +159,8 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
     # and leave x an Any value (Gen.ntboxes)
     ntboxes = False
     hierarchies: dict[str, bool] = {}
+    # (the specializations of subclasses whose own __init__ is a template that code made: Gen.tlate)
+    tlate: dict[str, list[str]] = {}
     # The files of modules that opt in to dynamic Any whose classes are read as class boxes, not
     # as typed class objects (Gen.class_value_static): each one whose typed reads a pass did not
     # compile with (ClassBoxes), after which the program is compiled from the start, as if those
@@ -174,6 +179,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
         g.xnot = xnot
         g.xwant = xwant
         g.hierarchies = hierarchies
+        g.tlate = tlate
         g.final = passes >= JOINS
         g.idfull = idfull
         g.idtry = idtry
@@ -215,8 +221,8 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
                 passes = 0
             elif isinstance(retry, ClassBoxes):
                 # (the monotone class-name registry survives, as the identity restart below keeps it)
-                for k in g.clsused:
-                    clsany[k] = True
+                for index in g.clsused:
+                    clsany[index] = True
                 hints = {}
                 xnot = {}
                 xwant = {}
@@ -264,6 +270,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
             slice_eh = False
             ntboxes = False
             hierarchies = {}
+            tlate = {}
             clsany = {}
         finally:
             timing_end("program.attempt", attempt)
@@ -283,6 +290,7 @@ def runtime_ir(path: str, src: str, cache: bool) -> str:
     # llvm-link joins them to runtime.c's code (runtime.c keeps a prototype of each). It imports only
     # builtin modules, and nothing runs its module code, so it holds only functions.
     g = Gen()
+    g.source_lines = SourceLines(wanted(False))  # (PYSTACHY_DEBUG_LINES=1 alone gives runtime.py line tables)
     g.rtmode = True
     g.rtcache = cache  # (the driver's: then PYSTACHY_IRFX prints the program's summaries only)
     had_rt = "_rt" in MODULES
@@ -807,6 +815,13 @@ def doctor() -> int:
     home = compiler_home()
     directory = llvm_dir()
     cache = cached_run.runtime_cache_dir(home)
+    if not cache.startswith("/"):
+        # (a relative PYSTACHY_CACHE, or the home of a compiler run as ./pystachy: the same
+        # directory, named from the root so that the report means the same wherever it is read,
+        # with no file system access: the cache need not exist)
+        while cache.startswith("./"):
+            cache = cache[2:]
+        cache = os.getcwd().rstrip("/") + "/" + cache
     print(compiler_version(home))
     print(f"Runtime cache: {cache}")
     print("LLVM search: " + (directory or "PATH"))
@@ -849,11 +864,13 @@ def print_usage(err: bool) -> None:
     lines = [
         "usage: pystachy run FILE.py [ARGS...]   JIT-compile and run (LLVM ORC)",
         "       pystachy build FILE.py [-o EXE]  compile ahead of time to a native executable",
+        "                    [-O0|-O1|-O2] [-g] PYSTACHY_AOT_OPT, and PYSTACHY_DEBUG_LINES=1, for this build",
         "                    [--emit-ir RAW.ll] retain raw IR after a successful build",
         "       pystachy ext NAME.py [-o NAME.abi3.so]  compile to a CPython extension module (abi3, CPython 3.12+)",
         "                    [--abi abi3t]      for CPython 3.15+, GIL and free-threaded",
         "       pystachy ir FILE.py [-o OUT.ll]  emit LLVM IR",
         "       pystachy check FILE.py           only parse it, with the checks CPython makes before running it",
+        "                    [--semantic]       also compile it as ir does, without LLVM, and report its first error",
         "       pystachy rt runtime.py [-o OUT.ll] emit the LLVM IR of the runtime's part written in the subset",
         "       pystachy doctor                  report the LLVM toolchain and runtime cache",
         "       pystachy --version               show version and source commit",
@@ -866,6 +883,30 @@ def print_usage(err: bool) -> None:
             print(line, file=sys.stderr)
         else:
             print(line)
+
+
+def build_options(argv: list[str]) -> list[str]:
+    # build's -O0, -O1 and -O2 (PYSTACHY_AOT_OPT) and -g (PYSTACHY_DEBUG_LINES=1), anywhere after the
+    # file but as the value of -o or --emit-ir: they set those settings for this build, over the
+    # environment's, before anything reads them, so the caches are keyed as the settings key them.
+    # Other -O spellings stay unused arguments (a warning), as before.
+    kept = argv[:3]
+    i = 3
+    while i < len(argv):
+        a = argv[i]
+        if (a == "-o" or a == "--emit-ir") and i + 1 < len(argv):
+            kept.append(a)
+            kept.append(argv[i + 1])
+            i += 2
+            continue
+        if a == "-O0" or a == "-O1" or a == "-O2":
+            os.environ["PYSTACHY_AOT_OPT"] = a[2:]
+        elif a == "-g":
+            os.environ["PYSTACHY_DEBUG_LINES"] = "1"
+        else:
+            kept.append(a)
+        i += 1
+    return kept
 
 
 def ignored_arguments(cmd: str, args: list[str]) -> None:
@@ -921,18 +962,26 @@ def main() -> None:
             return
         print("pystachy doctor: error: expected no arguments", file=sys.stderr)
         sys.exit(2)
-    known = len(argv) >= 2 and (argv[1] == "run" or argv[1] == "build" or argv[1] == "ext" or argv[1] == "ir" or argv[1] == "check" or argv[1] == "rt")
-    if known and len(argv) >= 3 and (argv[2] == "--help" or argv[2] == "-h") and not os.path.exists(argv[2]):
+    # check --semantic FILE.py, as check FILE.py --semantic (where no file is named --semantic: before,
+    # that one was checked)
+    semantic = False
+    if len(argv) >= 3 and argv[1] == "check" and argv[2] == "--semantic" and not os.path.exists(argv[2]):
+        argv = argv[:2] + argv[3:]
+        semantic = True
+    known_cmd = len(argv) >= 2 and (argv[1] == "run" or argv[1] == "build" or argv[1] == "ext" or argv[1] == "ir" or argv[1] == "check" or argv[1] == "rt")
+    if known_cmd and len(argv) >= 3 and (argv[2] == "--help" or argv[2] == "-h") and not os.path.exists(argv[2]):
         print_usage(False)
         return
-    if len(argv) < 3 or not known:
-        if len(argv) >= 2 and not known:
+    if len(argv) < 3 or not known_cmd:
+        if len(argv) >= 2 and not known_cmd:
             print(f"pystachy: error: unknown command '{argv[1]}'", file=sys.stderr)
         elif len(argv) == 2:
             print(f"pystachy {argv[1]}: error: missing the source file", file=sys.stderr)
         print_usage(True)
         sys.exit(2)
     cmd = argv[1]
+    if cmd == "build":
+        argv = build_options(argv)
     diagnostics.SRC = argv[2]
     if not os.path.exists(diagnostics.SRC):
         fail("file not found", 0)
@@ -976,12 +1025,17 @@ def main() -> None:
         # entry at the next function's address. GCC 8's unwinder then misses its handler.
         jitflags = " -profile-guided-section-prefix=false -trap-unreachable"
     if cmd == "check":
-        f = open(diagnostics.SRC, "r", encoding=RAW)
-        Parser(Lexer(f.read(), 1).file()).module()
-        f.close()
-        ignored_arguments(cmd, argv[3:])
-        timing_end("driver.total", total)
-        return
+        extra = [a for a in argv[3:] if a != "--semantic"]
+        ignored_arguments(cmd, extra)
+        # --semantic: on to the frontend below, which stops once the program is compiled (#261);
+        # without it, only the parse, as CPython makes before running a file
+        semantic = semantic or len(extra) < len(argv) - 3
+        if not semantic:
+            f = open(diagnostics.SRC, "r", encoding=RAW)
+            Parser(Lexer(f.read(), 1).file()).module()
+            f.close()
+            timing_end("driver.total", total)
+            return
     if cmd == "rt":
         f = open(diagnostics.SRC, "r", encoding=RAW)
         frontend = timing_start()
@@ -1022,10 +1076,16 @@ def main() -> None:
     ext = diagnostics.SRC[diagnostics.SRC.rfind("/") + 1 : -3] if cmd == "ext" and diagnostics.SRC.endswith(".py") else ""
     if pcroot != "":
         cached_run.trace("frontend")
+    # an executable, built or cached, has its program's line tables, which its tracebacks read
+    # (runtime.c); code that the JIT runs has them only where PYSTACHY_DEBUG_LINES=1 asks
+    PROGRAM[0] = cmd == "build" or pcroot != ""
     frontend = timing_start()
     ir = compile_program(diagnostics.SRC, f.read(), dirs, ext)
     timing_end("program.frontend", frontend)
     f.close()
+    if cmd == "check":  # (--semantic: what ir would emit is valid; no LLVM, no output)
+        timing_end("driver.total", total)
+        return
     # a program that opts in to neither dynamic Any nor promoting ints: pys_plain, below (read now, as
     # building the runtime compiles runtime.py as a program of its own, which has no opt-in)
     plain = not diagnostics.dynamic_program() and not diagnostics.int_program()
@@ -1092,7 +1152,7 @@ def main() -> None:
     on = optimizations()
     off = [o for o in OPTS if o not in on]
     keyed = flags + ["-fexceptions"]
-    if os.getenv("PYSTACHY_DEBUG_LINES", "") == "1":
+    if wanted(False):
         keyed = keyed + ["PYSTACHY_DEBUG_LINES=1"]
     runtime_inputs = [program_cache.runtime_key()] if pcroot != "" else []
     if len(off) > 0:

@@ -1281,7 +1281,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if is_kw(t) and name == "dict" and len(vals) == 1:
         return self.kw_dict(v)  # (a new dict: CPython's dict(kwargs) copies it too)
     if name == "len":
-        if is_union(unopt(t)) and (all(m == "str" or is_list(m) or is_dict(m) for m in umembers(unopt(t))) or (self.value_union(t) and any(m == "str" or is_list(m) or is_dict(m) for m in umembers(unopt(t))))):
+        if is_union(unopt(t)) and (all(m == "str" or is_list(m) or is_dict(m) for m in umembers(unopt(t))) or (self.value_union(t) and any(m == "str" or is_list(m) or is_dict(m) for m in umembers(unopt(t)))) or self.tuple_union(t)):
             return self.uop(v, "len")  # (a member without a length raises CPython's TypeError: unions.py)
         if t in self.classes and "__len__" in self.classes[t].methods:
             self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
@@ -1317,9 +1317,14 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.as_float(v)
     elif name == "abs" and (t == "int" or t == "bool"):
         v = self.as_int(v)
-        c = self.num_cmp('<', Val(v.v, "int"), Val('0', "int")).v
-        neg = self.iop("-", "0", v.v)
-        return Val(self.select(c, Val(neg, "int"), v), "int")
+        negative = self.num_cmp('<', v, Val('0', 'int'))
+        negated = Val(self.iop("-", "0", v.v), "int")
+        if self.idhere() and t == "int" and (v.idfrom != "" or v.idslot != "" or v.lit):
+            # abs(x) returns x for a nonnegative int. A conditional joins the
+            # selected binding's identity with the fresh result of negation.
+            choice = mk("ifexp", "", self.line, [self.vnode(negative), self.vnode(negated), self.vnode(v)])
+            return self.ifexp(choice, "int")
+        return Val(self.select(negative.v, negated, v), "int")
     elif (name == "hex" or name == "oct" or name == "bin") and (t == "int" or t == "bool"):
         # format()'s alternate form: hex(x) is format(x, "#x"), and hex(True) is '0x1'
         return self.format_(self.as_int(v), mk("str", "#" + ("x" if name == "hex" else name[0]), self.line, []))

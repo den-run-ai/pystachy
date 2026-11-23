@@ -1,0 +1,7 @@
+mods: init mods
+mods.shapes: init mods.shapes
+event e None
+event loose 1
+event x 2 False True
+event loose 3 True True
+[exit 0]

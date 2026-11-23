@@ -49,8 +49,9 @@ LIMITATIONS = ("Proves, in a finite-tag model, that each field a class's code re
                "inspection's class layouts and classes table, that only compiled allocations make "
                "objects of the program's classes, that complete objects' flags are set only after their "
                "fields, the closure layout (cells, environments and Callables), the IR's operand views and "
-               "typed memory; a Callable that escapes lets its environment's objects escape, and a raw "
-               "access of an object under construction counts as an escape")
+               "typed memory; a Callable that escapes lets its environment's objects escape, and other raw "
+               "accesses to an object under construction count as escapes except single-use writes to its "
+               "hidden list/dict header words")
 
 
 def unchecked(layout):
@@ -76,6 +77,45 @@ def class_tables(snapshot):
             view[name] |= unchecked(layouts[line])
             line = classes.get(line, {}).get("base", "")
     return layouts, view
+
+
+def header_store_addresses(fn, layouts):
+    """Addresses used only to write a hidden list/dict header word of a fresh subclass.
+    These stores neither expose the object nor assign a Python-visible field (Gen.binit)."""
+    allocations = {f"%t{op['results'][0]}": layouts[op["type"]]["fields"]
+                   for block in fn["blocks"] for op in block["operations"]
+                   if op["op"] == "alloc.fixed" and len(op["results"]) == 1 and op["type"] in layouts
+                   and layouts[op["type"]]["fields"][:1] in ([" list.0"], [" dict.0"])}
+    if not allocations:
+        return set()
+    stores = {}
+    for block in fn["blocks"]:
+        ops = block["operations"]
+        for addr, store in zip(ops, ops[1:]):
+            if (addr["op"] != "mach.addr" or addr["text"] != "int"
+                    or len(addr["results"]) != 1 or len(addr["operands"]) != 2):
+                continue
+            base, index = addr["operands"]
+            fields = allocations.get(base["value"])
+            if not fields or index["type"] != "int":
+                continue
+            # Compare canonical index strings against the actual exported word and its position.
+            if not any(index["value"] == str(k) and field in (f" list.{k}", f" dict.{k}")
+                       for k, field in enumerate(fields)):
+                continue
+            value = f"%t{addr['results'][0]}"
+            if (store["op"] == "mach.store" and len(store["operands"]) == 2
+                    and store["operands"][0] == {"value": value, "type": "%ptr"}
+                    and store["operands"][1]["type"] == "int"):
+                stores[value] = store
+    if stores:
+        for block in fn["blocks"]:
+            for op in block["operations"]:
+                for pos, arg in enumerate(op["operands"]):
+                    value = arg["value"]
+                    if value in stores and (pos != 0 or op is not stores[value]):
+                        del stores[value]
+    return set(stores)
 
 
 def init_class(fn, layouts):
@@ -535,6 +575,7 @@ class Context:
         self.functions = {f["symbol"]: f for f in snapshot["functions"]}
         self.validated, self.loops, self.graphs, self.callees, self.closures = {}, {}, {}, {}, {}
         self.states = {}
+        self.header_stores = {}
         self.adapters = adapter_targets(self.functions)
 
     def shapes(self, fn):
@@ -559,6 +600,7 @@ class Context:
             try:
                 boundary.normalize_snapshot(dict(self.snapshot, functions=[boundary.word_validation(fn)]), symbol,
                                             certify=False)
+                self.header_stores[symbol] = header_store_addresses(fn, self.layouts)
                 self.validated[symbol] = None
             except boundary.Unsupported as error:
                 self.validated[symbol] = error
@@ -953,6 +995,8 @@ def emit(ctx, fn, contracts, known):
                 for k in sorted(relevant(o)):
                     g.follow({"op": "copy", "dst": field(o, k), "src": const(UNSET)})
                 g.follow({"op": "copy", "dst": results[0], "src": const("obj:" + o)})
+                continue
+            if kind == "mach.addr" and results and results[0] in ctx.header_stores[symbol]:
                 continue
             if kind == "field.addr" and results and results[0] in addresses:
                 continue
