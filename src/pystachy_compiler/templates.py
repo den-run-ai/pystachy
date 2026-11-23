@@ -138,6 +138,14 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
             s.ftypes["__slots__"] = t.ftypes["__slots__"]
         s.fdefault = t.fdefault
         s.fglob = t.fglob
+        for x in t.fields:
+            if c + "." + x in self.cvars or (c + "." + x in self.cstores and x in t.fdefault and not self.is_dc(c)):
+                # (a class variable, C.x = v: its objects read the class's value until they assign
+                # x themselves, whichever specialization they are of; also one that a declaration's
+                # annotation makes before cvar_stores has found the program's stores, cstores,
+                # which then makes the class's global whether or not cvar_stores finds a store)
+                self.cvars[name + "." + x] = True
+                self.cvars[c + "." + x] = True
         fi = FnInfo("__init__", init.ll, init.node, name)
         fi.params = init.params
         fi.ptypes = [name] + ts
@@ -346,6 +354,11 @@ def gen_member_spec(self, p: str, m: str) -> str:
     # share as a template's do: default_home finds each one's class, the one whose body binds it)
     s.fdefault = t.fdefault
     s.fglob = t.fglob
+    for x in t.fdefault:
+        if m + "." + x in self.cvars:
+            # (a class variable, C.x = v, which cvar_stores found for m as for the classes it
+            # derives from: its objects read the class's value, as those of p do, specialize)
+            self.cvars[name + "." + x] = True
     for x in pc.fnone:
         s.fnone[x] = pc.fnone[x]
     for x in pc.fguess:

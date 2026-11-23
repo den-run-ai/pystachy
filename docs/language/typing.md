@@ -1305,8 +1305,12 @@ these objects. Dataclass fields annotated `Any` still require a concrete type.
 
 Each specialization is a distinct static type. One variable or container cannot hold both
 `Box[int]` and `Box[str]`, although both satisfy `isinstance(value, Box)` and use the name
-`Box` in runtime messages. Class attributes are shared. Compiler errors show the differing
-field types.
+`Box` in runtime messages. Class attributes are shared: one assigned through the class
+(`Box.limit = 10`, `cls.limit += 1`) is read with its current value by the objects of every
+specialization that have not assigned it themselves
+([test](../../tests/programs/classes/template_class_variable.py),
+[specializations that annotations name](../../tests/programs/classes/template_class_variable_declared.py)).
+Compiler errors show the differing field types.
 
 A bare class-template annotation such as `-> Box` lets a function infer which specialization
 it uses. Inside the class's own fields and methods, `Box` or `Self` denotes the current
@@ -1364,8 +1368,12 @@ specializations still cannot share one location
 ([test](../../tests/programs/classes/template_subclass_two_specs.py)). `isinstance(x, C)`,
 where `C` is the template or a subclass without an `__init__`, holds for an object of any of
 its specializations or of a class that derives from one
-([test](../../tests/programs/classes/template_subclass_isinstance.py)). These classes are
-still not values: `issubclass()` and `type[C]` reject them.
+([test](../../tests/programs/classes/template_subclass_isinstance.py)). Their objects read
+a class variable of the template with its current value, as the template's objects do, until
+they assign it themselves or a subclass's body binds it again
+([test](../../tests/programs/classes/template_subclass_class_variable.py),
+[specializations that compiled code makes](../../tests/programs/classes/template_subclass_class_variable_late.py)).
+These classes are still not values: `issubclass()` and `type[C]` reject them.
 
 The compiler rejects, with a message that names the limit: a subclass with a secondary base or a
 decorator; an `__init__` that calls `super().__init__(...)` other than once at its top level, or
@@ -1669,7 +1677,10 @@ An annotated `NamedTuple` class supports defaults, methods, unpacking, constant 
 iteration, length, comparisons with tuples, `hash()` (its fields' tuple's), `_make()` (of an
 iterable with as many items as it has fields, else CPython's `TypeError`), `_replace()`, `_fields`
 and `_asdict()` when all fields share a type. Only construction can assign its fields. There is
-no functional `NamedTuple("Name", ...)` form, slicing, or a NamedTuple without fields.
+no functional `NamedTuple("Name", ...)` form, slicing, or a NamedTuple without fields. A class
+that defines `__eq__` but not `__ne__` keeps tuple's `!=`, which compares a tuple and declines
+another value, as an `IntEnum`'s, `IntFlag`'s or `StrEnum`'s keeps int's or str's
+([test](../../tests/programs/classes/ne_builtin_base.py)).
 
 `collections.namedtuple()` makes such a class at compile time: a module's top-level
 `NAME = namedtuple(typename, field_names, *, rename=False, defaults=None, module=None)` with
