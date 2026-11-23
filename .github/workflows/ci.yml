@@ -184,6 +184,7 @@ jobs:
           if node --no-warnings wasm/run.mjs --runtime "$probe/runtime.wasm" "$probe/no-roots.wasm" 2>"$probe/control.err"; then exit 1; fi
           grep -Fxq "missing guest roots: required 8, found 0" "$probe/control.err"
           python3 -m unittest wasm.test_wasmtime wasm.test_wasmtime_codemode
+          wasm/build.sh compiler-wasm
           node --no-warnings --test wasm/test_codemode.mjs
           direct_cases=(tests/programs/apps/ouro2_*.py tests/programs/runtime/rt_float_hex.py
                         tests/programs/strings/str_dict_hash.py tests/programs/language/varargs_tuple_lifetime.py

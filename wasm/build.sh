@@ -9,6 +9,8 @@
 #        wasm/build.sh runtime-wasm            build/wasm/runtime.wasm, the runtime as a module that
 #                                              programs import, if runtime.o or reactor.c changed
 #        wasm/build.sh emitter                 build native tools for source and module-text input
+#        wasm/build.sh compiler-wasm           build/wasm/wasm_from_source.wasm: the source compiler,
+#                                              through LLVM, as a WASI command (codemode.mjs)
 #        wasm/build.sh direct FILE.py OUT.wasm emit from finalized typed IR, exit 3 on refusal
 #        wasm/build.sh link                    stream retained LLVM IR to a WASI command on stdout
 #                                              at -O0 for one-shot calls (WASM_OPT overrides)
@@ -207,7 +209,8 @@ case ${1:-} in
     "${LLVM}clang" --target=$TARGET --sysroot="$SYS" -isystem wasm/include -include pystachy_wasi.h $EMUL \
       -O2 wasm/test_gc_mark.c wasm/wasi_stubs.c -Wl,--fatal-warnings $LIBS -o "$2" ;;
   emitter) emitter ;;
+  compiler-wasm) PYSTACHY_PATH=. program source tools/wasm_from_source.py "$RT/wasm_from_source.wasm" ;;
   direct) [ $# = 3 ] || { echo "usage: wasm/build.sh direct FILE.py OUT.wasm" >&2; exit 2; }; direct "$2" "$3" ;;
   tir) [ $# = 3 ] || { echo "usage: wasm/build.sh tir FILE.py OUT.wasm" >&2; exit 2; }; tir "$2" "$3" ;;
-  *) echo "usage: wasm/build.sh runtime | program FILE.py OUT.wasm | runtime-wasm | emitter | link | {direct|tir} FILE.py OUT.wasm | gc-mark-probe OUT.wasm | gc-globals-probe" >&2; exit 2 ;;
+  *) echo "usage: wasm/build.sh runtime | program FILE.py OUT.wasm | runtime-wasm | emitter | compiler-wasm | link | {direct|tir} FILE.py OUT.wasm | gc-mark-probe OUT.wasm | gc-globals-probe" >&2; exit 2 ;;
 esac
