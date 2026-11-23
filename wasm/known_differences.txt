@@ -98,6 +98,7 @@ io_input_closed_stdout closed-stdio
 
 io_dropped_buffers gc
 lib_gc_collect gc
+lib_threading_lifetime gc
 lib_weakref_callback gc
 lib_weakref_callback_nested gc
 lib_weakref_callback_order gc
@@ -115,38 +116,5 @@ math_more libm
 port_sgp4_api libm
 upstream_math_functions libm
 upstream_math_testfiles libm
-
-builtin_dict_basic #1675
-builtin_dict_bestrel #1675
-builtin_dict_counter #1675
-builtin_dict_gc #1675
-builtin_dict_override #1675
-builtin_dict_quoter #1675
-builtin_list_attrs #1675
-builtin_list_gc #1675
-builtin_list_hashed_seq #1675
-builtin_list_library #1675
-builtin_list_override #1675
-builtin_list_stack #1675
-builtin_list_stack_summary #1675
-builtin_list_token_list #1675
-
-lib_urllib_parse_cache #1695 wasm
-none_field_always #1695
-port_wcwidth_core #1695 wasm
-python_int_tuple_walks #1695
-varargs_stack #1695
-
-getattr_hook_lookup #1696
-upstream_contextlib #1696
-
-bfile_basic #1705
-bfile_readlines_hint #1705
-bfile_stdio_sync #1705
-bfile_truncate_read #1705
-
-float_span #1708
-upstream_float_parse #1708
-upstream_math_fma #1708
 
 recursion_stack_floor #1721
