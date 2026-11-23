@@ -1958,8 +1958,11 @@ as in CPython: `C(items)`, `+=`, `extend()` and `update()` fill the object as th
 where the class defines `append()`, `extend()` or `__setitem__`. Each comparison operator is
 the builtin's unless the class defines that operator's method, so a class that defines
 `__eq__` alone still compares `!=` as the builtin does, and a right operand whose class
-defines the reflected method is asked first. A slice, `+`, `*`, `|` or `copy()` makes a plain
-list or dict, as in CPython. Without `__eq__` and `__hash__` the objects are unhashable, as
+defines the reflected method is asked first. Compared with an object of another class that
+defines the comparison, the object is that method's argument as it is, in either operand order:
+`isinstance(other, C)` holds there and `type(other)` is `C`
+([test](../../tests/programs/classes/builtin_subclass_compared_operand.py)). A slice, `+`, `*`,
+`|` or `copy()` makes a plain list or dict, as in CPython. Without `__eq__` and `__hash__` the objects are unhashable, as
 lists and dicts are.
 
 A dict subclass's `__missing__` is called by `d[key]` and `d[key] op= value` where `key` is not
