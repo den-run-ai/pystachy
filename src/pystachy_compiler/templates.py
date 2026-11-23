@@ -138,6 +138,14 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
             s.ftypes["__slots__"] = t.ftypes["__slots__"]
         s.fdefault = t.fdefault
         s.fglob = t.fglob
+        for x in t.fields:
+            if c + "." + x in self.cvars or (c + "." + x in self.cstores and x in t.fdefault and not self.is_dc(c)):
+                # (a class variable, C.x = v: its objects read the class's value until they assign
+                # x themselves, whichever specialization they are of; also one that a declaration's
+                # annotation makes before cvar_stores has found the program's stores, cstores,
+                # which then makes the class's global whether or not cvar_stores finds a store)
+                self.cvars[name + "." + x] = True
+                self.cvars[c + "." + x] = True
         fi = FnInfo("__init__", init.ll, init.node, name)
         fi.params = init.params
         fi.ptypes = [name] + ts
@@ -247,6 +255,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
                 g = self.declare_fn(d, name)
                 self.lib = False
                 g.mod = s.mod
+                if self.copies:
+                    cls_shared(t, g)
                 s.methods[g.name] = g  # (x.setter: a property's setter)
         if p != "":
             self.inherit(s)  # (then its base's others, as member_spec's)
@@ -307,6 +317,15 @@ def gen_new_tag(self, s: ClassInfo) -> None:
             d.refs[s.tag] = self.sconst(short(s.name))
 
 
+def cls_shared(t: ClassInfo, g: FnInfo) -> None:
+    # g, a specialization's method declared again from its template t's def, is the class method
+    # in which t's uses cls: the def before cls was renamed is theirs both, and that of the copies
+    # that the classes deriving from either have (inherit), so that cls_bound knows them for one
+    # method, not overrides of each other
+    if g.name in t.methods and t.methods[g.name].deco == "classmethod" and t.methods[g.name].clsuse:
+        g.orig = t.methods[g.name].orig
+
+
 def gen_member_spec(self, p: str, m: str) -> str:
     # the specialization of class m, a member of a template hierarchy (tmpl_member: no __init__
     # of its own), whose objects begin as those of p, a specialization of m's base, do, and
@@ -346,6 +365,11 @@ def gen_member_spec(self, p: str, m: str) -> str:
     # share as a template's do: default_home finds each one's class, the one whose body binds it)
     s.fdefault = t.fdefault
     s.fglob = t.fglob
+    for x in t.fdefault:
+        if m + "." + x in self.cvars:
+            # (a class variable, C.x = v, which cvar_stores found for m as for the classes it
+            # derives from: its objects read the class's value, as those of p do, specialize)
+            self.cvars[name + "." + x] = True
     for x in pc.fnone:
         s.fnone[x] = pc.fnone[x]
     for x in pc.fguess:
@@ -382,6 +406,8 @@ def gen_member_spec(self, p: str, m: str) -> str:
                 g = self.declare_fn(d, name)
                 self.lib = False
                 g.mod = s.mod
+                if self.copies:
+                    cls_shared(t, g)
                 s.methods[g.name] = g
         self.inherit(s)
         s.hook = t.hook

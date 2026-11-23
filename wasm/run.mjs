@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 import { WASI } from "node:wasi";
+import { isMainThread, Worker, workerData } from "node:worker_threads";
 import { toolImports } from "./tools.mjs";
 
 const defaultRuntime = new URL("../build/wasm/runtime.wasm", import.meta.url);
@@ -195,7 +196,7 @@ async function main(argv) {
     argv = argv.slice(2);
   }
   if (!argv[0] || argv[0] === "--runtime") {
-    process.stderr.write("usage: node wasm/run.mjs [--runtime RUNTIME.wasm] PROGRAM.wasm [ARGS...]\n");
+    writeSync(2, "usage: node wasm/run.mjs [--runtime RUNTIME.wasm] PROGRAM.wasm [ARGS...]\n");
     return 2;
   }
   return runner(runtime, true)(argv[0], {
@@ -204,6 +205,17 @@ async function main(argv) {
   });
 }
 
-if (import.meta.main ?? (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url)) {
-  process.exitCode = await main(process.argv.slice(2));
+// The CLI runs the guest on a worker thread with a 256 MiB stack: V8's own limit on the main
+// thread, under 1 MiB, ended a recursion that Python's limit allows after about 11,000
+// frames (wasm/README.md). The guest's stdio is the process's descriptors either way.
+const STACK_MB = 256;
+
+if (!isMainThread && workerData?.pystachyRun) {
+  process.exit(await main(workerData.argv));
+} else if (import.meta.main ?? (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url)) {
+  const worker = new Worker(new URL(import.meta.url), {
+    workerData: { pystachyRun: true, argv: process.argv.slice(2) }, resourceLimits: { stackSizeMb: STACK_MB },
+  });
+  worker.on("error", (error) => writeSync(2, `${error?.stack ?? error}\n`));
+  process.exitCode = await new Promise((resolve) => worker.on("exit", resolve));
 }

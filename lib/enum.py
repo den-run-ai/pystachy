@@ -382,18 +382,27 @@ class IntEnum(ReprEnum):
         return False
 
     def __ne__(self, other: object) -> bool:
-        return not self == other
+        # (int's __ne__, which a class that defines its own __eq__ keeps)
+        return not IntEnum.__eq__(self, other)
 
     def __lt__(self, other):
+        if not (isinstance(other, int) or isinstance(other, float) or isinstance(other, IntEnum) or isinstance(other, IntFlag)):
+            return NotImplemented  # (as int's: the other operand's method answers, else CPython's TypeError, which names the operator as written)
         return self._value_ < _int_of(other, self, '<')
 
     def __le__(self, other):
+        if not (isinstance(other, int) or isinstance(other, float) or isinstance(other, IntEnum) or isinstance(other, IntFlag)):
+            return NotImplemented  # (as int's: the other operand's method answers, else CPython's TypeError, which names the operator as written)
         return self._value_ <= _int_of(other, self, '<=')
 
     def __gt__(self, other):
+        if not (isinstance(other, int) or isinstance(other, float) or isinstance(other, IntEnum) or isinstance(other, IntFlag)):
+            return NotImplemented  # (as int's: the other operand's method answers, else CPython's TypeError, which names the operator as written)
         return self._value_ > _int_of(other, self, '>')
 
     def __ge__(self, other):
+        if not (isinstance(other, int) or isinstance(other, float) or isinstance(other, IntEnum) or isinstance(other, IntFlag)):
+            return NotImplemented  # (as int's: the other operand's method answers, else CPython's TypeError, which names the operator as written)
         return self._value_ >= _int_of(other, self, '>=')
 
     def __add__(self, other):
@@ -544,18 +553,27 @@ class StrEnum(ReprEnum):
         return False
 
     def __ne__(self, other: object) -> bool:
-        return not self == other
+        # (str's __ne__, which a class that defines its own __eq__ keeps)
+        return not StrEnum.__eq__(self, other)
 
     def __lt__(self, other):
+        if not (isinstance(other, str) or isinstance(other, StrEnum)):
+            return NotImplemented  # (as str's: the other operand's method answers, else CPython's TypeError)
         return self._value_ < _str_of(other, self, '<')
 
     def __le__(self, other):
+        if not (isinstance(other, str) or isinstance(other, StrEnum)):
+            return NotImplemented  # (as str's: the other operand's method answers, else CPython's TypeError)
         return self._value_ <= _str_of(other, self, '<=')
 
     def __gt__(self, other):
+        if not (isinstance(other, str) or isinstance(other, StrEnum)):
+            return NotImplemented  # (as str's: the other operand's method answers, else CPython's TypeError)
         return self._value_ > _str_of(other, self, '>')
 
     def __ge__(self, other):
+        if not (isinstance(other, str) or isinstance(other, StrEnum)):
+            return NotImplemented  # (as str's: the other operand's method answers, else CPython's TypeError)
         return self._value_ >= _str_of(other, self, '>=')
 
     def __add__(self, other):
@@ -975,18 +993,27 @@ class IntFlag(Flag):
         return False
 
     def __ne__(self, other: object) -> bool:
-        return not self == other
+        # (int's __ne__, which a class that defines its own __eq__ keeps)
+        return not IntFlag.__eq__(self, other)
 
     def __lt__(self, other):
+        if not (isinstance(other, int) or isinstance(other, float) or isinstance(other, IntEnum) or isinstance(other, IntFlag)):
+            return NotImplemented  # (as int's: the other operand's method answers, else CPython's TypeError, which names the operator as written)
         return self._value_ < _int_of(other, self, '<')
 
     def __le__(self, other):
+        if not (isinstance(other, int) or isinstance(other, float) or isinstance(other, IntEnum) or isinstance(other, IntFlag)):
+            return NotImplemented  # (as int's: the other operand's method answers, else CPython's TypeError, which names the operator as written)
         return self._value_ <= _int_of(other, self, '<=')
 
     def __gt__(self, other):
+        if not (isinstance(other, int) or isinstance(other, float) or isinstance(other, IntEnum) or isinstance(other, IntFlag)):
+            return NotImplemented  # (as int's: the other operand's method answers, else CPython's TypeError, which names the operator as written)
         return self._value_ > _int_of(other, self, '>')
 
     def __ge__(self, other):
+        if not (isinstance(other, int) or isinstance(other, float) or isinstance(other, IntEnum) or isinstance(other, IntFlag)):
+            return NotImplemented  # (as int's: the other operand's method answers, else CPython's TypeError, which names the operator as written)
         return self._value_ >= _int_of(other, self, '>=')
 
     def __add__(self, other):

@@ -109,7 +109,12 @@ def gen_materialize(self, f: FnInfo) -> None:
         return
     f.pending = False
     f.node.kids[2] = clone(f.orig.kids[2])
-    rename(f.node.kids[2], f.orig.kids[0].kids[0].s, f.cls)
+    c = f.cls
+    if c in self.classes and self.classes[c].origin in self.classes:
+        # (a specialization's: its template's name, as in the methods declared from the
+        # template's own defs, whose cls(...) makes the specialization that fits the arguments)
+        c = self.classes[c].origin
+    rename(f.node.kids[2], f.orig.kids[0].kids[0].s, c)
     mod = self.flowmod
     self.flowmod = f.mod
     ctx = self.flowctx[f.mod]

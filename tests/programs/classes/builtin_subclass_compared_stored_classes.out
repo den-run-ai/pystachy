@@ -1,0 +1,5 @@
+True True False False
+[[1], [2], [1], [2]] [2] [2]
+False False
+[{'a': 1}, {'a': 1}, {'b': 2}]
+[exit 0]

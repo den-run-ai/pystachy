@@ -75,12 +75,13 @@ PROGRAM = """
     rtcache externs deps comp flowctx closures clokeys adapters adrets ncv dispatchers cacheforms decorated
     decoexprs cvos ngenexp vowned gendrops gproto excread causeread coros tbaa tbaacls vrets vconst vcalls ncasts keykinds builtkinds
     gkk holes twin_of twin_set origin inits mfile compiled pending qret qholes qused qforward qroot
-    inited guessed galias nts cnts ntdflts hasfrozen cvars typevars tvtuples tvdefaults tparams
+    inited guessed galias nts cnts ntdflts hasfrozen cvars cstores typevars tvtuples tvdefaults
+    tparams
     pep695 taliases recursive reflrecs reflstores refllate refltexts rtdatas dyntypes dynclasses
     dynfns dynkeys dynlines dynsig dynfuncs dynfnt dynboxes dynwide dynrets dynrline dynseen gidbox
     idoff idfull idevent idsplit idtry idhint gendrops_counted genplain rdpass entries resumes_counted
     genargs earlycopies sentinelglobals globvalues globowners globalts pseq pcall pstamps plogk plogv pdry
-    implicitgen iterabc clsany clsused clsbodies clsannfiles clsann bsubn bsub
+    implicitgen iterabc clsany clsused clsbodies clsannfiles clsann bsubn bsub trials copies
 """.split()
 # Gen's fields that hold a module's state, one lowering's, or one operation's, which the operation
 # sets and then restores or clears: a nested compile that starts inside the operation sees them.
