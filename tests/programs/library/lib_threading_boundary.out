@@ -1,0 +1,6 @@
+[] {} 0.0 False
+(1,) {'tag': 'k'} 0.0 False
+[True, True]
+(2,) {} 5.0 True False
+3 1 K
+[exit 0]
