@@ -675,7 +675,7 @@ boundaries documented below and under [Deviations](#deviations).
 | Category | Operations |
 | --- | --- |
 | Operators | Arithmetic, comparisons, truth, `is`, `in` and augmented assignment |
-| Containers | Indexing; str/list/tuple slicing; item assignment and deletion; unpacking; `len()`; `list()`; `dict.update()` |
+| Containers | Indexing; str/list/tuple slicing; item assignment and deletion; unpacking; `len()`; `list()`; `tuple()`; `dict()`; `dict.update()` |
 | Conversion and formatting | `str()`, `repr()`, `int()`, `float()`, `bool()`, `abs()`, `hash()`, `id()`, f-strings and `format()` |
 | Reductions and ordering | `sum()`, `sorted()`, `min()` and `max()`, including streamed generators |
 | Iteration | `iter()`, `next()` with an optional default, and `reversed()`; see [Iteration](#iteration) |
@@ -744,10 +744,15 @@ a new magnitude, subject to the small-integer cache.
 
 ### Dictionary union and updates
 
-`dict.update()` accepts a dict or pairs, where each pair is an iterable of two
-items. Dict union `d | e` makes a new dict, with the right dict's values taking precedence. `d |= e`
-updates the existing dict through `dict.update()`, accepting a dict or builtin iterable of
-pairs and preserving aliases. Its key comparisons may run user code. A dict's `|=` updates or
+`dict.update()` accepts a dict, an object whose class has `keys()`, or pairs, where each pair
+is an iterable of two items. It takes such an object as CPython's `dict_update_arg` takes a
+mapping that is no dict: its `keys()` first, as a list, then `x[k]` for each key in turn, never
+its iteration as pairs; a class without `__getitem__` raises CPython's `TypeError` at the first
+key (`tests/programs/inference/dynany_update_mapping.py`). `dict(x)` of an `Any` value is a new
+dict updated so, and `tuple(x)` the tuple `x` holds itself, else a new tuple of the items its
+iteration gives (`dynany_tuple_of.py`). Dict union `d | e` makes a new dict, with the right dict's
+values taking precedence. `d |= e` updates the existing dict through `dict.update()`, accepting
+the same values and preserving aliases. Its key comparisons may run user code. A dict's `|=` updates or
 raises before considering a right operand's reflected operator, as CPython does (#810).
 
 ### Runtime dispatch
@@ -973,7 +978,13 @@ methods, identity-first container matches and supported operand types remain ava
 #### Literal-name attribute reads
 
 A literal-name `getattr(value, "field", default)` through `Any` evaluates its default before
-lookup and catches only `AttributeError`, including from a property getter. Comparison
+lookup and catches only `AttributeError`, including from a property getter. A number's `real`,
+`imag`, `numerator` and `denominator` are CPython's (an int's and a float's `real` the number
+itself; `tests/programs/inference/dynany_builtin_attributes.py`). A literal-name
+`hasattr(value, "name")` answers as `hasattr()` of a typed object of the value's class does (a
+field `__init__` may leave unassigned, a property's getter), and for a builtin type by CPython
+3.13's attributes; a function, a class or an iterator held as an `Any` value raises
+`NotImplementedError` (`dynany_hasattr.py`). Comparison
 bodies using it execute normally; a missing field is not a reason to skip the method
 (`tests/programs/inference/dynany_cmp_getattr_default.py`).
 
@@ -1151,8 +1162,8 @@ can still need an explicit `list[Any]` destination.
   boundary described in [The typed/dynamic contract](#the-typeddynamic-contract).
 
 - Rejected at compile time where an argument is an `Any` value: `divmod()`, `round()`,
-  `chr()`, `ord()`, `bin()`, `hex()`, `oct()`, `dict()`, `tuple()` (`tuple(list(x))` works),
-  `hasattr()`, `setattr()` and `del` of an attribute. Literal-name `getattr()` uses
+  `chr()`, `ord()`, `bin()`, `hex()`, `oct()`, `hasattr()` and `setattr()` of a name only the
+  run time knows, and `del` of an attribute. Literal-name `getattr()` uses
   dynamic attribute lookup, including the default form described under
   [Literal-name attribute reads](#literal-name-attribute-reads); this
   does not establish general runtime-name reflection. The supported forms of
