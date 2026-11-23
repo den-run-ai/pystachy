@@ -4,7 +4,7 @@ from src.pystachy_compiler.diagnostics import fail, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, slot_register, tmpname, one_num
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.lower_module import const_slot, struct_types
-from src.pystachy_compiler.specs import CHECKED, CLASSREC_LL, COMPLEXC, DYNTYPE_LL, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, RTRECORDS, RT_TBAA, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
+from src.pystachy_compiler.specs import CHECKED, CLASSREC_LL, COMPLEXC, CONTAINER_HEADERS, DYNTYPE_LL, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, RTRECORDS, RT_TBAA, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, gelem, generator_identity, generator_slots, identity_abi, numeric_identity, is_dict, is_tuple, lt, rt_record_ll, selem, takes_self, targs, tslots
 
 
@@ -58,7 +58,7 @@ def gen_lower(self, fn: IFn) -> None:
             o.append(f"  store {lt(i.t)} zeroinitializer, ptr {r}")
     self.source_lines.mark(o, prologue, scope, 0)
     for b in fn.blocks:
-        if b.label != "entry" and b.label != "":
+        if b.label != "entry":
             o.append(b.label + ":")
         self.lowblk = b.label
         for i in b.code:
@@ -283,6 +283,10 @@ def gen_field_tag(self, c: str, k: int) -> str:
     ci = self.classes[c]
     while ci.base in self.classes and k < len(self.classes[ci.base].fields) + self.classes[ci.base].nflag + self.classes[ci.base].nbox:
         ci = self.classes[ci.base]
+    # The same header is also accessed through its builtin container view.
+    # A class-field tag would tell LLVM these stores cannot alias @list loads.
+    if k < len(ci.fields) and ci.fields[k].startswith((" list.", " dict.")):
+        return ""
     key = f"{ci.name} {k}"
     if key not in self.tbaa:
         if ci.name not in self.tbaacls:  # (once a class: its struct has as many members as fields)
@@ -330,6 +334,9 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
             # (runtime mode: a field of one of runtime.c's records, or the address past it)
             element = rt_record_ll(i.s[4:])
             index = f"i32 0, i32 {i.a[1].v}" if int(i.a[1].v) < len(RTRECORDS[i.s[4:]].split()) else "i64 1"
+        elif i.s in ("list.header", "dict.header"):
+            element = "{" + ", ".join([lt(t) for t in CONTAINER_HEADERS[i.s[:-7]]]) + "}"
+            index = f"i32 0, i32 {i.a[1].v}"
         else:
             element = lt(i.s)
             index = f"i64 {i.a[1].v}"
@@ -449,7 +456,8 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         # (None: null, but a dynamic value's, which is its constant box: dynamic.py)
         o.append("  ret void" if fn.f.ret == "None" else f"  ret ptr {self.rtdata('pys_dyn_none_box')}" if fn.f.ret == "dyn" else "  ret ptr null")
     elif op == "raise":
-        o.append(f"  call void @pys_raise(ptr {i.a[0].v}, ptr {i.a[1].v})")
+        # (nomerge: with line tables, LLVM keeps each raise apart, whose line a traceback shows)
+        o.append(f"  call void @pys_raise(ptr {i.a[0].v}, ptr {i.a[1].v}){' nomerge' if self.source_lines.enabled else ''}")
         o.append("  unreachable")
     elif op == "unreachable":
         o.append("  unreachable")
@@ -544,7 +552,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append(f"  store ptr {tmpname(r[1])}, ptr {i.a[0].v}")
         o.append(f"  br label %{i.b[0]}")
     elif op == "throw":
-        o.append(f"  call void @pys_throw(ptr {i.a[0].v})")
+        o.append(f"  call void @pys_throw(ptr {i.a[0].v}){' nomerge' if self.source_lines.enabled else ''}")
         o.append("  unreachable")
     elif op == "exc.match":
         o.append(f"  {tmpname(i.r[0])} = call i64 @pys_exc_in(ptr {i.a[0].v}, ptr {i.a[1].v})")

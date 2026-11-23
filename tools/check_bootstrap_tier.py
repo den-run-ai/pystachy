@@ -37,7 +37,9 @@ def qualify(directory, root=ROOT):
             env = {key: value for key, value in os.environ.items()
                    if not key.startswith("PYSTACHY_") and key not in
                    ("MAKEFLAGS", "MFLAGS", "MAKEOVERRIDES", "MAKEFILES", "GNUMAKEFLAGS")}
-            env.update(PYSTACHY_HOME=str(root), PYSTACHY_JOBS="2")
+            # The bundle's stages come from `ir`, which omits line tables; `build` adds them
+            # unless PYSTACHY_DEBUG_LINES=0, so Make's witnesses would differ in metadata alone.
+            env.update(PYSTACHY_HOME=str(root), PYSTACHY_JOBS="2", PYSTACHY_DEBUG_LINES="0")
             if "PYSTACHY_LLVM" in os.environ:
                 env["PYSTACHY_LLVM"] = os.environ["PYSTACHY_LLVM"]
             with tempfile.TemporaryDirectory(prefix="cache-", dir=output) as cache:

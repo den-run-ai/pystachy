@@ -777,7 +777,7 @@ def gen_read(self, n: Node) -> Val:
         if name in self.gidbox and self.idhere():
             self.dyn_id_read(val, self.gidbox[name])  # (its binding's object, as an Any value: dyn_box)
         return val
-    if name not in self.ltype and name not in self.gtypes and name not in self.funcs and name not in self.aliases and name in self.classes and (self.classes[name].exc != "" or self.dyn_policy(n.line) or self.class_value_named(name)):
+    if name not in self.ltype and name not in self.gtypes and name not in self.funcs and name not in self.aliases and name in self.classes:
         self.class_ready(n)  # (a class value is unbound before its class statement runs)
     return self.load_name(name)
 

@@ -12,9 +12,9 @@ import _thread
 import warnings
 
 from time import monotonic as _time
-# Pystachy port: no WeakSet (weak containers are not supported): _dangling is a set (see there)
+from _weakref import ref, ReferenceType  # Pystachy port: typed references for _dangling
 from itertools import count as _count
-from typing import Any  # Pystachy port: (Thread's target and arguments are Any values)
+from typing import Any, Iterator  # Pystachy port: (Thread's target and arguments are Any values)
 
 
 # Pystachy port: id() of an object of a class, which its reprs show, of it as an Any value (id() of
@@ -902,8 +902,33 @@ _active_limbo_lock = RLock()
 # Pystachy port: annotated (an empty dict's types)
 _active: dict[int, "Thread"] = {}    # maps thread id to Thread object
 _limbo: dict["Thread", "Thread"] = {}
-# Pystachy port: a set, which keeps its threads (no weak containers)
-_dangling: set["Thread"] = set()
+# Pystachy port: WeakSet is not supported. Keep typed weak references and
+# remove each handle when the collector reports its thread has gone away.
+class _DanglingThreads:
+    def __init__(self) -> None:
+        self.refs: set[ReferenceType[Thread]] = set()
+
+    def add(self, thread: "Thread") -> None:
+        self.refs.add(ref(thread, self._remove))
+
+    def _remove(self, handle: "ReferenceType[Thread]") -> None:
+        self.refs.discard(handle)
+
+    def __iter__(self) -> "Iterator[Thread]":
+        # Calling a reference can run queued callbacks that remove handles.
+        for handle in list(self.refs):
+            thread = handle()
+            if thread is not None:
+                yield thread
+
+    def __len__(self) -> int:
+        return sum(1 for thread in self)
+
+    def __contains__(self, thread: "Thread") -> bool:
+        return ref(thread) in self.refs
+
+
+_dangling = _DanglingThreads()
 
 
 # Main class for threads

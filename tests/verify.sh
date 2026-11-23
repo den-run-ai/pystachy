@@ -2,7 +2,8 @@
 # Verification harness: every check below runs (a failing step does not stop the others) and the
 # results go to build/verification.json -- per step: name, pass/fail, duration, counts -- with the
 # toolchain versions, git commit and a timestamp. Exit status 0 only if every step passed.
-#   bootstrap      CPython -> stage1 -> stage2 -> stage3 compilers emit identical LLVM IR
+#   bootstrap      CPython -> stage1 -> stage2 -> stage3 compilers emit identical LLVM IR, and stage 3
+#                  infers the compiler's types in one attempt (tools/self_compile_once.sh)
 #   tests-cpython  the CPython-hosted compiler against stage 2 on every case of the corpus
 #                  (tools/irsame.sh): the same IR (`ir`, `rt` for rtmode_*), messages and exit status,
 #                  byte for byte, and the same `check` output and status for each syntax_*.py, so that
@@ -404,7 +405,7 @@ else
     "$V/pystachy1" build pystachy.py -o "$V/pystachy2" &&
     t0=$(now) && $PY pystachy.py ir pystachy.py -o "$V/stage1.ll" &&
     t1=$(now) && "$V/pystachy1" ir pystachy.py -o "$V/stage2.ll" &&
-    t2=$(now) && "$V/pystachy2" ir pystachy.py -o "$V/stage3.ll" && t3=$(now) &&
+    t2=$(now) && tools/self_compile_once.sh "$V/pystachy2" "$V/stage3.ll" && t3=$(now) &&
     cmp "$V/stage1.ll" "$V/stage2.ll" && cmp "$V/stage2.ll" "$V/stage3.ll" &&
     echo "fixed point: stage1 == stage2 == stage3 ($(lines "$V/stage1.ll") lines of IR)" &&
     $PY pystachy.py rt runtime.py -o "$V/rt1.ll" && "$V/pystachy1" rt runtime.py -o "$V/rt2.ll" &&

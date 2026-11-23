@@ -1,0 +1,43 @@
+False False True True
+False False True True
+False False True True
+False False True True
+False False True True
+False False True True
+False False True True
+False False True True
+False False True True
+Size.__eq__(list)
+Size.__eq__(list)
+Size.__eq__(list)
+Size.__eq__(list)
+True True False False
+Size.__eq__(dict)
+Size.__eq__(dict)
+Size.__eq__(dict)
+Size.__eq__(dict)
+True True False False
+Size.__eq__(tuple)
+Size.__eq__(tuple)
+Size.__eq__(tuple)
+Size.__eq__(tuple)
+True True False False
+Size.__eq__(bytes)
+Size.__eq__(bytes)
+Size.__eq__(bytes)
+Size.__eq__(bytes)
+True True False False
+Size.__eq__(set)
+Size.__eq__(set)
+Size.__eq__(set)
+Size.__eq__(set)
+True True False False
+Size.__eq__(list)
+Size.__eq__(list)
+False False
+Size.__eq__(other)
+Size.__eq__(other)
+Size.__eq__(other)
+Size.__eq__(other)
+False False False False
+[exit 0]

@@ -2,6 +2,7 @@
 from contextlib import redirect_stderr
 from io import StringIO
 from pathlib import Path
+import re
 import sys
 import unittest
 from unittest.mock import patch
@@ -78,6 +79,29 @@ class TypedMachineMemoryTests(unittest.TestCase):
                                 ("mach.load", "float", "length"),
                                 ("mach.store", "%ptr", "bytes")):
             self.assert_bad(memory(op, t, metadata))
+
+    def test_container_subclass_header_stores_have_no_class_field_tbaa(self):
+        source = """class Rows(list[int]):
+    def __init__(self):
+        self.tag = 11
+
+class Index(dict[str, int]):
+    def __init__(self):
+        self.tag = 22
+
+print(Rows().tag + Index().tag)
+"""
+        ir = Gen().program(Loader([]).program("header.py", source))
+        init = ir.split("define internal void @main.init() {", 1)[1].split("\n}", 1)[0]
+        for cls, count in [("Rows", 4), ("Index", 12)]:
+            fields = re.findall(rf"(%t\d+) = getelementptr %C\.{cls}, ptr %t\d+, i32 0, i32 (\d+)", init)
+            header = {int(index): addr for addr, index in fields if int(index) < count}
+            self.assertEqual(set(header), set(range(count)))
+            for addr in header.values():
+                self.assertRegex(init, rf"(?m)^  store (?:i64|ptr) %t\d+, ptr {addr}$")
+        # Ordinary Python fields following either prefix still have their alias tags.
+        for value in [11, 22]:
+            self.assertRegex(ir, rf"store i64 {value}, ptr %t\d+, !tbaa !\d+")
 
     def test_storage_rejects_malformed_operands_types_results_and_metadata(self):
         for op in ("mach.load", "mach.store"):

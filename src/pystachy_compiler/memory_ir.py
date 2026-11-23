@@ -5,7 +5,7 @@ operations also cover closure environments, runtime headers and byte buffers.
 """
 from __future__ import annotations
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, tmpname
-from src.pystachy_compiler.specs import RTRECORDS, RT_TBAA
+from src.pystachy_compiler.specs import CONTAINER_HEADERS, RTRECORDS, RT_TBAA
 from src.pystachy_compiler.utils import RT_VARS
 
 
@@ -36,13 +36,15 @@ def gen_verify_memory(self, fn: IFn, b: Blk, i: Ins, slots: bool) -> None:
     # hold a packed slot *T of a native T, and a store may write one as %slot
     if i.op == "mach.addr":
         record = i.s[4:] if i.s.startswith("rec.") else ""
-        if len(i.a) != 2 or i.t != "%ptr" or (i.s not in ["int", "%ptr", "%byte", "%i32", "dyntype", "classrec"] and record not in RTRECORDS) or i.x != "" or i.k not in [0, 1] or len(i.b) != 0:
+        if len(i.a) != 2 or i.t != "%ptr" or (i.s not in ["int", "%ptr", "%byte", "%i32", "dyntype", "classrec", "list.header", "dict.header"] and record not in RTRECORDS) or i.x != "" or i.k not in [0, 1] or len(i.b) != 0:
             self.bad_ir(fn, b, "mach.addr needs a machine element type and inbounds flag")
         if i.a[0].t != "%ptr" or i.a[1].t != "int":
             self.bad_ir(fn, b, "mach.addr needs a machine pointer and int index")
         if record != "" and (not self.rtmode or i.a[1].v not in [str(j) for j in range(len(RTRECORDS[record].split()) + 1)]):
             # (a field of one of runtime.c's records, or one past the last: the record's size)
             self.bad_ir(fn, b, "mach.addr needs a field of the runtime record, in runtime mode")
+        if i.s in ("list.header", "dict.header") and i.a[1].v not in [str(k) for k in range(len(CONTAINER_HEADERS[i.s[:-7]]))]:
+            self.bad_ir(fn, b, "mach.addr needs a valid container header field index")
         if i.s == "dyntype" and i.a[1].v not in ["2", "3", "5"]:
             self.bad_ir(fn, b, "mach.addr needs a DynType name, class or flags field")
         if i.s == "classrec" and i.a[1].v != "3":

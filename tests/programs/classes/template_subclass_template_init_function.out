@@ -1,0 +1,4 @@
+0.5 ring 2 beep
+ring False
+ring True
+[exit 0]

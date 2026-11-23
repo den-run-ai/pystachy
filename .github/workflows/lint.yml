@@ -77,6 +77,7 @@ jobs:
           cd tools/lean_boundary
           PATH="$lean_bin:$PATH" lake build
           PATH="$lean_bin:$PATH" python3 ../check_lean_wasm_frame.py
+          PATH="$lean_bin:$PATH" python3 ../check_lean_wasm_dispatch.py
 
       - name: Validate GitHub Actions workflows (actionlint)
         env:
@@ -128,6 +129,7 @@ jobs:
           python3 -m unittest discover -s tools -p test_wasm32_ir.py
           python3 -m unittest discover -s tools -p test_tir_wasm.py
           python3 -m unittest discover -s tools -p test_wasm_from_source.py
+          python3 -m unittest discover -s tools -p test_wasm_check_corpus.py
           node --no-warnings --test wasm/test_runner.mjs wasm/test_tools.mjs
 
       - name: Example benchmark validation tests
@@ -174,6 +176,9 @@ jobs:
 
       - name: Function-local join retry controls
         run: python3 -m unittest discover -s tools -p test_local_join_retry.py
+
+      - name: One-attempt self-compilation check and restart report
+        run: python3 -m unittest discover -s tools -p test_inference_restarts.py
 
       - name: microGPT graph parity and benchmark contract tests
         run: python3 -m unittest discover -s tools -p test_bench_microgpt.py

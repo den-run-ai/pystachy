@@ -2085,8 +2085,7 @@ def gen_nullcheck(self, fn: IFn) -> int:
     # children below)
     at: dict[str, int] = {}
     for j in range(nb):
-        if fn.blocks[j].label != "":
-            at[fn.blocks[j].label] = j
+        at[fn.blocks[j].label] = j
     so = [0] * (nb + 1)
     sx: list[int] = []
     npred = [0] * nb
@@ -2263,9 +2262,7 @@ def gen_nullcheck(self, fn: IFn) -> int:
     drop = [False] * nb  # the blocks that go
     if len(dead) > 0:
         for j in range(nb):
-            b = fn.blocks[j]
-            t = b.code[len(b.code) - 1]
-            drop[j] = b.label in dead or (b.label == "" and t.op == "br" and t.b[0] in dead)
+            drop[j] = fn.blocks[j].label in dead
     # a block that only such a br goes to joins it, but for a block that a loop's or a try
     # statement's shape names, or that starts with a phi or a landing op
     pin: dict[str, bool] = {"entry": True}

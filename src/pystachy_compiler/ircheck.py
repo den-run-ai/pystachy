@@ -1,9 +1,11 @@
 """Ircheck component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.class_proof import ClassProof
 from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_lists, int_program
 from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, merged_blocks, operand_kind, slot_register, tmpname, value_definitions
 from src.pystachy_compiler.scalar_ir import SCALAR_INTS
+from src.pystachy_compiler.structure import Structure
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.union_proof import UnionProof, private_optional_reads, simple_union_proof
 from src.pystachy_compiler.specs import BIG, CAST_KINDS, EMPTYFS, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RTPTR, RUNTIME, TYPE_CLASSES
@@ -516,6 +518,85 @@ def optional_reads(self, fn: IFn, types: dict[str, str], makers: dict[str, str])
     return found
 
 
+def class_reads(self, fn: IFn, types: dict[str, str]) -> dict[str, dict[str, bool]]:
+    # The values of fn that an operand reads at a class that their definition's class does not
+    # derive from (the class view that narrows, specs.TYPE_VIEWS: a derived class, or a class
+    # that may share an object with it), with the classes they are read at; and a member cast's
+    # value, which only code that a test of the object's class leads to reads (CAST_KINDS), at
+    # its class wherever it is read. ClassProof must show the object's class derived from each
+    members: dict[str, str] = {}
+    for b in fn.blocks:
+        for i in b.code:
+            if i.op == "cast" and i.s == "member" and len(i.r) == 1:
+                members[tmpname(i.r[0])] = i.t
+    found: dict[str, dict[str, bool]] = {}
+    for b in fn.blocks:
+        for i in b.code:
+            if i.op == "ptr.cmp":
+                continue  # (it compares identities, or tests for None, which no class changes)
+            for a in i.a:
+                d = types.get(a.v, "")
+                if a.v in members or (d != "" and d != a.t and narrows_class(self, d, a.t)):
+                    if a.v not in found:
+                        found[a.v] = {}
+                    found[a.v][members[a.v] if a.v in members else a.t] = True
+    return found
+
+
+def union_reads(self, fn: IFn, types: dict[str, str]) -> dict[str, dict[str, bool]]:
+    # The values of a closed union that an operand reads at a union without some member of
+    # theirs (the class view's "closed union read as one with a common member" that narrows),
+    # with the types they are read at: the union proof must show the box holds none of those
+    found: dict[str, dict[str, bool]] = {}
+    for b in fn.blocks:
+        for i in b.code:
+            for a in i.a:
+                d = types.get(a.v, "")
+                if d != "" and d != a.t and narrows_union(self, d, a.t):
+                    if a.v not in found:
+                        found[a.v] = {}
+                    found[a.v][a.t] = True
+    return found
+
+
+def narrows_union(self, d: str, u: str) -> bool:
+    # does a union u lack a member of union d: one that is neither among u's members nor a class
+    # derived from one of them
+    x = unopt(d)
+    y = unopt(u)
+    if not is_union(x) or not is_union(y):
+        return False
+    ys = umembers(y)
+    for m in umembers(x):
+        if m not in ys and not (m in self.classes and len([c for c in ys if c in self.classes and self.derives(m, c)]) > 0):
+            return True
+    return False
+
+
+def narrows_class(self, d: str, u: str) -> bool:
+    # does an operand of class u read a value of type d, an object (or None) of a class that the
+    # class view relates to u (related) but that need not derive from u. (The view rejects a
+    # reading of an unrelated class itself)
+    x = unopt(d)
+    y = unopt(u)
+    return x != y and y in self.classes and (x in self.classes or x == "object") and related(self, x, y) and not self.derives(x, y)
+
+
+def class_members(self, fn: IFn, types: dict[str, str], reads: dict[str, dict[str, bool]]) -> dict[str, list[str]]:
+    # for each class that fn's values, slots and class reads name, the classes that may have
+    # objects (not those bad_class excluded) and derive from it, sorted: ClassProof's domains
+    names: dict[str, bool] = {}
+    for t in list(types.values()) + [i.t for i in fn.slots] + [t for v in reads for t in reads[v]]:
+        c = unopt(t)
+        for m in (umembers(c) if is_union(c) else [c]):
+            if m in self.classes:
+                names[m] = True
+    out: dict[str, list[str]] = {}
+    for c in names:
+        out[c] = sorted([x for x in self.classes if not self.classes[x].excluded and self.classes[x].bad == "" and self.derives(x, c)])
+    return out
+
+
 def narrows_none(self, d: str, u: str, rt_result: bool, rt_operand: bool) -> bool:
     # does an operand of type u read a value of type d, an opt[U], at a type that holds no None
     # (U, or a type that a view reads U as), so that the read needs a proof that it is not None
@@ -636,6 +717,32 @@ def value_types(self, fn: IFn, types: dict[str, str] | None = None, makers: dict
                             self.bad_ir(fn, b, f"{i.op} operand {j} reads {v} as {u}, where {first[v]} reads it as {read[v]}")
 
 
+def check_structure(self, fn: IFn, at: dict[str, int]) -> None:
+    # fn's control flow is structured (structure.py): reducible, so that each cycle has one entry,
+    # which dominates it. Each loop record names blocks of fn, and where its head is the head of a
+    # loop of the flow, its body, step and tests are blocks of that loop and its exit is not. (A
+    # record's head may be no loop's head, where every path through its body leaves the loop, and
+    # its exit may be reached around it, from a test before the loop: neither is an error.)
+    s = Structure(fn)
+    for e in s.irreducible():
+        head = fn.blocks[e[1]].label
+        self.bad_ir(fn, fn.blocks[e[0]], f"a branch to {head}, which closes a cycle that {head} does not dominate: control flow that is not structured")
+    for lp in fn.loops:
+        for l in [lp.head, lp.body, lp.step, lp.exit] + lp.tests:
+            if l != "" and l not in at:
+                self.bad_ir(fn, fn.blocks[0], f"the loop at {lp.head} names {l}, which is no block of it")
+        if lp.head == "" or not s.reached(at[lp.head]):
+            continue
+        blocks = s.loop(at[lp.head])
+        if len(blocks) == 0:
+            continue
+        for l in [lp.body, lp.step] + lp.tests:
+            if l != "" and s.reached(at[l]) and at[l] not in blocks:
+                self.bad_ir(fn, fn.blocks[at[lp.head]], f"the loop at {lp.head} names {l}, which is not one of its blocks")
+        if lp.exit != "" and at[lp.exit] in blocks:
+            self.bad_ir(fn, fn.blocks[at[lp.head]], f"the loop at {lp.head} exits to {lp.exit}, one of its own blocks")
+
+
 def verify_dynamic_raw(self, fn: IFn) -> None:
     # Raw dynamic payload bits are only an identity-comparison input: a bits cast reads them as
     # an int, which only a direct integer equality comparison reads. Collect all producers
@@ -663,7 +770,9 @@ def verify_dynamic_raw(self, fn: IFn) -> None:
 def gen_verify(self, fn: IFn, eh: bool) -> None:
     # PYSTACHY_IRCHECK=1: fn is well formed. Every op is in IROPS, an rt op's key in RUNTIME;
     # call and init ops call compiled
-    # functions (or, in runtime mode, runtime.c's functions that runtime.py declares); every block ends with its one terminator; branches go to blocks of fn; a phi
+    # functions (or, in runtime mode, runtime.c's functions that runtime.py declares); every block
+    # has a label of its own, the first block's being entry; every block ends with its one
+    # terminator; branches go to blocks of fn, and the flow is structured (check_structure); a phi
     # starts its block, and its predecessors branch there; each op holds exactly the numbers
     # its lowering prints (Ins.r), and no number or label is above IFn.n. Exceptions (once the
     # passes of eh_ir have run, eh): a landing op is alone in its block, which only the unwind
@@ -709,6 +818,10 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
             self.bad_ir(fn, fn.blocks[0], f"slot {slot_register(i)} has no source line")
     for j in range(len(fn.blocks)):
         l = fn.blocks[j].label
+        if l == "":
+            self.bad_ir(fn, fn.blocks[j], f"block {j} without a label")
+        if (j == 0) != (l == "entry"):
+            self.bad_ir(fn, fn.blocks[j], "a block named entry that is not the first, or a first that is not entry")
         if l in at:
             self.bad_ir(fn, fn.blocks[j], "a second block of that name")
         if l.startswith("L") and int(l[1:]) > fn.n:
@@ -902,6 +1015,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 for l in i.b:
                     if l not in at or b.label not in succ[at[l]]:
                         self.bad_ir(fn, b, f"a phi from {l}, which does not branch there")
+    check_structure(self, fn, at)
     if dynamic_raw:
         verify_dynamic_raw(self, fn)
     if dynamic_proofs:
@@ -914,10 +1028,11 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
     if not casts:
         value_definitions(fn, defined, makers)
     narrowed = optional_reads(self, fn, defined, makers)
+    ureads = union_reads(self, fn, defined)
     unions = union_proofs or (machine_tags and has_machine_union_tag(fn))
     if not unions and len(narrowed) > 0 and private_optional_reads(fn, narrowed, at, succ):
         narrowed.clear()
-    if len(narrowed) > 0 or (unions and not simple_union_proof(fn, self.utags, at, succ, union_types, self.classes)):
+    if len(narrowed) > 0 or len(ureads) > 0 or (unions and not simple_union_proof(fn, self.utags, at, succ, union_types, self.classes)):
         writes: dict[str, bool] = {}
         raises: dict[str, bool] = {}
         written: dict[str, int] = {}  # (the storage classes each call writes: its RAWW and wG bits)
@@ -937,13 +1052,19 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
             for i in b.code:
                 if i.op == "field.addr" and i.a[0].t not in kin:
                     kin[i.a[0].t] = {}
-        for x in kin:
-            for y in kin:
-                kin[x][y] = x == y or x not in self.classes or y not in self.classes or related(self, x, y)
-        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs, self.tconstdata, narrowed, written, kin, unions, self.classes)
+        for left in kin:
+            for right in kin:
+                kin[left][right] = left == right or left not in self.classes or right not in self.classes or related(self, left, right)
+        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs, self.tconstdata, narrowed, written, kin, unions, self.classes, ureads)
         proof.run()
         for j in range(len(proof.bad)):
             self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])
+    reads = class_reads(self, fn, defined)
+    if len(reads) > 0:
+        cproof = ClassProof(fn, self.classes, class_members(self, fn, defined, reads), defined, reads)
+        cproof.run()
+        for j in range(len(cproof.bad)):
+            self.bad_ir(fn, fn.blocks[at[cproof.badblocks[j]]], cproof.bad[j])
     # (after the proofs above, whose findings name what a reading breaks more closely)
     value_types(self, fn, defined, makers)
 
