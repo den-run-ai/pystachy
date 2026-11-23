@@ -368,8 +368,9 @@ with patch.object(Gen, 'lower_program', forbidden):
         self.succeeded(actual)
 
     def test_fallback_consumes_the_attempt_that_declined(self):
-        path = self.source('def values():\n    try:\n        yield 42\n    finally:\n        print("closed")\n'
-                           'print(next(values()))\n')
+        # (the Wasm emitter refuses a module that opts in to dynamic Any, #1746)
+        path = self.source('# pystachy: dynamic-any\ndef values():\n    try:\n        yield 42\n    finally:\n'
+                           '        print("closed")\nprint(next(values()))\n')
         actual = self.run_stage(path, """
 from tools.wasm_from_source import WasmBackend, WasmRefusal
 finalized = []
