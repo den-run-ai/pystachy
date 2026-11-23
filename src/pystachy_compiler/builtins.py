@@ -792,6 +792,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.isinst_reads(args[1])
         if v.t == "dyn":
             return self.dyn_isinst(v, args[1])  # (by its box's type: dynamic.py)
+        if self.is_iface(unopt(v.t)):
+            return self.iface_isinst(v, args[1])  # (by its object's class: interfaces.py)
         if (v.t == "exc" or (v.t in self.classes and self.classes[v.t].exc != "")) and self.exc_classes(args[1]):
             return self.exc_isinst(v, args[1])
         if v.t == "opt[exc]" and self.exc_classes(args[1]):

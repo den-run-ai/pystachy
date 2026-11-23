@@ -1,0 +1,18 @@
+Plain! Plain() Plain! Plain! Plain! Plain()
+Plain! [Plain()] (Plain(), 1)
+Money.__format__ ''
+Money.__format__ ''
+12.34 Money(1234) Money(1234) 12.34 Money(1234) Money(1234)
+Money(1234) [Money(1234)] (Money(1234), 1)
+Money.__format__ '>8'
+Money.__format__ 'x'
+Money.__format__ ''
+Money.__format__ 'q'
+Money.__format__ 'w'
+[>8:5] [x:5] 0.05 [q:5] <[w:5]>
+<Plain!>
+TypeError: unsupported format string passed to Plain.__format__
+TypeError: unsupported format string passed to Plain.__format__
+None None None None None
+TypeError: unsupported format string passed to NoneType.__format__
+[exit 0]

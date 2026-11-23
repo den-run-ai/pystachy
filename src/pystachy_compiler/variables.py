@@ -32,6 +32,7 @@ from src.pystachy_compiler.names import ENUMCLASSES, local_class, owner, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, BYTEARRAYC, COMPLEXC, INERT_DECOS, NONEVAR, NONE_ITEM, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
 from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, made_var, mk, name_targets, starred_target
 from src.pystachy_compiler.utils import (
+    clone,
     elem,
     empty_ann,
     empty_default,
@@ -457,7 +458,9 @@ def gen_new_closure(self, n: Node, key: str) -> Closure:
     name = (n.pyname if n.pyname != "" else short(n.s)) if n.kind == "def" else "<lambda>"
     qual = name if self.modlevel else self.qualname(outer) + ".<locals>." + name
     idx = len(self.closures)
-    f = self.declare_fn(mk("def", d.s, d.line, d.kids[:3]), "")  # (its decorators apply to the closure: decorate)
+    # declare_fn erases generic signature annotations. Each enclosing specialization
+    # needs the original header, including the lexical TypeVars a later Callable asks for.
+    f = self.declare_fn(mk("def", d.s, d.line, [clone(d.kids[0]), clone(d.kids[1]), d.kids[2]]), "")  # (its decorators apply to the closure: decorate)
     for sp in list(f.sentinels) if not self.modlevel else []:
         if not self.globread(f.sentinels[sp]):
             # its default reads a variable of the function around it (a parameter, a local or a
@@ -466,6 +469,16 @@ def gen_new_closure(self, n: Node, key: str) -> Closure:
             f.ptypes[f.params.index(sp)] = f.sentann[sp]
             del f.sentinels[sp]
             del f.sentann[sp]
+    f.tvouter = outer
+    f.tvars = dict(outer.tvars)
+    if outer.cls in self.classes:
+        f.tvars.update(self.classes[outer.cls].tvars)
+    captured = list(f.tvars)
+    scope: FnInfo | None = outer
+    while scope is not None:
+        captured.extend(scope.tvnames)
+        scope = scope.tvouter
+    f.tvnames = [name for name in f.tvnames if name not in captured]
     f.ll = f"@c.{idx}"
     f.name = qual
     f.mod = outer.mod
@@ -475,6 +488,8 @@ def gen_new_closure(self, n: Node, key: str) -> Closure:
     f.ret = f.ret if d.kids[1].kind != "noann" else ""
     # its env is its first parameter, passed as a method's object is (CPython's messages leave it out)
     f.params.insert(0, ".env")
+    if len(f.tvparams) > 0:
+        f.tvparams.insert(0, mk("param", ".env", n.line, [mk("noann", "", n.line, [])]))
     f.ptypes.insert(0, "env")
     f.defaults.insert(0, mk("noann", "", n.line, []))
     f.dglob.insert(0, "")

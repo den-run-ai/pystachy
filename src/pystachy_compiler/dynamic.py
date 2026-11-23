@@ -340,6 +340,8 @@ def gen_dyn_boxable(self, t: str) -> str:
         # (an Any value's operations are its box's class's: the builtin container's own, which
         # the class leaves to it, would not be found there: builtin_bases.py)
         return f"an object of {short(t)}, a class that derives from {self.bkind(t)}, as an Any value is not supported yet: its class would be lost"
+    if self.is_iface(t):
+        return f"a value of {typestr(t)}, an interface, cannot become an Any value yet (its box is not its object)"
     if t in self.classes and t not in self.tmpl:
         if self.classes[t].exc != "":
             return f"an exception object ({typestr(t)}) as Any is not supported yet"

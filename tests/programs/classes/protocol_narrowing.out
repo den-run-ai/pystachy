@@ -1,0 +1,9 @@
+square 2.0 True False True True
+circle 1.0 True False False True
+derived 7 False True True True
+base False True False True
+derived 3 False True True True
+False True False True False
+6.0 -1.0 6.0 2.0 0.0
+3.0 -1.0 27.0 -1.0 0.0
+[exit 0]

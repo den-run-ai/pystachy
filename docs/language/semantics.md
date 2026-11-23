@@ -300,6 +300,11 @@ class is a class of its own, generic in those type variables, as with `Generic[T
 `ABCMeta` makes it. Reflection of either's objects (`dir()`, `hasattr()` of the attributes
 `ABCMeta` and the base give it) is not supported
 ([test](../../tests/programs/classes/iterator_base.py)).
+Where iterators of distinct types with one item type meet in one location, and no other join
+applies (as a class's and its subclass's do: the base class), it holds the
+stored interface `Iterator[T]`, whose value is the iterator itself; a protocol's methods can
+also declare `Iterator[T]` and `Iterable[T]` values
+([stored interfaces](typing.md#protocols-and-stored-interfaces)).
 
 ## Generators
 

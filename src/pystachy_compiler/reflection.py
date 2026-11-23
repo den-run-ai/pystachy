@@ -281,6 +281,7 @@ def gen_refl_concrete(self, t: str) -> list[str]:
     # the exact types a value of static type t may have, but None: its class and the classes
     # derived from it in a hierarchy, each member of a union (expanded alike), or t itself
     t = unopt(t)
+    self.iface_reflect(t, "reflection")  # (an interface's: its objects' classes are the run time's)
     if is_union(t):
         out: list[str] = []
         for m in umembers(t):
@@ -1301,6 +1302,7 @@ def gen_refl_supported(self, c: str, what: str) -> None:
     # the classes whose names reflection knows: the program's ordinary classes and dataclasses
     if c not in self.classes:
         return
+    self.iface_reflect(c, what)
     ci = self.classes[c]
     why = ""
     if ci.exc != "":

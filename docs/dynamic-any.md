@@ -279,6 +279,14 @@ records current failures and their owning issues. These remain compatibility gap
 | Functions, bound methods, closures and `Callable` objects | Retain their function, receiver or environment. |
 | Unions of supported values | Box the member selected by the union's tag. |
 
+Values of a [protocol](language/typing.md#protocols-and-stored-interfaces) do not cross
+in either direction yet: the box of a protocol value is not its object, and the protocol's
+table is chosen from the static type it converts from. Typed protocol storage remains
+separate from dynamic `Any` storage. A list or dict display of distinct iterators keeps
+`Any` items, as other mixed displays do; the other locations where they meet hold
+[`Iterator[T]`](language/typing.md#protocols-and-stored-interfaces) values
+(`tests/programs/generators/iterator_join_dynamic.py`).
+
 A concrete annotation receiving `Any` checks the box's runtime type before
 unboxing it; a union annotation accepts one of its members. A mismatch raises an
 error such as `TypeError: expected int, got str`. This differs intentionally from

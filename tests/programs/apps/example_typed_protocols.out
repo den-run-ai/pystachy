@@ -1,0 +1,8 @@
+mixed [[1, 2], [3, 4], [1, 0], [9, 10]]
+field replacement ok
+partial consumption and shared source ok
+lazy calls and exceptions ['next', 'next', 'next']
+live mutation and exhaustion ok
+repeatable iterables and one-shot generators ok
+typed strings ok
+[exit 0]

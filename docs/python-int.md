@@ -182,6 +182,23 @@ oversized argument raises `OverflowError`. Its result promotes on return. Ints
 inside other callable parameter/result types, such as `tuple[int, int]`, remain
 64-bit boundaries. See `calls.adapter` in the compiler.
 
+Generic stored-interface factories use an explicit destination's representation
+when constructing a fresh result. For example,
+`stream: TypedIterator[tuple[int, str]] = typed_iterator(pairs)` in an opted-in
+module requests a promoting tuple result, even when `pairs` uses a container's
+checked item type. The factory's generic return annotation carries this context
+through its wrapper construction and nested factories. An inferred result keeps
+its inferred representation, and an existing wrapper is not reinterpreted when
+assigned to another representation.
+
+This preserves the callable boundary above: a fixed tuple returned through the
+stored callback still crosses its 64-bit interface. Converting that checked tuple
+to an explicitly requested promoting tuple view can copy a tuple containing
+`-2**63`, including nested tuples, as described under
+[documented deviations](#deviations). Its value is preserved;
+tuple identity across that conversion is not. Ordinary generic fields and
+inferred interfaces retain their existing representation and identity rules.
+
 ### Object protocols
 
 - Comparison methods, including reflected comparisons and overrides, follow

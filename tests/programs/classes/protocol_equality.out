@@ -1,0 +1,103 @@
+Point.__eq__ Plain
+Point.__eq__ Plain
+Point.__eq__ Plain
+Tagged.__eq__
+Tagged.__eq__
+plain 1000000
+Point.__eq__ Plain
+Point.__eq__ Point
+Point.__eq__ Point
+Point.__eq__ Point
+Point.__eq__ Tagged
+Tagged.__eq__
+Point.__eq__ Tagged
+Tagged.__eq__
+Point.__eq__ Plain
+p1,2 0110000
+Point.__eq__ Plain
+Point.__eq__ Point
+Point.__eq__ Point
+Point.__eq__ Point
+Point.__eq__ Tagged
+Tagged.__eq__
+Point.__eq__ Tagged
+Tagged.__eq__
+Point.__eq__ Plain
+p1,2 0110000
+Point.__eq__ Plain
+Point.__eq__ Point
+Point.__eq__ Point
+Point.__eq__ Point
+Point.__eq__ Tagged
+Tagged.__eq__
+Point.__eq__ Tagged
+Tagged.__eq__
+Point.__eq__ Plain
+p3,4 0001000
+Tagged.__eq__
+Tagged.__eq__
+Point.__eq__ Tagged
+Tagged.__eq__
+Point.__eq__ Tagged
+Tagged.__eq__
+Point.__eq__ Tagged
+Tagged.__eq__
+Tagged.__eq__
+Tagged.__eq__
+t1 0000110
+Tagged.__eq__
+Tagged.__eq__
+Point.__eq__ Tagged
+Tagged.__eq__
+Point.__eq__ Tagged
+Tagged.__eq__
+Point.__eq__ Tagged
+Tagged.__eq__
+Tagged.__eq__
+Tagged.__eq__
+t1 0000110
+Point.__eq__ Plain
+Point.__eq__ Plain
+Point.__eq__ Plain
+Tagged.__eq__
+Tagged.__eq__
+plain 0000001
+Tagged.__ne__
+Tagged.__ne__
+Point.__eq__ Plain
+False True True False
+Point.__eq__ Point
+Point.__eq__ Point
+Point.__eq__ Point
+Point.__eq__ Point
+Point.__eq__ Plain
+Point.__eq__ Plain
+True True True False True True
+Point.__eq__ int
+Point.__eq__ int
+Point.__eq__ str
+Point.__eq__ NoneType
+Point.__eq__ NoneType
+Point.__eq__ NoneType
+False False True False False True
+False True False False True True True
+Point.__eq__ NoneType
+Point.__eq__ NoneType
+Point.__eq__ NoneType
+True False False True True True
+Point.__eq__ Plain
+Point.__eq__ Point
+Point.__eq__ Point
+Point.__eq__ Point
+Tagged.__eq__
+Point.__eq__ Tagged
+Tagged.__eq__
+Point.__eq__ Tagged
+Point.__eq__ Plain
+Point.__eq__ Plain
+Point.__eq__ Plain
+Point.__eq__ Plain
+Tagged.__eq__
+Tagged.__eq__
+2 1
+[exit 0]

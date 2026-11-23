@@ -581,6 +581,8 @@ def gen_narrow_val(self, v: Val, nt: str) -> Val:
         return v
     if v.t == "dyn":
         return self.dyn_narrowed(v, nt)  # (a dynamic value's box, which a test proved holds an nt)
+    if self.is_iface(v.t) and nt in self.classes and not self.is_iface(nt):
+        return self.iface_narrowed(v, nt)  # (an interface's box, whose object a test proved an nt)
     if v.t in self.classes and nt in self.classes and (self.derives(nt, v.t) or nt in self.classes[v.t].overlaps):
         return Val(v.v, nt)
     if v.t in self.classes and is_union(nt) and len([m for m in umembers(nt) if m not in self.classes]) == 0:
@@ -988,6 +990,8 @@ def gen_narrows_path(self, n: Node, test: str, c: Node, truth: bool, out: dict[s
         nt = self.isinst_narrow(t, c, truth)
     elif truth and t in self.classes and self.classes[t].tag > 0 and c.kind == "name" and c.s in self.classes and (self.derives(c.s, t) or c.s in self.classes[t].overlaps):
         nt = c.s  # (the class its runtime class test proved: narrows)
+    elif truth and self.is_iface(t):
+        nt = self.iface_narrow(c)  # (an interface's object, of the class its test proved: interfaces.py)
     elif self.isinst(t, c) == (-2 if truth else -3):
         nt = unopt(t)
     if nt != "" and nt != t:
@@ -1201,12 +1205,14 @@ def gen_join_hint(self, t: str, vt: str) -> bool:
         body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
         if self.joinname in self.curfn.params or self.joinname in self.compvars:
             return False
-        ann = ann_target(body, self.joinname)
+        # (an annotation that types nothing, Iterator[T]'s, joins distinct iterators as if there
+        # were none: interfaces.py)
+        ann = ann_target(body, self.joinname) and not self.iface_widens(body, self.joinname, t, vt)
         key = f"{self.fnkey(self.curfn)}|{self.joinname}"
     elif self.joinkind == "global":
         if self.joinname in self.constflags or owner(self.joinname) not in self.inits:
             return False
-        ann = ann_target(self.inits[owner(self.joinname)].node.kids, self.joinname)
+        ann = ann_target(self.inits[owner(self.joinname)].node.kids, self.joinname) and not self.iface_widens(self.inits[owner(self.joinname)].node.kids, self.joinname, t, vt)
         key = f"global:{self.joinname}"
     elif self.joinkind == "field" or self.joinkind == "return" or ann:
         key = self.joinname
@@ -1286,6 +1292,9 @@ def gen_join_type(self, a: str, b: str) -> str:
     if (a == BIG and b in ["bool", "float", "str"]) or (b == BIG and a in ["bool", "float", "str"]):
         # (with a bool, a float or a str, their union, which holds 64-bit ints, as in other modules)
         a, b = "int" if a == BIG else a, "int" if b == BIG else b
+    it = self.iter_join(a, b)
+    if it != "":
+        return it  # (distinct iterators of one item type: the interface Iterator[T], interfaces.py)
     j = self.union_type([a, b])
     return j if not j.startswith("!") and self.joinable(j) else ""
 

@@ -1,0 +1,5 @@
+ordinary generic tuple identity preserved
+inferred and checked-consumer iterator views preserved
+lexical iterator tuple and optional views agree
+nested iterable and lookup interfaces share views
+[exit 0]

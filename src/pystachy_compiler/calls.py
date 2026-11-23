@@ -5,6 +5,7 @@ from src.pystachy_compiler.bigints import converts
 from src.pystachy_compiler.builtin_bases import has_def
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
+from src.pystachy_compiler.interfaces import IFACE_CALL
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.names import ENUMCLASSES, short
@@ -108,6 +109,8 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         if f.kind == "attr" and f.s == "__init__" and f.kids[0].kind == "call" and f.kids[0].kids[0].kind == "name" and f.kids[0].kids[0].s == "super" and not self.bound("super"):
             return self.super_call(f.kids[0], f.s, args)
         return self.star_call(n, want, resultsoft, typeargs)
+    if f.kind == "name" and f.s == IFACE_CALL and self.curfn.cls in self.ifaces:
+        return self.iface_call(args)  # (the body of an interface's method: interfaces.py)
     if f.kind == "name" and f.s not in self.ltype:
         self.read_ahead(f.s)
         if (f.chk or self.foreign(f.s)) and f.s in self.gflag:
@@ -391,6 +394,15 @@ def gen_class_new(self, c: str, args: list[Node], want: str, resultsoft: bool = 
     if self.classes[c].mod in GLUE and self.curfn.mod != self.classes[c].mod:
         m = self.classes[c].mod
         self.err(f"{m}.{short(c)}() cannot be called: Pystachy's {m} module makes its objects (with {', '.join([x for x in GLUE[m] if x != short(c)])})")
+    if c in self.ifaces:
+        # a Protocol class: CPython evaluates the arguments, and Protocol.__init__ raises
+        for a in args:
+            self.expr(a.kids[0] if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar" else a, "")
+        self.raise_("TypeError", self.sconst("Protocols cannot be instantiated"))
+        # (the object, read in a block of its own, as an abstract class's below: #1618)
+        self.place(self.label())
+        self.blk.dead = True
+        return Val("null", c)
     ab = self.abstract_of(c)
     if len(ab) > 0:
         # an object of a class with abstract methods (ABCMeta): CPython evaluates the
@@ -734,22 +746,27 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
     o = self.unwrap(o, "TypeError: 'NoneType' object is not callable")
     code = self.mload('%ptr', o.v)
     env = self.mload('env', self.maddr('%ptr', f'{o.v}', '1', True))
-    c = Ins("icall", ts[0], "")
+    return self.icall(code, env, vals, ts[0])
+
+def gen_icall(self, code: str, env: str, vals: list[Val], rt: str) -> Val:
+    # the call of code, a Callable's adapter or an interface table's (interfaces.py), with env
+    # and the arguments vals (of the types its signature takes), returning rt
+    c = Ins("icall", rt, "")
     c.a = [Val(code, "%ptr"), Val(env, "env")] + vals  # (its code: a machine pointer, as lowering calls it)
     idresult = ""
     if dynamic_program():
         # (the whole program's ABI: code that does not track identity passes no objects, Gen.idhere)
         c.a.extend([self.dyn_id_arg(v) if self.idhere() else Val("null", "dyn") for v in vals if numeric_identity(v.t)])
-        if numeric_identity(ts[0]):
+        if numeric_identity(rt):
             idresult = self.alloca("dyn", "")
             self.mem_store(Val(idresult, "&dyn"), Val("null", "dyn"))
             c.a.append(Val(idresult, "&dyn"))
-    if ts[0] == "None":
+    if rt == "None":
         self.add(c)
         return Val("null", "None")
     self.put(c, 1)
-    result = Val(tmpname(c.r[0]), ts[0])
-    if idresult != "" and numeric_identity(ts[0]) and self.idhere():
+    result = Val(tmpname(c.r[0]), rt)
+    if idresult != "" and numeric_identity(rt) and self.idhere():
         result.idexact = result.t == "int" or result.t == BIG or result.t == "float"
         result.idslot = idresult
         result.idheld = self.mem_load(Val(idresult, "&dyn")).v
@@ -1574,6 +1591,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     if f.ll not in self.called and f.ll in self.lazyat:
         hpush(self.wake, self.lazyat[f.ll])
     self.called[f.ll] = True
+    if f.cls in self.ifaces:
+        self.iface_use(f)  # (its operation's table entry: interfaces.py)
     self.arity(f, len(pre), args)
     if len(pre) == 0 and cache is None:
         scalar_types = self.scalar_call_types(f, args)

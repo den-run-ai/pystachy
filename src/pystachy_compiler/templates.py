@@ -245,6 +245,13 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
                 self.line = d.line
                 self.lib = s.mod != ""
                 g = self.declare_fn(d, name)
+                if len(g.tvparams) == 0 and g.name in t.methods:
+                    # The class template already erased method-owned TypeVars.
+                    # Each specialization retains that saved lexical signature.
+                    original = t.methods[g.name]
+                    g.tvnames = list(original.tvnames)
+                    g.tvparams = original.tvparams
+                    g.tvresult = original.tvresult
                 self.lib = False
                 g.mod = s.mod
                 s.methods[g.name] = g  # (x.setter: a property's setter)
@@ -467,10 +474,19 @@ def gen_bind(self, c: str, ts: list[str], given: dict[str, str]) -> dict[str, st
         # becomes that Callable where __init__ stores it)
         a = ps[i].kids[0]
         if len([x for x in tvs if x not in tv and x not in given and self.names_tv(a, [x])]) > 0:
+            # Only a call that otherwise cannot bind its stored Callable consults
+            # lexical annotations. Existing argument/context inference keeps priority.
+            trial = dict(tv)
+            why = self.match(a, ts[i - 1], trial, tvs, True)
+            if why == "":
+                tv = trial
+            if len([x for x in tvs if x not in tv and x not in given and self.names_tv(a, [x])]) == 0:
+                continue
             ints = ", ".join([typestr(tv[y]) if y in tv else typestr(given[y]) if y in given else "int" for y in tvs])  # (int: a placeholder)
             # (a private class, such as functools' cache wrapper, is not one a program names)
             hint = "" if short(c).startswith("_") else f"; or name them where the object goes (q: {short(c)}[{ints}] = {short(c)}(...)) or in the call ({short(c)}[{ints}](...))"
-            self.err(f"{short(c)}() cannot bind its type variables from the argument for '{ps[i].s}', a {typestr(ts[i - 1])}: {self.match(a, ts[i - 1], dict(tv), tvs)}{hint}")
+            detail = why if why != "" else self.match(a, ts[i - 1], dict(tv), tvs)
+            self.err(f"{short(c)}() cannot bind its type variables from the argument for '{ps[i].s}', a {typestr(ts[i - 1])}: {detail}{hint}")
     for x in tvs:
         if x not in tv and x in given:
             tv[x] = given[x]
@@ -667,7 +683,7 @@ def gen_named_param(self, a: Node) -> str:
     return t
 
 
-def gen_match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
+def gen_match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str], lexical: bool = False) -> str:
     # "" if a value of type t fits annotation a, binding (in tv) the type variables of tvs that
     # a mentions; else why not. A part of a that mentions none fits any type: the code that
     # uses the value checks it, as for any other argument
@@ -691,7 +707,7 @@ def gen_match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
     if a.kind == "index" and (a.kids[0].kind == "name" or a.kids[0].kind == "attr") and self.ann_base(a.kids[0]) == "optional":
         ms = [a.kids[1], mk("None", "", a.line, [])]
     if len(ms) == 2 and (ms[0].kind == "None" or ms[1].kind == "None"):
-        return "" if t == "None" else self.match(ms[0] if ms[1].kind == "None" else ms[1], unopt(t), tv, tvs)  # (T | None)
+        return "" if t == "None" else self.match(ms[0] if ms[1].kind == "None" else ms[1], unopt(t), tv, tvs, lexical)  # (T | None)
     if len(ms) > 0:
         # A | B: the first member that mentions type variables and fits binds them, an
         # Iterable[...] after the others, as Iterable[tuple[K, V]] | dict[K, V] takes a list of
@@ -705,7 +721,7 @@ def gen_match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
         for m in [m for m in ms if m not in its] + its:
             if m.kind != "None" and self.names_tv(m, tvs):
                 trial = dict(tv)
-                w = self.match(m, unopt(t) if none else t, trial, tvs)
+                w = self.match(m, unopt(t) if none else t, trial, tvs, lexical)
                 if w == "":
                     for x in trial:
                         tv[x] = trial[x]
@@ -716,48 +732,48 @@ def gen_match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
     xs = (a.kids[1].kids if a.kids[1].kind == "tuple" else [a.kids[1]]) if a.kind == "index" else []
     gc = a.kids[0].s if a.kind == "index" and a.kids[0].kind == "name" and a.kids[0].s in self.tparams else ""
     if gc != "" and t in self.classes and self.classes[t].origin == gc and len([x for x in self.tparams[gc] if x in self.tvtuples]) == 0:
-        return self.match_items(xs, [self.classes[t].tvars[x] for x in self.tparams[gc]], tv, tvs)  # (C[K, V] of a C object)
+        return self.match_items(xs, [self.classes[t].tvars[x] for x in self.tparams[gc]], tv, tvs, lexical)  # (C[K, V] of a C object)
     if (base == "iterable" or base == "iterator" or base == "generator") and is_gen(t) and len(xs) >= 1:
         # (a generator, where the annotation is Iterable[T], Iterator[T] or Generator[T, S, R]:
         # what it yields binds T; the rest of Generator[...] binds nothing)
-        return self.match(xs[0], gelem(t), tv, tvs)
+        return self.match(xs[0], gelem(t), tv, tvs, lexical)
     if (base == "iterable" or base == "iterator") and len(xs) == 1:
         if t == "tuple[]":
             return ""  # (no items bind T; the context can still give it)
         et = self.iter_elem(t) if t not in self.classes else self.next_type(t)  # (an object's: its iterator's)
-        return self.match(xs[0], et, tv, tvs) if et != "" else "it has no supported iterable item type"
+        return self.match(xs[0], et, tv, tvs, lexical) if et != "" else "it has no supported iterable item type"
     if base == "list" and is_list(t) and len(xs) == 1:
-        return self.match(xs[0], elem(t), tv, tvs)
+        return self.match(xs[0], elem(t), tv, tvs, lexical)
     if (base == "set" or base == "frozenset" or base == "aset") and is_set(t) and len(xs) == 1:
-        return self.match_key(xs[0], selem(t), tv, tvs)
+        return self.match_key(xs[0], selem(t), tv, tvs, lexical)
     if base == "dict" and is_dict(t) and len(xs) == 2:
-        why = self.match_key(xs[0], targs(t)[0], tv, tvs)
-        return why if why != "" else self.match(xs[1], targs(t)[1], tv, tvs)
+        why = self.match_key(xs[0], targs(t)[0], tv, tvs, lexical)
+        return why if why != "" else self.match(xs[1], targs(t)[1], tv, tvs, lexical)
     if base == "tuple" and is_tuple(t):
-        return self.match_items(xs, targs(t), tv, tvs)
+        return self.match_items(xs, targs(t), tv, tvs, lexical)
     if base == "callable" and len(xs) == 2 and xs[0].kind == "list":
-        sig = self.fn_sig(t)
+        sig = self.fn_sig(t, lexical)
         if sig[0].startswith("!"):
             return sig[0][1:]
-        why = self.match_items(xs[0].kids, sig[1:], tv, tvs)
-        return why if why != "" else self.match(xs[1], sig[0], tv, tvs)
+        why = self.match_items(xs[0].kids, sig[1:], tv, tvs, lexical)
+        return why if why != "" else self.match(xs[1], sig[0], tv, tvs, lexical)
     return "it does not fit the parameter's annotation (or that annotation's type variables are not supported there: they are in T, list[T], dict[K, V], set[T], tuple[T, *Ts], T | None, Iterable[T], Callable[[T, *Ts], R], a generic class's C[T] and unions of these)"
 
-def gen_match_key(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
+def gen_match_key(self, a: Node, t: str, tv: dict[str, str], tvs: list[str], lexical: bool = False) -> str:
     # match for the element type of a set, or the key type of a dict: None is one (a set[None]'s,
     # utils.none_key), and binds a type variable as any other type does, where an argument that is
     # None itself binds none (match)
     if a.kind == "str":
         a = self.parse_expr(a.s)
     if t != "None" or a.kind != "name" or not self.names_tv(a, tvs) or a.s in self.tvtuples:
-        return self.match(a, t, tv, tvs)
+        return self.match(a, t, tv, tvs, lexical)
     j = self.join(tv[a.s], t) if a.s in tv else t
     if j == "":
         return f"'{short(a.s)}' is {typestr(tv[a.s])} already, and {typestr(t)} here"
     tv[a.s] = j
     return ""
 
-def gen_match_items(self, xs: list[Node], ts: list[str], tv: dict[str, str], tvs: list[str]) -> str:
+def gen_match_items(self, xs: list[Node], ts: list[str], tv: dict[str, str], tvs: list[str], lexical: bool = False) -> str:
     # (see match) values of types ts for the items of tuple[...] or the parameters of
     # Callable[[...], R], annotated xs: an unpacked TypeVarTuple (*Ts) takes those the others leave
     k = -1
@@ -769,7 +785,7 @@ def gen_match_items(self, xs: list[Node], ts: list[str], tv: dict[str, str], tvs
     after = len(xs) - k - 1 if k >= 0 else 0
     for i in range(len(xs)):
         if i != k:
-            why = self.match(xs[i], ts[i] if k < 0 or i < k else ts[len(ts) - len(xs) + i], tv, tvs)
+            why = self.match(xs[i], ts[i] if k < 0 or i < k else ts[len(ts) - len(xs) + i], tv, tvs, lexical)
             if why != "":
                 return why
     if k < 0:
@@ -781,9 +797,9 @@ def gen_match_items(self, xs: list[Node], ts: list[str], tv: dict[str, str], tvs
             return f"'{short(x.s)}' is {typestr(tv[x.s])} already, and {typestr(mid)} here"
         tv[x.s] = mid
         return ""
-    return self.match(x, mid, tv, tvs)  # (*tuple[A, B])
+    return self.match(x, mid, tv, tvs, lexical)  # (*tuple[A, B])
 
-def gen_fn_sig(self, t: str) -> list[str]:
+def gen_fn_sig(self, t: str, lexical: bool = False) -> list[str]:
     # the return type and the parameter types of a function value of type t, as Callable[[A, B],
     # R] has them: a def's or lambda's positional parameters (each annotated) and return
     # annotation, a Callable's; or ["!" and why not]
@@ -798,21 +814,64 @@ def gen_fn_sig(self, t: str) -> list[str]:
     name = "the lambda" if f.node.s == "<lambda>" else f"{short(f.name)}()"
     if f.vararg >= 0 or f.kwarg >= 0:
         return [f"!{name} takes *args or **kwargs, which Callable[[...], R] does not match"]
-    out = [f.ret]
+    result = f.ret
+    if lexical and result == "" and f.tvresult.kind != "noann":
+        result = self.lexical_ann(f.tvresult, f)
+    out = [result]
     for j in range(1 if f.clo >= 0 else 0, len(f.params)):  # (a closure's env aside)
+        pt = f.ptypes[j]
+        if lexical and pt == "" and j < len(f.tvparams) and f.tvparams[j].kids[0].kind != "noann":
+            pt = self.lexical_ann(f.tvparams[j].kids[0], f)
         if j >= f.npos and f.defaults[j].kind == "noann":
             return [f"!{name} takes the keyword-only parameter '{f.params[j]}', which Callable[[...], R] does not match"]
-        if j < f.npos and f.ptypes[j] == "" and f.params[j] in f.anys:
+        if j < f.npos and pt == "" and f.params[j] in f.anys:
             return [f"!{name}'s parameter '{f.params[j]}' is annotated Any, which gives no type to the type variables it matches"]
-        if j < f.npos and f.ptypes[j] == "":
+        if j < f.npos and pt == "":
             return [f"!{name}'s parameter '{f.params[j]}' has no annotation, which the type variables it matches take their type from"]
         if j < f.npos:
-            out.append(f.ptypes[j])
-    if f.ret == "" and "" in f.anys:
+            out.append(pt)
+    if result == "" and "" in f.anys:
         return [f"!{name}'s return is annotated Any, which gives no type to the type variable it matches"]
-    if f.ret == "":
+    if result == "":
         return [f"!{name} has no return annotation, which the type variable it matches takes its type from"]
     return out
+
+
+def gen_fn_typevar(self, f: FnInfo, name: str) -> str:
+    # Resolve only when an explicit lexical annotation or an otherwise-unbound
+    # Callable needs the type. Ignored legacy annotations never compile methods,
+    # constrain ordinary arguments/results, or mutate speculative Gen state.
+    if name in f.tvars:
+        return f.tvars[name]
+    if name in f.tvnames:
+        if not f.inst:
+            return ""
+        bindings: dict[str, str] = {}
+        for i in range(min(len(f.tvparams), len(f.ptypes))):
+            p = f.tvparams[i]
+            a = p.kids[0]
+            if not self.names_tv(a, [name]):
+                continue
+            t = f.ptypes[i]
+            if p.kind == "starparam":
+                why = self.match_items([a] if a.kind == "starred" else [a] * len(targs(t)), targs(t), bindings, [name], True)
+            elif p.kind == "dstarparam":
+                why = self.match_items([a] * len(kw_types(t)), kw_types(t), bindings, [name], True)
+            else:
+                why = self.match(a, t, bindings, [name], True)
+            if why != "":
+                return ""  # repeated incompatible arguments give no arbitrary first binding
+        if name in bindings:
+            f.tvars[name] = bindings[name]
+            return bindings[name]
+        return ""
+    outer = f.tvouter
+    if outer is not None:
+        t = self.fn_typevar(outer, name)
+        if t != "":
+            f.tvars[name] = t
+        return t
+    return ""
 
 def local_result(body: list[Node], params: list[str]) -> list[str]:
     # A short straight-line chain may forward a fresh result through locals.
@@ -893,6 +952,13 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     yield_context = not resultsoft and fresh_yield_context(f, want)
     context = f.ret == "" and "?" not in want and ("list[" in want or "dict[" in want or "set[" in want or "tuple[" in want)
     context = context or (f.ret == "" and f.node.s == "<lambda>" and unopt(want) in self.classes and self.classes[unopt(want)].origin in self.tparams)
+    if f.ret == "" and not resultsoft and unopt(want) in self.classes:
+        # An explicit generic result contract can select the representation of a
+        # fresh interface returned by a factory. Preserve the lexical argument
+        # bindings: without this context an inferred result keeps its own view.
+        result = self.parse_expr(f.tvresult.s) if f.tvresult.kind == "str" else f.tvresult
+        origin = self.classes[unopt(want)].origin
+        context = context or (origin in self.tparams and result.kind == "index" and result.kids[0].kind == "name" and result.kids[0].s == origin)
     locals = local_result(body.kids, f.params) if context and not resultsoft else []
     want = want if yield_context or (context and (contextual_result(body) or len(locals) > 0)) else ""
     cmpops = cmpfields != "" or self.curfn.cmpops
@@ -994,6 +1060,11 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     g.uflags = f.uflags
     g.mod = f.mod
     g.home = f.home
+    g.tvnames = f.tvnames
+    g.tvparams = f.tvparams
+    g.tvresult = f.tvresult
+    g.tvars = dict(f.tvars)
+    g.tvouter = f.tvouter
     g.ret = want if yield_context else f.ret
     g.infer = f.ret == ""
     if f.tvret != "" and g.ret == "":

@@ -200,6 +200,10 @@ applies. Bytes case methods remain ASCII-only.
 - **Reflection text:** runtime-name `getattr()` prints substitute addresses for
   method wrappers, builtin methods and static methods; there are no corresponding
   Python type/function objects. See [reflection](semantics.md#reflection).
+- **Protocol values of generators and files:** `repr()`, `str()` or `format()` (also an
+  f-string) of a generator or file held by a [protocol](typing.md#protocols-and-stored-interfaces)
+  value raises `NotImplementedError`; CPython prints its address. Pystachy prints neither type
+  directly.
 
 ### Errors and control flow
 
@@ -693,9 +697,9 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
 [generic classes](typing.md#explicit-generic-classes).
 
 - **Type variables:** `ClassVar`, except `x: ClassVar[T] = value` in an ordinary module-level
-  class; `PathLike` outside a union with `str`; `TypeVar` outside template parameters
-  and returns, except bound class type variables; `TypeVarTuple` outside unpacking in tuple,
-  Callable or `*args`; unbound class type variables.
+  class; `PathLike` outside a union with `str`; unbound `TypeVar` in a local or
+  nested annotation (class and function-specialization bindings can supply it);
+  `TypeVarTuple` outside unpacking in tuple, Callable or `*args`; unbound class type variables.
 - **Generic classes:** `Generic[...]` alongside a base other than a generic base that takes its
   type variables; PEP 695 classes with bases, `ParamSpec` or multiple `TypeVarTuple`s; explicit
   `C[X]` with a `TypeVarTuple` or unannotated / variadic constructor parameters.
@@ -711,6 +715,13 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
   supported generic aliases, `Optional`, `Union`, `Callable`, `Tuple`, `Literal`, `Annotated`
   and single-type forms. Invalid forms (such as `Generic[T]` / `Concatenate[...]`) and invalid
   string expressions in `type` statements fail even when unused.
+- **Protocols:** attribute members, `*args` or `**kwargs`, `__init__`, protocol
+  inheritance, a protocol as a class's base, unannotated method parameters or results,
+  `TypeVarTuple` parameters; orderings, dict keys, set elements, list searches and sorts,
+  `id()`, `type()` and reflection of protocol values, `isinstance()` of one with a builtin type,
+  and `==` or `!=` where two implementations' classes do not compare; conversions between
+  protocols and to or from dynamic `Any`; a closed union's, function's or `Callable`'s value
+  as an implementation. See [stored interfaces](typing.md#protocols-and-stored-interfaces).
 - **Dynamic `Any`:** typed mutable containers other than the supported native `list[int]`
   boundary becoming `Any`, unimplemented prototype operations,
   runtime `**` expansion of native dictionaries with non-str keys, or None-first storage
