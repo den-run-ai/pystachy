@@ -1,0 +1,10 @@
+['a,b,,c'] ['a,b,,c'] ['a,b,,c'] a,b,,c a,b,,c   a,b,,c
+[' a', 'b', '', 'c '] ,b,,c [' a,b,', 'c ']
+True True False False
+False True False True
+True
+TypeError tuple for startswith must only contain str, not int
+TypeError tuple for endswith must only contain str, not int
+TypeError tuple for startswith must only contain str, not NoneType
+TypeError tuple for endswith must only contain str, not NoneType
+[exit 0]
