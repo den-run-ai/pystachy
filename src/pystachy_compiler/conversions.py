@@ -378,7 +378,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         hint = f": an object of a class that derives from {kind} is not stored or passed as a {kind} yet, where it would lose its class (declare {short(unopt(v.t))} there, leave a parameter unannotated, or copy the items with {kind}(...))"
     if self.is_object(v.t):
         # (where ints promote, isinstance(x, int) narrows nothing: object_note says so)
-        hint = self.object_note([v.t]) if self.int_policy(self.line) else " (narrow a value of object with isinstance() first, as `if isinstance(x, int):` narrows x to an int)"
+        mod = "; a test does not narrow a module's variable: test it in a function" if self.modlevel else ""  # (as object_note says)
+        hint = self.object_note([v.t]) if self.int_policy(self.line) else f" (narrow a value of object with isinstance() first, as `if isinstance(x, int):` narrows x to an int{mod})"
     if self.is_view(v.t):
         hint = self.object_note([v.t])
     if is_union(v.t) and sorted(umembers(v.t)) == ["bool", "int"] and (t == "int" or t == BIG):

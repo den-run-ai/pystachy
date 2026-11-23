@@ -1167,7 +1167,9 @@ a protocol's value above, each by its value's type
   ([test](../../tests/programs/classes/object_storage_narrow.py)), which indexes, counts and
   shifts as its int ([`bool | int`](#closed-scalar-unions)); where an `int` variable or
   parameter takes it, `not isinstance(x, bool)` narrows that to `int`, or `int(x)` converts it
-  ([test](../../tests/programs/classes/object_storage_int.py)).
+  ([test](../../tests/programs/classes/object_storage_int.py)). As for a union, a test narrows a
+  function's variable, not a module's, which the error says
+  ([error test](../../tests/errors/classes/object_module_narrow.py)).
 
 A test of a container type narrows `x` to a read-only view of the container it holds, whose
 items' types are not known: `list` or `tuple` (or both) to `Sequence[object]`, `set` or

@@ -439,16 +439,20 @@ def gen_is_object(self, t: str) -> bool:
 
 def gen_object_note(self, ts: list[str]) -> str:
     # what an error of an operation that its operands' types ts do not take adds where one is
-    # object's (OBJECT), whose value takes only the operations of every value: "" otherwise
+    # object's (OBJECT), whose value takes only the operations of every value: "" otherwise. At a
+    # module's level, where a test narrows no variable (a global, as a union's is not narrowed
+    # there: narrowable), it says so
+    ops = "it takes only str(), repr(), format(), hash(), len(), int(), float(), % formatting, ==, !=, is, isinstance() and a truth test otherwise"
+    mod = "; a test does not narrow a module's variable: test it in a function" if self.modlevel else ""
     for t in ts:
         if self.is_view(t):
-            ops = "x[i], index(), count()" if t == SEQVIEW else "x[key], get(), keys(), values(), items()" if t == MAPVIEW else ""
-            return f" ({typestr(t)} is a read-only view of {view_kind(t)} that a value of object holds, which isinstance() narrowed it to: it takes len(), iteration, in, {ops + ', ' if ops != '' else ''}str(), repr(), ==, != and is, which give its items as values of object, and changes nothing; change the container through a variable of its own type)"
+            vops = "x[i], index(), count()" if t == SEQVIEW else "x[key], get(), keys(), values(), items()" if t == MAPVIEW else ""
+            return f" ({typestr(t)} is a read-only view of {view_kind(t)} that a value of object holds, which isinstance() narrowed it to: it takes len(), iteration, in, {vops + ', ' if vops != '' else ''}str(), repr(), ==, != and is, which give its items as values of object, and changes nothing; change the container through a variable of its own type)"
         if t == OBJECT and self.int_policy(self.line):
             # (iface_narrow: an int there is a promoting int, which a bool that passes the test is not)
-            return " (narrow a value of object with isinstance() to float, bool, str, bytes, list, tuple, dict, set, frozenset, type or a class of the program first, not to int in a module that opts in to promoting ints: it takes only str(), repr(), format(), hash(), len(), int(), float(), % formatting, ==, !=, is, isinstance() and a truth test otherwise)"
+            return f" (narrow a value of object with isinstance() to float, bool, str, bytes, list, tuple, dict, set, frozenset, type, complex, range or a class of the program first, not to int in a module that opts in to promoting ints: {ops}{mod})"
         if t == OBJECT:
-            return " (narrow a value of object with isinstance() to int, float, bool, str, bytes, list, tuple, dict, set, frozenset, type or a class of the program first: it takes only str(), repr(), format(), hash(), len(), int(), float(), % formatting, ==, !=, is, isinstance() and a truth test otherwise)"
+            return f" (narrow a value of object with isinstance() to int, float, bool, str, bytes, list, tuple, dict, set, frozenset, type, complex, range or a class of the program first: {ops}{mod})"
     return ""
 
 
