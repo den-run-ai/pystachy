@@ -428,3 +428,62 @@ The first version of this code was up to 20% slower under the JIT. It kept a lis
 length in a local across the call that grows the list; `runtime.c` reads the field again
 after that call. A value that lives across a rarely made call costs the common path a
 saved register, so `runtime.py` now follows `runtime.c`'s statements there.
+
+## Sets
+
+A set's table moved next: the probes, insertion, removal, rebuilds, merges, differences,
+comparison, iteration and `pop`. Their workload is [`tables.py`](tables.py):
+
+| Case | Default iterations | Work measured |
+|---|---:|---|
+| `set-add` | 150,000,000 | adds to a set of ints that is cleared every 4,096 elements |
+| `set-has` | 150,000,000 | `in` on 1,024 ints, half of the queries present |
+| `set-has-large` | 60,000,000 | `in` on 1,048,576 ints, at random: each probe misses the cache |
+| `set-churn` | 15,000,000 | an add and a discard among 1,024 ints, whose dummies make the table rebuild |
+| `set-str` | 50,000,000 | an add and an `in` among 256 strs, the set cleared every 1,024 |
+| `set-tuple` | 40,000,000 | `in` and add of a pair of ints, which `runtime.c` still compares |
+| `set-algebra` | 150,000 | `\|`, `&`, `-` and `^` of two sets of 192 ints |
+| `set-iterate` | 1,500,000 | a loop over 1,024 ints |
+| `set-update-list` | 500,000 | `update` with a list of 128 ints, then `difference_update` with 40 |
+| `set-pop` | 500,000 | `set()` of a list of 128 ints, then `pop` until it is empty |
+| `set-compare` | 1,500,000 | `==`, `<=` and `isdisjoint` on sets of 192 ints |
+
+```sh
+taskset -c "$BENCH_CPU" python3.13 bench/runtime_subset/compare.py \
+  --before "$BENCH_BASELINE" --after . --pairs 7 \
+  --cases set-add set-has set-has-large set-churn set-str set-tuple set-algebra \
+          set-iterate set-update-list set-pop set-compare \
+  --json /tmp/sets.json
+```
+
+The [recorded report](sets.json) compares
+`e124b71e1ef13dde1afad24bb747bb1621285262` with
+`595111584b8109e48bd9e72d37a9318315a4030b`, both from clean checkouts with freshly
+built compilers, on the same host, CPython and LLVM as the lists' report. The run was
+pinned to CPU 2 and the load average was 0.49 when it began. Each workload produced the
+CPython checksum in both modes.
+
+| Case | AOT after / C | JIT after / C | AOT ns per iteration, C to after |
+|---|---:|---:|---:|
+| `set-add` | 1.003 | 1.013 | 7.88 to 7.77 |
+| `set-has` | 1.028 | 1.003 | 4.11 to 4.22 |
+| `set-has-large` | 1.006 | 1.009 | 14.98 to 15.48 |
+| `set-churn` | 1.088 | 1.073 | 85.61 to 94.32 |
+| `set-str` | 0.957 | 1.103 | 8.58 to 8.20 |
+| `set-tuple` | 1.030 | 1.009 | 19.33 to 19.66 |
+| `set-algebra` | 0.998 | 1.027 | 6981 to 6840 |
+| `set-iterate` | 0.991 | 1.006 | 835 to 828 |
+| `set-update-list` | 0.929 | 0.980 | 1702 to 1484 |
+| `set-pop` | 0.959 | 1.104 | 1705 to 1624 |
+| `set-compare` | 0.947 | 0.975 | 952 to 895 |
+
+Ratios are medians of 7 alternating pairs; single pairs range from 0.615 to 1.374 on this
+shared host. Eight cases are within 3% of the C code or faster in AOT, and eight under the
+JIT. `set-churn` is 9% slower in AOT and 7% under the JIT, and `set-str` and `set-pop` 10%
+slower under the JIT alone. The runtime that the driver builds has the same instructions
+for these functions as it had for the C ones: the lookup, the insertion, the rebuild and
+the two entry points differ only in a signed test where C's was unsigned and in the name
+they call for an element's equality. What differs is where the code lands. The lookup's
+inner loop starts on a 64-byte boundary in the C build and 48 bytes past one in this
+build, and the insertion's the other way round. The AOT executable of the workload is
+169,912 bytes before and 169,840 after.
