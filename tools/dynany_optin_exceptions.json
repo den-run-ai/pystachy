@@ -196,6 +196,34 @@
       "diagnostic": "tests/programs/classes/object_storage_values.py:46: error: a bytes value cannot become an Any value (making the table of bytes as object (for Any), converted at tests/programs/classes/object_storage_values.py:46)",
       "reason": "A value of object that meets an Any value becomes one through each stored type's table entry; a bytes value stored as object cannot become an Any value.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/777"
+    },
+    {
+      "case": "tests/programs/classes/object_containers_eq.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/classes/object_containers_eq.py:58: error: a list[object] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a list[Any] from the start, or copy it) (making the table of list[object] as object (for Any), converted at tests/programs/classes/object_containers_eq.py:58)",
+      "reason": "A value of object that meets an Any value becomes one through each stored type's table entry; a list of values of object stored as object cannot become an Any value.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/777"
+    },
+    {
+      "case": "tests/programs/classes/object_containers_eq.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/classes/object_containers_eq.py:58: error: a list[object] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a list[Any] from the start, or copy it) (making the table of list[object] as object (for Any), converted at tests/programs/classes/object_containers_eq.py:58)",
+      "reason": "A value of object that meets an Any value becomes one through each stored type's table entry; a list of values of object stored as object cannot become an Any value.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/777"
+    },
+    {
+      "case": "tests/programs/classes/object_displays.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/classes/object_displays.py:20: error: a set[str] cannot become an Any value: Any values hold no sets yet (a list comprehension of its items can become one) (making the table of set[str] as object (for Any), converted at tests/programs/classes/object_displays.py:20)",
+      "reason": "A value of object that meets an Any value becomes one through each stored type's table entry; a set stored as object cannot become an Any value.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/777"
+    },
+    {
+      "case": "tests/programs/classes/object_displays.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/classes/object_displays.py:20: error: a set[str] cannot become an Any value: Any values hold no sets yet (a list comprehension of its items can become one) (making the table of set[str] as object (for Any), converted at tests/programs/classes/object_displays.py:20)",
+      "reason": "A value of object that meets an Any value becomes one through each stored type's table entry; a set stored as object cannot become an Any value.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/777"
     }
   ]
 }
