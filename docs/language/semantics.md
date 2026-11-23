@@ -410,7 +410,7 @@ and fields are available. See [single inheritance](typing.md#single-inheritance)
 | `round(o)`, `round(o, n)` | `__round__`, which may be a template: each call types its result |
 | `math.floor(o)`, `math.ceil(o)`, `math.trunc(o)` | `__floor__`, `__ceil__`, `__trunc__` |
 | A builtin number on the left, as in `2 * o` | `__radd__` and the other reflected arithmetic and bitwise methods |
-| Equality and ordering | `__eq__`, `__ne__` and rich comparisons; `x == o` for a number or `str` `x` asks `o.__eq__(x)` |
+| Equality and ordering | `__eq__`, `__ne__` and rich comparisons; `x == o` asks `o.__eq__(x)` where `x` is a value of a builtin type or an object whose class has no such method, as described below |
 | `sum(objects)`, `sum(objects, start)` | `__add__`, and `__radd__` for the first addition to a number; see [sums of objects](#sums-of-objects) |
 | Truth and length | `__bool__`, `__len__` |
 | An index: `xs[o]`, a slice bound, `seq * o`, `range(o)`, `enumerate(xs, o)`, an integer argument of a list, tuple or str method (`xs.pop(o)`, `s.find(sub, o)`), `hex(o)`, `oct(o)`, `bin(o)`, `%x`, `%o`, `%c` | `__index__`, which must return an `int`; `%d` asks `__int__` first, and `%e`, `%f`, `%g` ask `__float__` first |
@@ -431,6 +431,20 @@ first; `o **= p` is `o = o ** p` where no class `o` may be of defines `__ipow__`
 dispatch with an optional numeric exponent, an object exponent of `__ipow__`, or the
 three-argument `pow(o, n, modulus)` is unsupported. A power method may declare an optional
 modulus parameter; two-argument power leaves it at its default.
+
+`==` and `!=` between an object of a class of the program and an object of another class or a
+value of a builtin type run in CPython's order: the left operand's method, else the right
+operand's reflected one (`__ne__`, or `__eq__` negated, for `!=`), else identity. An object
+that no method compares equals nothing but itself, so `Plain() == [1]` and `Plain() == Other()`
+are `False` ([tests](../../tests/programs/classes/eq_object_reflected.py),
+[builtin values](../../tests/programs/classes/eq_object_value.py)). The `__eq__` that
+`@dataclass` writes declines an object of another class and a builtin value, as CPython's does
+([test](../../tests/programs/classes/eq_object_records.py)). A method annotated to take only
+its own class (`__eq__(self, other: "Money")`) rejects a comparison that would pass it another
+class's object, which CPython would call it with: annotate `other: object` and test it with
+`isinstance()`. An object of a library class, which stands for a type of CPython's with an
+equality of its own, and an exception's object stay rejected beside an object that has no
+method for them.
 
 A comparison method (`__eq__`, `__ne__`, `__lt__`, `__le__`, `__gt__`, `__ge__`) may
 `return NotImplemented`. The comparison then calls the other operand's reflected method, and
@@ -727,8 +741,9 @@ list comprehension that reads each field's `.name`. `asdict()` and `astuple()` a
 class: they copy recursively into nested dataclasses (also of a hierarchy, by the object's
 class), lists, dicts and tuples, as CPython's `_asdict_inner` does, and keep `None`, numbers,
 strings and `bytes` (immutable: `copy.deepcopy()` returns them themselves);
-`asdict()`'s values of different types join in a union, so a dataclass holding a tuple and
-another type, or objects and scalars, is rejected. `is_dataclass()` is decided by the static
+`asdict()`'s values of different types join in a union, so a dataclass holding two tuple
+types, or objects and scalars, is rejected; one tuple type beside scalars, lists and
+dictionaries is a [member of that union](typing.md#operations-on-closed-unions). `is_dataclass()` is decided by the static
 type. `dict_factory=` and `tuple_factory=` are not supported.
 
 `string.Formatter().format()` of a constant template whose fields read attributes (`"{0.x}"`)

@@ -1,7 +1,7 @@
 """Classes that derive from a builtin container: component of the self-hosting Pystachy compiler.
 
 An object of class C(list) or C(dict) begins with the container's header as runtime.c lays it
-out (a List's four words, a Dict's twelve), followed by C's own fields. Its pointer is therefore
+out (a List's four fields, a Dict's twelve), followed by C's own fields. Its pointer is therefore
 the container's pointer, and an operation that C does not define is the builtin's own, compiled
 for that pointer exactly as for a list or a dict (Gen.bview). Which code an operation runs is
 decided from the static type alone: no list or dict holds a class word or a flag, and no builtin
@@ -12,12 +12,10 @@ from src.pystachy_compiler.diagnostics import where
 from src.pystachy_compiler.frames import IterArg
 from src.pystachy_compiler.ir import FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
+from src.pystachy_compiler.specs import CONTAINER_HEADERS
 from src.pystachy_compiler.syntax import Node, made_var, mentions, mk
 from src.pystachy_compiler.utils import elem, is_dict, is_gen, is_list, targs, typestr, unopt
 
-# the builtin containers a class may derive from, each with the 8-byte words of its header
-# (runtime.c's List and Dict), which the object's struct starts with as hidden fields
-BWORDS: dict[str, int] = {"list": 4, "dict": 12}
 # the special methods whose operations a class deriving from a container takes from it where it
 # defines none of them (Gen.bdecays): the others are an ordinary class's
 BITER: list[str] = ["__iter__"]
@@ -45,7 +43,7 @@ BITERATE: list[str] = ["list", "tuple", "set", "frozenset", "dict", "sorted", "s
 def builtin_base(n: Node) -> str:
     # "list" where a class statement's base n is that builtin type, bare or subscripted, else ""
     x = n.kids[0] if n.kind == "index" else n
-    return x.s if x.kind == "name" and x.s in BWORDS else ""
+    return x.s if x.kind == "name" and x.s in CONTAINER_HEADERS else ""
 
 
 def has_def(c: Node, name: str) -> bool:
@@ -206,7 +204,7 @@ def gen_bitems(self, a: Node) -> str:
 
 def gen_binit(self, o: Val) -> None:
     # the header of o, a new object of a class deriving from a builtin container: that of a
-    # new empty container of its type, made as the display [] of that type is, whose words o
+    # new empty container of its type, made as the display [] of that type is, whose fields o
     # takes (its item array is its own allocation, or the display's inline items, which o's
     # pointer to them keeps: runtime.c tests l->a against the header's own inline items, never
     # o's fields, so o's items never go there)
@@ -218,8 +216,9 @@ def gen_binit(self, o: Val) -> None:
     if "?" in b:
         b = bopen(kind, True)
     made = self.expr(mk(kind, "", self.line, []), b)
-    for k in range(BWORDS[kind]):
-        self.mstore("int", self.mload("int", self.maddr("int", made.v, str(k))), self.maddr("int", o.v, str(k)))
+    for k, t in enumerate(CONTAINER_HEADERS[kind]):
+        src = self.maddr(kind + ".header", made.v, str(k))
+        self.mem_store(Val(self.fgep(o, k), "&" + t), Val(self.mload(t, src), t))
 
 
 def gen_bmake(self, c: str, args: list[Node]) -> Val:

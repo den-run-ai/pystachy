@@ -1056,9 +1056,9 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
             for i in b.code:
                 if i.op == "field.addr" and i.a[0].t not in kin:
                     kin[i.a[0].t] = {}
-        for x in kin:
-            for y in kin:
-                kin[x][y] = x == y or x not in self.classes or y not in self.classes or related(self, x, y)
+        for left in kin:
+            for right in kin:
+                kin[left][right] = left == right or left not in self.classes or right not in self.classes or related(self, left, right)
         proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs, self.tconstdata, narrowed, written, kin, unions, self.classes, ureads)
         proof.run()
         for j in range(len(proof.bad)):

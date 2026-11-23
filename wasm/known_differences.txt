@@ -1,0 +1,120 @@
+# Corpus programs whose output in tests/run.sh's Wasm modes differs from CPython's recording
+# (wasm/README.md, "What differs from a native build"): NAME REASON [MODE...], in both modes,
+# wasm and wasm-tir, unless MODEs are named. wasm/check_corpus.py fails on any other difference
+# and names the entries that now match, which can then go. Reasons:
+#   errno         WASI's errno numbers and messages (ENOENT is 44), which also choose OSError's subclass
+#   dev-full      /dev/full through Node's WASI: ENOSPC is 51, and some writes fail at a later flush
+#   process       no processes: os.system, subprocess, and files or FIFOs a shell command makes
+#   descriptors   no dup, dup2 or descriptor inheritance
+#   enosys        another call that wasi_stubs.c fails with ENOSYS (chmod)
+#   signal        no signals: SIGINT never arrives
+#   select        no select()
+#   thread        no threads
+#   closed-stdio  a standard descriptor closed at the start is open in the guest
+#   gc            the collector is off: weak references stay alive and dropped files stay open
+#   libm          wasi-libc's libm differs from glibc's in the last place of some results
+#   unexplained   a difference not yet diagnosed
+#   #N            a bug that pull request #N fixes
+
+bfile_errors errno
+bfile_modes errno
+bfile_read_error errno
+exc_except_attr errno
+exc_oserror_args errno
+exc_oserror_optional errno
+exc_runtime errno
+file_is_dir errno
+file_missing errno
+file_read_error errno
+io_unbuffered_isdir errno
+io_unbuffered_missing errno
+lib_ast_serialize_errors errno
+lib_glob errno
+lib_pathlib errno
+lib_shutil_copyfile_dir errno
+lib_traceback errno
+os_environ_invalid errno
+os_makedirs errno
+os_path_stat errno
+os_write_bytes errno
+oserror_args_raise errno
+python_int_optional_keys errno
+time_errno errno
+upstream_exceptions_raising errno
+
+exc_with_close_fails dev-full
+io_close_temp_full dev-full
+io_exit_full dev-full
+io_input_full dev-full
+io_stdout_bigflush_full dev-full
+io_stdout_close_full dev-full
+io_stdout_dropped_full dev-full
+io_stdout_exit_full dev-full
+io_stdout_flush_full dev-full
+with_enter_close_fails dev-full
+with_exit_close_fails dev-full
+with_nested_exit_close_fails dev-full
+with_raise_close_fails dev-full
+
+bfile_fifo_raw process
+environment_mutation process
+example_agent process
+exec_signal process
+file_descriptor_inheritance process
+files_stdin process
+io_and_exit process
+io_close_pipe process
+io_latin1_codepoints process
+io_latin1_read process
+io_stdout_system process
+lib_platform process
+lib_re_raw_subject process
+lib_shutil_rmtree process
+lib_subprocess_errors process
+lib_subprocess_mypy process
+lib_subprocess_popen process
+lib_subprocess_run process
+lib_subprocess_text process
+
+os_descriptors descriptors
+os_inheritable descriptors
+
+lib_shutil enosys
+
+io_keyboard_interrupt signal
+io_keyboard_interrupt_full signal
+io_sigint signal
+io_sigint_fifo signal
+lib_select_sigint signal
+
+lib_select_files select
+upstream_select select
+
+lib_thread thread
+
+io_input_closed_stderr closed-stdio
+io_input_closed_stdin closed-stdio
+io_input_closed_stdout closed-stdio
+
+io_dropped_buffers gc
+lib_gc_collect gc
+lib_threading_lifetime gc
+lib_weakref_callback gc
+lib_weakref_callback_nested gc
+lib_weakref_callback_order gc
+lib_weakref_callback_raise gc
+lib_weakref_dead gc
+lib_weakref_dead_eq gc
+lib_weakref_transition gc
+rt_list_vacated gc
+upstream_weakref gc
+
+float_power_rounding libm
+lib_random_distributions libm
+math_funcs libm
+math_more libm
+port_sgp4_api libm
+upstream_math_functions libm
+upstream_math_testfiles libm
+
+recursion_stack_floor #1721

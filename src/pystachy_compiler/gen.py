@@ -1,8 +1,7 @@
 """Gen component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-import os
 from src.pystachy_compiler.diagnostics import STATICFILES
-from src.pystachy_compiler.source_lines import SourceLines
+from src.pystachy_compiler.source_lines import SourceLines, wanted
 from src.pystachy_compiler.lowering import gen_lower_scalar as scalar_ir_lower_scalar
 from src.pystachy_compiler.scalar_ir import (
     gen_scalar as scalar_ir_scalar,
@@ -272,6 +271,7 @@ from src.pystachy_compiler.unions import (
     gen_scalar_union as unions_scalar_union,
     gen_num_union as unions_num_union,
     gen_cx_union as unions_cx_union,
+    gen_tuple_union as unions_tuple_union,
     gen_value_union as unions_value_union,
     gen_uop as unions_uop,
     gen_scalar_view as unions_scalar_view,
@@ -670,6 +670,12 @@ from src.pystachy_compiler.declarations import (
     gen_rec_type as declarations_rec_type,
     gen_rec_fold as declarations_rec_fold,
     gen_recursive_aliases as declarations_recursive_aliases,
+    gen_rec_edge as declarations_rec_edge,
+    gen_rec_generic as declarations_rec_generic,
+    gen_rec_instance as declarations_rec_instance,
+    gen_rec_members as declarations_rec_members,
+    gen_rec_named as declarations_rec_named,
+    gen_rec_names as declarations_rec_names,
     gen_ann as declarations_ann,
     gen_ann_base as declarations_ann_base,
     gen_ann_items as declarations_ann_items,
@@ -929,6 +935,7 @@ from src.pystachy_compiler.expressions import (
     gen_exc_kinds as expressions_exc_kinds,
     gen_cmp_kinds as expressions_cmp_kinds,
     gen_cmp_pick as expressions_cmp_pick,
+    gen_object_eq as expressions_object_eq,
     gen_may_decline as expressions_may_decline,
     gen_decl_flag as expressions_decl_flag,
     gen_cmp_cands as expressions_cmp_cands,
@@ -1261,6 +1268,17 @@ from src.pystachy_compiler.program import (
     gen_request_hierarchy as program_request_hierarchy,
     gen_retry_hierarchy as program_retry_hierarchy,
     gen_template_fix as program_template_fix,
+    gen_template_root as program_template_root,
+    gen_tmpl_derives as program_tmpl_derives,
+    gen_super_init_problem as program_super_init_problem,
+    gen_template_subclass as program_template_subclass,
+    gen_tmpl_member as program_tmpl_member,
+    gen_tmpl_sub as program_tmpl_sub,
+    gen_sub_base as program_sub_base,
+    gen_late_sub as program_late_sub,
+    gen_template_hierarchy as program_template_hierarchy,
+    gen_template_bases as program_template_bases,
+    gen_super_arg_types as program_super_arg_types,
     gen_left_out as program_left_out,
     gen_makes_tmpl as program_makes_tmpl,
     gen_ann_classes as program_ann_classes,
@@ -1408,6 +1426,8 @@ from src.pystachy_compiler.templates import (
     gen_match_key as templates_match_key,
     gen_names_tv as templates_names_tv,
     gen_specialize as templates_specialize,
+    gen_new_tag as templates_new_tag,
+    gen_member_spec as templates_member_spec,
     gen_literal_class as templates_literal_class,
     gen_literal_args as templates_literal_args,
     gen_lit_context as templates_lit_context,
@@ -1546,7 +1566,7 @@ class Gen:
         for op in IROPS:
             self.opfxs[op] = fxmask(IROPS[op].replace("T", "").replace("*", ""))
         self.out: list[str] = []  # completed LLVM function chunks and the current function's lines
-        self.source_lines = SourceLines(os.getenv("PYSTACHY_DEBUG_LINES", "") == "1")
+        self.source_lines = SourceLines(wanted(True))
         self.fns: list[IFn] = []  # the functions compiled, in the order they were completed
         self.fll: dict[str, int] = {}  # and their positions there by symbol, once the program is built
         # listguard (gen_listguard): how many calls of each function the program's IR makes, by
@@ -1560,6 +1580,9 @@ class Gen:
         self.compvars: dict[str, int] = {}
         self.compshare: dict[str, str] = {}  # (the names a comprehension's for clause binds into an earlier clause's variables, and their types)
         self.drying = 0  # (dry() is typing an expression from further on in the function)
+        # template_bases is making a template hierarchy's specializations, before code is compiled,
+        # whose fields guess types: it may specialize the class templates they hold then too
+        self.tbasing = 0
         self.loops: list[Loop] = []  # the loops the code being compiled is in, innermost last
         self.exits: list[Exit] = []  # what break, continue and return must do on their way out, innermost last
         self.wdepth: list[int] = []  # len(exits) when each enclosing loop began
@@ -1734,6 +1757,15 @@ class Gen:
         # Program-wide names only: retained by fresh-Gen retries, never speculative layouts.
         self.hierarchies: dict[str, bool] = {}
         self.deferred_hierarchies: dict[str, bool] = {}
+        # the specializations of subclasses whose own __init__ is a template that compiled code
+        # made (program.py's late_sub), by specialize's key: the class and the argument types, made
+        # where the classes are declared in each pass after (template_bases); retained by retries
+        # as hierarchies. newlate: this pass added one, so it ends in NeedHierarchy
+        self.tlate: dict[str, list[str]] = {}
+        self.newlate = False
+        # the greatest class tag: those assigned as classes are declared, then those of a template
+        # hierarchy's specializations, made later (templates.new_tag); never reused
+        self.ntag = 0
         self.cnodes: dict[int, Node] = {}  # every module-level class or subclass statement, by line
         self.hooks: dict[str, str] = {}  # see hook()
         self.chooks: dict[int, str] = {}
@@ -3303,6 +3335,24 @@ class Gen:
     def recursive_aliases(self) -> None:
         return declarations_recursive_aliases(self)
 
+    def rec_edge(self, n: Node, name: str, tps: list[str]) -> bool:
+        return declarations_rec_edge(self, n, name, tps)
+
+    def rec_generic(self, name: str) -> bool:
+        return declarations_rec_generic(self, name)
+
+    def rec_instance(self, name: str, xs: list[Node]) -> str:
+        return declarations_rec_instance(self, name, xs)
+
+    def rec_members(self, name: str, tps: list[str], args: list[str]) -> list[str]:
+        return declarations_rec_members(self, name, tps, args)
+
+    def rec_named(self, name: str, members: list[str]) -> str:
+        return declarations_rec_named(self, name, members)
+
+    def rec_names(self, n: Node, names: list[str]) -> bool:
+        return declarations_rec_names(self, n, names)
+
     def subst_ann(self, n: Node, tps: list[str], args: list[Node]) -> Node:
         return declarations_subst_ann(self, n, tps, args)
 
@@ -4265,6 +4315,39 @@ class Gen:
     def template_fix(self, cs: list[Node]) -> str:
         return program_template_fix(self, cs)
 
+    def template_root(self, name: str) -> str:
+        return program_template_root(self, name)
+
+    def tmpl_derives(self, c: str, base: str) -> bool:
+        return program_tmpl_derives(self, c, base)
+
+    def super_init_problem(self, name: str, init: Node, base: str, root: str) -> str:
+        return program_super_init_problem(self, name, init, base, root)
+
+    def template_subclass(self, st: Node, base: str, root: str) -> str:
+        return program_template_subclass(self, st, base, root)
+
+    def tmpl_member(self, ci: ClassInfo) -> bool:
+        return program_tmpl_member(self, ci)
+
+    def tmpl_sub(self, ci: ClassInfo) -> bool:
+        return program_tmpl_sub(self, ci)
+
+    def sub_base(self, t: ClassInfo, init: FnInfo, ts: list[str]) -> str:
+        return program_sub_base(self, t, init, ts)
+
+    def late_sub(self, c: str, ts: list[str], doing: str) -> None:
+        program_late_sub(self, c, ts, doing)
+
+    def template_hierarchy(self, ci: ClassInfo) -> str:
+        return program_template_hierarchy(self, ci)
+
+    def template_bases(self) -> None:
+        program_template_bases(self)
+
+    def super_arg_types(self, init: FnInfo, args: list[Node], f: FnInfo) -> list[str]:
+        return program_super_arg_types(self, init, args, f)
+
     def makes_tmpl(self, n: Node) -> bool:
         return program_makes_tmpl(self, n)
 
@@ -5203,6 +5286,9 @@ class Gen:
     def cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
         return expressions_cmp_pick(self, op, at, bt)
 
+    def object_eq(self, at: str, bt: str) -> bool:
+        return expressions_object_eq(self, at, bt)
+
     def may_decline(self, f: FnInfo) -> bool:
         return expressions_may_decline(self, f)
 
@@ -5637,6 +5723,12 @@ class Gen:
 
     def specialize(self, c: str, ts: list[str], given: dict[str, str], named: bool, lits: dict[str, Node]) -> str:
         return templates_specialize(self, c, ts, given, named, lits)
+
+    def new_tag(self, s: ClassInfo) -> None:
+        templates_new_tag(self, s)
+
+    def member_spec(self, p: str, m: str) -> str:
+        return templates_member_spec(self, p, m)
 
     def getattr_name(self, n: Node) -> str:
         return calls_getattr_name(self, n)
@@ -6112,6 +6204,9 @@ class Gen:
 
     def value_union(self, t: str) -> bool:
         return unions_value_union(self, t)
+
+    def tuple_union(self, t: str) -> bool:
+        return unions_tuple_union(self, t)
 
     def uop(self, v: Val, op: str) -> Val:
         return unions_uop(self, v, op)

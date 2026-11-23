@@ -1,0 +1,45 @@
+X
+y ['fixed']
+y ['fixed', 'again'] 2
+('y', ['fixed', 'again'])
+['fixed', 'again']
+x
+('y', ['fixed', 'again'])
+False True True True
+True True False True
+False True False True
+str x
+tuple y ['fixed', 'again', 'more']
+tuple z ['fixed', 'more']
+['x', ('y', ['fixed', 'again', 'more']), ('z', ['fixed', 'more'])]
+[7, 'seven', (7, 'seven'), [7, 7], None]
+7 7 True False False 7|7
+'seven' seven True False False seven|'seven'
+5
+(7, 'seven') (7, 'seven') True False True (7, 'seven')|(7, 'seven')
+2
+[7, 7] [7, 7] True False False [7, 7]|[7, 7]
+2
+None None False True False None|None
+True True False True True
+True 2 1
+TypeError object of type 'int' has no len()
+TypeError object of type 'NoneType' has no len()
+{'a': 1, 'b': (2, 'two')} True False
+(1.5, 2.5, 3.5) 3
+4
+() False 0
+(2, 'b') True
+(1.5, 2.5)
+('a', ['x'])
+6 2 [2, 4, 6]
+{'a': 1, 'b': (2, 'two')} True False
+(1.5, 2.5, 3.5) 3
+4
+() False 0
+5 False
+(1.5, 2.5)
+('a', ['x'])
+6 2 [2, 4, 6]
+True False (True, '')
+[exit 0]

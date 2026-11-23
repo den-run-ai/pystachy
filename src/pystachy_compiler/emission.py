@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.bigints import narrows
-from src.pystachy_compiler.diagnostics import ClassBoxes, Rejoin, fail, int_lists
+from src.pystachy_compiler.diagnostics import ClassBoxes, NeedHierarchy, Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.ircheck import CONSTRAINT_PARTS, native_type, ref_type, value_view
 from src.pystachy_compiler.ir import slot_register
@@ -54,6 +54,10 @@ def gen_err(self, msg: str) -> None:
         raise Rejoin()
     if len(self.newhints) > 0 and not self.final:
         raise Rejoin()  # (an error after a join may come of the narrower type it widens: see Rejoin)
+    if self.newlate:
+        # (or of a hierarchy that code made a specialization of a class in, late_sub: the next pass
+        # makes it before code is compiled, and reports the error if it stays)
+        raise NeedHierarchy()
     if len(self.clsused) > 0:
         # (it may come of a class read as a typed class object where a module that opts in to
         # dynamic Any, and names no type[C], made a class box of it before: compiled again so,
@@ -992,15 +996,19 @@ def gen_checked(self, op: str, a: str, b: str) -> list[str]:
 
 def gen_guard(self, bad: str, msg: str) -> None:
     # if bad, jump to a block (one per function and message) that raises msg ("Kind: text"); in a
-    # try statement, one per function, message and landing block (whose key the check holds in x)
+    # try statement, one per function, message and landing block (whose key the check holds in x).
+    # With line tables, one per line too, after a newline in the key, so that a traceback shows the
+    # line that failed (Gen.function_body)
     key = msg if self.handler == "" else f"{self.handler} {msg}"
+    if self.source_lines.enabled:
+        key = f"{key}\n{self.line}"
     if key not in self.fn.cold:
         self.fn.cold[key] = self.label()
         if self.handler != "":
             self.fn.coldh[key] = self.handler
     l = self.label()
     i = Ins("check", "", msg)
-    if self.handler != "":
+    if key != msg:
         i.x = key
     i.a = [Val(bad, "bool")]
     i.b = [l]

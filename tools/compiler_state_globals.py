@@ -18,7 +18,7 @@ LOOKUP = set("""
 analysis.BINDERS analysis.READS_ONLY_FNS builtins.FSPRIMS
 ctypes_schema.SCALARS ctypes_schema.MARKERS
 bigints.BIGOPS bigints.BKEY bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
-builtin_bases.BWORDS builtin_bases.BITER builtin_bases.BREV builtin_bases.BITEM builtin_bases.BSTORE
+specs.CONTAINER_HEADERS builtin_bases.BITER builtin_bases.BREV builtin_bases.BITEM builtin_bases.BSTORE
 builtin_bases.BDEL builtin_bases.BLEN builtin_bases.BTRUTH builtin_bases.BIN builtin_bases.BSHOW
 builtin_bases.BREPR builtin_bases.BARITH builtin_bases.BCMP builtin_bases.BITERATE
 cached_run.BUILD_ENV cached_run.CPU_FIELDS cached_run.KEYED_ENV
@@ -91,6 +91,7 @@ RETAINED = {
     "specs.GLUE": "loader public-name discoveries; currently retained across restarts",
     "specs.SPECSHOW": "specialization display names; currently retained across restarts",
     "specs.MODULES": "driver builtin-module configuration; runtime_ir restores its temporary _rt entry on every exit",
+    "source_lines.PROGRAM": "driver command configuration: main sets once, before compiling, whether the program's functions get line tables",
     # Interned IR fragments: each entry is a pure function of its index, so retaining them across
     # dry runs, retries and compilations changes no output. one_num's lists are shared and must not
     # be mutated; ircheck verifies them after lowering.
@@ -136,8 +137,9 @@ WRITERS = {
     # appends the same per-pass requirement as @extern; compile_program rewinds it.
     "specs.LINKDL": {"lower_module.gen_cextern", "builtins.gen_builtin", "driver.compile_program"},
     "specs.GLUE": {"loader.Loader.load"},
-    "specs.SPECSHOW": {"templates.gen_specialize"},
+    "specs.SPECSHOW": {"templates.gen_specialize", "templates.gen_member_spec"},
     "specs.MODULES": {"driver.runtime_ir", "driver.prefer_program_ffi"},
+    "source_lines.PROGRAM": {"driver.main"},
     "ir.TMPNAMES": {"ir.tmpname"},
     "ir.ONENUMS": {"ir.one_num"},
     "union_state.KEY_VALUES": {"union_state.key_value"},

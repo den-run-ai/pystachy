@@ -1,4 +1,5 @@
-# error: class weakref.WeakMethod is not supported: inheritance with generic class templates is not supported
+# error: class weakref.WeakMethod is not supported: parameter 'meth' of method __new__() has no type annotation
+# (WeakMethod derives from ref, a class template, and makes its objects in a __new__ of its own)
 import weakref
 
 
