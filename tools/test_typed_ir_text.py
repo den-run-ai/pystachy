@@ -667,14 +667,14 @@ L1:
                                     capture_output=True, text=True, check=False)
             self.assertEqual(result.returncode, 1)
             self.assertIn("@f: unexpected error in block entry", result.stderr)
-            for fixture in (self.INVALID, self.CLASSES, self.FIELDS, self.STRUCTURE, self.CLASS_READS):
+            for fixture in (self.INVALID, self.CLASSES, self.FIELDS, self.STRUCTURE, self.CLASS_READS, self.CALLS):
                 result = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "verify", str(fixture)],
                                         capture_output=True, text=True, check=False)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("functions verify as expected", result.stdout)
 
     def test_annotated_fixtures_are_in_the_printed_form_but_for_their_comments(self):
-        for fixture in (self.INVALID, self.CLASSES, self.FIELDS, self.OPTIONAL, self.STRUCTURE, self.CLASS_READS):
+        for fixture in (self.INVALID, self.CLASSES, self.FIELDS, self.OPTIONAL, self.STRUCTURE, self.CLASS_READS, self.CALLS):
             with self.subTest(fixture=fixture.name):
                 bare = "\n".join(line for line in fixture.read_text().split("\n") if not line.lstrip().startswith(";"))
                 bare = re.sub(r"\n{3,}", "\n\n", bare).lstrip("\n")
@@ -685,6 +685,16 @@ L1:
     OPTIONAL = FIXTURES / "optional.tir"
     STRUCTURE = FIXTURES / "structure.tir"
     CLASS_READS = FIXTURES / "class_reads.tir"
+    CALLS = FIXTURES / "calls.tir"
+
+    def test_a_call_has_its_callees_function_type(self):
+        source = self.CALLS.read_text()
+        self.assertEqual(text.verify_errors(source), [])
+        expected = text.expectations(source)
+        self.assertEqual(sum(1 for e in expected if e), 6)
+        # (a function alone has no callee: without its module, every call names none)
+        alone = text.format_function(text.parse_function(next(t for t in source.split("\n\n") if "@a_call_at_its_callees_type" in t)))
+        self.assertEqual(text.verify_errors(alone), ["@a_call_at_its_callees_type: unexpected error in block entry: a call of @add, which is not compiled"])
 
     def test_a_class_read_needs_a_test_of_the_objects_class_word(self):
         source = self.CLASS_READS.read_text()

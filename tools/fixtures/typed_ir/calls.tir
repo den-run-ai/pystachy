@@ -1,0 +1,102 @@
+; A compiled call has its callee's function type, as an MLIR func.call has: it passes the
+; parameters that are not typed None at their types (a parameter typed None is not passed) and
+; has the callee's return type. A template's empty result, whose type each call decides
+; (Gen.typed_empty), is the container of that kind its caller decided; a call cycle's call built
+; before its callee's return was decided (Gen.adopt) keeps the placeholder of that kind. A
+; module's functions are verified with one another, so that each call names its callee. Check with
+;   python3 tools/typed_ir_text.py verify tools/fixtures/typed_ir/calls.tir
+
+module version=1 {
+  hole 1
+}
+
+function @add(a: int, b: int) -> int {
+entry:
+  ret(int %a1)
+}
+
+function @first(a: int, b: None) -> int {
+entry:
+  ret(int %a0)
+}
+
+function @empty() -> list[?] {
+entry:
+  %t1 = rt entry=list.new hole=1 (int 0) : list[?]
+  ret(list[?] %t1)
+}
+
+function @decided(xs: list[int]) -> list[int] {
+entry:
+  ret(list[int] %a0)
+}
+
+; ---- calls at their callees' types
+
+function @a_call_at_its_callees_type() -> int {
+entry:
+  %t1 = call callee=@add (int 1, int 2) : int
+  ret(int %t1)
+}
+
+function @a_call_that_passes_no_none() -> int {
+entry:
+  %t1 = call callee=@first (int 1) : int
+  ret(int %t1)
+}
+
+function @a_templates_empty_result_as_its_caller_decided() -> list[str] {
+entry:
+  %t1 = call callee=@empty : list[str]
+  ret(list[str] %t1)
+}
+
+function @a_call_cycles_call_built_before_its_callee_was_typed(xs: list[int]) -> list[?] {
+entry:
+  %t1 = call callee=@decided (list[int] %a0) : list[?]
+  ret(list[?] %t1)
+}
+
+; ---- calls that are not
+
+function @an_operand_of_another_type(s: str) -> int {
+entry:
+  ; expected-error {{a call of @add passes operand 0 as str, where it takes int}}
+  %t1 = call callee=@add (str %a0, int 2) : int
+  ret(int %t1)
+}
+
+function @an_operand_too_few() -> int {
+entry:
+  ; expected-error {{a call of @add passes 1 operands, where it takes 2}}
+  %t1 = call callee=@add (int 1) : int
+  ret(int %t1)
+}
+
+function @a_none_passed() -> int {
+entry:
+  ; expected-error {{a call of @first passes 2 operands, where it takes 1}}
+  %t1 = call callee=@first (int 1, None null) : int
+  ret(int %t1)
+}
+
+function @a_result_of_another_type() -> float {
+entry:
+  ; expected-error {{a call of @add has type float, where it returns int}}
+  %t1 = call callee=@add (int 1, int 2) : float
+  ret(float %t1)
+}
+
+function @a_templates_empty_result_as_another_kind() -> dict[int,int] {
+entry:
+  ; expected-error {{a call of @empty has type dict[int,int], where it returns list[?]}}
+  %t1 = call callee=@empty : dict[int,int]
+  ret(dict[int,int] %t1)
+}
+
+function @an_open_result_of_another_kind(xs: list[int]) -> dict[?,?] {
+entry:
+  ; expected-error {{a call of @decided has type dict[?,?], where it returns list[int]}}
+  %t1 = call callee=@decided (list[int] %a0) : dict[?,?]
+  ret(dict[?,?] %t1)
+}

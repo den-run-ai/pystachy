@@ -321,8 +321,13 @@ type wherever its row names it, alone or inside a type (`&$T`, `list[$E]`), and 
 follows one of its names (`$T:native`); `select` is `bool, $T:scalar, $T -> $T`. The last
 operand's entry holds for any further operands the count admits, so `switch` is `int, int`.
 A runtime call's types are an instance of its `RUNTIME` signature (see
-[runtime calls](#runtime-calls)) and a compiled call's its callee's. The column constrains
-each instruction's own operand types.
+[runtime calls](#runtime-calls)) and a compiled call's its callee's, as an MLIR `func.call`
+has its callee's function type: it passes the parameters not typed `None` at their types (and,
+under the identity ABI, their numbers' identities), and its result has the callee's return
+type, but for a template's empty result, which each call types (`Gen.typed_empty`), and a call
+cycle's call built before its callee's return was decided (`Gen.adopt`), which keeps the
+placeholder. The column
+constrains each instruction's own operand types.
 
 An operand's type is how its instruction reads the value. In MLIR a value has one type, which
 every use shares, and an op converts it. With `PYSTACHY_IRCHECK=1`, after each operation's own
