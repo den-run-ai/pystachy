@@ -1129,13 +1129,19 @@ a protocol's value above, each by its value's type
 - `==` and `!=` with a value of any type: numbers by their values (`1 == 1.0`, `True == 1`),
   values of builtin types of two kinds (a number and a str, a list and a tuple) unequal, and any
   two values of `object` whatever they hold: where neither type's comparison takes the other (a
-  range and a bool, a generator and a list, a dataclass and an exception) and no `__eq__` of the
-  program decides, as CPython by identity, `False` (`True` for `!=`); a class's `__eq__` that takes
-  `object` is called, reflected where the other operand's type declines
-  ([test](../../tests/programs/classes/object_eq_pairs.py)), and one annotated to take only its
-  own class rejects the program where a value of `object` of another type may meet it: annotate
-  its parameter `object` and narrow it with `isinstance()`
-  ([error test](../../tests/errors/classes/object_eq_strict.py));
+  range and a bool, a generator and a list, a dataclass and an exception) and no method of the
+  program decides, as CPython by identity, `False` (`True` for `!=`). Where an object's class
+  defines or inherits the method CPython calls, `__eq__` (`__ne__` for `!=`), only that method
+  answers, reflected where the other operand's type declines
+  ([test](../../tests/programs/classes/object_eq_pairs.py),
+  [classes](../../tests/programs/classes/object_eq_own_methods.py)); for `!=` a class without
+  `__ne__` inverts its `__eq__`, but a list's or dict's subclass, a NamedTuple, an `IntEnum`, an
+  `IntFlag` and a `StrEnum` keep their builtin type's `__ne__`, which declines another kind of
+  value ([test](../../tests/programs/classes/object_eq_builtin_ne.py)). Such a method annotated to
+  take only its own class rejects the program where a value of `object` of another type may meet
+  it, also in a list's or dict's subclass: annotate its parameter `object` and narrow it with
+  `isinstance()` ([error test](../../tests/errors/classes/object_eq_strict.py),
+  [list](../../tests/errors/classes/object_eq_list_own.py));
 - `hash()`, alike for equal numbers;
 - `is` and `is not`: `None` is only `None`; an object, a str, a container or a class object is
   itself; a number is an equal number of its type, a float by its bits, as in PyPy, which is

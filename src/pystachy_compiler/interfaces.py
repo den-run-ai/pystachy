@@ -896,15 +896,16 @@ def eq_try(self, f: FnInfo, body: list[Node], tried: str, fr: Frame) -> None:
     self.xtry = previous
 
 
-def eq_family(self, t: str) -> str:
-    # the family of a value of type t for == and != with a value of another family, which
+def eq_family(self, t: str, op: str) -> str:
+    # the family of a value of type t for op (== or !=) with a value of another family, which
     # CPython's comparisons of the two kinds both decline (NotImplemented), so that it compares
-    # them by identity: "num" (a number), "str", "bytes", "None", "list", "tuple" (a NamedTuple's
-    # object too), "dict", "set" (a frozenset too), "range", "dc:C" (an object of dataclass C, whose
-    # generated __eq__ declines another class's), "id:T" (a value equal only to itself: a
-    # generator, a class object, an exception, an enum member, an object of a class that defines
-    # no __eq__ or __ne__); "" where a method of the program may decide (user_eq) or for another
-    # type, whose comparison is the compiler's own
+    # them by identity: "num" (a number), "str", "bytes", "None", "list" and "dict" (an object of a
+    # class that derives from one too), "tuple" (a NamedTuple's object too), "set" (a frozenset
+    # too), "range", "dc:C" (an object of dataclass C, whose generated __eq__ declines another
+    # class's), "id:T" (a value equal only to itself: a generator, a class object, an exception,
+    # an enum member, object()'s object, an object of a class without a method for op); "" where
+    # the method that CPython calls for op is the program's (user_cmp), which alone answers, or
+    # for another type, whose comparison is the compiler's own
     u = unopt(t) if is_sopt(t) else t
     if u == "int" or u == "float" or u == "bool" or u == BIG or u == COMPLEXC:
         return "num"
@@ -912,9 +913,9 @@ def eq_family(self, t: str) -> str:
         return u
     if u == RANGEC:
         return "range"
-    if is_list(u) or self.bkind(u) == "list":
+    if is_list(u):
         return "list"
-    if is_dict(u) or self.bkind(u) == "dict":
+    if is_dict(u):
         return "dict"
     if is_set(u) or u == EMPTYFS:
         return "set"
@@ -922,8 +923,10 @@ def eq_family(self, t: str) -> str:
         return "tuple"
     if is_gen(u) or is_clsval(u) or u == "exctype" or u == "exc":
         return "id:" + u
-    if u not in self.classes or user_eq(self, u) or self.bkind(u) != "" or u == OBJECTC:
+    if u not in self.classes or user_cmp(self, u, op):
         return ""
+    if self.bkind(u) != "":
+        return self.bkind(u)  # ("list" or "dict": the builtin's own comparison, which its class keeps)
     if u in self.nts:
         return "tuple"
     if self.is_dc(u) and "no-eq" not in self.classes[u].dcopts:
@@ -931,10 +934,9 @@ def eq_family(self, t: str) -> str:
     return "id:" + u
 
 
-def user_eq(self, c: str) -> bool:
+def user_method(self, c: str, m: str) -> bool:
     # does class c, or a class it derives from (its template's, for a specialization), define
-    # __eq__ or __ne__ (not one the compiler writes for a dataclass): CPython calls it with a
-    # value of any type, which only its body answers
+    # method m (not one the compiler writes for a dataclass)
     seen: dict[str, bool] = {}
     todo = [c]
     while len(todo) > 0:
@@ -943,23 +945,34 @@ def user_eq(self, c: str) -> bool:
             continue
         seen[x] = True
         ci = self.classes[x]
-        for m in ["__eq__", "__ne__"]:
-            if m in ci.methods and not ci.methods[m].synthetic:
-                return True
+        if m in ci.methods and not ci.methods[m].synthetic:
+            return True
         todo.extend([ci.base, ci.origin] + ci.roles)
     return False
 
 
-def eq_default(self, a: str, b: str) -> str:
-    # CPython's answer to a == b, a of type a and b of type b, where the comparison of a declines
-    # b (eq_family): "swap" where b's class defines __eq__ or __ne__ (user_eq), which CPython then
-    # calls reflected, as b == a calls it first; where the comparison of b declines a too, "is"
-    # where one object may have both types (one class, or a class and a class it derives from),
-    # "false" where none may; "" where a comparison decides (of numbers, of strs, of containers
-    # item by item, a dataclass's, a method of a's class)
-    fa = eq_family(self, a)
-    fb = eq_family(self, b)
-    if fa != "" and fb == "" and b in self.classes and user_eq(self, b) and self.bkind(b) == "" and b != OBJECTC:
+def user_cmp(self, c: str, op: str) -> bool:
+    # is the method that CPython calls for an object of class c op a value (== or !=) one of the
+    # program: an __eq__ that c defines or inherits for ==; for !=, an __ne__ so defined, or c's
+    # __eq__, which object's __ne__ inverts, but not for a class that derives from list or dict,
+    # or a NamedTuple, whose __ne__ is the builtin's (it declines another kind, and identity then
+    # answers: eq_family). (An IntEnum's, IntFlag's or StrEnum's are lib/enum.py's, which take
+    # any value)
+    if user_method(self, c, "__ne__" if op == "!=" else "__eq__"):
+        return True
+    return op == "!=" and self.bkind(c) == "" and c not in self.nts and user_method(self, c, "__eq__")
+
+
+def eq_default(self, a: str, b: str, op: str) -> str:
+    # CPython's answer to a op b (op == or !=), a of type a and b of type b, where the comparison
+    # of a declines b (eq_family): "swap" where the method that CPython calls for b is the
+    # program's (user_cmp), reflected, as b op a calls it first; where the comparison of b
+    # declines a too, "is" where one object may have both types (one class, or a class and a
+    # class it derives from), "false" where none may; "" where a comparison decides (of numbers,
+    # of strs, of containers item by item, a dataclass's, a's method of the program)
+    fa = eq_family(self, a, op)
+    fb = eq_family(self, b, op)
+    if fa != "" and fb == "" and b in self.classes and user_cmp(self, b, op):
         return "swap"
     if fa == "" or fb == "":
         return ""
@@ -982,7 +995,7 @@ def eq_how(self, tab: ITab, op: str, e: Node) -> str:
     if self.is_iface(unopt(parts[2])) or self.is_iface(tab.impl) or e.kind != "cmp" or len(e.kids) != 2 or e.kids[0].kind != "name" or e.kids[1].kind != "name":
         return ""
     ts = [tab.impl if x.s == "_o" else parts[2] for x in e.kids]
-    return eq_default(self, ts[0], ts[1])
+    return eq_default(self, ts[0], ts[1], e.s)
 
 
 def eq_note(self, tab: ITab, op: str, e: Node) -> str:
