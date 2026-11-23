@@ -8,7 +8,8 @@ decided from the static type alone: no list or dict holds a class word or a flag
 path tests for a subclass.
 """
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import Rejoin, where
+from src.pystachy_compiler import diagnostics
+from src.pystachy_compiler.diagnostics import where
 from src.pystachy_compiler.frames import IterArg
 from src.pystachy_compiler.ir import FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
@@ -161,56 +162,42 @@ def gen_bcompared(self, op: str, a: Val, b: Val) -> list[Val]:
     return [self.bdecay(a, []), self.bdecay(b, [])]
 
 
-def gen_bkeeps(self, op: str, a: Val, b: Val) -> str:
-    # the name of the attempt (Gen.xtry) to compile a op b with both operands as they are, where
-    # bcompared would compare them as containers although CPython calls a method of the program
-    # with the object of a class deriving from a builtin container: the left operand's method,
-    # or the right one's reflected method where the left operand's container declines a right
-    # operand that is no such container (one of the container's kind, an object of another class
-    # deriving from it too, is compared by the container, which does not decline it). "" where
-    # bcompared decides as CPython does
-    if op not in BCMP or (self.bkind(a.t) == "" and self.bkind(b.t) == ""):
-        return ""
+def gen_bkeeps(self, op: str, a: Val, b: Val) -> bool:
+    # whether a op b is compiled with both operands as they are, where bcompared would compare
+    # them as containers although CPython calls a method of the program with the object of a
+    # class deriving from a builtin container: the left operand's method, or the right one's
+    # reflected method where the left operand's container declines a right operand that is no
+    # such container (one of the container's kind, an object of another class deriving from it
+    # too, is compared by the container, which does not decline it). False where bcompared
+    # decides as CPython does, and in a compilation that hands over the containers (Gen.bobj)
+    if not self.bobj or op not in BCMP or (self.bkind(a.t) == "" and self.bkind(b.t) == ""):
+        return False
     if op != "==" and op != "!=" and (self.bkind(a.t) == "dict" or self.bkind(b.t) == "dict"):
-        return ""
+        return False
     if self.bkind(a.t) != "" and BCMP[op][0] in self.classes[a.t].methods:
-        return ""
+        return False
     if self.bkind(a.t) == "" and BCMP[op][1] in self.classes[b.t].methods:
-        return ""
+        return False
     ka = self.bkind(a.t)
     kb = self.bkind(b.t)
-    called = False
     if ka == "":
-        called = self.bcalled(op, a.t, 0)
-    elif kb != ka and not (is_list(b.t) if ka == "list" else is_dict(b.t)):
-        called = self.bcalled(op, b.t, 1)
-    if not called:
-        return ""
-    # (one attempt for the comparisons of these types that the method's code decides alike: it is
-    # compiled for an operand's class, and for None too where the operand may be None. A decline
-    # costs a pass, so a program's comparisons do not each take their own)
-    return f"bobj:{op}:{a.t}:{b.t}:{'n' if a.v in self.nn else 'o'}{'n' if b.v in self.nn else 'o'}"
+        return self.bcalled(op, a.t, 0)
+    if kb != ka and not (is_list(b.t) if ka == "list" else is_dict(b.t)):
+        return self.bcalled(op, b.t, 1)
+    return False
 
 
-def gen_bkept(self, op: str, a: Val, b: Val, attempt: str) -> Val:
-    # a op b with both operands as they are, as an attempt: the program's method takes the
-    # object itself, whose class isinstance() and type() tell there. Where that does not compile
-    # (the method's parameter is annotated with the container's type, or its code, compiled for
-    # the object's class and for None where the object may be None, does what only a container
-    # can), the error declines the attempt (gen_err), and the next pass compares the containers
-    # (bcompared), as it always did: no program that compiled so stops compiling. What the
-    # attempt's code joined is not the program's
-    previous = self.xtry
-    hints = dict(self.newhints)
-    self.xtry = attempt
-    try:
-        r = self.cmp3(op, a, b)
-    except Rejoin:
-        if attempt in self.newx:
-            self.newhints = hints
-        raise
-    self.xtry = previous
-    return r
+def gen_bkept(self, op: str, a: Val, b: Val) -> Val:
+    # a op b with both operands as they are: the program's method takes the object itself, whose
+    # class isinstance() and type() tell there. Its type is the class's where the container's
+    # was, in the method and in whatever the method stores it in, returns it to or passes it on
+    # to, so code anywhere in the program may stop compiling, or decline an attempt it made
+    # (Gen.xtry), that compiled with the container: from here on the compilation is a trial
+    # (diagnostics.OBJECTS), and where any of that happens the driver compiles the program from
+    # the start with the containers. Nothing of a trial is the program's then, and no program
+    # that compiled with the containers stops compiling
+    diagnostics.OBJECTS = True
+    return self.cmp3(op, a, b)
 
 
 def gen_bcalled(self, op: str, t: str, side: int) -> bool:

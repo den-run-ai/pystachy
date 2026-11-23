@@ -1972,10 +1972,15 @@ the builtin's unless the class defines that operator's method, so a class that d
 defines the reflected method is asked first. Compared with an object of another class that
 defines the comparison, the object is that method's argument as it is, in either operand order:
 `isinstance(other, C)` holds there and `type(other)` is `C`
-([test](../../tests/programs/classes/builtin_subclass_compared_operand.py)). A method that
-compiles only for the container (its parameter is annotated `list[int] | None`, or its code
-passes the operand on as a list) takes the container instead, in which `isinstance(other, C)` is
-false ([test](../../tests/programs/classes/builtin_subclass_compared_container.py)); a class that
+([test](../../tests/programs/classes/builtin_subclass_compared_operand.py)). That holds for a
+program whose every such comparison compiles so. Where one does not, each of the program's
+comparisons hands its method the container instead, in which `isinstance(other, C)` is false: a
+method's parameter is annotated `list[int] | None` or its code passes the operand on as a list
+([test](../../tests/programs/classes/builtin_subclass_compared_container.py)), or what it stores
+the operand in holds plain lists or another class's objects too
+([test](../../tests/programs/classes/builtin_subclass_compared_stored.py),
+[test](../../tests/programs/classes/builtin_subclass_compared_stored_sites.py),
+[test](../../tests/programs/classes/builtin_subclass_compared_stored_classes.py)). A class that
 defines `__eq__` but not `__ne__` keeps the container's `!=`. A slice, `+`, `*`,
 `|` or `copy()` makes a plain list or dict, as in CPython. Without `__eq__` and `__hash__` the objects are unhashable, as
 lists and dicts are.

@@ -6397,10 +6397,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         if op == "in" or op == "not in":
             b = self.bdecay(b, BIN)
         else:
-            attempt = self.bkeeps(op, a, b)
-            if attempt != "" and attempt not in self.xnot:
-                # (the program's method takes such an object as itself, where that compiles)
-                return self.bkept(op, a, b, attempt)
+            if self.bkeeps(op, a, b):
+                # (the program's method takes such an object as itself, in a program whose
+                # every such comparison compiles so)
+                return self.bkept(op, a, b)
             ab = self.bcompared(op, a, b)
             a = ab[0]
             b = ab[1]
