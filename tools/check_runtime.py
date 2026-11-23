@@ -62,9 +62,10 @@ compiler builds for runtime.py, in this process:
     a cycle through a helper (helper -> math.gcd -> pys_m_gcd -> helper) or through runtime.c
     (pys_format_str formatting with a nested spec, which calls runtime.c's pys_format, which calls
     pys_format_str) would recurse without end where nothing in the source shows a call. Recursion
-    by name stays allowed. A cycle through a walk of a value by its descriptor (eqv, repr) is not
-    one: the walk goes as deep as the value's type and guards a recursive alias itself, so a set
-    of frozensets may compare its elements with the set's own functions.
+    by name stays allowed. A cycle through a walk of a value by its descriptor (eqv, repr, and
+    the two with a depth guard) is not one: the walk goes as deep as the value's type and guards
+    a recursive alias itself, so a set of frozensets may compare its elements with the set's own
+    functions, and a dict look a key up whose comparison looks up another dict's.
 The runtime the driver builds must also call no function that only a recent C library has under
 that name: glibc 2.38 compiles strtol(), atoi() and sscanf() to __isoc23_* names, which an older
 glibc lacks, so runtime.c reads its numbers itself (decnum, hexnum). The check sees those names
@@ -976,10 +977,11 @@ def main():
                 note.append(f"{k}: {x}, which runtime.c does not show")
     # recursion: an rt op that calls a function of runtime.py goes through a node of its own, so
     # that a cycle through it, or through runtime.c, is found. A walk of a value by its descriptor
-    # (BY_DESC) is not followed: what it calls for an element is as deep as the value's type, and
-    # its own guard counts the edges of a recursive alias (a set of frozensets compares frozensets,
-    # through eqv, with the set's own functions)
-    graph = {n: set() if n in BY_DESC else v[3] for n, v in fns.items() if v[4] == "define"}
+    # (BY_DESC, and the two with a depth guard) is not followed: what it calls for an element is
+    # as deep as the value's type, and its own guard counts the edges of a recursive alias (a set
+    # of frozensets compares frozensets, and a dict's lookup of a key that holds a dict looks
+    # that dict's keys up, with the set's and the dict's own functions)
+    graph = {n: set() if n in BY_DESC | DEEP_WALKS else v[3] for n, v in fns.items() if v[4] == "define"}
     for f, ops in rpy_ops.items():
         graph[f] = set()
         for op, x, _ in ops:

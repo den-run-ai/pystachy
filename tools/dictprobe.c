@@ -42,8 +42,6 @@ static long long dict_keyeqs;
 #define DICT_KEYEQ() (dict_keyeqs++)
 static long long dict_generic_hashes;
 #define DICT_HASH_GENERIC() (dict_generic_hashes++)
-static long long dict_empty_strings;
-#define DICT_STRING_EMPTY() (dict_empty_strings++)
 #define pys_hash_str counted_hash_str
 #include "../runtime.c"
 #undef pys_hash_str
@@ -278,6 +276,8 @@ static void marked_layout(Dict *a, Dict *b) {
                  memcmp(a->keys, b->keys, a->n * 8) || memcmp(a->vals, b->vals, a->n * 8)))
     marked_bad("hashes, slots or insertion order changed");
 }
+/* runtime.py's hash of a key and its lookup, as one step: its idx slot or -1, and where to insert it */
+static I dhfind(Dict *d, I k, uint64_t *hp, I *free) { *hp = (uint64_t)pys_rt_dhash(d, k); return dfind(d, k, *hp, free); }
 static void marked_query(Dict *reference, I key, const char *desc) {
   uint64_t expected_hash = (uint64_t)hitem(key, desc), actual_hash = 0;
   I expected_free = -1, actual_free = -1;
@@ -292,8 +292,8 @@ static void marked_query(Dict *reference, I key, const char *desc) {
   dict_slots = 0;
   if (dpfind(dict, key) != expected || dict_slots != slots) marked_bad("pop lookup probes changed");
 }
-/* Empty first-slot insertions avoid a probe call; read-only lookups skip that
-   check, and deleted slots must still search past the hole for an equal key.
+/* An empty first slot ends a str key's lookup, and takes its insertion, after one
+   probe; deleted slots must still search past the hole for an equal key.
    The generic reference above checks exact slot counts. */
 static void string_first_slot(void) {
   for (I marked = 0; marked < 2; marked++) {
@@ -303,24 +303,25 @@ static void string_first_slot(void) {
     a->dict_hash = b->dict_hash = equal->dict_hash = 18; missing->dict_hash = 20;
     dict = pys_dict_new(marked ? 1 | KTAG : 1, 0);
     pys_dict_set(dict, (I)a, 10); pys_dict_set(dict, (I)b, 20);
-    dict_empty_strings = dict_slots = 0;
-    if (pys_dict_has(dict, (I)missing) || dict_empty_strings || dict_slots != 1)
-      marked_bad("read-only string lookup took the insertion shortcut");
+    dict_slots = 0;
+    if (pys_dict_has(dict, (I)missing) || dict_slots != 1)
+      marked_bad("read-only string lookup of an empty first slot probed on");
     pys_dict_pop(dict, (I)a);
-    dict_empty_strings = 0;
     if (pys_dict_get(dict, (I)equal, -1) != 20) marked_bad("string hit behind a deleted first slot");
     I entries = dict->n;
     pys_dict_set(dict, (I)equal, 30);
-    if (dict->len != 1 || dict->n != entries || pys_dict_get(dict, (I)b, -1) != 30 || dict_empty_strings)
+    if (dict->len != 1 || dict->n != entries || pys_dict_get(dict, (I)b, -1) != 30)
       marked_bad("string update behind a deleted first slot");
-    dict_empty_strings = dict_slots = 0;
+    dict_slots = 0;
     pys_dict_set(dict, (I)missing, 40);
-    if (dict_empty_strings != 1 || dict_slots != 1 || dict->len != 2)
-      marked_bad("empty first string insertion did not avoid the probe call");
+    if (dict_slots != 1 || dict->len != 2)
+      marked_bad("empty first string insertion probed on");
   }
-  printf("string first slots: empty inserts bypass probe calls, reads/tombstones retain normal lookup\n");
+  printf("string first slots: an empty one ends a read and takes an insert after one probe, tombstones retain normal lookup\n");
 }
 
+I pys_rt_dfull(Dict *d);   /* runtime.py's: is the table full */
+static int dfull(Dict *d) { return (int)pys_rt_dfull(d); }
 static void growth_boundary(void) {
   Dict d = {0};
   if (!dfull(&d)) marked_bad("empty table must grow");

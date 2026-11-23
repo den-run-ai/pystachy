@@ -2476,9 +2476,8 @@ def pys_path_commonprefix(m: list[str]) -> str:
 
 
 # ---------- dict hashing ----------
-# The dicts themselves are still runtime.c's, which calls these on every lookup; LLVM inlines
-# them there, since the two are one module once linked. The arithmetic wraps, as C's unsigned
-# arithmetic does, and the shifts are logical. (A set's hashes are with its table: sets.)
+# The hash of a str and the mix of an int's bits that the dicts and sets below use. The
+# arithmetic wraps, as C's unsigned arithmetic does, and the shifts are logical.
 
 
 def pys_hash_str(s: str) -> int:
@@ -4464,6 +4463,7 @@ def pys_rt_khash(kind: int) -> int: ...
 def pys_rt_dict_lacks(d: _rt.Ptr, k: int, h: int, m: _rt.Ptr, c: int) -> int: ...
 def pys_mpz_hash(m: _rt.Ptr) -> int: ...
 def pys_mpz_cmp(a: _rt.Ptr, b: _rt.Ptr) -> int: ...
+def pys_rt_hash_str(s: _rt.Ptr) -> int: ...
 
 
 @_rt.unchecked
@@ -4478,11 +4478,13 @@ def pys_rt_hash_long(v: int) -> int:
 
 @_rt.unchecked
 def str_key_hash(k: int) -> int:
-    # a str element's hash, which the str keeps once made (never 0, which says it has none, or -1)
+    # a str element's or key's hash, which the str keeps once made (never 0, which says it has
+    # none, or -1). The hash itself is pys_hash_str's, asked for through runtime.c, where
+    # tools/dictprobe.c counts the strs that are hashed
     s = _rt.ptr(k)
     h = _rt.get(s, "Str.dict_hash")
     if h == 0:
-        h = pys_hash_str(_rt.as_str(s))
+        h = pys_rt_hash_str(s)
         if h == -1:
             h = -2
         elif h == 0:
@@ -5440,6 +5442,1173 @@ def pys_set_list(s: _rt.Ptr) -> _rt.Ptr:
         i += 1
     _rt.set(l, "List.len", n)
     return l
+
+
+# ---------- dicts: CPython's compact ordered layout (runtime.c's Dict) ----------
+# The layout, the sizes and the hashes are described with runtime.c's dicts. Entries (keys,
+# vals, hs) are kept in insertion order; idx is open addressing over the slots that hold an
+# entry's number plus one, 0 where empty and -1 where deleted, as 32-bit words. This code
+# keeps the table: the probes of int and str keys, insertion, deletion, the rebuilds, the
+# copies and the loops' steps. runtime.c still hashes and compares the keys that a type
+# descriptor describes (pys_rt_hobj, pys_rt_dfind_obj), whose __hash__ and __eq__ may run the
+# program's code: after such a call this code reads the dict's fields again, as runtime.c did.
+# A lookup's result is an idx slot, or below zero where the key is not there: -1 in a dict
+# with no table, else -2 less the slot that an insertion of the key takes (the first hole or
+# empty slot its probes met).
+
+
+def pys_rt_hobj(kind: int, k: int) -> int: ...
+def pys_rt_dfind_obj(d: _rt.Ptr, k: int, h: int) -> int: ...
+def pys_rt_dict_keyerr(d: _rt.Ptr, k: int) -> None: ...
+def pys_rt_probe() -> None: ...
+def pys_big_box(v: int, m: _rt.Ptr) -> _rt.Ptr: ...
+
+
+@_rt.unchecked
+def int_key_hash(k: int) -> int:
+    # a native int key's hash: 0 marks a hole
+    h = pys_hash_int(k)
+    return h if h != 0 else 1
+
+
+@_rt.inline
+@_rt.unchecked
+def pys_rt_dhash(d: _rt.Ptr, k: int) -> int:
+    # the hash of key k of d: kind 0 int keys, 1 str keys (2 on it: hashed by CPython's hash),
+    # else by the descriptor of a tuple or object key. A copy in each entry point, with the
+    # lookup's choice of probe after it (pys_rt_dfind): one test of the kind for both
+    kind = _rt.get(d, "Dict.kind")
+    if kind & -3 == 1:
+        return str_key_hash(k)
+    if kind > 1:
+        return pys_rt_hobj(kind, k)
+    return int_key_hash(k)
+
+
+@_rt.unchecked
+def dict_mask(d: _rt.Ptr) -> int:
+    # idx's slots, less one: CPython's size where the keys are hashed by CPython's hash, else twice
+    size = _rt.get(d, "Dict.size")
+    return (size if _rt.get(d, "Dict.kind") & 2 != 0 else size * 2) - 1
+
+
+@_rt.unchecked
+def dict_step(i: int, p: int, m: int) -> int:
+    # CPython's next probe: each step mixes five more of the hash's bits in (p: what is left)
+    return _rt.wrap_add(_rt.wrap_add(_rt.wrap_mul(i, 5), p), 1) & m
+
+
+@_rt.unchecked
+def pys_rt_dbig(d: _rt.Ptr, e: int) -> _rt.Ptr:
+    # the Mpz of entry e's value where it is an int past 64 bits (its slot holds -2**63), else null
+    if not _rt.null(_rt.getp(d, "Dict.vb")) and _rt.word(_rt.getp(d, "Dict.vals"), e) == -9223372036854775807 - 1 and pys_rt_opt_in() != 0:
+        return _rt.ptr(_rt.word(_rt.getp(d, "Dict.vb"), e))
+    return _rt.nil()
+
+
+@_rt.unchecked
+def dict_val_clear(d: _rt.Ptr, e: int) -> None:
+    # every store of a value clears its entry's Mpz word
+    if not _rt.null(_rt.getp(d, "Dict.vb")):
+        _rt.put(_rt.getp(d, "Dict.vb"), e, 0)
+
+
+@_rt.unchecked
+def dict_key_clear(d: _rt.Ptr, e: int) -> None:
+    if not _rt.null(_rt.getp(d, "Dict.kb")):
+        _rt.put(_rt.getp(d, "Dict.kb"), e, 0)
+
+
+@_rt.unchecked
+def pys_rt_dbig_make(d: _rt.Ptr) -> None:
+    # the array of the values' Mpz words, as long as the entries', which the first one makes
+    if _rt.null(_rt.getp(d, "Dict.vb")):
+        _rt.setp(d, "Dict.vb", pys_alloc(_rt.udiv(_rt.get(d, "Dict.size") * 2, 3) * 8))
+
+
+@_rt.noinline
+@_rt.unchecked
+def dict_find_int(d: _rt.Ptr, k: int, h: int, m: int) -> int:
+    # the probes for native int key k, whose hash is h, over idx's m + 1 slots: such a table
+    # meets no str and no entry of a key past 64 bits with the hash of a 64-bit one. A function
+    # of its own, as the str keys' is: the entry points call it with the lookup's state in
+    # registers, and the compiler's every dict use does not carry a copy of the loop
+    idx = _rt.getp(d, "Dict.idx")
+    hs = _rt.getp(d, "Dict.hs")
+    keys = _rt.getp(d, "Dict.keys")
+    f = -1
+    i = h & m
+    p = h
+    while True:
+        pys_rt_probe()
+        e = _rt.i32_at(idx, i)
+        if e == 0:
+            return -2 - (i if f < 0 else f)
+        if e < 0:
+            if f < 0:
+                f = i
+        elif _rt.word(hs, e - 1) == h and _rt.word(keys, e - 1) == k:
+            return i
+        p = _rt.lshr(p, 5)
+        i = dict_step(i, p, m)
+    return -1  # (not reached)
+
+
+@_rt.noinline
+@_rt.unchecked
+def dict_find_str(d: _rt.Ptr, k: int, h: int, m: int) -> int:
+    # and for a str key: a str keeps its hash, so it is compared before the keys are read
+    idx = _rt.getp(d, "Dict.idx")
+    hs = _rt.getp(d, "Dict.hs")
+    keys = _rt.getp(d, "Dict.keys")
+    f = -1
+    i = h & m
+    p = h
+    while True:
+        pys_rt_probe()
+        e = _rt.i32_at(idx, i)
+        if e == 0:
+            return -2 - (i if f < 0 else f)
+        if e < 0:
+            if f < 0:
+                f = i
+        elif _rt.word(hs, e - 1) == h:
+            x = _rt.word(keys, e - 1)
+            if x == k or same_str(x, k):
+                return i
+        p = _rt.lshr(p, 5)
+        i = dict_step(i, p, m)
+    return -1  # (not reached)
+
+
+@_rt.inline
+@_rt.unchecked
+def pys_rt_dfind(d: _rt.Ptr, k: int, h: int) -> int:
+    # k's idx slot, k's hash being h, or below zero (see above)
+    size = _rt.get(d, "Dict.size")
+    if size == 0:
+        return -1
+    kind = _rt.get(d, "Dict.kind")
+    if kind & -3 == 1:
+        return dict_find_str(d, k, h, (size if kind & 2 != 0 else size * 2) - 1)
+    if kind > 1:
+        return pys_rt_dfind_obj(d, k, h)
+    return dict_find_int(d, k, h, size * 2 - 1)
+
+
+@_rt.unchecked
+def pys_rt_dbfind(d: _rt.Ptr, m: _rt.Ptr, h: int) -> int:
+    # the same for key m, an int past 64 bits whose hash is h: an entry of that hash whose
+    # key's Mpz is equal to m
+    if _rt.get(d, "Dict.size") == 0:
+        return -1
+    idx = _rt.getp(d, "Dict.idx")
+    hs = _rt.getp(d, "Dict.hs")
+    k = dict_mask(d)
+    f = -1
+    i = h & k
+    p = h
+    while True:
+        pys_rt_probe()
+        e = _rt.i32_at(idx, i)
+        if e == 0:
+            return -2 - (i if f < 0 else f)
+        if e < 0:
+            if f < 0:
+                f = i
+        elif _rt.word(hs, e - 1) == h:
+            x = dict_key_big(d, e - 1)
+            if not _rt.null(x) and (x is m or pys_mpz_cmp(x, m) == 0):
+                return i
+        p = _rt.lshr(p, 5)
+        i = dict_step(i, p, k)
+    return -1  # (not reached)
+
+
+@_rt.unchecked
+def pys_rt_dempty(d: _rt.Ptr, h: int) -> int:
+    # find_empty_slot: hash h's first idx slot that is a hole or empty
+    idx = _rt.getp(d, "Dict.idx")
+    m = dict_mask(d)
+    p = h
+    i = p & m
+    while True:
+        pys_rt_probe()
+        if _rt.i32_at(idx, i) <= 0:
+            return i
+        p = _rt.lshr(p, 5)
+        i = dict_step(i, p, m)
+    return -1  # (not reached)
+
+
+@_rt.inline
+@_rt.unchecked
+def pys_rt_dslot(d: _rt.Ptr, e: int) -> int:
+    # the idx slot of live entry e, found by its position (CPython's lookdict_index), not its key
+    idx = _rt.getp(d, "Dict.idx")
+    m = dict_mask(d)
+    p = _rt.word(_rt.getp(d, "Dict.hs"), e)
+    i = p & m
+    pys_rt_probe()
+    while _rt.i32_at(idx, i) != e + 1:
+        p = _rt.lshr(p, 5)
+        i = dict_step(i, p, m)
+        pys_rt_probe()
+    return i
+
+
+@_rt.unchecked
+def pys_rt_keysize(n: int) -> int:
+    # calculate_log2_keysize: the first power of two, from 8, that is not below n
+    s = 8
+    while s < n:
+        s = s * 2
+    return s
+
+
+@_rt.unchecked
+def pys_rt_dbuild(d: _rt.Ptr, src: _rt.Ptr, size: int) -> None:
+    # d := src's items in a table of this size, holes dropped (d may be src). A table's first
+    # build marks a dict whose keys are hashed by CPython's hash (2 on its kind)
+    if pys_rt_khash(_rt.get(d, "Dict.kind")) != 0:
+        _rt.set(d, "Dict.kind", _rt.get(d, "Dict.kind") | 2)
+    u = _rt.udiv(size * 2, 3)
+    k = pys_rt_keymem(_rt.get(d, "Dict.kind"), u)
+    v = item_array(u, _rt.get(d, "Dict.vatomic"))
+    m = (size if _rt.get(d, "Dict.kind") & 2 != 0 else size * 2) - 1
+    vb = _rt.nil()
+    if not _rt.null(_rt.getp(src, "Dict.vb")):
+        vb = pys_alloc(u * 8)
+    kb = _rt.nil()
+    if not _rt.null(_rt.getp(src, "Dict.kb")):
+        kb = pys_alloc(u * 8)
+    hs = pys_alloc_atomic(u * 8)
+    ix = pys_alloc_atomic((m + 1) * 4)
+    sn = _rt.get(src, "Dict.n")
+    sk = _rt.getp(src, "Dict.keys")
+    sv = _rt.getp(src, "Dict.vals")
+    sh = _rt.getp(src, "Dict.hs")
+    if not _rt.null(vb) or not _rt.null(kb):
+        # (the live entries' Mpz words, in their new order: a pass of its own)
+        e = 0
+        j = 0
+        while e < sn:
+            if dict_live(src, e):
+                if not _rt.null(vb):
+                    _rt.put(vb, j, _rt.word(_rt.getp(src, "Dict.vb"), e))
+                if not _rt.null(kb):
+                    _rt.put(kb, j, _rt.word(_rt.getp(src, "Dict.kb"), e))
+                j += 1
+            e += 1
+    n = 0
+    e = 0
+    while e < sn:
+        if dict_live(src, e):
+            h = _rt.word(sh, e)
+            p = h
+            i = p & m
+            pys_rt_probe()
+            while _rt.i32_at(ix, i) != 0:
+                p = _rt.lshr(p, 5)
+                i = dict_step(i, p, m)
+                pys_rt_probe()
+            _rt.put(k, n, _rt.word(sk, e))
+            _rt.put(v, n, _rt.word(sv, e))
+            _rt.put(hs, n, h)
+            n += 1
+            _rt.put_i32(ix, i, n)
+        e += 1
+    _rt.set(d, "Dict.len", n)
+    _rt.set(d, "Dict.n", n)
+    _rt.set(d, "Dict.cut", 0)
+    _rt.set(d, "Dict.size", size)
+    _rt.setp(d, "Dict.keys", k)
+    _rt.setp(d, "Dict.vals", v)
+    _rt.setp(d, "Dict.hs", hs)
+    _rt.setp(d, "Dict.idx", ix)
+    _rt.setp(d, "Dict.vb", vb)
+    _rt.setp(d, "Dict.kb", kb)
+
+
+@_rt.unchecked
+def dict_make(kind: int, n: int, vatomic: int) -> _rt.Ptr:
+    # a display of n items is presized, as in CPython. (The allocator adds its byte of slack:
+    # the header keeps 96 bytes)
+    d = pys_alloc(_rt.sizeof("Dict") - 1)
+    _rt.set(d, "Dict.kind", kind)
+    _rt.set(d, "Dict.vatomic", vatomic)
+    if n > 5:
+        pys_rt_dbuild(d, d, 131072 if n > 87381 else pys_rt_keysize(_rt.udiv(n * 3 + 1, 2)))
+    return d
+
+
+def pys_dict_new(kind: int, n: int) -> _rt.Ptr:
+    return dict_make(kind, n, 0)
+
+
+def pys_dict_new_atomic(kind: int, n: int) -> _rt.Ptr:
+    # a dict of int, float or bool values, which the compiler makes with this: the arrays of its
+    # values are atomic, and so are those of its copies (dict.copy(), dict(d)); dict.fromkeys and
+    # the empty dicts that a template returns while their type is open are made by pys_dict_new
+    return dict_make(kind, n, 1)
+
+
+@_rt.inline
+@_rt.unchecked
+def dict_entry(d: _rt.Ptr, k: int) -> int:
+    # k's entry, or -1: one hash and one lookup
+    h = pys_rt_dhash(d, k)
+    i = pys_rt_dfind(d, k, h)
+    if i < 0:
+        return -1
+    return _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1
+
+
+# The entry points that hash a key stay calls in a program's AOT build (@_rt.noinline), as the
+# sets' do: copied into every lookup of the compiler, they made its executable 14% larger and
+# its AOT build 16% longer, for 1-2% of speed on dict benchmarks.
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_has(d: _rt.Ptr, k: int) -> int:
+    return 1 if dict_entry(d, k) >= 0 else 0
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_getitem(d: _rt.Ptr, k: int) -> int:
+    e = dict_entry(d, k)
+    if e < 0:
+        pys_rt_dict_keyerr(d, k)
+    return _rt.word(_rt.getp(d, "Dict.vals"), e)
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_find(d: _rt.Ptr, k: int) -> int:
+    # one lookup where a has or a getitem of a key comes before a getitem or a set of it, and
+    # no dict changes between (the compiler's dictfuse): k's entry, or -1 (find) or a KeyError
+    # (entry); pys_dict_val reads that entry's value, and entry_set writes it as pys_dict_set
+    # overwrites one, which moves no entry
+    return dict_entry(d, k)
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_eq_find(d: _rt.Ptr, source: _rt.Ptr, e: int) -> int:
+    # Equality reuses the source entry's stored hash: rerunning __hash__ here would add effects
+    # and could hide a key whose hash changed since insertion. The source key/value can disappear
+    # during lookup; snapshot its key/hash before the lookup, which restarts when a callback
+    # changes the target table
+    k = _rt.word(_rt.getp(source, "Dict.keys"), e)
+    h = _rt.word(_rt.getp(source, "Dict.hs"), e)
+    m = dict_key_big(source, e)
+    i = pys_rt_dfind(d, k, h) if _rt.null(m) else pys_rt_dbfind(d, m, h)
+    if i < 0:
+        return -1
+    return _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_entry(d: _rt.Ptr, k: int) -> int:
+    e = dict_entry(d, k)
+    if e < 0:
+        pys_rt_dict_keyerr(d, k)
+    return e
+
+
+@_rt.unchecked
+def pys_dict_entry_set(d: _rt.Ptr, e: int, v: int) -> None:
+    _rt.put(_rt.getp(d, "Dict.vals"), e, v)
+    dict_val_clear(d, e)
+
+
+@_rt.unchecked
+def pys_dict_entry_set_big(d: _rt.Ptr, e: int, lo: int, m: _rt.Ptr) -> None:
+    # entry_set of a promoting int (pys_dict_set_big)
+    if _rt.null(m):
+        pys_dict_entry_set(d, e, lo)
+        return
+    _rt.put(_rt.getp(d, "Dict.vals"), e, -9223372036854775807 - 1)
+    pys_rt_dbig_make(d)
+    _rt.put(_rt.getp(d, "Dict.vb"), e, _rt.addr(m))
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_get(d: _rt.Ptr, k: int, dflt: int) -> int:
+    e = dict_entry(d, k)
+    return dflt if e < 0 else _rt.word(_rt.getp(d, "Dict.vals"), e)
+
+
+@_rt.noinline
+@_rt.unchecked
+def dict_grow(d: _rt.Ptr, h: int) -> int:
+    # insertion_resize: hash h's idx slot in the larger table
+    pys_rt_dbuild(d, d, pys_rt_keysize(_rt.get(d, "Dict.len") * 3))
+    return pys_rt_dempty(d, h)
+
+
+@_rt.inline
+@_rt.unchecked
+def pys_rt_dfull(d: _rt.Ptr) -> int:
+    # is the table full: used >= floor(2 * size / 3), without dividing on each insertion
+    # (popitem's entries, which it cuts off the end, still count). As unsigned ints, whose
+    # products fit for every size a table may have (a power of two, at most 2**62) and for none
+    used = _rt.wrap_add(_rt.wrap_mul(_rt.get(d, "Dict.n") + _rt.get(d, "Dict.cut"), 3), 2)
+    return 1 if _rt.ule(_rt.wrap_mul(_rt.get(d, "Dict.size"), 2), used) else 0
+
+
+@_rt.inline
+@_rt.unchecked
+def pys_rt_dadd(d: _rt.Ptr, k: int, h: int, v: int, r: int) -> None:
+    # k, which d has not, into the idx slot that its lookup's result r names; a full table is
+    # rebuilt first. Both Mpz words of the new entry are null already: allocation zeroes them,
+    # and deletion and popitem clear them before an entry can be used again
+    f = -2 - r
+    if pys_rt_dfull(d) != 0:
+        f = dict_grow(d, h)
+    n = _rt.get(d, "Dict.n")
+    _rt.put(_rt.getp(d, "Dict.keys"), n, k)
+    _rt.put(_rt.getp(d, "Dict.vals"), n, v)
+    _rt.put(_rt.getp(d, "Dict.hs"), n, h)
+    _rt.put_i32(_rt.getp(d, "Dict.idx"), f, n + 1)
+    _rt.set(d, "Dict.n", n + 1)
+    _rt.set(d, "Dict.len", _rt.get(d, "Dict.len") + 1)
+
+
+@_rt.unchecked
+def pys_rt_dset(d: _rt.Ptr, k: int, h: int, v: int) -> int:
+    # d[k] = v, k's hash h: the entry
+    i = pys_rt_dfind(d, k, h)
+    if i >= 0:
+        e = _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1
+        _rt.put(_rt.getp(d, "Dict.vals"), e, v)
+        dict_val_clear(d, e)
+        return e
+    pys_rt_dadd(d, k, h, v, i)
+    return _rt.get(d, "Dict.n") - 1
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_set(d: _rt.Ptr, k: int, v: int) -> None:
+    h = pys_rt_dhash(d, k)
+    i = pys_rt_dfind(d, k, h)
+    if i >= 0:
+        e = _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1
+        _rt.put(_rt.getp(d, "Dict.vals"), e, v)
+        dict_val_clear(d, e)
+    else:
+        pys_rt_dadd(d, k, h, v, i)
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_set_big(d: _rt.Ptr, k: int, lo: int, m: _rt.Ptr) -> None:
+    # d[k] = {lo, m}, a promoting int: past 64 bits, -2**63 and its Mpz
+    if _rt.null(m):
+        pys_dict_set(d, k, lo)
+        return
+    h = pys_rt_dhash(d, k)
+    i = pys_rt_dfind(d, k, h)
+    if i >= 0:
+        e = _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1
+        _rt.put(_rt.getp(d, "Dict.vals"), e, -9223372036854775807 - 1)
+    else:
+        pys_rt_dadd(d, k, h, -9223372036854775807 - 1, i)
+        e = _rt.get(d, "Dict.n") - 1
+    pys_rt_dbig_make(d)
+    _rt.put(_rt.getp(d, "Dict.vb"), e, _rt.addr(m))
+
+
+@_rt.unchecked
+def pys_rt_dbadd(d: _rt.Ptr, m: _rt.Ptr, h: int, v: int, r: int) -> int:
+    # d[k] = v of key k past 64 bits, its Mpz m, whose hash is h and which d has not: its entry
+    pys_rt_dadd(d, -9223372036854775807 - 1, h, v, r)
+    if _rt.null(_rt.getp(d, "Dict.kb")):
+        _rt.setp(d, "Dict.kb", pys_alloc(_rt.udiv(_rt.get(d, "Dict.size") * 2, 3) * 8))
+    e = _rt.get(d, "Dict.n") - 1
+    _rt.put(_rt.getp(d, "Dict.kb"), e, _rt.addr(m))
+    return e
+
+
+@_rt.unchecked
+def pys_rt_dbput(d: _rt.Ptr, m: _rt.Ptr, h: int, v: int) -> int:
+    i = pys_rt_dbfind(d, m, h)
+    if i >= 0:
+        e = _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1
+        _rt.put(_rt.getp(d, "Dict.vals"), e, v)
+        dict_val_clear(d, e)
+        return e
+    return pys_rt_dbadd(d, m, h, v, i)
+
+
+@_rt.unchecked
+def dict_hole(d: _rt.Ptr, e: int) -> None:
+    # entry e becomes a hole: a table hashed by CPython's hash keeps -1 for its hash, another 0
+    _rt.put(_rt.getp(d, "Dict.hs"), e, -1 if _rt.get(d, "Dict.kind") & 2 != 0 else 0)
+    _rt.put(_rt.getp(d, "Dict.keys"), e, 0)
+    _rt.put(_rt.getp(d, "Dict.vals"), e, 0)
+    dict_val_clear(d, e)
+    dict_key_clear(d, e)
+    _rt.set(d, "Dict.len", _rt.get(d, "Dict.len") - 1)
+
+
+@_rt.inline
+@_rt.unchecked
+def pys_rt_dtake(d: _rt.Ptr, i: int) -> int:
+    # the value of the entry in idx slot i, which is deleted
+    idx = _rt.getp(d, "Dict.idx")
+    e = _rt.i32_at(idx, i) - 1
+    v = _rt.word(_rt.getp(d, "Dict.vals"), e)
+    _rt.put_i32(idx, i, -1)
+    dict_hole(d, e)
+    return v
+
+
+@_rt.inline
+@_rt.unchecked
+def pys_rt_dpfind(d: _rt.Ptr, k: int) -> int:
+    # d.pop(k)'s lookup, as CPython's dict_pop, which does not hash k where d is empty; del d[k]
+    # (pys_dict_del) hashes it first, as PyDict_DelItem. Only a class's __hash__ can tell them
+    # apart (kind > 1): the compiler calls pys_dict_pop for del of other keys
+    kind = _rt.get(d, "Dict.kind")
+    size = _rt.get(d, "Dict.size")
+    if kind == 1:
+        if size == 0:
+            return -1
+        return dict_find_str(d, k, str_key_hash(k), size * 2 - 1)
+    if kind > 1:
+        if _rt.get(d, "Dict.len") == 0:
+            return -1
+        return pys_rt_dfind(d, k, pys_rt_dhash(d, k))
+    if size == 0:
+        return -1
+    return dict_find_int(d, k, int_key_hash(k), size * 2 - 1)
+
+
+@_rt.unchecked
+def pys_dict_pop(d: _rt.Ptr, k: int) -> int:
+    i = pys_rt_dpfind(d, k)
+    if i < 0:
+        pys_rt_dict_keyerr(d, k)
+    return pys_rt_dtake(d, i)
+
+
+@_rt.unchecked
+def pys_dict_pop_default(d: _rt.Ptr, k: int, dflt: int) -> int:
+    i = pys_rt_dpfind(d, k)
+    if i < 0:
+        return dflt
+    return pys_rt_dtake(d, i)
+
+
+@_rt.inline
+@_rt.unchecked
+def dict_pair(d: _rt.Ptr, e: int, big: int) -> _rt.Ptr:
+    # entry e's (key, value) tuple; big: of promoting ints, whose key or value past 64 bits
+    # holds -2**63 and its Mpz in slot 2 or 3, else of 64-bit ints. (That tuple is one of
+    # promoting ints too, where neither slot holds -2**63: only there is an Mpz word read)
+    k = _rt.word(_rt.getp(d, "Dict.keys"), e)
+    v = _rt.word(_rt.getp(d, "Dict.vals"), e)
+    if big != 0 and (k == -9223372036854775807 - 1 or v == -9223372036854775807 - 1):
+        t = pys_alloc(32)
+        _rt.put(t, 2, _rt.addr(dict_key_big(d, e)))
+        _rt.put(t, 3, _rt.addr(pys_rt_dbig(d, e)))
+    else:
+        t = pys_alloc(16)
+    _rt.put(t, 0, _rt.word(_rt.getp(d, "Dict.keys"), e))
+    _rt.put(t, 1, _rt.word(_rt.getp(d, "Dict.vals"), e))
+    return t
+
+
+@_rt.inline
+@_rt.unchecked
+def dict_popitem(d: _rt.Ptr, big: int) -> _rt.Ptr:
+    # d.popitem() (dict_popitem_impl): the last entry's (key, value) tuple. The entries end
+    # where it was, as CPython sets dk_nentries, so the holes before it are not walked again:
+    # popping every item takes linear time. Its idx slot is found by its position, not its key,
+    # and stays deleted, so the entries cut off still fill the table until it is rebuilt (CPython
+    # does not give dk_usable back): otherwise inserts after pops would use up its empty slots
+    if _rt.get(d, "Dict.len") == 0:
+        _rt.fail("KeyError", "'popitem(): dictionary is empty'")
+    e = _rt.get(d, "Dict.n") - 1
+    while not dict_live(d, e):  # (a class's key may hash to 0: see dict_live)
+        e -= 1
+    if big == 0 and (not _rt.null(pys_rt_dbig(d, e)) or not _rt.null(dict_key_big(d, e))):
+        raise OverflowError("Python int too large to convert to C long")
+    i = pys_rt_dslot(d, e)
+    t = dict_pair(d, e, big)
+    _rt.put_i32(_rt.getp(d, "Dict.idx"), i, -1)
+    dict_hole(d, e)
+    _rt.set(d, "Dict.cut", _rt.get(d, "Dict.cut") + _rt.get(d, "Dict.n") - e)
+    _rt.set(d, "Dict.n", e)
+    return t
+
+
+def pys_dict_popitem(d: _rt.Ptr) -> _rt.Ptr:
+    return dict_popitem(d, 0)
+
+
+def pys_dict_big_popitem(d: _rt.Ptr) -> _rt.Ptr:
+    # (of a dict of ints or of int keys)
+    return dict_popitem(d, 1)
+
+
+@_rt.unchecked
+def pys_dict_del(d: _rt.Ptr, k: int) -> int:
+    h = pys_rt_dhash(d, k)
+    i = pys_rt_dfind(d, k, h)
+    if i < 0:
+        pys_rt_dict_keyerr(d, k)
+    return pys_rt_dtake(d, i)
+
+
+@_rt.unchecked
+def pys_dict_entry_del(d: _rt.Ptr, e: int) -> None:
+    # A preceding lookup found this entry; no user operation occurs between that lookup and
+    # deletion. Its idx slot is found without hashing or comparing the key again
+    pys_rt_dtake(d, pys_rt_dslot(d, e))
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_getbox(d: _rt.Ptr, k: int, dflt: int) -> int:
+    # d.get(k) and d.pop(k, None) of int, float and bool values: the value's box, or dflt (None
+    # or a box)
+    e = dict_entry(d, k)
+    if e < 0:
+        return dflt
+    return _rt.addr(pys_big_box(_rt.word(_rt.getp(d, "Dict.vals"), e), pys_rt_dbig(d, e)))
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_popbox(d: _rt.Ptr, k: int, dflt: int) -> int:
+    i = pys_rt_dpfind(d, k)
+    if i < 0:
+        return dflt
+    m = pys_rt_dbig(d, _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1)
+    return _rt.addr(pys_big_box(pys_rt_dtake(d, i), m))
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_setdefault(d: _rt.Ptr, k: int, v: int) -> int:
+    # one hash and one lookup, as CPython's
+    h = pys_rt_dhash(d, k)
+    i = pys_rt_dfind(d, k, h)
+    if i >= 0:
+        return _rt.word(_rt.getp(d, "Dict.vals"), _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1)
+    pys_rt_dadd(d, k, h, v, i)
+    return v
+
+
+@_rt.unchecked
+def dict_has_big(d: _rt.Ptr) -> bool:
+    # does d hold a value past 64 bits
+    vb = _rt.getp(d, "Dict.vb")
+    if not _rt.null(vb):
+        e = 0
+        while e < _rt.get(d, "Dict.n"):
+            if _rt.word(vb, e) != 0 and dict_live(d, e):
+                return True
+            e += 1
+    return False
+
+
+@_rt.unchecked
+def dict_has_big_key(d: _rt.Ptr) -> bool:
+    # does d hold a key past 64 bits
+    if dict_has_big_keys(d):
+        kb = _rt.getp(d, "Dict.kb")
+        e = 0
+        while e < _rt.get(d, "Dict.n"):
+            if _rt.word(kb, e) != 0 and dict_live(d, e):
+                return True
+            e += 1
+    return False
+
+
+def pys_dict_narrow(d: _rt.Ptr) -> None:
+    # d's values for 64-bit code (items())
+    if dict_has_big(d):
+        raise OverflowError("Python int too large to convert to C long")
+
+
+def pys_dict_clear(d: _rt.Ptr) -> None:
+    _rt.set(d, "Dict.len", 0)
+    _rt.set(d, "Dict.n", 0)
+    _rt.set(d, "Dict.cut", 0)
+    _rt.set(d, "Dict.size", 0)
+    _rt.setp(d, "Dict.keys", _rt.nil())
+    _rt.setp(d, "Dict.vals", _rt.nil())
+    _rt.setp(d, "Dict.vb", _rt.nil())
+    _rt.setp(d, "Dict.kb", _rt.nil())
+    _rt.setp(d, "Dict.hs", _rt.nil())
+    _rt.setp(d, "Dict.idx", _rt.nil())
+
+
+# The entry of key {lo, m} of a dict of int keys, a promoting int (past 64 bits, its Mpz m):
+# find's, or -1; entry's, or KeyError; put's, which adds the key with the value 0 where d has
+# none (the compiler stores the value next: pys_dict_entry_set); and del d[k]
+
+
+@_rt.unchecked
+def pys_rt_hbig(d: _rt.Ptr, m: _rt.Ptr) -> int:
+    # A key past 64 bits follows its table's hash scheme too: CPython's hash of it where the
+    # table keeps CPython's hashes, else that hash mixed as an int key's is, which never is the
+    # hash of the 64-bit key its slot's sentinel is
+    h = pys_mpz_hash(m)
+    return h if pys_rt_khash(_rt.get(d, "Dict.kind")) != 0 else int_key_hash(h)
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_big_find(d: _rt.Ptr, lo: int, m: _rt.Ptr) -> int:
+    if _rt.null(m):
+        return dict_entry(d, lo)
+    i = pys_rt_dbfind(d, m, pys_rt_hbig(d, m))
+    if i < 0:
+        return -1
+    return _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_big_entry(d: _rt.Ptr, lo: int, m: _rt.Ptr) -> int:
+    e = pys_dict_big_find(d, lo, m)
+    if e < 0:
+        if not _rt.null(m):
+            pys_rt_bkeyerr(m)
+        pys_rt_dict_keyerr(d, lo)
+    return e
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_big_put(d: _rt.Ptr, lo: int, m: _rt.Ptr) -> int:
+    if not _rt.null(m):
+        return pys_rt_dbput(d, m, pys_rt_hbig(d, m), 0)
+    h = pys_rt_dhash(d, lo)
+    i = pys_rt_dfind(d, lo, h)
+    if i >= 0:
+        return _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1
+    pys_rt_dadd(d, lo, h, 0, i)
+    return _rt.get(d, "Dict.n") - 1
+
+
+@_rt.unchecked
+def pys_dict_big_del(d: _rt.Ptr, lo: int, m: _rt.Ptr) -> None:
+    if _rt.null(m):
+        pys_dict_del(d, lo)
+        return
+    i = pys_rt_dbfind(d, m, pys_rt_hbig(d, m))
+    if i < 0:
+        pys_rt_bkeyerr(m)
+    pys_rt_dtake(d, i)
+
+
+# get(k), pop(k), setdefault(k, v) and their boxes, as the functions above without bkey_, of a
+# dict of int keys and a promoting int key {lo, m}: one that fits as theirs; past 64 bits, by
+# the idx slot its own probes find
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_bkey_get(d: _rt.Ptr, lo: int, m: _rt.Ptr, dflt: int) -> int:
+    if _rt.null(m):
+        return pys_dict_get(d, lo, dflt)
+    i = pys_rt_dbfind(d, m, pys_rt_hbig(d, m))
+    if i < 0:
+        return dflt
+    return _rt.word(_rt.getp(d, "Dict.vals"), _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1)
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_bkey_getbox(d: _rt.Ptr, lo: int, m: _rt.Ptr, dflt: int) -> int:
+    if _rt.null(m):
+        return pys_dict_getbox(d, lo, dflt)
+    i = pys_rt_dbfind(d, m, pys_rt_hbig(d, m))
+    if i < 0:
+        return dflt
+    e = _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1
+    return _rt.addr(pys_big_box(_rt.word(_rt.getp(d, "Dict.vals"), e), pys_rt_dbig(d, e)))
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_bkey_pop(d: _rt.Ptr, lo: int, m: _rt.Ptr) -> int:
+    if _rt.null(m):
+        return pys_dict_pop(d, lo)
+    i = pys_rt_dbfind(d, m, pys_rt_hbig(d, m))
+    if i < 0:
+        pys_rt_bkeyerr(m)
+    return pys_rt_dtake(d, i)
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_bkey_pop_default(d: _rt.Ptr, lo: int, m: _rt.Ptr, dflt: int) -> int:
+    if _rt.null(m):
+        return pys_dict_pop_default(d, lo, dflt)
+    i = pys_rt_dbfind(d, m, pys_rt_hbig(d, m))
+    if i < 0:
+        return dflt
+    return pys_rt_dtake(d, i)
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_bkey_popbox(d: _rt.Ptr, lo: int, m: _rt.Ptr, dflt: int) -> int:
+    if _rt.null(m):
+        return pys_dict_popbox(d, lo, dflt)
+    i = pys_rt_dbfind(d, m, pys_rt_hbig(d, m))
+    if i < 0:
+        return dflt
+    b = pys_rt_dbig(d, _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1)
+    return _rt.addr(pys_big_box(pys_rt_dtake(d, i), b))
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_bkey_setdefault(d: _rt.Ptr, lo: int, m: _rt.Ptr, v: int) -> int:
+    if _rt.null(m):
+        return pys_dict_setdefault(d, lo, v)
+    h = pys_rt_hbig(d, m)
+    i = pys_rt_dbfind(d, m, h)
+    if i >= 0:
+        return _rt.word(_rt.getp(d, "Dict.vals"), _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1)
+    pys_rt_dbadd(d, m, h, v, i)
+    return v
+
+
+# For loops: entry e's key and value; the next entry from e (reversed: the previous one), or -1
+# at the end, failing like CPython's dict iterators when the dict changed meanwhile: used = len
+# when the loop started, count = items produced so far. As in CPython 3.13, a reversed loop
+# also ends at a position past the entries (a rebuild made the table smaller)
+
+
+def pys_dict_key(d: _rt.Ptr, e: int) -> int:
+    return _rt.word(_rt.getp(d, "Dict.keys"), e)
+
+
+def pys_dict_val(d: _rt.Ptr, e: int) -> int:
+    return _rt.word(_rt.getp(d, "Dict.vals"), e)
+
+
+def pys_dict_val_or_zero(d: _rt.Ptr, e: int) -> int:
+    # a found entry's value, or zero without touching storage
+    return 0 if e < 0 else _rt.word(_rt.getp(d, "Dict.vals"), e)
+
+
+def pys_dict_big_val(d: _rt.Ptr, e: int) -> _rt.Ptr:
+    # the Mpz of entry e's value, where pys_dict_val gave -2**63
+    return pys_rt_dbig(d, e)
+
+
+def pys_dict_big_key(d: _rt.Ptr, e: int) -> _rt.Ptr:
+    # and of its key, where pys_dict_key gave -2**63
+    return dict_key_big(d, e)
+
+
+def pys_dict_end(d: _rt.Ptr) -> int:
+    return _rt.get(d, "Dict.n")
+
+
+@_rt.unchecked
+def pys_dict_eq_next(d: _rt.Ptr, e: int) -> int:
+    # Equality walks current live entries after each value comparison. Unlike an iterator,
+    # callbacks may clear or resize the dict without a mutation error
+    n = _rt.get(d, "Dict.n")
+    while e < n and not dict_live(d, e):
+        e += 1
+    return e if e < n else -1
+
+
+@_rt.unchecked
+def pys_dict_next(d: _rt.Ptr, e: int, used: int, count: int) -> int:
+    if _rt.get(d, "Dict.len") != used:
+        raise RuntimeError("dictionary changed size during iteration")
+    n = _rt.get(d, "Dict.n")
+    while e < n and not dict_live(d, e):
+        e += 1
+    if e >= n:
+        return -1
+    if count >= used:
+        raise RuntimeError("dictionary keys changed during iteration")
+    return e
+
+
+@_rt.unchecked
+def pys_dict_prev(d: _rt.Ptr, e: int, used: int, count: int) -> int:
+    if _rt.get(d, "Dict.len") != used:
+        raise RuntimeError("dictionary changed size during iteration")
+    if e < 0 or e >= _rt.get(d, "Dict.n"):
+        return -1
+    while e >= 0 and not dict_live(d, e):
+        e -= 1
+    if e >= 0 and count >= used:
+        raise RuntimeError("dictionary keys changed during iteration")
+    return e
+
+
+@_rt.unchecked
+def dict_column(d: _rt.Ptr, vals: int) -> _rt.Ptr:
+    # the keys or values in a list whose array is of their array's kind (an int key's: atomic);
+    # an int past 64 bits, -2**63 in its slot, has its Mpz in the new list's companion
+    a = _rt.getp(d, "Dict.vals") if vals != 0 else _rt.getp(d, "Dict.keys")
+    b = _rt.getp(d, "Dict.vb") if vals != 0 else _rt.getp(d, "Dict.kb")
+    l = pys_list_make(_rt.get(d, "Dict.len"), pys_rt_atomic_items(a))
+    items = _rt.getp(l, "List.a")
+    n = 0
+    e = 0
+    while e < _rt.get(d, "Dict.n"):
+        if dict_live(d, e):
+            x = _rt.word(a, e)
+            if not _rt.null(b) and x == -9223372036854775807 - 1 and pys_rt_opt_in() != 0 and _rt.word(b, e) != 0:
+                big_companion(l)
+                _rt.put(_rt.getp(l, "List.ids"), n + 1, _rt.word(b, e))
+            _rt.put(items, n, x)
+            n += 1
+        e += 1
+    _rt.set(l, "List.len", n)
+    return l
+
+
+def pys_dict_keys(d: _rt.Ptr) -> _rt.Ptr:
+    return dict_column(d, 0)
+
+
+def pys_dict_values(d: _rt.Ptr) -> _rt.Ptr:
+    return dict_column(d, 1)
+
+
+@_rt.unchecked
+def dict_pairs(d: _rt.Ptr, big: int) -> _rt.Ptr:
+    l = pys_list_make(_rt.get(d, "Dict.len"), 0)
+    n = 0
+    e = 0
+    while e < _rt.get(d, "Dict.n"):
+        if dict_live(d, e):
+            t = dict_pair(d, e, big)
+            _rt.put(_rt.getp(l, "List.a"), n, _rt.addr(t))
+            n += 1
+            _rt.set(l, "List.len", n)
+        e += 1
+    return l
+
+
+def pys_dict_items(d: _rt.Ptr) -> _rt.Ptr:
+    # (a tuple's int is a 64-bit one here: and its values, pys_dict_narrow)
+    if dict_has_big_key(d):
+        raise OverflowError("Python int too large to convert to C long")
+    return dict_pairs(d, 0)
+
+
+def pys_dict_big_items(d: _rt.Ptr) -> _rt.Ptr:
+    # and those of a dict of ints or of int keys, in a program whose lists hold promoting ints:
+    # an int key or value past 64 bits has its Mpz word
+    return dict_pairs(d, 1)
+
+
+# Copies, as CPython 3.13 makes them, since their tables decide what a loop that changes the
+# copy sees: dict(d) merges d into a new empty dict, which clones a table without holes that is
+# not sparse (8 slots, or more items than USABLE_FRACTION(size / 2)) and otherwise inserts the
+# items into a table sized for them (estimate_log2_keysize); dict.copy() clones a table with at
+# most a third of holes, and otherwise merges the same way. Keys hashed by their class are
+# inserted one by one (pys_dict_update), as CPython's insertdict, which runs __eq__ for each
+# key of the same hash that its probes meet; other keys compare equal to none of the others
+
+
+@_rt.unchecked
+def pys_rt_dretable(r: _rt.Ptr, d: _rt.Ptr) -> None:
+    # r := d's table, holes included (r's descriptor is d's)
+    u = _rt.udiv(_rt.get(d, "Dict.size") * 2, 3)
+    x = (dict_mask(d) + 1) * 4
+    n = _rt.get(d, "Dict.n")
+    _rt.set(r, "Dict.kind", _rt.get(r, "Dict.kind") | (_rt.get(d, "Dict.kind") & 2))
+    _rt.setp(r, "Dict.keys", pys_rt_keymem(_rt.get(r, "Dict.kind"), u))
+    _rt.setp(r, "Dict.vals", item_array(u, _rt.get(r, "Dict.vatomic")))
+    _rt.setp(r, "Dict.hs", pys_alloc_atomic(u * 8))
+    _rt.setp(r, "Dict.idx", pys_alloc_atomic(x))
+    _rt.cpy(_rt.getp(r, "Dict.keys"), _rt.getp(d, "Dict.keys"), n * 8)
+    _rt.cpy(_rt.getp(r, "Dict.vals"), _rt.getp(d, "Dict.vals"), n * 8)
+    _rt.cpy(_rt.getp(r, "Dict.hs"), _rt.getp(d, "Dict.hs"), n * 8)
+    _rt.cpy(_rt.getp(r, "Dict.idx"), _rt.getp(d, "Dict.idx"), x)
+    _rt.set(r, "Dict.len", _rt.get(d, "Dict.len"))
+    _rt.set(r, "Dict.n", n)
+    _rt.set(r, "Dict.cut", _rt.get(d, "Dict.cut"))
+    _rt.set(r, "Dict.size", _rt.get(d, "Dict.size"))
+    vb = _rt.nil()
+    if not _rt.null(_rt.getp(d, "Dict.vb")):
+        vb = pys_alloc(u * 8)
+        _rt.cpy(vb, _rt.getp(d, "Dict.vb"), n * 8)
+    _rt.setp(r, "Dict.vb", vb)
+    kb = _rt.nil()
+    if not _rt.null(_rt.getp(d, "Dict.kb")):
+        kb = pys_alloc(u * 8)
+        _rt.cpy(kb, _rt.getp(d, "Dict.kb"), n * 8)
+    _rt.setp(r, "Dict.kb", kb)
+
+
+@_rt.unchecked
+def pys_rt_dclean(d: _rt.Ptr) -> int:
+    # a table without holes that is not sparse
+    n = _rt.get(d, "Dict.len")
+    size = _rt.get(d, "Dict.size")
+    return 1 if n != 0 and n == _rt.get(d, "Dict.n") and (size == 8 or _rt.udiv(_rt.udiv(size, 2) * 2, 3) < n) else 0
+
+
+@_rt.unchecked
+def dict_clone(d: _rt.Ptr) -> _rt.Ptr:
+    r = dict_make(_rt.get(d, "Dict.kind"), 0, _rt.get(d, "Dict.vatomic"))
+    pys_rt_dretable(r, d)
+    return r
+
+
+@_rt.unchecked
+def pys_dict_update(d: _rt.Ptr, o: _rt.Ptr) -> None:
+    # d.update(o) of a dict of d's type, as CPython 3.13's dict_dict_merge: an empty d takes a
+    # clone of o's table where dict(o) would, else d is resized once for both dicts' items (if o
+    # has more than d's table could take), then o's items are inserted in order (with the hashes
+    # o keeps)
+    used = _rt.get(o, "Dict.len")
+    if o is d or used == 0:
+        return
+    if _rt.get(d, "Dict.len") == 0 and pys_rt_dclean(o) != 0:
+        pys_rt_dretable(d, o)
+        return
+    size = _rt.get(d, "Dict.size")
+    if _rt.udiv((size if size != 0 else 8) * 2, 3) < used:
+        pys_rt_dbuild(d, d, pys_rt_keysize(_rt.udiv((_rt.get(d, "Dict.len") + used) * 3 + 1, 2)))
+    e = 0
+    while e < _rt.get(o, "Dict.n"):
+        if dict_live(o, e):
+            m = pys_rt_dbig(o, e)
+            k = dict_key_big(o, e)
+            h = _rt.word(_rt.getp(o, "Dict.hs"), e)
+            v = _rt.word(_rt.getp(o, "Dict.vals"), e)
+            if _rt.null(k):
+                f = pys_rt_dset(d, _rt.word(_rt.getp(o, "Dict.keys"), e), h, v)
+            else:
+                f = pys_rt_dbput(d, k, h, v)
+            if not _rt.null(m):
+                pys_rt_dbig_make(d)
+                _rt.put(_rt.getp(d, "Dict.vb"), f, _rt.addr(m))
+            # A key comparison can mutate o. Check after insertion, as dict_dict_merge does, so
+            # a callback's own exception wins and value-only changes remain allowed
+            if _rt.get(o, "Dict.len") != used:
+                raise RuntimeError("dict mutated during update")
+        e += 1
+
+
+@_rt.unchecked
+def pys_dict_from(d: _rt.Ptr) -> _rt.Ptr:
+    if pys_rt_dclean(d) != 0:
+        return dict_clone(d)
+    r = dict_make(_rt.get(d, "Dict.kind"), 0, _rt.get(d, "Dict.vatomic"))
+    if _rt.get(d, "Dict.kind") & 2 != 0:
+        pys_dict_update(r, d)
+    elif _rt.get(d, "Dict.len") != 0:
+        pys_rt_dbuild(r, d, pys_rt_keysize(_rt.udiv(_rt.get(d, "Dict.len") * 3 + 1, 2)))
+    return r
+
+
+@_rt.unchecked
+def pys_dict_copy(d: _rt.Ptr) -> _rt.Ptr:
+    n = _rt.get(d, "Dict.len")
+    if n != 0 and n >= _rt.udiv(_rt.get(d, "Dict.n") * 2, 3):
+        return dict_clone(d)
+    return pys_dict_from(d)
+
+
+@_rt.unchecked
+def pys_dict_update_pairs(d: _rt.Ptr, l: _rt.Ptr) -> None:
+    # d.update(pairs) of a list of (key, value) tuples, and dict.fromkeys(keys, v) of a list:
+    # one insertion per item, as PyDict_MergeFromSeq2 and _PyDict_FromKeys make them
+    i = 0
+    while i < _rt.get(l, "List.len"):
+        t = _rt.ptr(_rt.word(_rt.getp(l, "List.a"), i))
+        pys_dict_set(d, _rt.word(t, 0), _rt.word(t, 1))
+        i += 1
+
+
+@_rt.unchecked
+def pys_dict_update_pairs_big(d: _rt.Ptr, l: _rt.Ptr, kj: int, vj: int) -> None:
+    # and of such a list that a program's lists hold as tuples of promoting ints, into a dict
+    # of ints or of int keys: kj (vj) says that the key (the value) is an int, whose Mpz past
+    # 64 bits is in the tuple's slot 2 (3), read where its slot holds -2**63
+    i = 0
+    while i < _rt.get(l, "List.len"):
+        t = _rt.ptr(_rt.word(_rt.getp(l, "List.a"), i))
+        key = _rt.word(t, 0)
+        val = _rt.word(t, 1)
+        k = _rt.nil()
+        if kj != 0 and key == -9223372036854775807 - 1:
+            k = _rt.ptr(_rt.word(t, 2))
+        m = _rt.nil()
+        if vj != 0 and val == -9223372036854775807 - 1:
+            m = _rt.ptr(_rt.word(t, 3))
+        if not _rt.null(k):
+            e = pys_rt_dbput(d, k, pys_rt_hbig(d, k), val)
+            if not _rt.null(m):
+                pys_rt_dbig_make(d)
+                _rt.put(_rt.getp(d, "Dict.vb"), e, _rt.addr(m))
+        elif not _rt.null(m):
+            pys_dict_set_big(d, key, 0, m)
+        else:
+            pys_dict_set(d, key, val)
+        i += 1
+
+
+@_rt.cold
+@_rt.unchecked
+def dict_fromkeys_big(d: _rt.Ptr, l: _rt.Ptr, v: int) -> None:
+    # of a list of ints that may hold one past 64 bits
+    i = 0
+    while i < _rt.get(l, "List.len"):
+        m = pys_rt_lbig(l, i)
+        if _rt.null(m):
+            pys_dict_set(d, _rt.word(_rt.getp(l, "List.a"), i), v)
+        else:
+            pys_rt_dbput(d, m, pys_rt_hbig(d, m), v)
+        i += 1
+
+
+@_rt.unchecked
+def pys_dict_fromkeys(kind: int, l: _rt.Ptr, v: int) -> _rt.Ptr:
+    d = pys_dict_new(kind, 0)
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
+        dict_fromkeys_big(d, l, v)  # (a path of its own, so that the others' loop stays as it was)
+    else:
+        i = 0
+        while i < _rt.get(l, "List.len"):
+            pys_dict_set(d, _rt.word(_rt.getp(l, "List.a"), i), v)
+            i += 1
+    return d
+
+
+@_rt.unchecked
+def pys_dict_fromkeys_dict(o: _rt.Ptr, v: int) -> _rt.Ptr:
+    # dict.fromkeys(o, v) of a dict o: sized for o's keys at once, as dict_dict_fromkeys does
+    d = pys_dict_new(_rt.get(o, "Dict.kind"), 0)
+    pys_rt_dbuild(d, d, pys_rt_keysize(_rt.udiv(_rt.get(o, "Dict.len") * 3 + 1, 2)))
+    e = 0
+    while e < _rt.get(o, "Dict.n"):
+        if dict_live(o, e):
+            k = dict_key_big(o, e)
+            h = _rt.word(_rt.getp(o, "Dict.hs"), e)
+            if _rt.null(k):
+                pys_rt_dset(d, _rt.word(_rt.getp(o, "Dict.keys"), e), h, v)
+            else:
+                pys_rt_dbput(d, k, h, v)
+        e += 1
+    return d
 
 
 # ---------- floats and ints: division, conversion, rounding, comparison ----------

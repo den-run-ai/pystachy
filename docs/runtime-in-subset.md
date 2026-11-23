@@ -349,6 +349,17 @@ may run the program's `__hash__` and `__eq__`: every loop that makes such a call
 the table again afterwards, and starts again where CPython's does. The 8 slots of a new
 or cleared set are scanned whatever its kind; a larger table of ints is atomic.
 
+So is a dict's: the entries in insertion order, the index over them, the probes of int
+and str keys, insertion, deletion and its holes, the rebuilds, `popitem`, the copies and
+merges as CPython 3.13 sizes them, the views and a loop's steps. A lookup returns the
+index slot of the key, or a value below zero that names the slot an insertion takes, so
+that one probe serves both without a result in memory. An entry point that hashes a key
+keeps `runtime.c`'s shape: the hash and the choice of probe are inlined into it, and the
+probe is a function of its own. `runtime.c` keeps the hash of a key that a type
+descriptor describes and the probes of such keys, which may run the program's code, and
+four entry points whose result is two words. Each probe calls `pys_rt_probe`, which is
+empty in the runtime and counts slots in `tools/dictprobe.c`.
+
 Dict value arrays follow the same rule. The compiler makes a dict whose values are ints,
 floats or bools with `pys_dict_new_atomic`, which sets the dict's `vatomic` word. Every value
 array of that dict is then atomic, through growth and `clear()`, as are the value arrays of
@@ -448,6 +459,12 @@ rule. Sets of strs are compared as sets, since a str's hash is not CPython's. An
 `__eq__` that changes a set during a lookup must leave the tables sound; what such
 a program prints is compared with CPython by the compiled tests.
 
+The dict operations run against CPython's `dict`: int keys, str keys in both hash
+schemes, objects with a `__hash__` of their own, and ints past 64 bits as keys and
+values. After each operation the entries must be CPython's items in CPython's order,
+every live entry must be on the probes of its hash, and holes and the entries past
+the last must hold nothing that the collector would keep.
+
 The model's own checks are tested by faults made on purpose, and by seeded bugs in
 the moved code, each of which the test's run finds
 (`tools/test_rtcheck_memory.py`).
@@ -483,15 +500,14 @@ container code move; the table gives the state and the order.
 | Section of `runtime.c` | Lines | Plan |
 |---|---:|---|
 | Collector and page heap | 860 | Stays. |
-| Exception unwinding | 490 | Stays: the Itanium ABI's tables and personality. |
+| Exception unwinding and tracebacks | 860 | Stays: the Itanium ABI's tables and personality, and the line tables that a traceback reads. |
 | I/O, processes, time, `select`, `errno`, temporary directories | 2,340 | Stays: system calls and libc streams. Buffering policy and text decoding can move later. |
 | Unicode and other constant tables | 1,390 | Stay as data; `runtime.py` reads them through pure helpers. |
 | Lists | 720 | Next: the identity companion's entry points, `min`/`max`, then the sort. |
 | Strings | 620 | Slices, indexed text access and its hints, `chr`/`ord`, float text. Float formatting and parsing stay with libc. |
-| Hashing by descriptor, and what the sets ask of it | 190 | With the walks. The set's table is `runtime.py`'s. |
-| Dicts | 690 | After sets: the compact ordered table, views and iteration. |
-| Generic `repr`, equality and ordering | 760 | With dicts: walks of a value by its type descriptor. |
-| Dynamic values | 1,170 | After the walks: boxes, dispatch and the `Any` operators. |
+| Keys by descriptor: their hashes, equality and probes | 490 | With the walks. The tables of sets and dicts are `runtime.py`'s; four dict entry points wait for a result of two words. |
+| Generic `repr`, equality and ordering | 750 | Next: walks of a value by its type descriptor. |
+| Dynamic values | 1,230 | After the walks: boxes, dispatch and the `Any` operators. |
 | Promoting ints and `math` | 930 | Last: needs `mpz/` beside it. libm wrappers keep their LLVM-specific guards. |
 
 Each step adds the records it needs to `RTRECORDS` and removes the accessors that
@@ -500,11 +516,10 @@ decides its place in the order:
 
 | Needs | For |
 |---|---|
-| Nothing new | Dicts, as the sets before them: their tables are words and 32-bit words, and key equality and hashing can stay calls into `runtime.c` until the walks move. The probes' counters need a call that the checks can count. |
 | The checks moved with the code | The identity companion's entry points: `check_lean_companion.py` pins their text, and `test_runtime_list_identity.py` their cost, in `runtime.c`. |
 | The address of a static | Text indexing (its position hints and the one-byte strs), the sentinels, dynamic values (each builtin type's descriptor and the small ints' boxes). Accessor functions stand in today. |
 | A record in a local | The sort's merge state, and the buffer that `repr` and error messages grow. |
-| A result of two words | Promoting ints, which return a 64-bit part and an `Mpz`. |
+| A result of two words | Promoting ints, which return a 64-bit part and an `Mpz`: their arithmetic, and the dict and set entry points that return one. |
 | A word read at any alignment | The byte scans that test eight or 32 bytes at a time. |
 
 Named integer constants at module level would also replace the repeated literals.

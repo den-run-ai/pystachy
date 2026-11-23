@@ -1,9 +1,10 @@
 """tools/rtcheck.py finds seeded bugs in runtime.py's memory code.
 
-Each mutant is one change to the list, str or set code that a compiled runtime would run
-without complaint: a write past a block, a stale slot that the collector would scan, a read
-that breaks an alias rule, arithmetic that overflows unchecked, an identity that a companion
-loses, a set whose table is no longer CPython's slot for slot. The heap model of
+Each mutant is one change to the list, str, set or dict code that a compiled runtime would
+run without complaint: a write past a block, a stale slot that the collector would scan, a
+read that breaks an alias rule, arithmetic that overflows unchecked, an identity that a
+companion loses, a set whose table is no longer CPython's slot for slot, a dict whose
+entries are no longer CPython's items. The heap model of
 tools/rt_cpython/rt_heap.py must report every one of them at the size this test runs, and
 nothing in the code as it is.
 """
@@ -76,6 +77,44 @@ SET_MUTANTS = [
     ("a merge into a table with elements skips the last slot",
      '    while i <= _rt.get(o, "Set.mask"):  # (an __eq__ may change o: its table is read again)',
      '    while i < _rt.get(o, "Set.mask"):  # (an __eq__ may change o: its table is read again)'),
+]
+DICT_MUTANTS = [
+    ("a deleted entry keeps its key",
+     '    _rt.put(_rt.getp(d, "Dict.keys"), e, 0)\n    _rt.put(_rt.getp(d, "Dict.vals"), e, 0)\n    dict_val_clear(d, e)',
+     '    _rt.put(_rt.getp(d, "Dict.vals"), e, 0)\n    dict_val_clear(d, e)'),
+    ("a deleted entry's slot becomes empty, which ends the probes of the keys behind it",
+     '    _rt.put_i32(idx, i, -1)\n    dict_hole(d, e)\n    return v',
+     '    _rt.put_i32(idx, i, 0)\n    dict_hole(d, e)\n    return v'),
+    ("a table is full one entry late",
+     '    used = _rt.wrap_add(_rt.wrap_mul(_rt.get(d, "Dict.n") + _rt.get(d, "Dict.cut"), 3), 2)',
+     '    used = _rt.wrap_mul(_rt.get(d, "Dict.n") + _rt.get(d, "Dict.cut"), 3)'),
+    ("a str key is found only as itself",
+     '            if x == k or same_str(x, k):\n                return i\n        p = _rt.lshr(p, 5)\n        i = dict_step(i, p, m)\n    return -1  # (not reached)\n\n\n@_rt.inline\n@_rt.unchecked\ndef pys_rt_dfind(',
+     '            if x == k:\n                return i\n        p = _rt.lshr(p, 5)\n        i = dict_step(i, p, m)\n    return -1  # (not reached)\n\n\n@_rt.inline\n@_rt.unchecked\ndef pys_rt_dfind('),
+    ("a copy shares the values' Mpz words",
+     '        vb = pys_alloc(u * 8)\n        _rt.cpy(vb, _rt.getp(d, "Dict.vb"), n * 8)',
+     '        vb = _rt.getp(d, "Dict.vb")'),
+    ("a copy of a table leaves out its last hash",
+     '    _rt.cpy(_rt.getp(r, "Dict.hs"), _rt.getp(d, "Dict.hs"), n * 8)',
+     '    _rt.cpy(_rt.getp(r, "Dict.hs"), _rt.getp(d, "Dict.hs"), (n - 1) * 8)'),
+    ("popitem takes the last entry, a hole or not",
+     '    while not dict_live(d, e):  # (a class\'s key may hash to 0: see dict_live)\n        e -= 1\n',
+     ''),
+    ("a loop's step yields a hole",
+     '    n = _rt.get(d, "Dict.n")\n    while e < n and not dict_live(d, e):\n        e += 1\n    if e >= n:\n        return -1\n    if count >= used:',
+     '    n = _rt.get(d, "Dict.n")\n    if e >= n:\n        return -1\n    if count >= used:'),
+    ("list(d) forgets the Mpz of a key or value past 64 bits",
+     '                _rt.put(_rt.getp(l, "List.ids"), n + 1, _rt.word(b, e))',
+     '                _rt.put(_rt.getp(l, "List.ids"), n + 1, 0)'),
+    ("an insertion's idx slot names the entry before its own",
+     '    _rt.put_i32(_rt.getp(d, "Dict.idx"), f, n + 1)',
+     '    _rt.put_i32(_rt.getp(d, "Dict.idx"), f, n)'),
+    ("a rebuild drops the last entry",
+     '    n = 0\n    e = 0\n    while e < sn:\n        if dict_live(src, e):\n            h = _rt.word(sh, e)',
+     '    n = 0\n    e = 0\n    while e < sn - 1:\n        if dict_live(src, e):\n            h = _rt.word(sh, e)'),
+    ("a store over a value past 64 bits keeps its Mpz",
+     '        _rt.put(_rt.getp(d, "Dict.vals"), e, v)\n        dict_val_clear(d, e)\n    else:\n        pys_rt_dadd(d, k, h, v, i)',
+     '        _rt.put(_rt.getp(d, "Dict.vals"), e, v)\n    else:\n        pys_rt_dadd(d, k, h, v, i)'),
 ]
 MUTANTS = [
     ("pop keeps the stale slot",
@@ -170,15 +209,15 @@ class Memory(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             def run(j):
                 # (each against the part of the fuzz that is about its code)
-                name, old, new = (MUTANTS + SET_MUTANTS)[j]
+                name, old, new = (MUTANTS + SET_MUTANTS + DICT_MUTANTS)[j]
                 self.assertEqual(source.count(old), 1, f"{name}: runtime.py no longer has the text this mutant replaces")
                 path = os.path.join(tmp, f"runtime{j}.py")
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(source.replace(old, new))
-                return name, check(path, "lists" if j < len(MUTANTS) else "sets")
+                return name, check(path, "lists" if j < len(MUTANTS) else "sets" if j < len(MUTANTS) + len(SET_MUTANTS) else "dicts")
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-                for name, r in pool.map(run, range(len(MUTANTS) + len(SET_MUTANTS))):
+                for name, r in pool.map(run, range(len(MUTANTS) + len(SET_MUTANTS) + len(DICT_MUTANTS))):
                     with self.subTest(name):
                         self.assertNotEqual(r.returncode, 0, f"{name}: not found\n{r.stdout[-400:]}")
 

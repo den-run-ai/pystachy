@@ -2804,24 +2804,14 @@ static int dlive(Dict *d, I e) {
    the first such value makes (dbig_make); every other entry's word is null, and every store of a
    value clears its entry's word (dbig_clear). Compiled code reads the Mpz where it reads -2**63
    (pys_dict_big_val) */
-static inline void dbig_clear(Dict *d, I e) { if (d->vb) d->vb[e] = 0; }
 static void dbig_make(Dict *d) { if (!d->vb) d->vb = pys_alloc(d->size * 2 / 3 * 8); }
 static Mpz *dbig(Dict *d, I e) { return d->vb && d->vals[e] == INT64_MIN && opt_in() ? (Mpz *)d->vb[e] : NULL; }
-static int dict_has_big(Dict *d) {   /* does d hold a value past 64 bits */
-  if (d->vb) for (I e = 0; e < d->n; e++) if (d->vb[e] && dlive(d, e)) return 1;
-  return 0;
-}
 /* and a key past 64 bits of a dict of int keys holds -2**63 in its slot, and its Mpz in the entry's
    word of kb, which the first such key makes (dbput), as vb holds a value's; its hash is hbig's
    (see dicts), so the lookups of 64-bit keys never find it. The words of entries past the last are
    null (a deletion clears its entry's, builds and copies make new arrays), so an insertion of a
    64-bit key writes none */
-static inline void kbig_clear(Dict *d, I e) { if (d->kb) d->kb[e] = 0; }
 static Mpz *kbig(Dict *d, I e) { return d->keys[e] == INT64_MIN && d->kb && opt_in() ? (Mpz *)d->kb[e] : NULL; }
-static int dict_has_big_key(Dict *d) {   /* does d hold a key past 64 bits */
-  if (d->kb && opt_in()) for (I e = 0; e < d->n; e++) if (d->kb[e] && dlive(d, e)) return 1;
-  return 0;
-}
 /* depth counts the recursive alias edges (R) followed: a recursive value can nest without bound,
    so following more than 512 raises RecursionError, as CPython's repr does for deep nesting; other
    reprs, a class's own __repr__ among them, are limited only by the native stack. A local depth
@@ -3379,9 +3369,7 @@ static int atomic_items(const I *a) {  /* is the item array a atomic? its kind, 
   return w - gc_lo < gc_hi - gc_lo && (m = pmap[w >> 30]) && (s = m[w >> 12 & 0x3ffff]) && (s->k & 1);
 }
 void pys_list_empty(List *l);              /* detach an empty list's historical storage without allocating: runtime.py's */
-static I *item_array(I n, int atomic) { return atomic ? pys_alloc_atomic(n * 8) : pys_alloc(n * 8); }
 List *pys_list_make(I cap, I atomic);      /* runtime.py's: a new list, its items inline or in an array of that kind */
-static inline List *list_new(I cap, int atomic) { return pys_list_make(cap, atomic); }
 List *pys_list_new(I cap);
 List *pys_list_new_atomic(I cap);              /* a list[int], list[float] or list[bool] */
 /* Large scalar literals emit one copy operation plus immutable pointer-free slots, never
@@ -4112,9 +4100,6 @@ List *pys_bytes_list(Str *s);   /* runtime.py's: list(b), a list[int] */
 #ifndef DICT_HASH_GENERIC
 #define DICT_HASH_GENERIC()
 #endif
-#ifndef DICT_STRING_EMPTY
-#define DICT_STRING_EMPTY()
-#endif
 #define NONE_HASH 0xFCA86420                         /* hash(None) since CPython 3.12 */
 I pys_hash_str(Str *s);                  /* the hash functions are in runtime.py */
 I pys_hash_int(I k);
@@ -4195,7 +4180,8 @@ static uint64_t hint1(I k) { uint64_t h = (uint64_t)pys_hash_int(k); return h ? 
    its own (pys_hash_int is a bijection, and is neither 0 nor 1 at -2**63), and
    CPython's hash is never -2**63: a lookup of the 64-bit key -2**63 there never
    meets a wide entry of its hash, so their probes need no such test. */
-static uint64_t hbig(Dict *d, Mpz *m) { I h = pys_mpz_hash(m); return khash(d->kind) ? (uint64_t)h : hint1(h); }
+I pys_rt_hbig(Dict *d, Mpz *m);   /* runtime.py's */
+static uint64_t hbig(Dict *d, Mpz *m) { return (uint64_t)pys_rt_hbig(d, m); }
 /* The hash of key k of a table of kind > 1. Marked native str/int keys use the same
    hashes as hitem, including None and -1 normalization, without its descriptor walk.
    Other marked descriptors retain the general path and its callback behavior. */
@@ -4238,7 +4224,8 @@ static inline __attribute__((always_inline)) int keq(I a, I b, const char *d, in
 static int keyeq(I a, I b, const char *d) {   /* keys of descriptor d: an Any key is found as itself first, as an item is */
   return *d == 'T' ? keq(a, b, d, 0) : *d == 'A' ? dyn_eqitem((Dyn *)a, (Dyn *)b) : eqv(a, b, d);
 }
-static I keysize(I n) { I s = 8; while (s < n) s *= 2; return s; }   /* calculate_log2_keysize */
+I pys_rt_keysize(I n);                               /* calculate_log2_keysize, which is runtime.py's */
+static inline I keysize(I n) { return pys_rt_keysize(n); }
 static I *keymem(I kind, I n) {      /* the key array of a dict or set of this kind: an int key holds no pointer */
   return kind && !(kind > (1 | KTAG) && (*kdesc(kind) == 'i' || *kdesc(kind) == 'b')) ? pys_alloc(n * 8) : pys_alloc_atomic(n * 8);
 }
@@ -4263,20 +4250,85 @@ __attribute__((noinline)) static I dmoved(Dict *d, I e) {
   while (d->idx[i] != e + 1) { p >>= 5; i = (i * 5 + p + 1) & m; DICT_PROBE(); }
   return (I)i;
 }
-static I dfindc(Dict *d, I k, uint64_t h, I *free);
-static I dfinds(Dict *d, I k, uint64_t h, I *free, uint64_t m);
-static I dempty(Dict *d, uint64_t h);
+/* The dict's table is runtime.py's (dicts): the probes of int and str keys, insertion, deletion,
+   the rebuilds, the copies and the entry points the compiler calls. A lookup's result there is an
+   idx slot, or below zero where the key is not there: -1 in a dict with no table, else -2 less the
+   slot an insertion of the key takes. What it asks of this file follows: the hash of a key that a
+   descriptor describes (pys_rt_hobj), the probes of such keys (pys_rt_dfind_obj), the KeyError,
+   whose text is a repr, and the count of the slots that probes visit (pys_rt_probe: DICT_PROBE,
+   which is nothing in the runtime and tools/dictprobe.c's counter there) */
+I pys_rt_dhash(Dict *d, I k);                       /* hsh of d's key k */
+I pys_rt_dfind(Dict *d, I k, I h);                  /* k's idx slot, its hash h, or below zero */
+I pys_rt_dbfind(Dict *d, Mpz *m, I h);              /* and of a key past 64 bits, its Mpz m */
+I pys_rt_dempty(Dict *d, I h);                      /* find_empty_slot */
+I pys_rt_dslot(Dict *d, I e);                       /* the idx slot of live entry e */
+I pys_rt_dpfind(Dict *d, I k);                      /* d.pop(k)'s lookup */
+void pys_rt_dadd(Dict *d, I k, I h, I v, I r);      /* k, which d has not, where its lookup's result r says */
+I pys_rt_dbadd(Dict *d, Mpz *m, I h, I v, I r);
+I pys_rt_dset(Dict *d, I k, I h, I v);              /* d[k] = v, k's hash h: the entry */
+I pys_rt_dtake(Dict *d, I i);                       /* the value of the entry in idx slot i, which is deleted */
+void pys_rt_dbuild(Dict *d, Dict *src, I size);     /* d := src's items in a table of this size, holes dropped */
+void pys_rt_dretable(Dict *r, Dict *d);             /* r := d's table, holes included */
+I pys_rt_dclean(Dict *d);                           /* a table without holes that is not sparse */
+Dict *pys_dict_new(I kind, I n);
+Dict *pys_dict_new_atomic(I kind, I n);
+Dict *pys_dict_from(Dict *d);
+Dict *pys_dict_copy(Dict *d);
+Dict *pys_dict_fromkeys(I kind, List *l, I v);
+Dict *pys_dict_fromkeys_dict(Dict *o, I v);
+List *pys_dict_keys(Dict *d);
+List *pys_dict_values(Dict *d);
+I pys_dict_has(Dict *d, I k);
+I pys_dict_find(Dict *d, I k);
+I pys_dict_get(Dict *d, I k, I dflt);
+I pys_dict_getitem(Dict *d, I k);
+I pys_dict_pop(Dict *d, I k);
+I pys_dict_del(Dict *d, I k);
+I pys_dict_prev(Dict *d, I e, I used, I count);
+I pys_dict_key(Dict *d, I e);
+I pys_dict_val(Dict *d, I e);
+I pys_dict_next(Dict *d, I e, I used, I count);
+I pys_dict_big_find(Dict *d, I lo, Mpz *m);
+void pys_dict_set(Dict *d, I k, I v);
+void pys_dict_clear(Dict *d);
+void pys_dict_update(Dict *d, Dict *o);
+void pys_rt_probe(void) { DICT_PROBE(); }
+I pys_rt_hash_str(Str *s) { return pys_hash_str(s); }   /* (which tools/dictprobe.c counts: a str is hashed once) */
+/* (a copy in each of runtime.py's entry points that hash a key, as hobj was in each of this file's) */
+__attribute__((always_inline)) I pys_rt_hobj(I kind, I k) { return (I)hobj(kind, k); }
+/* runtime.py's lookups and steps, as this file's code and tools/dictprobe.c take them: *free is
+   where to insert the key, left as it was where the dict has no table */
+static I dfind(Dict *d, I k, uint64_t h, I *free) {
+  I r = pys_rt_dfind(d, k, (I)h);
+  if (r >= 0) return r;
+  if (free && r <= -2) *free = -2 - r;
+  return -1;
+}
+static I dbfind(Dict *d, Mpz *m, uint64_t h, I *free) {
+  I r = pys_rt_dbfind(d, m, (I)h);
+  if (r >= 0) return r;
+  if (free && r <= -2) *free = -2 - r;
+  return -1;
+}
+static inline I dpfind(Dict *d, I k) { I r = pys_rt_dpfind(d, k); return r >= 0 ? r : -1; }
+static inline I dempty(Dict *d, uint64_t h) { return pys_rt_dempty(d, (I)h); }
+static inline I entry(Dict *d, I k) { return pys_dict_find(d, k); }
+static inline I dtake(Dict *d, I i) { return pys_rt_dtake(d, i); }
+static inline I dset(Dict *d, I k, uint64_t h, I v) { return pys_rt_dset(d, k, (I)h, v); }
+static inline void build(Dict *d, Dict *src, I size) { pys_rt_dbuild(d, src, size); }
+static inline void retable(Dict *r, Dict *d) { pys_rt_dretable(r, d); }
+static inline int clean(Dict *d) { return (int)pys_rt_dclean(d); }
+static I dfindo(Dict *d, I k, uint64_t h, I *free);
 /* the probes for key k, whose hash is h, over idx's m + 1 slots: k's idx slot or -1, and *free
    where to insert it (the first hole or empty slot they met; after an __eq__, which may have
    filled that hole, the one dempty finds then, as CPython's insertdict takes find_empty_slot's);
-   objs: d's keys may be tuples or objects (kind > 1, compared by keq or dkeyeq, an Any key's by
-   dyn_keyeq first), else they are ints or strs; 2: they are hashed by CPython's hash (KTAG), so a
-   key is found as itself before its hash is compared, as compare_generic does, whatever the hash
-   its __hash__ gives now; 3: immediate str keys, with no user comparison, in a KTAG table or a
-   native one (dfinds). Immutable strings retain their hash, so 3 can test it before
-   reading/comparing a key. 0 (dfindi) and 1 meet no str key. Only 2 skips the entries of int keys
-   past 64 bits (kbig), whose slots hold -2**63, before it finds a key as itself; in the others'
-   tables such an entry never has the hash of a lookup of -2**63 (hbig): their hash test skips it. */
+   d's keys are tuples or objects (kind > 1, compared by keq or dkeyeq, an Any key's by dyn_keyeq
+   first): the probes of int and str keys are runtime.py's (dict_find_int, dict_find_str). objs 2:
+   the keys are hashed by CPython's hash (KTAG), so a key is found as itself before its hash is
+   compared, as compare_generic does, whatever the hash its __hash__ gives now; only it skips the
+   entries of int keys past 64 bits (kbig), whose slots hold -2**63, before it finds a key as
+   itself; in the other's tables such an entry never has the hash of a lookup of -2**63 (hbig):
+   its hash test skips it. */
 static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I *free, uint64_t m, int objs) {
   I f = -1; int ran = 0;
   for (uint64_t i = h & m, p = h;; p >>= 5, i = (i * 5 + p + 1) & m) {
@@ -4288,121 +4340,38 @@ static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I
     else if (objs == 2 && d->keys[e - 1] == k) return i;
     else if (d->hs[e - 1] == h) {
       I x = d->keys[e - 1];
-      if (x == k || (objs == 3 && pys_str_eq((Str *)x, (Str *)k))) return i;
-      if (objs && objs != 3 && d->kind > 1) {
+      if (x == k) return i;
+      {
         const char *s = kdesc(d->kind);
         int eq = *s == 'T' ? keq(x, k, s, 1) : *s == 'A' && !s[1] ? dyn_keyeq((Dyn *)x, (Dyn *)k) : 2;
         if (eq == 2) {
           eq = dkeyeq(d, e - 1, x, k); ran = 1;
           if (eq > 0 && d->idx[i] != e) { I j = dmoved(d, e - 1); if (j >= 0) return j; eq = -1; }
         }
-        if (eq < 0) return dfind(d, k, h, free);
+        if (eq < 0) return dfindo(d, k, h, free);
         if (eq) return i;
       }
     }
   }
 }
-/* k's idx slot or -1; *free: where to insert k, whose hash is h. A KTAG dict's idx has size slots
-   (dfindc), another's 2*size; dfindi is dfind for native int keys, dfinds for str keys */
-static I dfind(Dict *d, I k, uint64_t h, I *free) {
-  if (!d->size) return -1;
-  if ((d->kind & ~(I)KTAG) == 1) return dfinds(d, k, h, free, dmask(d));
-  if (d->kind & KTAG) return dfindc(d, k, h, free);
-  return dlook(d, k, h, free, d->size * 2 - 1, 1);
-}
-__attribute__((noinline)) static I dfindi(Dict *d, I k, uint64_t h, I *free) { return d->size ? dlook(d, k, h, free, d->size * 2 - 1, 0) : -1; }
+/* the probe of a table whose keys a descriptor describes: dfindc's where they are hashed by
+   CPython's hash, whose idx has size slots, a function of its own, else the generic one over
+   2*size slots, here (tools/dictprobe.c's build checks that only dfindc tests entries for a key
+   past 64 bits) */
 __attribute__((noinline)) static I dfindc(Dict *d, I k, uint64_t h, I *free) { return dlook(d, k, h, free, d->size - 1, 2); }
-/* The string probe, of a KTAG or a native table (m: dmask's): no callbacks, so keep its register
-   saves separate from the generic probe; one probe for both keeps dhfind's call sites as few */
-__attribute__((noinline)) static I dfinds(Dict *d, I k, uint64_t h, I *free, uint64_t m) { return dlook(d, k, h, free, m, 3); }
-/* dfind of key k, which it hashes (hsh) into *hp first: one test of the kind for both */
-static inline __attribute__((always_inline)) I dhfind(Dict *d, I k, uint64_t *hp, I *free) {
-  if ((d->kind & ~(I)KTAG) == 1) {
-    *hp = hstrd((Str *)k);
-    if (!d->size) return -1;
-    uint64_t m = dmask(d);
-    /* Fresh string insertions usually find an empty first slot. Read-only lookups
-       skip this check; tombstones and occupied slots retain their full probe. */
-    if (free) {
-      I i = *hp & m;
-      if (!d->idx[i]) { DICT_PROBE(); DICT_STRING_EMPTY(); *free = i; return -1; }
-    }
-    return dfinds(d, k, *hp, free, m);
-  }
-  if (d->kind > 1) {
-    *hp = hobj(d->kind, k);
-    if (!d->size) return -1;
-    return d->kind & KTAG ? dfindc(d, k, *hp, free) : dfind(d, k, *hp, free);
-  }
-  return dfindi(d, k, *hp = hint1(k), free);
+__attribute__((noinline)) static I dfindo(Dict *d, I k, uint64_t h, I *free) {
+  if (!d->size) return -1;   /* (an __eq__ cleared the dict: the lookup that starts again finds no table) */
+  return d->kind & KTAG ? dfindc(d, k, h, free) : dlook(d, k, h, free, d->size * 2 - 1, 1);
 }
-/* the idx slot of key m, an int past 64 bits whose hash is h (hbig), or -1, and *free as dlook's:
-   an entry of that hash whose key's Mpz (kbig) is equal to m */
-static I dbfind(Dict *d, Mpz *m, uint64_t h, I *free) {
-  if (!d->size) return -1;
-  I f = -1;
-  for (uint64_t k = dmask(d), i = h & k, p = h;; p >>= 5, i = (i * 5 + p + 1) & k) {
-    DICT_PROBE();
-    int32_t e = d->idx[i];
-    if (!e) { if (free) *free = f < 0 ? (I)i : f; return -1; }
-    if (e < 0) { if (f < 0) f = i; }
-    else if (d->hs[e - 1] == h) { Mpz *x = kbig(d, e - 1); if (x && (x == m || pys_mpz_cmp(x, m) == 0)) return (I)i; }
-  }
+__attribute__((always_inline)) I pys_rt_dfind_obj(Dict *d, I k, I h) {   /* (a copy in each caller: one call, dfindo's) */
+  I f = -1, i = dfindo(d, k, (uint64_t)h, &f);
+  return i >= 0 ? i : f < 0 ? -1 : -2 - f;
 }
-static I dempty(Dict *d, uint64_t h) {               /* find_empty_slot: hash h's first idx slot that is a hole or empty */
-  for (uint64_t m = dmask(d), p = h, i = p & m;; p >>= 5, i = (i * 5 + p + 1) & m) { DICT_PROBE(); if (d->idx[i] <= 0) return (I)i; }
-}
-static void build(Dict *d, Dict *src, I size) {      /* d := src's items in a table of this size, holes dropped */
-  if (khash(d->kind)) d->kind |= KTAG;
-  I u = size * 2 / 3, *k = keymem(d->kind, u), *v = item_array(u, (int)d->vatomic), n = 0, m = d->kind & KTAG ? size - 1 : size * 2 - 1;
-  I *vb = src->vb ? pys_alloc(u * 8) : 0, *kb = src->kb ? pys_alloc(u * 8) : 0;
-  uint64_t *hs = pys_alloc_atomic(u * 8); int32_t *ix = pys_alloc_atomic((m + 1) * 4);
-  if (vb || kb)   /* (the live entries' words, in their new order: a pass of its own) */
-    for (I e = 0, j = 0; e < src->n; e++) if (dlive(src, e)) { if (vb) vb[j] = src->vb[e]; if (kb) kb[j] = src->kb[e]; j++; }
-  for (I e = 0; e < src->n; e++) {
-    uint64_t h = src->hs[e], p = h, i = p & m;
-    if (!dlive(src, e)) continue;
-    DICT_PROBE();
-    while (ix[i]) { p >>= 5; i = (i * 5 + p + 1) & m; DICT_PROBE(); }
-    k[n] = src->keys[e]; v[n] = src->vals[e]; hs[n] = h; ix[i] = (int32_t)++n;
-  }
-  d->len = n; d->n = n; d->cut = 0; d->size = size; d->keys = k; d->vals = v; d->hs = hs; d->idx = ix; d->vb = vb; d->kb = kb;
-}
-static Dict *dict_new(I kind, I n, I vatomic) {      /* a display of n items is presized, as in CPython */
-  Dict *d = pys_alloc(sizeof(Dict) - 1); d->kind = kind; d->vatomic = vatomic;   /* (the allocator adds its byte of slack: 96 bytes, as before kb) */
-  if (n > 5) build(d, d, n > 87381 ? 1 << 17 : keysize((n * 3 + 1) / 2));
-  return d;
-}
-Dict *pys_dict_new(I kind, I n) { return dict_new(kind, n, 0); }
-/* a dict of int, float or bool values, which the compiler makes with this: the arrays of its values
-   are atomic, and so are those of its copies (dict.copy(), dict(d)); dict.fromkeys and the
-   empty dicts that a template returns while their type is open are made by pys_dict_new */
-Dict *pys_dict_new_atomic(I kind, I n) { return dict_new(kind, n, 1); }
 static _Noreturn NOMERGE void keyerr(Dict *d, I k) {
   Buf b = {0}; put(&b, "KeyError: ", 10); repr(&b, k, d->kind > 1 ? kdesc(d->kind) : d->kind ? "s" : "i"); put(&b, "", 1); pys_fail(b.p);
 }
-/* The entry points that hash a key stay calls in a program's AOT build (LOOKUP). runtime.py's string
-   hash compiles to less code than the C loop it replaced, which brought them under LLVM's inline
-   threshold: copied into every lookup of the compiler, they made its executable 14% larger and its
-   AOT build 16% longer, for 1-2% of speed on dict benchmarks (docs/runtime-in-subset.md 2.11) */
+_Noreturn NOMERGE void pys_rt_dict_keyerr(Dict *d, I k) { keyerr(d, k); }
 #define LOOKUP __attribute__((noinline))
-static inline __attribute__((always_inline)) I entry(Dict *d, I k) { uint64_t h; I i = dhfind(d, k, &h, 0); return i < 0 ? -1 : d->idx[i] - 1; }
-LOOKUP I pys_dict_has(Dict *d, I k) { return entry(d, k) >= 0; }
-LOOKUP I pys_dict_getitem(Dict *d, I k) { I e = entry(d, k); if (e < 0) keyerr(d, k); return d->vals[e]; }
-/* one lookup where a has or a getitem of a key comes before a getitem or a set of it, and no
-   dict changes between (the compiler's dictfuse): k's entry, or -1 (find) or a KeyError (entry);
-   pys_dict_val reads that entry's value, and entry_set writes it as pys_dict_set overwrites one,
-   which moves no entry */
-LOOKUP I pys_dict_find(Dict *d, I k) { return entry(d, k); }
-/* Equality reuses the source entry's stored hash: rerunning __hash__ here
-   would add effects and could hide a key whose hash changed since insertion.
-   The source key/value can disappear during lookup; snapshot its key/hash
-   before dfind, which restarts when a callback changes the target table. */
-LOOKUP I pys_dict_eq_find(Dict *d, Dict *source, I e) {
-  I k = source->keys[e]; uint64_t h = source->hs[e]; Mpz *m = kbig(source, e);
-  I i = m ? dbfind(d, m, h, 0) : dfind(d, k, h, 0);
-  return i < 0 ? -1 : d->idx[i] - 1;
-}
 /* A pair of key layouts supplies its own equality callback. Both tables use
    Python's hash/probe scheme from construction; the query keeps its stored
    hash. With unequal hashes the callback tests identity alone: a native and
@@ -4425,123 +4394,15 @@ restart:
     if (eq) return entry - 1;
   }
 }
-LOOKUP I pys_dict_entry(Dict *d, I k) { I e = entry(d, k); if (e < 0) keyerr(d, k); return e; }
-void pys_dict_entry_set(Dict *d, I e, I v) { d->vals[e] = v; dbig_clear(d, e); }
-void pys_dict_entry_set_big(Dict *d, I e, I lo, Mpz *m) {   /* entry_set of a promoting int (pys_dict_set_big) */
-  if (!m) { pys_dict_entry_set(d, e, lo); return; }
-  d->vals[e] = INT64_MIN; dbig_make(d); d->vb[e] = (I)m;
+static _Noreturn NOMERGE void bkeyerr(Mpz *m) {   /* the KeyError of a dict's key or a set's element m, past 64 bits */
+  Str *t = mpz_digits(m);   /* (past CPython's 4300 digits: what its traceback prints, which cannot write it) */
+  Buf b = {0}; put(&b, "KeyError: ", 10);
+  if (t) put(&b, t->s, t->len); else put(&b, "<exception str() failed>", 24);
+  put(&b, "", 1); pys_fail(b.p);
 }
-LOOKUP I pys_dict_get(Dict *d, I k, I dflt) { I e = entry(d, k); return e < 0 ? dflt : d->vals[e]; }
-__attribute__((noinline)) static I dgrow(Dict *d, uint64_t h) {   /* insertion_resize: hash h's idx slot in the larger table */
-  build(d, d, keysize(d->len * 3)); return dempty(d, h);
-}
-static int dfull(Dict *d) {   /* used >= floor(2*size/3), without dividing on each insertion */
-  /* size is zero or a positive power of two (at most 2**62); n+cut never exceeds
-     its capacity, so both unsigned products fit, including the empty table. */
-  return (uint64_t)(d->n + d->cut) * 3 + 2 >= (uint64_t)d->size * 2;
-}
-static inline __attribute__((always_inline)) void dadd(Dict *d, I k, uint64_t h, I v, I f) {   /* k, which d has not, into idx slot f (dfind's *free) */
-  if (dfull(d)) f = dgrow(d, h);    /* (full; popitem's cut entries still count) */
-  /* Both companion words are already null past n: allocation zeroes them, and
-     deletion/popitem clear them before an entry can be reused. Existing-key stores
-     still clear vb, since they may replace a value past 64 bits. */
-  d->keys[d->n] = k; d->vals[d->n] = v; d->hs[d->n] = h; d->idx[f] = (int32_t)++d->n; d->len++;
-}
-static I dset(Dict *d, I k, uint64_t h, I v) {   /* d[k] = v, k's hash h: the entry */
-  I f = -1, i = dfind(d, k, h, &f);
-  if (i >= 0) { I e = d->idx[i] - 1; d->vals[e] = v; dbig_clear(d, e); return e; }
-  dadd(d, k, h, v, f); return d->n - 1;
-}
-LOOKUP void pys_dict_set(Dict *d, I k, I v) {
-  uint64_t h; I f = -1, i = dhfind(d, k, &h, &f);
-  if (i >= 0) { I e = d->idx[i] - 1; d->vals[e] = v; dbig_clear(d, e); }
-  else dadd(d, k, h, v, f);
-}
-/* d[k] = {lo, m}, a promoting int: past 64 bits, -2**63 and its Mpz (dbig) */
-LOOKUP void pys_dict_set_big(Dict *d, I k, I lo, Mpz *m) {
-  if (!m) { pys_dict_set(d, k, lo); return; }
-  uint64_t h; I f = -1, i = dhfind(d, k, &h, &f), e;
-  if (i >= 0) { e = d->idx[i] - 1; d->vals[e] = INT64_MIN; }
-  else { dadd(d, k, h, INT64_MIN, f); e = d->n - 1; }
-  dbig_make(d); d->vb[e] = (I)m;
-}
-/* d[k] = v of key k past 64 bits, its Mpz m, whose hash is h (hbig): its entry */
-static I dbadd(Dict *d, Mpz *m, uint64_t h, I v, I f) {   /* and of key m, which d has not, into idx slot f (dbfind's *free) */
-  dadd(d, INT64_MIN, h, v, f);
-  if (!d->kb) d->kb = pys_alloc(d->size * 2 / 3 * 8);
-  d->kb[d->n - 1] = (I)m; return d->n - 1;
-}
-static I dbput(Dict *d, Mpz *m, uint64_t h, I v) {
-  I f = -1, i = dbfind(d, m, h, &f);
-  if (i >= 0) { I e = d->idx[i] - 1; d->vals[e] = v; dbig_clear(d, e); return e; }
-  return dbadd(d, m, h, v, f);
-}
-static I dtake(Dict *d, I i) {                       /* the value of the entry in idx slot i, which is deleted */
-  I e = d->idx[i] - 1, v = d->vals[e];
-  d->idx[i] = -1; d->hs[e] = d->kind & KTAG ? (uint64_t)-1 : 0; d->keys[e] = d->vals[e] = 0; dbig_clear(d, e); kbig_clear(d, e); d->len--;
-  return v;
-}
-/* d.pop(k)'s lookup (dhfind's), as CPython's dict_pop, which does not hash k where d is empty;
-   del d[k] (pys_dict_del) hashes it first, as PyDict_DelItem. Only a class's __hash__ can tell
-   them apart (kind > 1): the compiler calls pys_dict_pop for del of other keys */
-static inline __attribute__((always_inline)) I dpfind(Dict *d, I k) {
-  if (d->kind == 1) return d->size ? dfinds(d, k, hstrd((Str *)k), 0, d->size * 2 - 1) : -1;
-  if (d->kind > 1) { uint64_t h; return d->len ? dhfind(d, k, &h, 0) : -1; }
-  return dfindi(d, k, hint1(k), 0);
-}
-static I dpop(Dict *d, I k, I dflt, int has) {   /* d.pop(k) (has: d.pop(k, dflt)) */
-  I i = dpfind(d, k);
-  if (i < 0) { if (!has) keyerr(d, k); return dflt; }
-  return dtake(d, i);
-}
-I pys_dict_pop(Dict *d, I k) { return dpop(d, k, 0, 0); }
-I pys_dict_pop_default(Dict *d, I k, I dflt) { return dpop(d, k, dflt, 1); }
-/* entry e's (key, value) tuple; big: of promoting ints (bigints.py, utils.tslots), whose key or
-   value past 64 bits holds -2**63 and its Mpz in slot 2 or 3, else of 64-bit ints. (That tuple is
-   one of promoting ints too, where neither slot holds -2**63: only there is an Mpz word read) */
-static inline I *dpair(Dict *d, I e, int big) {
-  I *t;
-  if (big && (d->keys[e] == INT64_MIN || d->vals[e] == INT64_MIN)) { t = pys_alloc(32); t[2] = (I)kbig(d, e); t[3] = (I)dbig(d, e); }
-  else t = pys_alloc(16);
-  t[0] = d->keys[e]; t[1] = d->vals[e];
-  return t;
-}
-/* d.popitem() (dict_popitem_impl): the last entry's (key, value) tuple. The entries end where it
-   was, as CPython sets dk_nentries, so the holes before it are not walked again: popping every
-   item takes linear time. Its idx slot is found by its position (lookdict_index), not its key,
-   and stays deleted, so the entries cut off still fill the table until it is rebuilt (CPython
-   does not give dk_usable back): otherwise inserts after pops would use up its empty slots.
-   big: the tuple of promoting ints (dpair) */
-static inline __attribute__((always_inline)) I *dpopitem(Dict *d, int big) {
-  if (!d->len) pys_fail("KeyError: 'popitem(): dictionary is empty'");
-  I e = d->n - 1;
-  while (!dlive(d, e)) e--;   /* (a class's key may hash to 0: see dlive) */
-  if (!big && (dbig(d, e) || kbig(d, e))) pys_fail(NARROW);
-  uint64_t h = d->hs[e], m = dmask(d), i = h & m, p = h;
-  DICT_PROBE();
-  while (d->idx[i] != e + 1) { p >>= 5; i = (i * 5 + p + 1) & m; DICT_PROBE(); }
-  I *t = dpair(d, e, big);
-  d->idx[i] = -1; d->hs[e] = d->kind & KTAG ? (uint64_t)-1 : 0; d->keys[e] = d->vals[e] = 0; dbig_clear(d, e); kbig_clear(d, e); d->len--; d->cut += d->n - e; d->n = e;
-  return t;
-}
-I *pys_dict_popitem(Dict *d) { return dpopitem(d, 0); }
-I *pys_dict_big_popitem(Dict *d) { return dpopitem(d, 1); }   /* (of a dict of ints or of int keys) */
-I pys_dict_del(Dict *d, I k) { uint64_t h; I i = dhfind(d, k, &h, 0); if (i < 0) keyerr(d, k); return dtake(d, i); }
-/* d.get(k) and d.pop(k, None) of int, float and bool values: the value's box, or dflt (None or a box) */
-LOOKUP I pys_dict_getbox(Dict *d, I k, I dflt) { I e = entry(d, k); return e < 0 ? dflt : (I)pys_big_box(d->vals[e], dbig(d, e)); }
-LOOKUP I pys_dict_popbox(Dict *d, I k, I dflt) {
-  I i = dpfind(d, k);
-  if (i < 0) return dflt;
-  Mpz *m = dbig(d, d->idx[i] - 1);
-  return (I)pys_big_box(dtake(d, i), m);
-}
-LOOKUP I pys_dict_setdefault(Dict *d, I k, I v) {   /* one hash and one lookup, as CPython's */
-  uint64_t h; I f = -1, i = dhfind(d, k, &h, &f);
-  if (i >= 0) return d->vals[d->idx[i] - 1];
-  dadd(d, k, h, v, f); return v;
-}
-/* d.pop(k) (has: d.pop(k, {lo, m})) and d.setdefault(k, {lo, m}) of a dict of ints, whose value
-   may be past 64 bits: the promoting int */
+/* The results of two words, a promoting int's {lo, hi}, which runtime mode cannot give yet: d.pop(k)
+   (has: d.pop(k, {lo, m})) and d.setdefault(k, {lo, m}) of a dict of ints, whose value may be past
+   64 bits, and the same by a promoting int key {klo, km} (bkey_), from runtime.py's steps */
 Big pys_dict_big_pop(Dict *d, I k, I has, I lo, Mpz *m) {
   I i = dpfind(d, k);
   if (i < 0) { if (!has) keyerr(d, k); Big r = {lo, m}; return r; }
@@ -4550,70 +4411,11 @@ Big pys_dict_big_pop(Dict *d, I k, I has, I lo, Mpz *m) {
   Big r = {b ? 0 : v, b}; return r;
 }
 LOOKUP Big pys_dict_big_setdefault(Dict *d, I k, I lo, Mpz *m) {
-  uint64_t h; I f = -1, i = dhfind(d, k, &h, &f);
+  I h = pys_rt_dhash(d, k), i = pys_rt_dfind(d, k, h);
   if (i >= 0) { I e = d->idx[i] - 1; Mpz *b = dbig(d, e); Big r = {b ? 0 : d->vals[e], b}; return r; }
-  dadd(d, k, h, m ? INT64_MIN : lo, f);
+  pys_rt_dadd(d, k, h, m ? INT64_MIN : lo, i);
   if (m) { dbig_make(d); d->vb[d->n - 1] = (I)m; }
   Big r = {lo, m}; return r;
-}
-void pys_dict_narrow(Dict *d) { if (dict_has_big(d)) pys_fail(NARROW); }   /* d's values for 64-bit code (items()) */
-void pys_dict_clear(Dict *d) { d->len = d->n = d->cut = d->size = 0; d->keys = d->vals = d->vb = d->kb = 0; d->hs = 0; d->idx = 0; }
-/* the entry of key {lo, m} of a dict of int keys, a promoting int (past 64 bits, its Mpz m: kbig):
-   find's, or -1; entry's, or KeyError; put's, which adds the key with the value 0 where d has none
-   (the compiler stores the value next: pys_dict_entry_set); and del d[k] */
-static _Noreturn NOMERGE void bkeyerr(Mpz *m) {   /* the KeyError of a dict's key or a set's element m, past 64 bits */
-  Str *t = mpz_digits(m);   /* (past CPython's 4300 digits: what its traceback prints, which cannot write it) */
-  Buf b = {0}; put(&b, "KeyError: ", 10);
-  if (t) put(&b, t->s, t->len); else put(&b, "<exception str() failed>", 24);
-  put(&b, "", 1); pys_fail(b.p);
-}
-LOOKUP I pys_dict_big_find(Dict *d, I lo, Mpz *m) {
-  if (!m) return entry(d, lo);
-  I i = dbfind(d, m, hbig(d, m), 0); return i < 0 ? -1 : d->idx[i] - 1;
-}
-LOOKUP I pys_dict_big_entry(Dict *d, I lo, Mpz *m) { I e = pys_dict_big_find(d, lo, m); if (e < 0) { if (m) bkeyerr(m); keyerr(d, lo); } return e; }
-LOOKUP I pys_dict_big_put(Dict *d, I lo, Mpz *m) {
-  if (m) return dbput(d, m, hbig(d, m), 0);
-  uint64_t h; I f = -1, i = dhfind(d, lo, &h, &f);
-  if (i >= 0) return d->idx[i] - 1;
-  dadd(d, lo, h, 0, f); return d->n - 1;
-}
-void pys_dict_big_del(Dict *d, I lo, Mpz *m) {
-  if (!m) { pys_dict_del(d, lo); return; }
-  I i = dbfind(d, m, hbig(d, m), 0);
-  if (i < 0) bkeyerr(m);
-  dtake(d, i);
-}
-/* get(k), pop(k), setdefault(k, v) and their boxes, as the functions above without bkey_, of a
-   dict of int keys and a promoting int key {lo, m}: one that fits as theirs; past 64 bits, by the
-   idx slot dbfind finds. bkey_big_pop and bkey_big_setdefault are big_pop's and big_setdefault's */
-LOOKUP I pys_dict_bkey_get(Dict *d, I lo, Mpz *m, I dflt) {
-  if (!m) return pys_dict_get(d, lo, dflt);
-  I i = dbfind(d, m, hbig(d, m), 0); return i < 0 ? dflt : d->vals[d->idx[i] - 1];
-}
-LOOKUP I pys_dict_bkey_getbox(Dict *d, I lo, Mpz *m, I dflt) {
-  if (!m) return pys_dict_getbox(d, lo, dflt);
-  I i = dbfind(d, m, hbig(d, m), 0); if (i < 0) return dflt;
-  I e = d->idx[i] - 1; return (I)pys_big_box(d->vals[e], dbig(d, e));
-}
-static I dbpop(Dict *d, Mpz *m, I dflt, int has) {   /* (dpop's) */
-  I i = dbfind(d, m, hbig(d, m), 0);
-  if (i < 0) { if (!has) bkeyerr(m); return dflt; }
-  return dtake(d, i);
-}
-LOOKUP I pys_dict_bkey_pop(Dict *d, I lo, Mpz *m) { return m ? dbpop(d, m, 0, 0) : pys_dict_pop(d, lo); }
-LOOKUP I pys_dict_bkey_pop_default(Dict *d, I lo, Mpz *m, I dflt) { return m ? dbpop(d, m, dflt, 1) : pys_dict_pop_default(d, lo, dflt); }
-LOOKUP I pys_dict_bkey_popbox(Dict *d, I lo, Mpz *m, I dflt) {
-  if (!m) return pys_dict_popbox(d, lo, dflt);
-  I i = dbfind(d, m, hbig(d, m), 0); if (i < 0) return dflt;
-  Mpz *b = dbig(d, d->idx[i] - 1);
-  return (I)pys_big_box(dtake(d, i), b);
-}
-LOOKUP I pys_dict_bkey_setdefault(Dict *d, I lo, Mpz *m, I v) {
-  if (!m) return pys_dict_setdefault(d, lo, v);
-  uint64_t h = hbig(d, m); I f = -1, i = dbfind(d, m, h, &f);
-  if (i >= 0) return d->vals[d->idx[i] - 1];
-  dbadd(d, m, h, v, f); return v;
 }
 LOOKUP Big pys_dict_bkey_big_pop(Dict *d, I klo, Mpz *km, I has, I lo, Mpz *m) {
   if (!km) return pys_dict_big_pop(d, klo, has, lo, m);
@@ -4625,144 +4427,11 @@ LOOKUP Big pys_dict_bkey_big_pop(Dict *d, I klo, Mpz *km, I has, I lo, Mpz *m) {
 }
 LOOKUP Big pys_dict_bkey_big_setdefault(Dict *d, I klo, Mpz *km, I lo, Mpz *m) {
   if (!km) return pys_dict_big_setdefault(d, klo, lo, m);
-  uint64_t h = hbig(d, km); I f = -1, i = dbfind(d, km, h, &f);
+  I h = pys_rt_hbig(d, km), i = pys_rt_dbfind(d, km, h);
   if (i >= 0) { I e = d->idx[i] - 1; Mpz *b = dbig(d, e); Big r = {b ? 0 : d->vals[e], b}; return r; }
-  I e = dbadd(d, km, h, m ? INT64_MIN : lo, f);
+  I e = pys_rt_dbadd(d, km, h, m ? INT64_MIN : lo, i);
   if (m) { dbig_make(d); d->vb[e] = (I)m; }
   Big r = {lo, m}; return r;
-}
-/* for loops: entry e's key and value; the next entry from e (reversed: the previous one), or
-   -1 at the end, failing like CPython's dict iterators when the dict changed meanwhile:
-   used = len when the loop started, count = items produced so far. As in CPython 3.13.16, a
-   reversed loop also ends at a position past the entries (a rebuild made the table smaller) */
-I pys_dict_key(Dict *d, I e) { return d->keys[e]; }
-I pys_dict_val(Dict *d, I e) { return d->vals[e]; }
-/* Private optional scalar reads: snapshot a found entry, or zero without touching storage. */
-I pys_dict_val_or_zero(Dict *d, I e) { return e < 0 ? 0 : d->vals[e]; }
-Mpz *pys_dict_big_val(Dict *d, I e) { return dbig(d, e); }   /* the Mpz of entry e's value, where pys_dict_val gave -2**63 */
-Mpz *pys_dict_big_key(Dict *d, I e) { return kbig(d, e); }   /* and of its key, where pys_dict_key gave -2**63 */
-I pys_dict_end(Dict *d) { return d->n; }
-/* Equality walks current live entries after each value comparison. Unlike an
-   iterator, callbacks may clear or resize the dict without a mutation error. */
-I pys_dict_eq_next(Dict *d, I e) {
-  while (e < d->n && !dlive(d, e)) e++;
-  return e < d->n ? e : -1;
-}
-static void changed(Dict *d, I used) { if (d->len != used) pys_fail("RuntimeError: dictionary changed size during iteration"); }
-I pys_dict_next(Dict *d, I e, I used, I count) {
-  changed(d, used);
-  while (e < d->n && !dlive(d, e)) e++;
-  if (e >= d->n) return -1;
-  if (count >= used) pys_fail("RuntimeError: dictionary keys changed during iteration");
-  return e;
-}
-I pys_dict_prev(Dict *d, I e, I used, I count) {
-  changed(d, used);
-  if (e < 0 || e >= d->n) return -1;
-  while (e >= 0 && !dlive(d, e)) e--;
-  if (e >= 0 && count >= used) pys_fail("RuntimeError: dictionary keys changed during iteration");
-  return e;
-}
-static List *col(Dict *d, I *a) {    /* the keys or values in a list whose array is of a's kind (an int key's: atomic) */
-  List *l = list_new(d->len, atomic_items(a));
-  I *b = a == d->vals ? d->vb : d->kb;   /* (an int past 64 bits, -2**63 in a: dbig, kbig) */
-  for (I e = 0; e < d->n; e++) if (dlive(d, e)) {
-    Mpz *m = b && a[e] == INT64_MIN && opt_in() ? (Mpz *)b[e] : NULL;   /* (the new list's BIGIDS companion) */
-    if (m && !l->ids) { l->ids = pys_alloc((l->cap + 1) * sizeof(I)); l->ids[0] = BIGIDS; }
-    if (m) l->ids[l->len + 1] = (I)m;
-    l->a[l->len++] = a[e];
-  }
-  return l;
-}
-List *pys_dict_keys(Dict *d) { return col(d, d->keys); }
-List *pys_dict_values(Dict *d) { return col(d, d->vals); }
-List *pys_dict_items(Dict *d) {
-  if (dict_has_big_key(d)) pys_fail(NARROW);   /* (a tuple's int is a 64-bit one here: and its values, pys_dict_narrow) */
-  List *l = pys_list_new(d->len);
-  for (I e = 0; e < d->n; e++) if (dlive(d, e)) l->a[l->len++] = (I)dpair(d, e, 0);
-  return l;
-}
-/* and those of a dict of ints or of int keys, in a program whose lists hold promoting ints (the
-   compiler's bigints.big_items): an int key or value past 64 bits has its Mpz word (dpair) */
-List *pys_dict_big_items(Dict *d) {
-  List *l = pys_list_new(d->len);
-  for (I e = 0; e < d->n; e++) if (dlive(d, e)) l->a[l->len++] = (I)dpair(d, e, 1);
-  return l;
-}
-/* copies, as CPython 3.13 makes them, since their tables decide what a loop that changes the copy
-   sees: dict(d) merges d into a new empty dict, which clones a table without holes that is not
-   sparse (8 slots, or more items than USABLE_FRACTION(size / 2)) and otherwise inserts the items
-   into a table sized for them (estimate_log2_keysize); dict.copy() clones a table with at most a
-   third of holes, and otherwise merges the same way. Keys hashed by their class (KTAG) are
-   inserted one by one (pys_dict_update), as CPython's insertdict, which runs __eq__ for each key
-   of the same hash that its probes meet; other keys compare equal to none of the others */
-static void retable(Dict *r, Dict *d) {              /* r := d's table, holes included */
-  I u = d->size * 2 / 3, x = (I)(dmask(d) + 1) * 4;
-  r->kind |= d->kind & KTAG;                         /* (r's descriptor is d's) */
-  r->keys = keymem(r->kind, u); r->vals = item_array(u, (int)r->vatomic); r->hs = pys_alloc_atomic(u * 8); r->idx = pys_alloc_atomic(x);
-  memcpy(r->keys, d->keys, d->n * 8); memcpy(r->vals, d->vals, d->n * 8); memcpy(r->hs, d->hs, d->n * 8);
-  memcpy(r->idx, d->idx, x); r->len = d->len; r->n = d->n; r->cut = d->cut; r->size = d->size;
-  r->vb = d->vb ? memcpy(pys_alloc(u * 8), d->vb, d->n * 8) : 0;
-  r->kb = d->kb ? memcpy(pys_alloc(u * 8), d->kb, d->n * 8) : 0;
-}
-static Dict *dict_clone(Dict *d) { Dict *r = dict_new(d->kind, 0, d->vatomic); retable(r, d); return r; }
-static int clean(Dict *d) { return d->len && d->len == d->n && (d->size == 8 || d->size / 2 * 2 / 3 < d->len); }
-void pys_dict_update(Dict *d, Dict *o);
-Dict *pys_dict_from(Dict *d) {
-  if (clean(d)) return dict_clone(d);
-  Dict *r = dict_new(d->kind, 0, d->vatomic);
-  if (d->kind & KTAG) pys_dict_update(r, d);
-  else if (d->len) build(r, d, keysize((d->len * 3 + 1) / 2));
-  return r;
-}
-Dict *pys_dict_copy(Dict *d) { return d->len && d->len >= d->n * 2 / 3 ? dict_clone(d) : pys_dict_from(d); }
-/* d.update(o) of a dict of d's type, as CPython 3.13's dict_dict_merge: an empty d takes a clone
-   of o's table where dict(o) would, else d is resized once for both dicts' items (if o has more
-   than d's table could take), then o's items are inserted in order (with the hashes o keeps) */
-void pys_dict_update(Dict *d, Dict *o) {
-  if (o == d || !o->len) return;
-  if (!d->len && clean(o)) { retable(d, o); return; }
-  if ((d->size ? d->size : 8) * 2 / 3 < o->len) build(d, d, keysize(((d->len + o->len) * 3 + 1) / 2));
-  I used = o->len;
-  for (I e = 0; e < o->n; e++) if (dlive(o, e)) {
-    Mpz *m = dbig(o, e), *k = kbig(o, e);
-    I f = k ? dbput(d, k, o->hs[e], o->vals[e]) : dset(d, o->keys[e], o->hs[e], o->vals[e]);
-    if (m) { dbig_make(d); d->vb[f] = (I)m; }
-    /* A key comparison can mutate o. Check after insertion, as dict_dict_merge does,
-       so a callback's own exception wins and value-only changes remain allowed. */
-    if (o->len != used) pys_fail("RuntimeError: dict mutated during update");
-  }
-}
-/* d.update(pairs) of a list of (key, value) tuples, and dict.fromkeys(keys, v) of a list: one
-   insertion per item, as PyDict_MergeFromSeq2 and _PyDict_FromKeys make them */
-void pys_dict_update_pairs(Dict *d, List *l) { for (I i = 0; i < l->len; i++) { I *t = (I *)l->a[i]; pys_dict_set(d, t[0], t[1]); } }
-/* and of such a list that a program's lists hold as tuples of promoting ints (bigints.held), into a
-   dict of ints or of int keys: kj (vj) says that the key (the value) is an int, whose Mpz past 64
-   bits is in the tuple's slot 2 (3), read where its slot holds -2**63 (dpair's layout) */
-void pys_dict_update_pairs_big(Dict *d, List *l, I kj, I vj) {
-  for (I i = 0; i < l->len; i++) {
-    I *t = (I *)l->a[i];
-    Mpz *k = kj && t[0] == INT64_MIN ? (Mpz *)t[2] : NULL, *m = vj && t[1] == INT64_MIN ? (Mpz *)t[3] : NULL;
-    if (k) { I e = dbput(d, k, hbig(d, k), t[1]); if (m) { dbig_make(d); d->vb[e] = (I)m; } }
-    else if (m) pys_dict_set_big(d, t[0], 0, m);
-    else pys_dict_set(d, t[0], t[1]);
-  }
-}
-__attribute__((noinline)) static void fromkeys_big(Dict *d, List *l, I v) {   /* of a list of ints that may hold one past 64 bits (BIGIDS: kbig) */
-  for (I i = 0; i < l->len; i++) { Mpz *m = lbig(l, i); if (m) dbput(d, m, hbig(d, m), v); else pys_dict_set(d, l->a[i], v); }
-}
-Dict *pys_dict_fromkeys(I kind, List *l, I v) {
-  Dict *d = pys_dict_new(kind, 0);
-  if (l->ids && opt_in()) fromkeys_big(d, l, v);   /* (a path of its own, so that the others' loop stays as it was) */
-  else for (I i = 0; i < l->len; i++) pys_dict_set(d, l->a[i], v);
-  return d;
-}
-/* dict.fromkeys(o, v) of a dict o: sized for o's keys at once, as dict_dict_fromkeys does */
-Dict *pys_dict_fromkeys_dict(Dict *o, I v) {
-  Dict *d = pys_dict_new(o->kind, 0);
-  build(d, d, keysize((o->len * 3 + 1) / 2));
-  for (I e = 0; e < o->n; e++) if (dlive(o, e)) { Mpz *k = kbig(o, e); if (k) dbput(d, k, o->hs[e], v); else dset(d, o->keys[e], o->hs[e], v); }
-  return d;
 }
 
 /* ---------- sets: CPython's setobject.c ----------
@@ -6045,13 +5714,7 @@ restart:;
     }
   }
 }
-/* A preceding lookup found this entry; no user operation occurs between that
-   lookup and deletion. Locate its index without hashing/comparing the key again. */
-void pys_dict_entry_del(Dict *d, I e) {
-  uint64_t mask = dmask(d), h = d->hs[e], i = h & mask, p = h;
-  while (d->idx[i] != e + 1) { p >>= 5; i = (i * 5 + p + 1) & mask; DICT_PROBE(); }
-  dtake(d, i);
-}
+void pys_dict_entry_del(Dict *d, I e);   /* runtime.py's */
 /* The set's table is runtime.py's (sets): its probes, insertions, resizes, merges and the entry
    points the compiler calls. What it asks of this file follows: the hash and the equality of
    the elements that a type descriptor describes, which may run the program's code, the kind

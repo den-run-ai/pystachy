@@ -197,24 +197,27 @@ bench-match: $(BENCH_COMPILER)
 
 # Slots that dict lookups visit for keys that defeat a weak hash (tools/dictprobe.c): deterministic
 # counts, so the run fails above a fixed limit; the timings it prints are for information only
-# (it includes runtime.c, whose hash functions are runtime.py's: llvm-link adds those). It also
-# checks that the collector scans no key table of ints, and those of strs, tuples and objects,
-# and that only dfindc, the probe of CPython-hashed (KTAG) tables, tests entries for a key past 64
-# bits (kbig's -2**63): not dfinds, the probe of every str key, dfindi, that of native int keys, which
-# compares no strs, or dfind's generic one, whose tuple items it compares as dfindc does (keq)
+# (it includes runtime.c, whose dict tables are runtime.py's: llvm-link adds those, and their
+# probes call the counter that it defines). It also checks that the collector scans no key table
+# of ints, and those of strs, tuples and objects, and that only dfindc, runtime.c's probe of
+# CPython-hashed (KTAG) tables, tests entries for a key past 64 bits (kbig's -2**63): not
+# runtime.py's dict_find_str, the probe of every str key, its dict_find_int, that of native int
+# keys, which compares no strs, or dfindo, runtime.c's generic one, whose tuple items it compares
+# as dfindc does (keq)
 LLVMBIN = $(if $(PYSTACHY_LLVM),"$(PYSTACHY_LLVM)/")
 dictprobe: tools/dictprobe.c runtime.c runtime.py pystachy
 	mkdir -p build
 	./pystachy rt runtime.py -o build/dictprobe-rt.ll
 	$(LLVMBIN)clang -O2 -S -emit-llvm tools/dictprobe.c -o build/dictprobe.ll
 	@if grep -Eq '^define[^@]*@hobj[.(]' build/dictprobe.ll; then echo 'dictprobe: scalar-key hashing must inline hobj' >&2; exit 1; fi
-	@if [ "$$(grep -Ec '^define[^@]*@dfind[cis]?\(' build/dictprobe.ll)" != 4 ]; then echo 'dictprobe: build/dictprobe.ll must define dfind, dfindc, dfindi and dfinds' >&2; exit 1; fi
-	@if sed -n '/^define[^@]*@dfinds(/,/^}/p' build/dictprobe.ll | grep -q -- '-9223372036854775808'; then echo 'dictprobe: the str-key probe (dfinds) must not test entries for wide int keys' >&2; exit 1; fi
-	@if sed -n '/^define[^@]*@dfindi(/,/^}/p' build/dictprobe.ll | grep -Eq '@(bcmp|memcmp|pys_str_eq)\('; then echo 'dictprobe: dfindi, the probe of native int keys, must compare no strs (str keys use dfinds)' >&2; exit 1; fi
-	@if sed -n '/^define[^@]*@dfindi(/,/^}/p' build/dictprobe.ll | grep -q -- '-9223372036854775808'; then echo 'dictprobe: dfindi, the probe of native int keys, must not test entries for wide int keys (hbig)' >&2; exit 1; fi
+	@if [ "$$(grep -Ec '^define[^@]*@dfind[co]\(' build/dictprobe.ll)" != 2 ]; then echo 'dictprobe: build/dictprobe.ll must define dfindc and dfindo' >&2; exit 1; fi
+	@if [ "$$(grep -Ec '^define[^@]*@f\.dict_find_(int|str)\(' build/dictprobe-rt.ll)" != 2 ]; then echo 'dictprobe: build/dictprobe-rt.ll must define dict_find_int and dict_find_str' >&2; exit 1; fi
+	@if sed -n '/^define[^@]*@f\.dict_find_str(/,/^}/p' build/dictprobe-rt.ll | grep -q -- '-9223372036854775808'; then echo 'dictprobe: the str-key probe (dict_find_str) must not test entries for wide int keys' >&2; exit 1; fi
+	@if sed -n '/^define[^@]*@f\.dict_find_int(/,/^}/p' build/dictprobe-rt.ll | grep -Eq '@(bcmp|memcmp|pys_str_eq|f\.same_str)\('; then echo 'dictprobe: dict_find_int, the probe of native int keys, must compare no strs (str keys use dict_find_str)' >&2; exit 1; fi
+	@if sed -n '/^define[^@]*@f\.dict_find_int(/,/^}/p' build/dictprobe-rt.ll | grep -q -- '-9223372036854775808'; then echo 'dictprobe: dict_find_int, the probe of native int keys, must not test entries for wide int keys (hbig)' >&2; exit 1; fi
 	@ktag=$$(sed -n '/^define[^@]*@dfindc(/,/^}/p' build/dictprobe.ll | grep -c -- '-9223372036854775808'); \
-	generic=$$(sed -n '/^define[^@]*@dfind(/,/^}/p' build/dictprobe.ll | grep -c -- '-9223372036854775808'); \
-	if [ "$$ktag" -le "$$generic" ]; then echo "dictprobe: dfindc must test entries for wide int keys, and dfind's generic probe must not: they compare $$ktag and $$generic words with -2**63" >&2; exit 1; fi
+	generic=$$(sed -n '/^define[^@]*@dfindo(/,/^}/p' build/dictprobe.ll | grep -c -- '-9223372036854775808'); \
+	if [ "$$ktag" -le "$$generic" ]; then echo "dictprobe: dfindc must test entries for wide int keys, and dfindo, the generic probe, must not: they compare $$ktag and $$generic words with -2**63" >&2; exit 1; fi
 	$(LLVMBIN)llvm-link build/dictprobe-rt.ll build/dictprobe.ll -o build/dictprobe.bc
 	$(LLVMBIN)clang -O2 build/dictprobe.bc -o build/dictprobe -lm
 	build/dictprobe

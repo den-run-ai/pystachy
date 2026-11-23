@@ -48,8 +48,8 @@ for flag in ("--runtime", "--only"):
         else:
             ONLY = ARGS[at + 1]
         del ARGS[at : at + 2]
-if ONLY not in ("", "memory", "lists", "sets"):
-    sys.exit("rtcheck: --only takes memory, or lists or sets for a part of it")
+if ONLY not in ("", "memory", "lists", "sets", "dicts"):
+    sys.exit("rtcheck: --only takes memory, or lists, sets or dicts for a part of it")
 HEAP = rt_heap.Heap(RTRECORDS)
 _rt.use(rt_heap.primitives(HEAP))
 rt = rt_heap.load(RUNTIME)
@@ -808,6 +808,388 @@ def fuzz_sets():
                     got = want
                 same(f"set-{op}", got, want, (mode, x if op in ("add", "has", "discard", "remove") else len(xs)))
                 for s in (a, b, made):
+                    if s is not None and not sound(s, op):
+                        return
+
+
+class HeapDict:
+    def __init__(self, ptr, ref):
+        self.ptr = ptr
+        self.ref = ref
+
+
+def dict_table(d, mode):
+    # (heap dict d's items in the order of its entries, as CPython values; what its storage
+    # breaks of runtime.c's Dict, or "")
+    none = -(1 << 63)
+    a = HEAP.of(d.ptr)
+    count, kind, n, size, keys, vals, hs, idx, cut, vatomic, vb, kb = [C.w(a + 8 * j) for j in range(12)]
+    if size == 0:
+        return [], "a dict without a table that has entries or arrays" if any((count, n, cut, keys, vals, hs, idx, vb, kb)) else ""
+    if size < 8 or size & (size - 1):
+        return [], f"a table of size {size}"
+    u = size * 2 // 3
+    slots = size if kind & 2 else size * 2
+    ints = mode in ("int", "big")
+    for name, at, room, want in (("keys", keys, u * 8, "atomic" if ints else "scan"), ("vals", vals, u * 8, "atomic" if vatomic else "scan"),
+                                 ("hs", hs, u * 8, "atomic"), ("idx", idx, slots * 4, "atomic"), ("vb", vb, u * 8, "scan"), ("kb", kb, u * 8, "scan")):
+        if name in ("vb", "kb") and at == 0:
+            continue
+        b = HEAP.block_of(at)
+        if b is None or b.base != at or b.size < room + 1 or b.kind != want:
+            return [], f"{name} is not an array of {room} {want} bytes"
+    if (vb or kb) and mode != "big":
+        return [], "Mpz words in a dict that holds no int past 64 bits"
+    if n + cut > u:
+        return [], f"{n} entries and {cut} cut off in a table of {u}"
+    where = {}
+    for i in range(slots):
+        e = C.i32(idx + 4 * i)
+        if e < -1 or e > n or e - 1 in where:
+            return [], f"idx slot {i} holds {e}: past the {n} entries, or an entry that another slot has"
+        if e > 0:
+            where[e - 1] = i
+    out = []
+    for e in range(u):
+        k, v, h = C.w(keys + 8 * e), C.w(vals + 8 * e), C.w(hs + 8 * e)
+        km = C.w(kb + 8 * e) if kb else 0
+        vm = C.w(vb + 8 * e) if vb else 0
+        if e >= n or (h == -1 if kind & 2 else h == 0 and k == 0):
+            # a hole, or past the last entry (where popitem leaves its hole's hash): nothing the
+            # collector would keep, and no idx slot
+            if k or v or km or vm or (e >= n and h not in (0, -1 if kind & 2 else 0)) or e in where:
+                return [], f"entry {e}, a hole or past the last, is not empty"
+            continue
+        if e not in where:
+            return [], f"entry {e} is in no idx slot"
+        if km and k != none or vm and v != none:
+            return [], f"entry {e} has an Mpz and not its sentinel"
+        key = C.mpz[km] if km else C.element(k, kind)
+        want = rt.str_key_hash(k) if mode in ("str", "str!") else hash(key) if kind & 2 else rt.int_key_hash(hash(key) if km else k)
+        if h != want:
+            return [], f"entry {e} keeps hash {h} of a key whose hash is {want}"
+        i, p, steps = h & (slots - 1), h & ((1 << 64) - 1), 0
+        while C.i32(idx + 4 * i) != e + 1:
+            if C.i32(idx + 4 * i) == 0 or steps > slots * 70:
+                return [], f"entry {e} is not on the probes of its hash"
+            p >>= 5
+            i = (i * 5 + p + 1) & (slots - 1)
+            steps += 1
+        out.append((key, C.mpz[vm] if vm else v))
+    if len(out) != count:
+        return out, f"len {count} of {len(out)} live entries"
+    return out, ""
+
+
+def fuzz_dicts():
+    # runtime.py's dicts against CPython's, an operation at a time: the result or the error, then
+    # the table, whose entries are CPython's items in CPython's order. Int keys, str keys in
+    # both hash schemes, objects with a __hash__ of their own (whose probes are runtime.c's, here
+    # its twin) and ints past 64 bits as keys and values. An __eq__ that changes a dict during a
+    # lookup has no CPython to compare with here: the storage must stay sound
+    global fails, cases
+    none = -(1 << 63)
+    for mode in ("int", "str", "str!", "obj", "big"):
+        for round in range(max(1, N // 25)):
+            HEAP.reset()
+            C.setup()
+            C.opt = int(mode == "big")
+            Key.hook = None
+            kind = {"int": 0, "big": 0, "str": 1, "str!": 3}.get(mode) if mode != "obj" else HEAP.new_str(b"H000", 0)
+            dicts = []
+            if mode == "obj":
+                pool = [Key(hv, v) for hv in (0, 0, 1, 8, 16, 17, -2, 1 << 40) for v in range(4)]
+                for x in pool:
+                    x.addr = C.new_obj(x)
+            elif mode in ("str", "str!"):
+                pool = ["", "a", "b", "ab", "ba", "abc"] + [chr(97 + i % 26) * (1 + i // 26) for i in range(60)]
+            else:
+                pool = [0, 1, 2, 3, -1, -2, 7, 8, 9, 15, 16, 24, 32, MAXI, none, none + 1] + list(range(40, 100))
+                if mode == "big":
+                    pool += [1 << 63, -(1 << 63) - 1, 1 << 64, (1 << 70) + 3, 4 - (1 << 64)]
+            grow = R.randrange(4) == 0  # (some rounds fill their tables past the small ones)
+
+            def a_key():
+                return R.choice(pool) if grow or mode == "obj" else R.choice(pool[: 10 + R.randrange(10)])
+
+            def a_value():
+                if mode == "big" and R.randrange(4) == 0:
+                    return R.choice([1 << 63, -(1 << 64), (1 << 80) + 1])
+                return R.choice([0, 1, -1, 7, none, MAXI, R.randrange(1000)])
+
+            def word(x):
+                # key x as the runtime takes it: its word, and its Mpz where it is past 64 bits
+                if mode in ("str", "str!"):
+                    return HEAP.new_str(x.encode(), 0), _rt.nil()
+                if mode == "obj":
+                    return x.addr, _rt.nil()
+                if none <= x <= MAXI:
+                    return x, _rt.nil()
+                return 0, HEAP.P(C.new_mpz(x))
+
+            def vword(v):
+                return (v, _rt.nil()) if none <= v <= MAXI else (0, HEAP.P(C.new_mpz(v)))
+
+            def entry(d, x):
+                # the entry of key x, or -1: what compiled code calls for a key that may be past 64 bits
+                w, m = word(x)
+                return rt.pys_dict_big_find(d.ptr, w, m) if mode == "big" else rt.pys_dict_find(d.ptr, w)
+
+            def value(d, e):
+                m = rt.pys_dict_big_val(d.ptr, e).addr
+                return C.mpz[m] if m else rt.pys_dict_val(d.ptr, e)
+
+            def key_at(d, e):
+                m = rt.pys_dict_big_key(d.ptr, e).addr
+                return C.mpz[m] if m else C.element(rt.pys_dict_key(d.ptr, e), kind)
+
+            def store(d, x, v):
+                w, m = word(x)
+                vw, vm = vword(v)
+                if mode != "big":
+                    rt.pys_dict_set(d.ptr, w, vw)
+                elif m.addr:
+                    rt.pys_dict_entry_set_big(d.ptr, rt.pys_dict_big_put(d.ptr, w, m), vw, vm)
+                else:
+                    rt.pys_dict_set_big(d.ptr, w, vw, vm)
+
+            def new(items, atomic):
+                d = HeapDict((rt.pys_dict_new_atomic if atomic else rt.pys_dict_new)(kind, R.choice([0, 0, 3, 6, 9, 40])), {})
+                for x, v in items:
+                    store(d, x, v)
+                    d.ref[x] = v
+                dicts.append(d)
+                return d
+
+            def sound(d, after):
+                global fails, cases
+                have, fault = dict_table(d, mode)
+                cases += 1
+                if fault == "" and have != list(d.ref.items()):
+                    fault = f"items {have[:8]}, CPython's {list(d.ref.items())[:8]}"
+                if fault != "":
+                    fails += 1
+                    if fails <= 20:
+                        print(f"FAIL dict after {after} ({mode}): {fault}")
+                return fault == ""
+
+            def heap_list(xs):
+                l = rt.pys_list_new(len(xs)) if mode in ("str", "str!", "obj") else rt.pys_list_new_atomic(len(xs))
+                for x in xs:
+                    w, m = word(x)
+                    if m.addr:
+                        rt.pys_list_append_big(l, m)
+                    else:
+                        rt.pys_list_append(l, w)
+                return l
+
+            def values(l, k):
+                # the items of heap list l as CPython values: keys of this kind, or (k == 0) ints
+                a = HEAP.of(l)
+                out = []
+                for i, w in enumerate(HEAP.words(C.w(a + 16), C.w(a))):
+                    m = rt.pys_rt_lbig(l, i).addr
+                    out.append(C.mpz[m] if m else C.element(w, k))
+                return out
+
+            atomic = R.randrange(2) == 1
+            for _ in range(3):
+                new([(a_key(), a_value()) for _ in range(R.choice([0, 1, 3, 5, 9, 30]))], atomic)
+            for _ in range(60):
+                d = R.choice(dicts)
+                o = R.choice(dicts)
+                x = a_key()
+                v = a_value()
+                w, m = word(x)
+                made = None
+                hooked = False
+                if mode == "obj" and R.randrange(3) == 0:
+                    # the program's __eq__, at one of the next comparisons: it changes d or o
+                    count = [R.randrange(1, 4)]
+                    victim = R.choice([d, o])
+                    change = R.choice(["set", "pop_default", "clear", "grow"])
+                    extra = [a_key() for _ in range(12)]
+
+                    def hook():
+                        nonlocal hooked
+                        count[0] -= 1
+                        if count[0] == 0:
+                            Key.hook = None
+                            hooked = True
+                            if change == "clear":
+                                rt.pys_dict_clear(victim.ptr)
+                            elif change == "grow":
+                                for e in extra:
+                                    rt.pys_dict_set(victim.ptr, e.addr, 5)
+                            else:
+                                getattr(rt, "pys_dict_" + change)(victim.ptr, extra[0].addr, 6)
+                    Key.hook = hook
+                op = R.choice(("set set set get getitem has pop pop_default del setdefault popitem clear copy from update fromkeys fromkeys_dict "
+                               "keys values items iterate reversed eq_find entry_del" + (" update_pairs getbox popbox entry" if mode != "big" else " narrow")).split())
+                if op == "set":
+                    got, want = outcome(store, d, x, v), outcome(d.ref.__setitem__, x, v)
+                elif op == "get":
+                    def get():
+                        e = entry(d, x)
+                        return -5 if e < 0 else value(d, e)
+                    got, want = outcome(get) if mode == "big" else outcome(rt.pys_dict_get, d.ptr, w, -5), ("ok", d.ref.get(x, -5))
+                elif op == "getitem":
+                    if mode == "big":
+                        got = outcome(lambda: value(d, rt.pys_dict_big_entry(d.ptr, w, m)))
+                    else:
+                        got = outcome(rt.pys_dict_getitem, d.ptr, w)
+                    want = outcome(d.ref.__getitem__, x)
+                elif op == "has":
+                    got, want = outcome(lambda: int(entry(d, x) >= 0)) if mode == "big" else outcome(rt.pys_dict_has, d.ptr, w), ("ok", int(x in d.ref))
+                elif op in ("pop", "pop_default"):
+                    def big_pop():
+                        # runtime.c's pys_dict_bkey_big_pop, from runtime.py's steps: the lookup, the value's Mpz, the entry taken
+                        i = rt.pys_rt_dbfind(d.ptr, m, rt.pys_rt_hbig(d.ptr, m)) if m.addr else rt.pys_rt_dpfind(d.ptr, w)
+                        if i < 0:
+                            if op == "pop":
+                                raise KeyError(x)
+                            return -7
+                        b = rt.pys_rt_dbig(d.ptr, C.i32(C.w(HEAP.of(d.ptr) + 56) + 4 * i) - 1).addr
+                        taken = rt.pys_rt_dtake(d.ptr, i)
+                        return C.mpz[b] if b else taken
+                    if mode == "big":
+                        got = outcome(big_pop)
+                    elif op == "pop":
+                        got = outcome(rt.pys_dict_pop, d.ptr, w)
+                    else:
+                        got = outcome(rt.pys_dict_pop_default, d.ptr, w, -7)
+                    want = outcome(d.ref.pop, x) if op == "pop" else ("ok", d.ref.pop(x, -7))
+                elif op == "del":
+                    def delete():
+                        del d.ref[x]
+                    def take():
+                        rt.pys_dict_del(d.ptr, w)
+                    got = outcome(rt.pys_dict_big_del, d.ptr, w, m) if mode == "big" else outcome(take)
+                    want = outcome(delete)
+                elif op == "setdefault":
+                    if mode == "big":
+                        continue
+                    got, want = outcome(rt.pys_dict_setdefault, d.ptr, w, v), outcome(d.ref.setdefault, x, v)
+                elif op == "popitem":
+                    def popitem():
+                        t = (rt.pys_dict_big_popitem if mode == "big" else rt.pys_dict_popitem)(d.ptr)
+                        k0, v0 = _rt.word(t, 0), _rt.word(t, 1)
+                        big = mode == "big" and none in (k0, v0)
+                        km = _rt.word(t, 2) if big else 0
+                        vm = _rt.word(t, 3) if big else 0
+                        return (C.mpz[km] if km else C.element(k0, kind), C.mpz[vm] if vm else v0)
+                    got, want = outcome(popitem), outcome(d.ref.popitem)
+                    if got[0] == want[0] == "KeyError":
+                        got = want  # (the message is CPython's: 'popitem(): dictionary is empty')
+                elif op == "clear":
+                    got, want = outcome(rt.pys_dict_clear, d.ptr), outcome(d.ref.clear)
+                elif op in ("copy", "from"):
+                    # (an __eq__ that changes d while its keys are inserted: RuntimeError, as CPython's)
+                    got, want = outcome(getattr(rt, "pys_dict_" + op), d.ptr), ("ok", None)
+                    if got[0] == "ok":
+                        made = HeapDict(got[1], dict(d.ref))
+                        got = want
+                elif op == "update":
+                    got, want = outcome(rt.pys_dict_update, d.ptr, o.ptr), outcome(d.ref.update, o.ref)
+                elif op == "update_pairs":
+                    pairs = [(a_key(), a_value()) for _ in range(R.choice([0, 1, 4, 12]))]
+                    l = rt.pys_list_new(len(pairs))
+                    for pk, pv in pairs:
+                        t = HEAP.new(16, "scan", "tuple")
+                        C.put(t, word(pk)[0])
+                        C.put(t + 8, pv)
+                        rt.pys_list_append(l, t)
+                    got, want = outcome(rt.pys_dict_update_pairs, d.ptr, l), outcome(d.ref.update, pairs)
+                elif op == "fromkeys":
+                    xs = [a_key() for _ in range(R.choice([0, 1, 4, 12, 40]))]
+                    got, want = outcome(rt.pys_dict_fromkeys, kind, heap_list(xs), 3), ("ok", None)
+                    if got[0] == "ok":
+                        made = HeapDict(got[1], dict.fromkeys(xs, 3))
+                        got = want
+                elif op == "fromkeys_dict":
+                    got, want = outcome(rt.pys_dict_fromkeys_dict, d.ptr, 4), ("ok", None)
+                    if got[0] == "ok":
+                        made = HeapDict(got[1], dict.fromkeys(d.ref, 4))
+                        got = want
+                elif op in ("keys", "values"):
+                    got = outcome(lambda: values(getattr(rt, "pys_dict_" + op)(d.ptr), kind if op == "keys" else 0))
+                    want = ("ok", list(d.ref) if op == "keys" else list(d.ref.values()))
+                elif op == "items":
+                    def items():
+                        l = (rt.pys_dict_big_items if mode == "big" else rt.pys_dict_items)(d.ptr)
+                        out = []
+                        for t in HEAP.words(C.w(HEAP.of(l) + 16), C.w(HEAP.of(l))):
+                            k0, v0 = C.w(t), C.w(t + 8)
+                            big = mode == "big" and none in (k0, v0)
+                            km = C.w(t + 16) if big else 0
+                            vm = C.w(t + 24) if big else 0
+                            out.append((C.mpz[km] if km else C.element(k0, kind), C.mpz[vm] if vm else v0))
+                        return out
+                    got, want = outcome(items), ("ok", list(d.ref.items()))
+                elif op in ("iterate", "reversed"):
+                    # a for loop's calls, and one that finds the dict another size
+                    def loop():
+                        out = []
+                        used = C.w(HEAP.of(d.ptr))
+                        step = 1 if op == "iterate" else -1
+                        walk = rt.pys_dict_next if op == "iterate" else rt.pys_dict_prev
+                        e = walk(d.ptr, 0 if op == "iterate" else rt.pys_dict_end(d.ptr) - 1, used, 0)
+                        while e >= 0:
+                            out.append((key_at(d, e), value(d, e)))
+                            e = walk(d.ptr, e + step, used, len(out))
+                        return out
+                    got, want = outcome(loop), ("ok", list(d.ref.items()) if op == "iterate" else list(reversed(d.ref.items())))
+                    same("dict-next-changed", outcome(rt.pys_dict_next, d.ptr, 0, len(d.ref) + 1, 0), ("RuntimeError", "dictionary changed size during iteration"), (mode,))
+                elif op == "eq_find":
+                    # each of o's entries looked up in d by the hash o keeps: d == o's steps
+                    def eq_find():
+                        out = []
+                        e = rt.pys_dict_eq_next(o.ptr, 0)
+                        while e >= 0:
+                            f = rt.pys_dict_eq_find(d.ptr, o.ptr, e)
+                            out.append(None if f < 0 else value(d, f))
+                            e = rt.pys_dict_eq_next(o.ptr, e + 1)
+                        return out
+                    got, want = outcome(eq_find), ("ok", [d.ref.get(k0) for k0 in o.ref])
+                elif op == "entry_del":
+                    def entry_del():
+                        e = entry(d, x)
+                        if e >= 0:
+                            rt.pys_dict_entry_del(d.ptr, e)
+                        return e >= 0
+                    had = x in d.ref
+                    d.ref.pop(x, None)
+                    got, want = outcome(entry_del), ("ok", had)
+                elif op == "narrow":
+                    got = outcome(rt.pys_dict_narrow, d.ptr)
+                    want = ("OverflowError", "Python int too large to convert to C long") if any(not none <= y <= MAXI for y in d.ref.values()) else ("ok", None)
+                elif op in ("getbox", "popbox"):
+                    def boxed():
+                        b = getattr(rt, "pys_dict_" + op)(d.ptr, w, 0)
+                        return -9 if b == 0 else C.boxes[b]
+                    got, want = outcome(boxed), ("ok", d.ref.get(x, -9) if op == "getbox" else d.ref.pop(x, -9))
+                else:
+                    def set_entry():
+                        e = rt.pys_dict_entry(d.ptr, w)
+                        rt.pys_dict_entry_set(d.ptr, e, v)
+                    def set_ref():
+                        d.ref[x]
+                        d.ref[x] = v
+                    got, want = outcome(set_entry), outcome(set_ref)
+                Key.hook = None
+                if made is not None:
+                    dicts.append(made)
+                if hooked:
+                    # no CPython outcome to compare with: no fault, and the tables stay sound
+                    cases += 1
+                    if got[0] not in ("ok", "KeyError", "RuntimeError"):
+                        fails += 1
+                        print(f"FAIL dict {op} ({mode}), with an __eq__ that changes a dict: {got}")
+                    for s in dicts:
+                        s.ref = dict(dict_table(s, mode)[0])
+                    got = want
+                same(f"dict-{op}", got, want, (mode, x if mode != "obj" else repr(x)))
+                for s in (d, o, made):
                     if s is not None and not sound(s, op):
                         return
 
@@ -1696,13 +2078,15 @@ def fuzz_int_text():
         same("int-str", outcome(rt.pys_int_str, b(t), base), want(b(t), base), (t[:30], len(t), base))
 
 
-if ONLY != "sets":
+if ONLY in ("", "memory", "lists"):
     fuzz_lists()
     fuzz_list_search()
     fuzz_str_memory()
     check_model()
-if ONLY != "lists":
+if ONLY in ("", "memory", "sets"):
     fuzz_sets()
+if ONLY in ("", "memory", "dicts"):
+    fuzz_dicts()
 if ONLY != "":
     print(f"{cases} cases, {fails} failed")
     sys.exit(1 if fails else 0)

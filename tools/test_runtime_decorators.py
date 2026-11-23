@@ -71,13 +71,27 @@ class Decorators(unittest.TestCase):
         self.assertIn("add nsw", body)
         self.assertNotIn("with.overflow", body)
 
-    def test_the_set_entry_points_that_hash_stay_calls(self):
+    def test_the_entry_points_that_hash_stay_calls(self):
         with tempfile.TemporaryDirectory() as tmp:
             ir = compile_runtime(ROOT / "runtime.py", tmp)
-        for name in ("pys_set_add", "pys_set_has", "pys_set_discard", "pys_set_remove", "pys_set_big_add", "pys_set_big_has"):
+        for name in ("pys_set_add", "pys_set_has", "pys_set_discard", "pys_set_remove", "pys_set_big_add", "pys_set_big_has",
+                     "pys_dict_has", "pys_dict_get", "pys_dict_getitem", "pys_dict_find", "pys_dict_set", "pys_dict_setdefault",
+                     "pys_dict_entry", "pys_dict_big_find", "pys_dict_bkey_get"):
             with self.subTest(name):
                 self.assertEqual(attributes(ir, name), ["noinline"])
         self.assertEqual(attributes(ir, "f.set_big_put"), ["cold", "noinline"])
+
+    def test_a_dict_lookup_has_its_hash_inline_and_its_probe_out_of_line(self):
+        # runtime.c's shape: the hash and the choice of probe are a copy in each entry point, and
+        # the probes of int and str keys are functions of their own
+        with tempfile.TemporaryDirectory() as tmp:
+            ir = compile_runtime(ROOT / "runtime.py", tmp)
+        for name in ("pys_rt_dhash", "pys_rt_dfind", "f.dict_entry", "pys_rt_dadd"):
+            with self.subTest(name):
+                self.assertEqual(attributes(ir, name), ["alwaysinline"])
+        for name in ("f.dict_find_int", "f.dict_find_str"):
+            with self.subTest(name):
+                self.assertEqual(attributes(ir, name), ["noinline"])
 
 
 if __name__ == "__main__":

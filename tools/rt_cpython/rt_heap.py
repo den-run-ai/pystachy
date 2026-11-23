@@ -475,6 +475,7 @@ class CSide:
         self.mpz = {}    # an Mpz's address: the int it is
         self.objs = {}   # an object's address: the CPython object that is its element or key
         self.dicts = {}  # a Dict's address: the keys it holds, as CPython values
+        self.probes = 0  # the idx slots that the dicts' probes have visited (runtime.c's DICT_PROBE)
 
     # ---- raw words
     def w(self, addr):
@@ -659,18 +660,91 @@ class CSide:
         raise KeyError(self.mpz[self.heap.of(m)])
 
     def pys_rt_khash(self, kind):
-        return int(kind & 2 != 0)
+        # runtime.c's khash: are the keys hashed by CPython's hash (marked so, or by their descriptor)
+        if kind & 2:
+            return 1
+        return int(kind > 3 and (self.text(kind)[0] == "!" or "H" in self.text(kind) or "A" in self.text(kind)))
 
     def pys_rt_dict_lacks(self, d, k, h, m, c):
         d = self.heap.of(d)
         m = self.heap.of(m)
         return int((self.mpz[m] if m else self.element(k, self.w(d + 8))) not in self.dicts[d])
 
+    # ---- what the dicts call: the hash and the probes of the keys that a type descriptor
+    # describes, the KeyError, the box of a value and the count of the slots that probes visit
+    D_KIND, D_SIZE, D_KEYS, D_HS, D_IDX = 8, 24, 32, 48, 56
+
+    def i32(self, addr):
+        return int.from_bytes(self.heap.read(addr, 4), "little", signed=True)
+
+    def pys_rt_probe(self):
+        self.probes += 1
+
+    def pys_rt_hash_str(self, s):
+        return self.rt.pys_hash_str(self.heap.as_str(self.heap.of(s)))
+
+    def pys_rt_hobj(self, kind, k):
+        return hash(self.element(k, kind))
+
+    def pys_big_box(self, v, m):
+        m = self.heap.of(m)
+        return self.heap.P(self.box(("big", m) if m else v))
+
+    def pys_rt_dict_keyerr(self, d, k):
+        raise KeyError(self.element(k, self.w(self.heap.of(d) + self.D_KIND)))
+
+    def pys_rt_dfind_obj(self, dp, k, h):
+        # runtime.c's dfindo and dlook, of a table whose keys are hashed by CPython's hash (dfindc)
+        # or not (dfindg): a key is found as itself, then by the comparison that may run an __eq__
+        # (dkeyeq), after which the lookup starts again if the table or the entry changed, and
+        # takes the slot the entry moved to if only that did (dmoved)
+        d = self.heap.of(dp)
+        while True:
+            size, kind = self.w(d + self.D_SIZE), self.w(d + self.D_KIND)
+            if size == 0:
+                return -1
+            m = (size if kind & 2 else size * 2) - 1
+            f, ran, again = -1, False, False
+            i, p = h & m, h & M64
+            while not again:
+                self.probes += 1
+                e = self.i32(self.w(d + self.D_IDX) + 4 * i)
+                if e == 0:
+                    return -2 - (self.rt.pys_rt_dempty(dp, h) if ran else i if f < 0 else f)
+                if e < 0:
+                    if f < 0:
+                        f = i
+                else:
+                    x = self.w(self.w(d + self.D_KEYS) + 8 * (e - 1))
+                    if kind & 2 and self.rt.dict_key_big(dp, e - 1).addr:
+                        pass  # (a key past 64 bits is never the 64-bit one looked up)
+                    elif kind & 2 and x == k:
+                        return i
+                    elif self.w(self.w(d + self.D_HS) + 8 * (e - 1)) == h:
+                        if x == k:
+                            return i
+                        ix = self.w(d + self.D_IDX)
+                        eq = int(self.element(x, kind) == self.element(k, kind))
+                        ran = True
+                        if self.w(d + self.D_IDX) != ix or self.w(self.w(d + self.D_KEYS) + 8 * (e - 1)) != x:
+                            eq = -1
+                        elif eq and self.i32(ix + 4 * i) != e:
+                            if self.rt.dict_live(dp, e - 1):
+                                return self.rt.pys_rt_dslot(dp, e - 1)
+                            eq = -1
+                        if eq < 0:
+                            again = True
+                        elif eq:
+                            return i
+                p >>= 5
+                i = (i * 5 + p + 1) & m
+
     NAMES = ("pys_alloc pys_alloc_atomic pys_rt_raw pys_rt_oom pys_rt_opt_in pys_rt_empty_list pys_rt_empty_atomic "
              "pys_rt_empty_inline pys_rt_empty_identity pys_rt_atomic_items pys_rt_list_box pys_rt_big_list "
              "pys_list_identity pys_str_eq pys_rt_list_item_eq pys_rt_not_in_list pys_dyn_big pys_dyn_big_ptr "
              "pys_mpz_hash pys_mpz_cmp pys_rt_keymem pys_rt_hitem pys_rt_set_eq pys_rt_set_keyerr pys_rt_bkeyerr "
-             "pys_rt_khash pys_rt_dict_lacks").split()
+             "pys_rt_khash pys_rt_dict_lacks pys_rt_probe pys_rt_hash_str pys_rt_hobj pys_big_box pys_rt_dict_keyerr "
+             "pys_rt_dfind_obj").split()
 
     def install(self, module):
         # give module (runtime.py, loaded) these in place of its declarations
