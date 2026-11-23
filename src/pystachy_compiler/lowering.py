@@ -189,9 +189,10 @@ def ref_free(classes: dict[str, ClassInfo], t: str) -> bool:
     ci = classes[t]
     return ci.nbox == 0 and all(ci.ftypes[x] in ["int", "float", "bool"] for x in ci.fields)
 
-def gen_tuple_rets(self) -> None:
+def gen_tuple_rets(self, all: bool = True) -> None:
     # tupleret: which functions return their fixed tuple's slots by value, and which calls take
-    # them so (Gen.vrets, Gen.vcalls), once the program's IR is final. Such a function returns,
+    # them so (Gen.vrets, Gen.vcalls), once the program's IR is final; all False (the optimization
+    # turned off): runtime mode's results of two words alone, which the ABI returns so. Such a function returns,
     # wherever it returns, a tuple that an alloc.fixed of the ret's block made, which nothing but
     # that block's tuple.stores reach (fresh_rets): a new tuple, which no code could hold. Such
     # a call's result is read by tuple.loads alone (an unpacking, a constant index, a loop over
@@ -201,6 +202,8 @@ def gen_tuple_rets(self) -> None:
     fns: dict[str, int] = {}
     two: dict[str, bool] = {}
     for fn in self.fns:
+        if not all and not two_words(fn.f, self.rtmode):
+            continue
         # (one that returns constant tuples alone returns their addresses, which need no tuple made)
         rets = fresh_rets(fn, two_words(fn.f, self.rtmode))
         if two_words(fn.f, self.rtmode):

@@ -4,6 +4,7 @@
 program's AOT build would otherwise copy into every use), @_rt.inline gives each caller a
 copy, @_rt.cold is a slow path, and @_rt.unchecked changes the arithmetic, not the attributes.
 """
+import os
 import re
 import subprocess
 import sys
@@ -42,9 +43,12 @@ def pys_plain(i: int) -> int:
 '''
 
 
-def compile_runtime(source, tmp):
+def compile_runtime(source, tmp, opt=None):
     out = Path(tmp) / "module.ll"
-    subprocess.run([sys.executable, str(ROOT / "pystachy.py"), "rt", str(source), "-o", str(out)], check=True, cwd=ROOT)
+    env = {k: v for k, v in os.environ.items() if k != "PYSTACHY_OPT"}
+    if opt is not None:
+        env["PYSTACHY_OPT"] = opt
+    subprocess.run([sys.executable, str(ROOT / "pystachy.py"), "rt", str(source), "-o", str(out)], check=True, cwd=ROOT, env=env)
     return out.read_text(encoding="latin-1")
 
 
@@ -83,9 +87,15 @@ class Decorators(unittest.TestCase):
 
     def test_a_result_of_two_words_is_returned_by_value(self):
         # RUNTIME's int+ results: the exported symbol returns {i64, ptr}, and its body, internal,
-        # the tuple's two slots (tupleret); no tuple is allocated for it
+        # the tuple's two slots (tupleret); no tuple is allocated for it. The runtime's ABI, not an
+        # optimization: so too where PYSTACHY_OPT turns tupleret off
+        for opt in (None, "-tupleret"):
+            with self.subTest(opt=opt):
+                self.two_words(opt)
+
+    def two_words(self, opt):
         with tempfile.TemporaryDirectory() as tmp:
-            ir = compile_runtime(ROOT / "runtime.py", tmp)
+            ir = compile_runtime(ROOT / "runtime.py", tmp, opt)
         for name in ("pys_set_big_pop", "pys_dict_big_pop", "pys_dict_big_setdefault", "pys_dict_bkey_big_pop", "pys_dict_bkey_big_setdefault"):
             with self.subTest(name):
                 self.assertRegex(ir, r"(?m)^define \{i64, ptr\} @" + name + r"\(")

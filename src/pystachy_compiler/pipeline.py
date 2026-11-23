@@ -151,8 +151,9 @@ def gen_finalize_program(self) -> None:
     if dump:
         for fn in self.fns:
             print(f"{fn.f.ll}: {fxs(fn.fx)}".rstrip(), file=sys.stderr)
-    if "tupleret" in on:
-        self.tuple_rets()  # (which functions return their tuples' slots by value: lowering reads it)
+    # (which functions return their tuples' slots by value: lowering reads it. Without the
+    # optimization, runtime mode's results of two words still are, as the runtime's ABI has them)
+    self.tuple_rets("tupleret" in on)
     # Admission belongs to the retained program boundary. The backend may consume
     # bodies only after runtime/extension export contracts have been checked.
     self.validate_module()
