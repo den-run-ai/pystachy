@@ -169,8 +169,9 @@ await run(module, { tools: new Map([["lookup", id => "second"]]) });
 ```
 
 Embedded guests run on a pool of worker threads that idle without keeping the process
-alive; the first run starts one. Tool callbacks run synchronously on the calling thread
-while the guest waits for each reply. Both runner
+alive. A thread takes about 25 ms to start, so `createRunner` starts the first one while the
+caller compiles. Tool callbacks run synchronously on the calling thread while the guest
+waits for each reply. Both runner
 APIs accept an optional positive integer `executionTimeoutMs` per call. Expiry
 during instantiation, execution or a tool call rejects the promise with
 `ERR_SCRIPT_EXECUTION_TIMEOUT` and ends the guest's thread. Source compilation, linking and module

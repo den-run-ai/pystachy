@@ -45,6 +45,8 @@ const STACK_MB = 256;
 // WebAssembly.Module is accepted for both arguments. Each call gets fresh WASI and Wasm state.
 // args includes argv[0]. Embedded runs have no directory mounts and borrow their stdio fds.
 export function createRunner(runtimeSource = defaultRuntime) {
+  // (a guest thread takes about 25 ms to start: the first one starts now, while the caller compiles)
+  if (idleGuests.length === 0) idleGuests.push(guestThread());
   return runner(runtimeSource, false);
 }
 
@@ -228,6 +230,7 @@ function guestThread() {
     workerData: { pystachyGuest: true, signal, replies: port2 }, transferList: [port2],
     resourceLimits: { stackSizeMb: STACK_MB },
   });
+  worker.unref();
   return { worker, wake: new Int32Array(signal), replies: port1 };
 }
 
