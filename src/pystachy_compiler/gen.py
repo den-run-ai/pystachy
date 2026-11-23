@@ -965,6 +965,7 @@ from src.pystachy_compiler.expressions import (
     gen_conversion as expressions_conversion,
     gen_cvar as expressions_cvar,
     gen_cvar_stores as expressions_cvar_stores,
+    gen_cvar_home as expressions_cvar_home,
     gen_class_stores as expressions_class_stores,
     gen_dunder as expressions_dunder,
     gen_eqcall as expressions_eqcall,
@@ -4994,6 +4995,9 @@ class Gen:
 
     def cvar_stores(self, ns: list[Node]) -> None:
         return expressions_cvar_stores(self, ns)
+
+    def cvar_home(self, x: ClassInfo, a: str) -> ClassInfo:
+        return expressions_cvar_home(self, x, a)
 
     def class_stores(self, ns: list[Node], cls: str, c: str) -> None:
         return expressions_class_stores(self, ns, cls, c)
