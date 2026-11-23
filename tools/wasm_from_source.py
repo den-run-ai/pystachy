@@ -80,12 +80,11 @@ def wasm_module(gen: Gen) -> Module:
         raise Refused("module requires extension exports or runtime mode")
     if gen.one or gen.xobj:
         raise Refused("module requires dynamic object comparisons")
-    if len(gen.rtdatas) != 0:
-        raise Refused("module declaration rtdata")
     if len(gen.externs) != 0:
         raise Refused("module declaration extern")
     m = Module()
     m.attrs["complete"] = ""
+    m.rtdatas = [sym for sym in gen.rtdatas]
     if gen.gproto:
         m.attrs["protocol"] = ""
     if gen.eh:

@@ -289,6 +289,7 @@ class Module:
         self.builtkinds: dict[str, str] = {}
         self.funcs: list[Func] = []
         self.plain_generators: dict[str, int] = {}
+        self.rtdatas: list[str] = []   # the runtime's data the module names (RTDATA), imported by address
 
     def set_object_tables(self, objects: dict[str, int], compared: dict[str, bool], hashed: dict[str, bool]) -> None:
         # Descriptors hold the numeric ID, independent of declaration or attribute order.
@@ -626,6 +627,8 @@ def declaration(m: Module, line: str) -> None:
         f = fields(line, at, len(line))
         m.keykinds[name] = f.get("kind", "")
         m.builtkinds[name] = f.get("built", "")
+    elif keyword == "rtdata":
+        m.rtdatas.append(name)
     elif keyword == "root":
         if not name or at != len(line):
             raise Refused("invalid global root declaration")
@@ -1008,6 +1011,7 @@ class Emitter:
         self.spills = False             # whether this function's calls keep values in frames (spill_sets)
         self.spill_local = -1           # the address of the call frame that keeps them
         self.late: list[str] = []       # kept values whose locals a call's frame needed before their definition
+        self.rtdata_globals: dict[str, int] = {}   # @SYMBOL: the global index of its imported address
         self.types = Types()
         self.imports: dict[str, Import] = {}
         self.import_order: list[str] = []
@@ -1580,6 +1584,9 @@ class Emitter:
         elif v.startswith("@"):
             if v in self.addr and wt == I32:
                 self.data_addr(v, 0)
+            elif v in self.rtdata_globals and wt == I32:
+                self.code.append(0x23)  # global.get rt.SYMBOL: the runtime's data address
+                uleb(self.code, self.rtdata_globals[v])
             elif v in self.fnindex and ll == "ptr":
                 # Bound and captured callables store code in heap objects. Read its
                 # relocated table index from a slot populated by the start function.
@@ -2554,6 +2561,11 @@ class Emitter:
         self.rooted = self.rooted_functions()
         self.lay_out_data()
         self.collect_imports()
+        # The runtime exports each data symbol's address as a global; the program imports those it
+        # names after env.data, rt.pys_recursion_state and, with frames or handlers, rt.__stack_pointer.
+        first = 3 if self.stack_frames or self.catches else 2
+        for k in range(len(self.m.rtdatas)):
+            self.rtdata_globals["@" + self.m.rtdatas[k]] = first + k
         tag_type = self.types.of([I32], []) if self.catches else -1
         for sym in self.import_order:
             self.fnindex[sym] = len(self.fnindex)
@@ -2580,7 +2592,7 @@ class Emitter:
         imp = bytearray()
         stack = self.stack_frames or self.catches
         table = self.indirect_calls or len(self.callbacks) != 0
-        uleb(imp, 3 + len(self.import_order) + int(stack) + int(self.catches) + int(table))
+        uleb(imp, 3 + len(self.m.rtdatas) + len(self.import_order) + int(stack) + int(self.catches) + int(table))
         name_bytes(imp, "env")
         name_bytes(imp, "memory")
         imp.append(0x02)
@@ -2602,6 +2614,12 @@ class Emitter:
             imp.append(0x03)
             imp.append(I32)
             imp.append(0x01)  # mutable global shared with the reactor
+        for sym in self.m.rtdatas:
+            name_bytes(imp, "rt")
+            name_bytes(imp, sym)
+            imp.append(0x03)
+            imp.append(I32)
+            imp.append(0x00)
         if self.catches:
             name_bytes(imp, "env")
             name_bytes(imp, "pystachy_exception")
