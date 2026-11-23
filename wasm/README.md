@@ -144,6 +144,14 @@ prebuilt runtime objects. The streaming fallback uses clang at `-O0` to reduce c
 latency on short scripts. Set `WASM_OPT=2` for longer-running computations. Hosts can set `fallback: false` to require direct compilation
 and receive the named refusal as error code 3. That configuration needs no LLVM at run time.
 
+The source compiler also runs as WebAssembly, so that configuration needs no native binary
+either. `wasm/build.sh compiler-wasm` builds `build/wasm/wasm_from_source.wasm` (about 6 MB)
+through LLVM, and a `compiler` path ending in `.wasm` runs it in the host's process, on a guest
+thread that reads `lib/` and the source's imports from the host's files, as the CLI's programs
+do. Where only that file is built, it is the default. It writes the same modules as the native
+compiler. In a warm host on Linux x86-64, a short snippet took 9–24 ms to compile, against
+4–8 ms for the native compiler, and the first call about 80 ms.
+
 `createCodeMode({compiler, runtime, cwd, fallback})` accepts alternate artifact paths and a source
 import directory. `createRunner(runtime)` in `run.mjs` accepts already compiled program
 bytes, a file path or a `WebAssembly.Module`. Both hosts accept per-call `args` (including

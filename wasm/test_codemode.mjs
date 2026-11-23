@@ -1,6 +1,7 @@
 // Integration tests use the native source frontend, the WASI runtime and the LLVM fallback.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtemp, open, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
@@ -256,4 +257,28 @@ test("the direct JSON codec reaches the recorded nesting limit", async t => {
   const status = await run(await readFile(`${prefix}.py`, "utf8"), { stdout: output.fd });
   assert.equal(await readFile(join(dir, "out"), "utf8") + `[exit ${status}]\n`,
     await readFile(`${prefix}.out`, "utf8"));
+});
+
+test("the frontend built as Wasm compiles in this process as the native one does", {
+  skip: !existsSync("build/wasm/wasm_from_source.wasm") && "wasm/build.sh compiler-wasm builds it",
+}, async t => {
+  const dir = await mkdtemp(join(tmpdir(), "pystachy-wasm-frontend-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const output = await open(join(dir, "out"), "w");
+  t.after(() => output.close());
+  const compilers = ["build/wasm/wasm_from_source", "build/wasm/wasm_from_source.wasm"].map(compiler => createCompiler({ compiler }));
+  const tools = new Map([["lookup", key => `item ${key}`]]);
+  for (const program of [source, generator, "import json\nprint(json.dumps({'a': [1, 2.5, None]}))\n"]) {
+    const [native, wasm] = await Promise.all(compilers.map(compile => compile(program)));
+    assert.equal(wasm.backend, native.backend);
+    assert.equal(wasm.refusal, native.refusal);
+    for (const artifact of [native, wasm]) assert.equal(await createRunner()(artifact.module, { tools, stdout: output.fd }), 0);
+  }
+  for (const bad of ["print(unknown_name)\n", "def f(:\n"]) {
+    const errors = await Promise.all(compilers.map(compile => compile(bad).then(() => null, error => error)));
+    assert.equal(errors[1].code, errors[0].code);
+    assert.equal(errors[1].message, errors[0].message);
+  }
+  assert.equal(await readFile(join(dir, "out"), "utf8"),
+    "item α\nitem α\nitem α\n42\nitem α\n42\n" + '{"a": [1, 2.5, null]}\n'.repeat(2));
 });

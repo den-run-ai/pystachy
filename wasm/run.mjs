@@ -50,8 +50,16 @@ export function createRunner(runtimeSource = defaultRuntime) {
   return runner(runtimeSource, false);
 }
 
-// here: run on this thread, which the CLI and guest threads (below) do
-function runner(runtimeSource, cli, here = cli) {
+// The repository's own tools as Wasm (the source compiler: codemode.mjs) see the host's files, as
+// the CLI's programs do. Never give this runner a program that the host does not trust.
+export function createFileRunner(runtimeSource = defaultRuntime) {
+  if (idleGuests.length === 0) idleGuests.push(guestThread());
+  return runner(runtimeSource, false, false, true);
+}
+
+// here: run on this thread, which the CLI and guest threads (below) do; files: mount the host's
+// root directory, as the CLI does
+function runner(runtimeSource, cli, here = cli, files = cli) {
   let compiledRuntime;
   async function run(source, {
     args = ["program"], env = {}, stdin = 0, stdout = 1, stderr = 2, tools, preopens, executionTimeoutMs,
@@ -72,7 +80,7 @@ function runner(runtimeSource, cli, here = cli) {
       });
       runtimeModule = await compiledRuntime;
     }
-    if (!here) return onGuestThread(module, runtimeModule, { args, env, stdin, stdout, stderr }, tools, executionTimeoutMs);
+    if (!here) return onGuestThread(module, runtimeModule, { args, env, stdin, stdout, stderr }, tools, executionTimeoutMs, files);
     const options = { args, env, stdin, stdout, stderr, tools };
     if (executionTimeoutMs === undefined) return instantiateAndRun(module, section, runtimeModule, options);
     // V8 can interrupt synchronous Wasm and JS across this call. Loading and
@@ -83,7 +91,7 @@ function runner(runtimeSource, cli, here = cli) {
 
   function instantiateAndRun(module, section, runtimeModule, { args, env, stdin, stdout, stderr, tools }) {
     const wasi = new WASI({
-      version: "preview1", args, env, preopens: cli ? { "/": "/" } : {}, stdin, stdout, stderr, returnOnExit: true,
+      version: "preview1", args, env, preopens: files ? { "/": "/" } : {}, stdin, stdout, stderr, returnOnExit: true,
     });
     // Keep WASI calls behind JavaScript. Node 22 can crash on direct Wasm fast-API
     // calls into these native functions. The workaround stays local to this instance.
@@ -238,7 +246,7 @@ function timedOut(ms) {
   return Object.assign(new Error(`Script execution timed out after ${ms}ms`), { code: "ERR_SCRIPT_EXECUTION_TIMEOUT" });
 }
 
-async function onGuestThread(module, runtimeModule, options, tools, timeoutMs) {
+async function onGuestThread(module, runtimeModule, options, tools, timeoutMs, files) {
   const { runInNewContext } = await import("node:vm");
   const guest = idleGuests.pop() ?? guestThread();
   const { worker, wake, replies } = guest;
@@ -295,7 +303,7 @@ async function onGuestThread(module, runtimeModule, options, tools, timeoutMs) {
     worker.on("error", failed);
     worker.on("exit", exited);
     const names = tools === undefined ? undefined : [...tools].filter(([, f]) => typeof f === "function").map(([n]) => n);
-    worker.postMessage({ module, runtimeModule, options, names });
+    worker.postMessage({ module, runtimeModule, options, names, files });
     if (timeoutMs !== undefined) timer = setTimeout(stop, timeoutMs);
   });
 }
@@ -304,7 +312,7 @@ async function onGuestThread(module, runtimeModule, options, tools, timeoutMs) {
 // replies, so the guest's synchronous import returns the tool's result.
 function serveGuests({ signal, replies }) {
   const wake = new Int32Array(signal);
-  parentPort.on("message", ({ module, runtimeModule, options, names }) => {
+  parentPort.on("message", ({ module, runtimeModule, options, names, files }) => {
     const tools = names === undefined ? undefined : new Map(names.map((name) => [name, (payload) => {
       parentPort.postMessage({ tool: name, payload });
       Atomics.wait(wake, 0, 0);
@@ -313,7 +321,7 @@ function serveGuests({ signal, replies }) {
       if (reply.error !== undefined) throw new Error(reply.error);
       return reply.value;
     }]));
-    runner(runtimeModule, false, true)(module, { ...options, tools }).then(
+    runner(runtimeModule, false, true, files)(module, { ...options, tools }).then(
       (status) => parentPort.postMessage({ status }),
       (error) => parentPort.postMessage({ error: { message: String(error?.message ?? error), code: error?.code } }),
     );
