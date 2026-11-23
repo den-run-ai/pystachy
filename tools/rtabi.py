@@ -106,6 +106,10 @@ for error in str_offset_errors(str_offsets(c_ir), STR_HEADER_SIZE) + str_literal
     bad += 1
     print(f"MISMATCH {error}")
 for name in externs:
+    # (the program defines pys_obj_eq, pys_obj_cmp and pys_obj_repr, which runtime.py's walks call
+    # for an object of its classes: their signatures are checked against the programs' below)
+    if name.startswith("pys_obj_"):
+        continue
     if not re.search(rf"^define .*@{name}\(", c_ir, re.M):
         bad += 1
         print(f"MISSING {name}: runtime.py declares it, runtime.c does not define it")

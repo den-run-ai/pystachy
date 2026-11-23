@@ -7057,9 +7057,10 @@ def hex_digit(v: int) -> int:
 
 
 @_rt.unchecked
-def pys_rt_char_repr(t: _rt.Ptr, p: _rt.Ptr, left: int, q: int) -> int:
+def char_repr(t: _rt.Ptr, p: _rt.Ptr, left: int, q: int) -> int:
     # the character at p (left > 0 bytes) as CPython's unicode_repr writes it between quotes q,
-    # into t (12 bytes): the bytes written, plus 256 times the bytes it takes at p
+    # into t (12 bytes): the bytes written, plus 256 times the bytes it takes at p. (runtime.c's
+    # report of an uncaught exception has its own, resc, which asks nothing of runtime.py)
     k = u8_point(p, left)
     c = k >> 3
     n = (k & 7) << 8
@@ -7083,21 +7084,6 @@ def pys_rt_char_repr(t: _rt.Ptr, p: _rt.Ptr, left: int, q: int) -> int:
         return 2 + w + n
     _rt.cpy(t, p, k & 7)
     return (k & 7) + n
-
-
-@_rt.unchecked
-def pys_rt_rquote(p: _rt.Ptr, n: int) -> int:
-    # the quote repr() puts around the n bytes at p: " where they hold a ' and no ", else '
-    single = False
-    i = 0
-    while i < n:
-        c = _rt.byte_at(p, i)
-        if c == 34:
-            return 39
-        if c == 39:
-            single = True
-        i += 1
-    return 34 if single else 39
 
 
 @_rt.noinline
@@ -7153,7 +7139,7 @@ def pys_rt_repr_str(b: _rt.Ptr, s: str) -> None:
         if k != 0:
             pys_rt_put(b, _rt.offset(p, i), k)
         else:
-            r = pys_rt_char_repr(t, _rt.offset(p, i), n - i, q)
+            r = char_repr(t, _rt.offset(p, i), n - i, q)
             pys_rt_put(b, t, r & 255)
             k = r >> 8
         i += k

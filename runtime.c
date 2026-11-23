@@ -2610,8 +2610,7 @@ I pys_ceil(double d);
    pys_obj_eq(-1 - id, a, 0) (object's identity hash, __hash__'s, or TypeError where __eq__ makes
    a class unhashable) and compared as O<id>; both print as O<id> does */
 I pys_obj_eq(I c, I a, I b);
-I pys_obj_cmp(I c, I op, I a, I b);
-Str *pys_obj_repr(I c, I a, I b);
+I pys_obj_cmp(I c, I op, I a, I b);   /* (and pys_obj_repr, which runtime.py's repr calls) */
 typedef struct DynType DynType;   /* (see dynamic values) */
 struct DynType { I kind; Str *desc; Str *name; I cls; const DynType *base; I flags; Dyn *(*iter)(Dyn *); Dyn *(*next)(Dyn *); I (*len)(Dyn *); };
 struct Dyn { const DynType *t; I v; };
@@ -2690,12 +2689,23 @@ static const char *umember(I *v, const char *d) {
 static double dbl(I v) { double x; memcpy(&x, &v, 8); return x; }
 static int printable(I c);
 I pys_rt_printable(I c) { return printable(c); }
-/* repr(s) onto b (CPython's unicode_repr), the quote that repr() puts around n bytes, and the
-   character at p escaped into t, 12 bytes (its bytes, plus 256 times those it takes at p): runtime.py's */
-void pys_rt_repr_str(Buf *b, Str *s);
-I pys_rt_rquote(const char *p, I n);
-I pys_rt_char_repr(char *t, const char *p, I left, I q);
+void pys_rt_repr_str(Buf *b, Str *s);   /* runtime.py's: repr(s) onto b, as CPython's unicode_repr */
 static inline void repr_str(Buf *b, Str *s) { pys_rt_repr_str(b, s); }
+/* The same escapes for the report of an uncaught exception (erepr), which writes to a buffer on the
+   stack: it allocates nothing and asks nothing of runtime.py, since the collector's own failures
+   reach it. The quote that repr() puts around n bytes, and the character at s as unicode_repr writes
+   it between quotes q, into t (12 bytes); *n: its bytes in s */
+static char rquote(const char *s, I n) { return memchr(s, '\'', n) && !memchr(s, '"', n) ? '"' : '\''; }
+static I resc(char *t, const char *s, I len, char q, I *n) {
+  I c;
+  *n = u8char(s, len, &c);
+  if (c == q || c == '\\') { t[0] = '\\'; t[1] = (char)c; return 2; }
+  if (c == '\n' || c == '\r' || c == '\t') { t[0] = '\\'; t[1] = c == '\n' ? 'n' : c == '\r' ? 'r' : 't'; return 2; }
+  if (c < 32 || c == 127 || (c > 127 && !printable(c)))   /* not printable: \xhh, \uhhhh or \Uhhhhhhhh */
+    return snprintf(t, 12, c < 0x100 ? "\\x%02llx" : c < 0x10000 ? "\\u%04llx" : "\\U%08llx", (long long)c);
+  memcpy(t, s, *n);
+  return *n;
+}
 /* KTAG on Dict.kind: the dict's keys are hashed by CPython's hash (their descriptor has an H), and
    its idx has CPython's size slots. build sets it at a table's first build, since the compiler may
    store a descriptor into an empty dict (typed_empty); kdesc is the descriptor of a kind > 1 */
@@ -5566,9 +5576,9 @@ static void eput(EBuf *o, const char *s, I n) {
   }
 }
 static void erepr(EBuf *o, const char *k, const char *s, I n) {   /* k, then repr() of the string s[0, n) */
-  char q = (char)pys_rt_rquote(s, n), t[12];
+  char q = rquote(s, n), t[12];
   eput(o, k, strlen(k)); eput(o, &q, 1);
-  for (I i = 0, m; i < n; i += m) { I r = pys_rt_char_repr(t, s + i, n - i, q); eput(o, t, r & 255); m = r >> 8; }
+  for (I i = 0, m; i < n; i += m) eput(o, t, resc(t, s + i, n - i, q, &m));
   eput(o, &q, 1);
 }
 static void report(File *f, int e) {

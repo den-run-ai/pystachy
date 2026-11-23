@@ -399,7 +399,9 @@ characters at once, and escapes the others as CPython's `unicode_repr` does.
 `runtime.c` keeps what the walks call: the marks of the reprs under way, which an unwind
 clears; the program's own `__eq__`, ordering and `__repr__`; exceptions and dynamic
 values; an `Mpz`'s digits and comparison with a float; a float's text; the table of
-printable characters; and the errors whose text it formats without allocating. Its own
+printable characters; and the errors whose text it formats without allocating. The report of
+an uncaught exception escapes a str with `runtime.c`'s own copy of the escapes: it writes to
+the stack, and the collector's own failures reach it, so it asks nothing of `runtime.py`. Its own
 walks, the hashes of keys, dynamic values and the sort, step through a descriptor with
 `runtime.py`'s `pys_rt_skip` and compare through `pys_rt_eqv`, `pys_rt_eqitem` and
 `pys_rt_opv`.

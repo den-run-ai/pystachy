@@ -94,7 +94,7 @@ DYN = "# pystachy: dynamic-any\n"
 # comparisons of promoting ints in containers and tuples, the small-int boxes of identities, and
 # the list code that keeps a companion in step: an append's, a copy's, and an emptied list's
 # (f.list_append_boxed is runtime.py's, whose own functions have that prefix)
-OPT_IN_ONLY = ["mpz_digits", "mpz_cmp_float", "big_eq", "pys_rt_dbfind", "f.set_big_find", "jeq", "smallint",
+OPT_IN_ONLY = ["mpz_digits", "pys_rt_mpz_cmp_float", "f.big_eq", "pys_rt_digits_deep", "pys_rt_dbfind", "f.set_big_find", "jeq", "smallint",
                "f.list_append_boxed", "list_identity_slow", "empty_identity_int", "empty_identity_float",
                "empty_identity_big"]
 # the stores of -O2's pys_list_set (PROGRAM's xs[-1] = 2): the item's, and an opt-in program's
