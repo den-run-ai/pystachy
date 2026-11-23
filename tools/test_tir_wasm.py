@@ -14,6 +14,8 @@ sys.path.insert(0, str(ROOT))
 SPEC = importlib.util.spec_from_file_location("tir_wasm", ROOT / "wasm" / "tir_wasm.py")
 T = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(T)
+sys.path.insert(0, str(ROOT / "tools"))
+import typed_ir_text as TEXT  # noqa: E402
 
 HELLO = """module complete opts=[allocelide] {
   const @s.0 kind=string text=" "
@@ -88,6 +90,16 @@ class TirWasm(unittest.TestCase):
         ]:
             with self.subTest(attrs=attrs), self.assertRaisesRegex(T.Refused, reason):
                 T.parse(f"module complete {attrs} {{\n  class C\n  class D\n}}")
+
+    def test_a_module_text_of_another_version_is_refused(self):
+        # (the version tools/typed_ir_text.py writes, TEXT_VERSION, is the one this emitter reads)
+        self.assertEqual(T.TEXT_VERSION, str(TEXT.TEXT_VERSION))
+        self.assertEqual(emit(HELLO.replace("module complete", f"module version={TEXT.TEXT_VERSION} complete", 1))[:4], b"\x00asm")
+        for version in ("1", "3"):
+            with self.subTest(version=version), self.assertRaisesRegex(T.Refused, f"a module text of version {version}, where"):
+                emit(HELLO.replace("module complete", f"module version={version} complete", 1))
+        with self.assertRaisesRegex(T.Refused, "module attribute debuglines"):
+            emit(HELLO.replace("module complete", "module complete debuglines", 1))
 
     def test_module(self):
         out = emit(HELLO)

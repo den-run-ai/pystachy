@@ -1244,7 +1244,7 @@ layouts, which the verifier reads (the module's other attributes and lowering's 
 below, are left out here):
 
 ```text
-module version=1 complete opts=[...] {
+module version=2 complete opts=[...] {
   class Both base=Storage roles=[Reader] tag=1 fields=[" class":int value:int " Storage.0":bool " Storage.box.0":dyn] flags=[value:2] boxes=[value:3]
   class Reader overlaps=[Storage] tag=2 fields=[" class":int]
   class Storage overlaps=[Reader] tag=3 fields=[" class":int value:int] flags=[value:2] boxes=[value:3]
@@ -1280,7 +1280,7 @@ program with a class, a dict filled after it was made empty and a recursive func
 its declarations left out):
 
 ```text
-module version=1 complete opts=[charslots listget listguard dictfuse tupleiter listfast moduleints fieldtbaa tupleret unionslots nullcheck allocelide callbacks] {
+module version=2 complete opts=[charslots listget listguard dictfuse tupleiter listfast moduleints fieldtbaa tupleret unionslots nullcheck allocelide callbacks] {
   class Point fields=[x:int y:int]
   hole 1 type=dict[str,int]
   global @g.counts type=dict[?,?]
@@ -1304,6 +1304,7 @@ function @f.fact(n: int) -> int effects="R I" name=fact rdepth=%t1 closed {
 | The optimizations on (`Gen.opts`: allocelide, fieldtbaa, listguard), exceptions on (`Gen.eh`), generator `send`/`throw` (`gproto`), the dynamic Any and promoting int opt-ins (`dynamic_program()`, `int_program()`) | module attributes `opts`, `exceptions`, `protocol`, `dynamic`, `promoting` |
 | Each class's struct (`struct_types`, `field_tag`, `ref_free`) in `Gen.classes` order, its base, `exc` and `mod` (`fn_home`); the class templates (`Gen.tmpl`) | `class`, in the compiler's order, with `template`, `exception`, `module` |
 | The types of holes (`Gen.holes`) and the key kinds of their dicts and sets (`Gen.keykinds`, `builtkinds`) | `hole N type=T`, `keykind T kind=K built=K` |
+| LLVM line tables (`Gen.source_lines`, `PYSTACHY_DEBUG_LINES`): the program's files (`diagnostics.FILES`), the directory their nodes name, each definition's line (`f.node.line`) and each instruction's (`Ins.line`) | module attributes `debuglines`, `directory`; `file N path=PATH`; function attribute `line`; each instruction's location, which a module with line tables prints |
 | Globals (`Gen.globs`) and the GC roots `@main` hands the runtime (`gcroots`) | `global SYMBOL type=T`, `root VALUE` |
 | Module data (`Gen.consts`, and its `@tc.` constant tuples, `tconstdata`) | `const NAME kind=K text=... refs=[...] items=(T V, ...)` |
 | Runtime functions and data declared, in order (`Gen.rtfns`, `rtdatas`) | `runtime KEY`, `rtdata SYMBOL` |
@@ -1337,10 +1338,11 @@ python3 tools/typed_ir_text.py roundtrip tests/programs/*/*.py --jobs 2
 [`tools/test_typed_ir_compile.py`](../tools/test_typed_ir_compile.py) requires of a sample:
 classes, closures, generators, exceptions, unions, dynamic Any, promoting ints, tuples returned
 by value, closed recursion, key kinds, object dispatchers and C externs. `compile` fails closed:
-it refuses a module that is not `complete` or that names something `unsupported`, an extension
-module's entry points (`pystachy ext`: `Gen.funcs`, `gen_pyext`), runtime.py's module
-(`Gen.rtdefs`) and LLVM line tables (`PYSTACHY_DEBUG_LINES=1`: the program's files, working
-directory, definitions' lines and renamed classes), which the text does not hold yet.
+it refuses a module that is not `complete` or that names something `unsupported`, and an
+extension module's entry points (`pystachy ext`: `Gen.funcs`, `gen_pyext`) and runtime.py's
+module (`Gen.rtdefs`), which the text does not hold yet. A module with LLVM line tables
+(`PYSTACHY_DEBUG_LINES`, which an executable's build turns on) gives its files, their directory,
+each definition's line and each instruction's location, and compiles to the same tables.
 
 Printing and parsing are inverse: a module or a function printed with its locations parses to
 the record it was printed from, and a text that is not in the printed form is rejected. A function record holds
@@ -1373,11 +1375,11 @@ such as a field declared twice or a flag past the class's members, is an error o
 
 ### Versions and grammar
 
-A module's first attribute is its text's version, `version=1` (`TEXT_VERSION` in
-`tools/typed_ir_text.py`). What a module text means changes only with its version, so that the
-WebAssembly emitter's own parser (`wasm/tir_wasm.py`, written in the subset to compile
-natively) and any other reader can tell a text they were not written for. `parse` refuses
-another version, and the module that
+A module's first attribute is its text's version, `version=2` (`TEXT_VERSION` in
+`tools/typed_ir_text.py`); version 2 added LLVM line tables. What a module text means changes
+only with its version, so that the WebAssembly emitter's own parser (`wasm/tir_wasm.py`,
+written in the subset to compile natively) and any other reader can tell a text they were not
+written for. `parse` and `tir_wasm.py` refuse another version, and the module that
 [`test_typed_ir_text.py`](../tools/test_typed_ir_text.py) writes holds the form.
 A text of functions alone has no version and reads as a module's functions do.
 Declarations, attributes and loop fields follow the compiler's tables, so a text is
@@ -1391,7 +1393,7 @@ text        = module | { function } ;
 module      = "module" fields " {" NL { "  " declaration NL } "}" NL { function } ;
 declaration = keyword " " atom fields ;
 keyword     = "class" | "dyntype" | "layout" | "hole" | "global" | "root" | "const"
-            | "runtime" | "rtdata" | "extern" | "keykind" ;    (* in this order *)
+            | "runtime" | "rtdata" | "extern" | "keykind" | "file" ;    (* in this order *)
 function    = "function " atom "(" [ param { ", " param } ] ") -> " atom
               [ " coroutine" ] [ " effects=" atom ] fields " {" NL
               { "  " instruction NL }                            (* its slots *)
@@ -1435,7 +1437,8 @@ numbers merged code. IR written as text may leave lines unknown (0), as MLIR's v
 accepts unknown locations.
 Only LLVM line tables (`PYSTACHY_DEBUG_LINES=1`) print them.
 
-Text holds locations only on request, as MLIR prints them only with `-mlir-print-debuginfo`:
+Text holds locations only on request, as MLIR prints them only with `-mlir-print-debuginfo`, or
+where its module has line tables, which read them:
 `print --locations` appends `loc(12)` for line 12 of the main program's file and `loc(3:12)`
 for line 12 of file 3, the snapshot's `files[3]`. The parser reads either back, and an
 instruction without one has line 0.
@@ -1458,8 +1461,8 @@ It proves no typing or lowering property.
 Typed instruction coverage is complete for the LLVM backend, and a module's [text](#text-form)
 holds what lowering reads of a program: printed at the lowering boundary, it compiles to the
 compiler's LLVM. It does not hold yet an extension module's entry points (`Gen.funcs`,
-`gen_pyext`), runtime.py's module (`Gen.rtdefs`) or the inputs of LLVM line tables
-(`PYSTACHY_DEBUG_LINES=1`), which `compile` refuses; its tables follow `Gen`'s, and its
+`gen_pyext`) or runtime.py's module (`Gen.rtdefs`), which `compile` refuses
+([#1719](https://github.com/den-run-ai/pystachy/issues/1719)); its tables follow `Gen`'s, and its
 [version](#versions-and-grammar) changes with its form. Further backend neutrality needs shared compiler/runtime layout definitions and a
 clearer separation of frontend elaboration from machine contracts. Operands still read values
 through the views of

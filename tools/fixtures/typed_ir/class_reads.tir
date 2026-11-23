@@ -5,7 +5,7 @@
 ; where its class was tested. Each function without an expected error verifies;
 ; tools/test_typed_ir_text.py removes their tests to see them fail.
 
-module version=1 {
+module version=2 {
   class Base tag=1 fields=[" class":int n:int]
   class Mid base=Base tag=2 fields=[" class":int n:int m:int]
   class Leaf base=Mid tag=3 fields=[" class":int n:int m:int]
