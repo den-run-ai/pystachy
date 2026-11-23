@@ -148,10 +148,13 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
     # The copies of class methods that classes under a class template get (Gen.inherit, #1744)
     # are a trial of the same kind, from the first one declared: in a copy cls is the class, so
     # what cls(...) makes and what its __init__ takes are the class's, and code that compiled
-    # with the template's may not. One switch turns both off: the compilation from the start is
-    # the one before either.
+    # with the template's may not. A trial that made copies is given up for a compilation
+    # without them (Gen.copies), which may be a trial of the comparisons alone; one that made
+    # none, for the compilation without either, the one before both.
     trials = True
+    copies = True
     diagnostics.TRYING = False
+    diagnostics.COPIED = False
     keeps: dict[str, bool] = {}
     nokeep = False
     hints: dict[str, str] = {}
@@ -199,6 +202,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
         g.idtry = idtry
         g.clsany = clsany
         g.trials = trials
+        g.copies = copies
         ld = Loader(dirs)
         ld.ext = ext
         ld.keeps = keeps
@@ -221,13 +225,18 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
                     RENAMED.clear()
             diagnostics.TRIAL = False
             diagnostics.TRYING = False
+            diagnostics.COPIED = False
             return result
         except Rejoin as retry:
             if diagnostics.TRYING and len([k for k in g.newx if k not in xnot]) > 0:
                 # (from the start, as below for a failure, without what was on trial)
+                if diagnostics.COPIED:
+                    copies = False
+                else:
+                    trials = False
                 diagnostics.TRYING = False
+                diagnostics.COPIED = False
                 diagnostics.TRIAL = False
-                trials = False
                 keeps = {}
                 hints = {}
                 xnot = {}
@@ -293,11 +302,14 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
             # was a trial of Gen.trials: the program is compiled as if that had never been tried.
             # Gen.trials goes first: the compilation without it is the one that tries the except
             # clauses as before)
-            if diagnostics.TRYING:
+            if diagnostics.TRYING and diagnostics.COPIED:
+                copies = False
+            elif diagnostics.TRYING:
                 trials = False
             else:
                 nokeep = True
             diagnostics.TRYING = False
+            diagnostics.COPIED = False
             diagnostics.TRIAL = False
             keeps = {}
             hints = {}

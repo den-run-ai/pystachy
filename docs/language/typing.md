@@ -1388,13 +1388,17 @@ where a template's object is stored too
 class's own `__init__` takes other arguments
 ([test](../../tests/programs/classes/template_subclass_class_method_init.py)), or the method
 assigns through `cls` an attribute that the class inherits, of which CPython gives the class its
-own ([test](../../tests/programs/classes/template_subclass_cls_store_kept.py)). Called through a
-location typed by a class that others derive from, `cls` is that class also for an object of a
-deriving class: calls of class methods are not dispatched on the object's class. A class in
-another module than the method's, and any class where a default value of the method is evaluated
-when its def runs, has no copy of its own: through its object, `cls` is the nearest class that has
-one. A class method that a class under a template defines itself is called as any other class's
-([error test](../../tests/errors/classes/template_subclass_own_class_method.py)).
+own ([test](../../tests/programs/classes/template_subclass_cls_store_kept.py)), or the method is
+called through an object of a class under the template that another class derives from
+([test](../../tests/programs/classes/template_subclass_class_method_location.py)) or that has no
+copy of its own (a class in another module than the method's; a method with a default value
+evaluated when its def runs): calls of class methods are not dispatched on the object's class,
+and the copy of the location's class is not the object's. Such a program still passes list and
+dict subclass objects to comparison methods as themselves
+([test](../../tests/programs/classes/template_subclass_class_method_objects.py)). Through a
+location typed by the template itself, `cls` is the template also for an object of a deriving
+class. A class method that a class under a template defines itself is called as any other
+class's ([error test](../../tests/errors/classes/template_subclass_own_class_method.py)).
 These classes are still not values: `issubclass()` and `type[C]` reject them.
 
 The compiler rejects, with a message that names the limit: a subclass with a secondary base or a

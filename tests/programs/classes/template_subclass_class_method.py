@@ -3,7 +3,10 @@
 # attribute the class binds again, cls(...) and another class or static method called through
 # cls are the class's. For a subclass without an __init__, one whose own __init__ is a class
 # template too, one under such a subclass, and a class deriving from a generic class's
-# specialization (#1744). An object of the template itself still reads the template
+# specialization (#1744). An object of the template itself still reads the template. Every
+# object the methods are called through is of a class that no class derives from: through one
+# of a class that others derive from the program is compiled as before
+# (template_subclass_class_method_location.py)
 from typing import Generic, TypeVar
 
 
@@ -75,7 +78,6 @@ print(through(Style(1)))
 print(through(Plain(2)))
 print(through(Tagged(3)))
 print(through(Own(4)))
-print(through(Mid(5)))
 print(through(Deep(6)))
 print(through(Tagged("s")), Tagged("t").make(7).fmt)
 print(Plain.name(), Tagged.what(), Own.make(1).who(), Deep.both(), Mid.seen())

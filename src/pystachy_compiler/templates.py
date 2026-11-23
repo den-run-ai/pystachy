@@ -255,7 +255,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
                 g = self.declare_fn(d, name)
                 self.lib = False
                 g.mod = s.mod
-                if self.trials:
+                if self.copies:
                     cls_shared(t, g)
                 s.methods[g.name] = g  # (x.setter: a property's setter)
         if p != "":
@@ -406,7 +406,7 @@ def gen_member_spec(self, p: str, m: str) -> str:
                 g = self.declare_fn(d, name)
                 self.lib = False
                 g.mod = s.mod
-                if self.trials:
+                if self.copies:
                     cls_shared(t, g)
                 s.methods[g.name] = g
         self.inherit(s)

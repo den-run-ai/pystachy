@@ -172,6 +172,7 @@ TRIAL = False
 # as driver.compile_program then compiles the program from the start without either, which
 # reports what it finds
 TRYING = False
+COPIED = False  # (a trial that has made such a copy: the compilation after it is without the copies first)
 
 
 class Untried(Exception):
