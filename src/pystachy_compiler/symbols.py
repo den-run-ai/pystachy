@@ -36,6 +36,10 @@ class FnBuild:
         # from them, those types
         self.decided: dict[str, str] = {}
         self.settle = False  # it decided one of those, or a hole's (Gen.decide_hole): Gen.settle runs
+        # the values and module globals whose type the frontend decided after ops of this function
+        # read them at a placeholder: a hole's op (Gen.decide_hole), a global that only an empty
+        # container or None had given a type (gen_mem_load, gen_mem_store)
+        self.closed: dict[str, bool] = {}
         self.reopened = False  # and once the program is built, as another function decided one (Gen.reopen)
 
 

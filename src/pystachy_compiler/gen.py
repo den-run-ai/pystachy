@@ -3099,8 +3099,8 @@ class Gen:
     def hole(self, kind: str) -> Ins:
         return emission_hole(self, kind)
 
-    def decide_hole(self, k: int, t: str) -> None:
-        emission_decide_hole(self, k, t)
+    def decide_hole(self, k: int, t: str, read: bool = True) -> None:
+        emission_decide_hole(self, k, t, read)
 
     def settle_program(self) -> None:
         emission_settle_program(self)

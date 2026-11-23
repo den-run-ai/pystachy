@@ -259,6 +259,9 @@ def gen_mem_load(self, a: Val) -> Val:
     i = Ins("mem.load", a.t[1:], "")
     i.a = [a]
     self.put(i, 1)
+    if a.v.startswith("@g.") and placeholder(a.t):
+        self.fn.build.settle = True  # (a module global that only an empty container or None gave a type yet)
+        self.fn.build.closed[a.v] = True
     return Val(tmpname(i.r[0]), i.t)
 
 def gen_mem_store(self, a: Val, v: Val) -> None:
@@ -267,8 +270,9 @@ def gen_mem_store(self, a: Val, v: Val) -> None:
     i = Ins("mem.store", "", "")
     i.a = [a, v]
     self.add(i)
-    if a.v[:3] == "@g." and placeholder(a.t):
+    if a.v.startswith("@g.") and placeholder(a.t):
         self.fn.build.settle = True  # (a module global that only an empty container or None gave a type yet)
+        self.fn.build.closed[a.v] = True
 
 def gen_place(self, l: str) -> None:
     if not self.term:
@@ -616,7 +620,7 @@ class Settling:
                             self.readers[a.v] = []
                         if len(self.readers[a.v]) == 0 or self.readers[a.v][len(self.readers[a.v]) - 1] is not i:
                             self.readers[a.v].append(i)
-                    elif placeholder(a.t) and (a.v.startswith("%") or a.v.startswith("@g.")) and (len(self.closed) == 0 or self.closed[len(self.closed) - 1] is not i):
+                    elif a.v in fn.build.closed and placeholder(a.t) and (len(self.closed) == 0 or self.closed[len(self.closed) - 1] is not i):
                         self.closed.append(i)
         self.follow: list[str] = []
 
@@ -917,7 +921,7 @@ def gen_settle(self, fn: IFn, late: bool) -> None:
             open_ = True
     for b in fn.blocks:
         for i in b.code:
-            if placeholder(i.t):
+            if "?" in i.t:
                 open_ = True
             elif late and i.op == "rt" and len(i.r) > 0:
                 if i.t == "%ptr" or i.t == "%slot":
@@ -925,7 +929,9 @@ def gen_settle(self, fn: IFn, late: bool) -> None:
                 elif rt_generic(i.t):
                     open_ = True
     if fn.build.settle:
-        open_ = True  # (the frontend decided a placeholder of fn's: ops built before read it so)
+        # (the frontend decided a placeholder of fn's, which ops built before read; or fn reads a
+        # first None's field or module global, whose type a later store may decide)
+        open_ = True
     if open_:
         s = Settling(fn, self.holes, class_names(self), self.rtfns, late)
         settle_run(self, s)
@@ -1104,11 +1110,12 @@ def gen_decide_value(self, v: Val, t: str) -> None:
         self.fn.build.settle = True
 
 
-def gen_decide_hole(self, k: int, t: str) -> None:
+def gen_decide_hole(self, k: int, t: str, read: bool = True) -> None:
     # hole k holds a t (a list's, dict's or set's type) from here on: so does the result of the
     # op that makes its container (Gen.hole), at once, as no use reads it before its type is
-    # decided but at the placeholder (its local's slot and the reads of it: Gen.settle gives
-    # those the type the frontend decided for the slot, FnBuild.decided)
+    # decided but at the placeholder (its local's slot and the reads of it, a template's return:
+    # Gen.settle gives those the type decided). read: a use may have read it so; a
+    # comprehension's list has none before its items decide it
     self.holes[k] = t
     i = self.holeops[k]
     fn = self.holefns[k]
@@ -1117,7 +1124,9 @@ def gen_decide_hole(self, k: int, t: str) -> None:
     if placeholder(fn.f.ret) and fn is not self.fn:
         return  # (a template's empty result that it returns open: each call types it, Gen.typed_empty)
     i.t = t
-    self.reopen(fn)
+    if read:
+        fn.build.closed[tmpname(i.r[0])] = True
+        self.reopen(fn)
 
 
 def gen_reopen(self, fn: IFn) -> None:

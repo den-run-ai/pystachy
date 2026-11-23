@@ -367,8 +367,10 @@ def held_none(t: str) -> bool:
 
 def placeholder(t: str) -> bool:
     # does type t hold a placeholder of the frontend's: an empty container's (?, NONE_ITEM's
-    # too) or a first None's (NONEVAR), which a later use decides (Gen.settle)
-    return "?" in t or NONEVAR in t
+    # too) or a first None's (NONEVAR, which ends the type of a slot, address, packed slot or
+    # value that holds it; inside another type it is a None-only location's), which a later
+    # use decides (Gen.settle)
+    return "?" in t or t.endswith(NONEVAR)
 
 
 def type_view(self, a: str, b: str, generic: bool, parent: str) -> str:
