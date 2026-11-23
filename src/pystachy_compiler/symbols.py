@@ -107,6 +107,10 @@ class FnInfo:
         self.clsuse = False  # a class method that uses cls, which names the class that defines it (see cls_bound)
         self.orig = node  # and then its immutable def before cls was renamed (shared by inherited methods)
         self.pending = False  # inherited class method: node shares orig's body until materialize()
+        # an inherited class method's copy for a class under a class template (inherit): the
+        # template that defines the method, which cls named in it before those classes had copies
+        # of their own. Its calls through an object are accepted as they were then (cls_bound)
+        self.clsdef = ""
         # a template's function: the parameters whose arguments are objects known not to be None
         # (a new object, self), which its isinstance(), hasattr() and "is None" tests read as such
         self.nnp: dict[str, bool] = {}

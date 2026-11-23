@@ -1373,6 +1373,32 @@ a class variable of the template with its current value, as the template's objec
 they assign it themselves or a subclass's body binds it again
 ([test](../../tests/programs/classes/template_subclass_class_variable.py),
 [specializations that compiled code makes](../../tests/programs/classes/template_subclass_class_variable_late.py)).
+A class method that such a class inherits and that uses `cls` is the class's own: called through
+an object of the class, as through the class's name, `cls` is that class, so `cls.__name__`, a
+class attribute its body binds again and `cls(...)` are its
+([test](../../tests/programs/classes/template_subclass_class_method.py)), and `cls.x = v` changes
+the class's `x` where its class body binds `x`
+([test](../../tests/programs/classes/template_subclass_cls_store_own.py)). That holds for a
+program that compiles with those copies. Where it does not, no class of the program has one and
+`cls` is the template that defines the method, as it was before
+([#1744](https://github.com/den-run-ai/pystachy/issues/1744)): what `cls(...)` makes is stored
+where a template's object is stored too
+([test](../../tests/programs/classes/template_subclass_class_method_retyped.py),
+[test](../../tests/programs/classes/template_subclass_class_method_retyped_generic.py)), the
+class's own `__init__` takes other arguments
+([test](../../tests/programs/classes/template_subclass_class_method_init.py)), or the method
+assigns through `cls` an attribute that the class inherits, of which CPython gives the class its
+own ([test](../../tests/programs/classes/template_subclass_cls_store_kept.py)), or the method is
+called through an object of a class under the template that another class derives from
+([test](../../tests/programs/classes/template_subclass_class_method_location.py)) or that has no
+copy of its own (a class in another module than the method's; a method with a default value
+evaluated when its def runs): calls of class methods are not dispatched on the object's class,
+and the copy of the location's class is not the object's. Such a program still passes list and
+dict subclass objects to comparison methods as themselves
+([test](../../tests/programs/classes/template_subclass_class_method_objects.py)). Through a
+location typed by the template itself, `cls` is the template also for an object of a deriving
+class. A class method that a class under a template defines itself is called as any other
+class's ([error test](../../tests/errors/classes/template_subclass_own_class_method.py)).
 These classes are still not values: `issubclass()` and `type[C]` reject them.
 
 The compiler rejects, with a message that names the limit: a subclass with a secondary base or a
@@ -1969,8 +1995,20 @@ as in CPython: `C(items)`, `+=`, `extend()` and `update()` fill the object as th
 where the class defines `append()`, `extend()` or `__setitem__`. Each comparison operator is
 the builtin's unless the class defines that operator's method, so a class that defines
 `__eq__` alone still compares `!=` as the builtin does, and a right operand whose class
-defines the reflected method is asked first. A slice, `+`, `*`, `|` or `copy()` makes a plain
-list or dict, as in CPython. Without `__eq__` and `__hash__` the objects are unhashable, as
+defines the reflected method is asked first. Compared with an object of another class that
+defines the comparison, the object is that method's argument as it is, in either operand order:
+`isinstance(other, C)` holds there and `type(other)` is `C`
+([test](../../tests/programs/classes/builtin_subclass_compared_operand.py)). That holds for a
+program whose every such comparison compiles so. Where one does not, each of the program's
+comparisons hands its method the container instead, in which `isinstance(other, C)` is false: a
+method's parameter is annotated `list[int] | None` or its code passes the operand on as a list
+([test](../../tests/programs/classes/builtin_subclass_compared_container.py)), or what it stores
+the operand in holds plain lists or another class's objects too
+([test](../../tests/programs/classes/builtin_subclass_compared_stored.py),
+[test](../../tests/programs/classes/builtin_subclass_compared_stored_sites.py),
+[test](../../tests/programs/classes/builtin_subclass_compared_stored_classes.py)). A class that
+defines `__eq__` but not `__ne__` keeps the container's `!=`. A slice, `+`, `*`,
+`|` or `copy()` makes a plain list or dict, as in CPython. Without `__eq__` and `__hash__` the objects are unhashable, as
 lists and dicts are.
 
 A dict subclass's `__missing__` is called by `d[key]` and `d[key] op= value` where `key` is not

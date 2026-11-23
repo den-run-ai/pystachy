@@ -648,6 +648,20 @@ def check_bypass(p: Probe) -> None:
             "extension build did not bypass the program cache")
 
 
+def elf_sections(data: bytes) -> set[bytes]:
+    """Return the section names of a little-endian ELF64 file, or none for another format."""
+    if data[:6] != b"\x7fELF\x02\x01":
+        return set()
+    table = int.from_bytes(data[0x28:0x30], "little")
+    size, count, names = (int.from_bytes(data[at:at + 2], "little") for at in (0x3A, 0x3C, 0x3E))
+    strings = int.from_bytes(data[table + names * size + 0x18:table + names * size + 0x20], "little")
+    found = set()
+    for index in range(count):
+        start = strings + int.from_bytes(data[table + index * size:table + index * size + 4], "little")
+        found.add(data[start:data.index(b"\0", start)])
+    return found
+
+
 def check_settings(p: Probe) -> None:
     # #1168: a hit must reproduce what its settings compile, and their errors.
     # Line tables get an entry of their own. An empty setting is not an unset
@@ -658,8 +672,15 @@ def check_settings(p: Probe) -> None:
     before = set(p.entry_files())
     p.pair(source, "line tables", reference=expected, changes={"PYSTACHY_DEBUG_LINES": "1"})
     added = [path for path in set(p.entry_files()) - before if path.suffix == ".exe"]
-    p.check(len(added) == 1 and b".debug_line\0" in added[0].read_bytes(),
-            f"line tables: expected one new executable with .debug_line: {added}")
+    p.check(len(added) == 1 and b".debug_line" in elf_sections(added[0].read_bytes()),
+            f"line tables: expected one new executable with a .debug_line section: {added}")
+    # (#1730: every executable holds the string ".debug_line" for its traceback reader, so only the
+    # section table tells; an entry built without line tables must fail the check above.)
+    before = set(p.entry_files())
+    p.pair(source, "no line tables", reference=expected, changes={"PYSTACHY_DEBUG_LINES": "0"})
+    added = [path for path in set(p.entry_files()) - before if path.suffix == ".exe"]
+    p.check(len(added) == 1 and b".debug_line" not in elf_sections(added[0].read_bytes()),
+            f"no line tables: expected one new executable without a .debug_line section: {added}")
     # (LLVM's -O2 pipeline in place of the JIT's cleanup: an entry of its own, which a default run
     # never reuses)
     p.pair(source, "JIT -O2 pipeline", reference=expected, changes={"PYSTACHY_JIT_OPT": "2"})

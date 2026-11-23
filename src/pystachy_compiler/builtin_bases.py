@@ -8,6 +8,7 @@ decided from the static type alone: no list or dict holds a class word or a flag
 path tests for a subclass.
 """
 from __future__ import annotations
+from src.pystachy_compiler import diagnostics
 from src.pystachy_compiler.diagnostics import where
 from src.pystachy_compiler.frames import IterArg
 from src.pystachy_compiler.ir import FnInfo, Ins, Val
@@ -159,6 +160,60 @@ def gen_bcompared(self, op: str, a: Val, b: Val) -> list[Val]:
     if self.bkind(a.t) == "" and BCMP[op][1] in self.classes[b.t].methods:
         return [a, b]
     return [self.bdecay(a, []), self.bdecay(b, [])]
+
+
+def gen_bkeeps(self, op: str, a: Val, b: Val) -> bool:
+    # whether a op b is compiled with both operands as they are, where bcompared would compare
+    # them as containers although CPython calls a method of the program with the object of a
+    # class deriving from a builtin container: the left operand's method, or the right one's
+    # reflected method where the left operand's container declines a right operand that is no
+    # such container (one of the container's kind, an object of another class deriving from it
+    # too, is compared by the container, which does not decline it). False where bcompared
+    # decides as CPython does, and in a compilation that hands over the containers (Gen.trials)
+    if not self.trials or op not in BCMP or (self.bkind(a.t) == "" and self.bkind(b.t) == ""):
+        return False
+    if op != "==" and op != "!=" and (self.bkind(a.t) == "dict" or self.bkind(b.t) == "dict"):
+        return False
+    if self.bkind(a.t) != "" and BCMP[op][0] in self.classes[a.t].methods:
+        return False
+    if self.bkind(a.t) == "" and BCMP[op][1] in self.classes[b.t].methods:
+        return False
+    ka = self.bkind(a.t)
+    kb = self.bkind(b.t)
+    if ka == "":
+        return self.bcalled(op, a.t, 0)
+    if kb != ka and not (is_list(b.t) if ka == "list" else is_dict(b.t)):
+        return self.bcalled(op, b.t, 1)
+    return False
+
+
+def gen_bkept(self, op: str, a: Val, b: Val) -> Val:
+    # a op b with both operands as they are: the program's method takes the object itself, whose
+    # class isinstance() and type() tell there. Its type is the class's where the container's
+    # was, in the method and in whatever the method stores it in, returns it to or passes it on
+    # to, so code anywhere in the program may stop compiling, or decline an attempt it made
+    # (Gen.xtry), that compiled with the container: from here on the compilation is a trial
+    # (diagnostics.TRYING), and where any of that happens the driver compiles the program from
+    # the start with the containers. Nothing of a trial is the program's then, and no program
+    # that compiled with the containers stops compiling
+    diagnostics.TRYING = True
+    return self.cmp3(op, a, b)
+
+
+def gen_bcalled(self, op: str, t: str, side: int) -> bool:
+    # does comparison op (of BCMP) call a method that the program defines for an operand of
+    # type t, its left one (side 0) or its right one (side 1, the reflected method): the method
+    # of an object's class, written in the program (not a dataclass's generated one, which
+    # declines an object of another class unread). A class deriving from a builtin container
+    # keeps the container's method for each operator it does not define; any other class's
+    # != inverts its __eq__ where it defines no __ne__
+    if t not in self.classes:
+        return False
+    ms = self.classes[t].methods
+    m = BCMP[op][side]
+    if m in ms and not ms[m].synthetic:
+        return True
+    return op == "!=" and self.bkind(t) == "" and "__eq__" in ms and not ms["__eq__"].synthetic
 
 
 def gen_bfound(self, t: str, b: str) -> None:
