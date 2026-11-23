@@ -5,7 +5,8 @@ form"). Each program of SAMPLE is inspected, its typed-after module printed, par
 compiled with the compiler's own lowering (compile_module), and the LLVM must equal what the
 compiler emitted in that inspection, byte for byte. The sample covers classes, closures,
 generators, exceptions, unions, dynamic Any, promoting ints, tuples returned by value, closed
-recursion, the key kinds of empty dicts and sets, object dispatchers and C externs.
+recursion, the key kinds of empty dicts and sets, object dispatchers and C externs; a module with
+LLVM line tables and an extension module (pystachy ext) round-trip as well.
 
 Run with python3 -m unittest discover -s tools -p test_typed_ir_compile.py.
 """
@@ -156,6 +157,43 @@ class RoundTripTests(unittest.TestCase):
         dropped["attributes"]["directory"] = ""
         self.assertIn("but no files or directory for them to name", text.refusals(dropped)[0])
 
+    def test_an_extension_module_compiles_to_the_compilers_llvm(self):
+        # (pystachy ext: the module's name and the functions CPython sees, in the order of its
+        # table; an exception class of the program leaves as its builtin base, @pyx_excbase)
+        program = ROOT / "tests/ffi/ext/fastmath.py"
+        with tempfile.TemporaryDirectory() as directory:
+            report, snapshot, llvm = text.inspected(program, Path(directory), extension=True)
+        self.assertEqual(report["status"], "ok", report["diagnostics"])
+        self.assertEqual(report["settings"]["extension"], "fastmath")
+        self.assertIn("define ptr @PyInit_fastmath()", llvm)
+        module = text.module_from_snapshot(snapshot)
+        self.assertEqual(text.refusals(module), [])
+        self.assertEqual(module["attributes"]["extension"], "fastmath")
+        names = {r["symbol"]: r["attributes"]["name"] for r in module["functions"]}
+        self.assertEqual([names[x["function"]] for x in module["entries"]][:4], ["fib", "check", "shout", "words"])
+        self.assertEqual(module["classes"]["_TooBig"]["exception"], "ValueError")
+        written = text.format_module(module)
+        self.assertIn("\n  entry @f.fib\n", written)
+        parsed = text.parse_module(written)
+        self.assertEqual(text.format_module(parsed), written)
+        lowered = text.compile_module(parsed)
+        self.assertTrue(lowered == llvm, text.first_difference(llvm, lowered) if lowered != llvm else "")
+        # (the entries' order is that of CPython's table, whose index names each)
+        swapped = json.loads(json.dumps(parsed))
+        swapped["entries"][:2] = swapped["entries"][1::-1]
+        self.assertNotEqual(text.compile_module(swapped), llvm)
+        # (an entry is a public function of the main module that the module compiles, named once)
+        private = next(symbol for symbol, name in names.items() if name == "_helper")
+        for change, expected in ((lambda m: m["entries"].append({"function": private}), "_helper is not a public function of the main module"),
+                                 (lambda m: m["entries"].append({"function": "@f.none"}), "entry @f.none: no function of the module"),
+                                 (lambda m: m["entries"].append(dict(m["entries"][0])), "a second entry named fib"),
+                                 (lambda m: m["attributes"].update(extension=""), "entries are an extension module's")):
+            with self.subTest(expected=expected):
+                changed = json.loads(json.dumps(parsed))
+                change(changed)
+                with self.assertRaisesRegex(text.TextError, expected):
+                    text.compile_module(changed)
+
     def test_state_left_out_of_the_text_changes_the_llvm(self):
         # (each of these is state lowering reads: without it, the module compiles to other LLVM,
         # which the round trip finds, or is refused)
@@ -181,7 +219,6 @@ class RoundTripTests(unittest.TestCase):
         module, _ = self.module("tests/programs/exceptions/exc_as_rebind.py")
         for change, expected in (
                 (lambda a: a.update(complete=False), "does not declare the state that lowering reads"),
-                (lambda a: a.update(extension="fast"), "extension module fast (pystachy ext"),
                 (lambda a: a.update(rtmode=True), "runtime.py's module (pystachy rt"),
                 (lambda a: a.update(debuglines=True), "but no files or directory for them to name"),
                 (lambda a: a["unsupported"].append("something new"), "something new")):
@@ -215,7 +252,7 @@ class RoundTripTests(unittest.TestCase):
 class LoweringTextTests(unittest.TestCase):
     """The declarations and attributes that hold lowering's state print and read back."""
 
-    MODULE = """module version=2 complete opts=[fieldtbaa tupleret] exceptions protocol dynamic promoting debuglines directory=/work plain=[gen[int]] untracked=[m] objects=[Point:0 "odd name":1] compared=[Point] hashed=[Point] unequal=[Point] crossed=["odd name"] {
+    MODULE = """module version=2 complete opts=[fieldtbaa tupleret] exceptions protocol dynamic promoting extension=fast debuglines directory=/work plain=[gen[int]] untracked=[m] objects=[Point:0 "odd name":1] compared=[Point] hashed=[Point] unequal=[Point] crossed=["odd name"] {
   class Point tag=1 fields=[" class":int x:int] module=m
   class Box template exception=ValueError
   class "odd name"
@@ -238,6 +275,7 @@ class LoweringTextTests(unittest.TestCase):
   keykind set[tuple[int,int]] kind="ptrtoint (ptr @s.1 to i64)" built="ptrtoint (ptr getelementptr (i8, ptr @s.1, i64 2) to i64)"
   file 0 path=m.py
   file 1 path="lib/odd name.py"
+  entry @f.go
 }
 
 function @f.go(n: int) -> int effects=R name=go class=Point decorator=staticmethod nullable module=m home=n kind=lambda export pyexport extern gret=dyn rdepth=%t3 casts=[4 9] closed tupleret=2 tupleconst tuplecalls=[%t5 %t7] line=12 {
@@ -269,6 +307,7 @@ entry:
                                       "tuplecalls": ["%t5", "%t7"], "line": 12})
         self.assertEqual(module["source_files"], [{"number": "0", "path": "m.py"}, {"number": "1", "path": "lib/odd name.py"}])
         self.assertEqual((module["attributes"]["debuglines"], module["attributes"]["directory"]), (True, "/work"))
+        self.assertEqual((module["attributes"]["extension"], module["entries"]), ("fast", [{"function": "@f.go"}]))
         # (the function's FnInfo and IFn hold its attributes, and give them back)
         fn = text.to_ifn(module["functions"][0])
         self.assertEqual((fn.f.name, fn.f.cls, fn.f.deco, fn.f.node.kind, fn.f.node.line, fn.rdepth, fn.casts, fn.n), ("go", "Point", "staticmethod", "lambda", 12, "%t3", [4, 9], 9))

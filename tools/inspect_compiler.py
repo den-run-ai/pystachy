@@ -92,7 +92,13 @@ def compiler_identity() -> dict:
             "python": platform.python_version(), "platform": platform.platform()}
 
 
-def base_report(source: str, function: str, typed_after_only: bool = False, stop_after: str = "lower") -> dict:
+def extension_name(source: str) -> str:
+    """The extension module that pystachy ext makes of a program (driver.main): its file's name."""
+    return source[source.rfind("/") + 1 : -3] if source.endswith(".py") else ""
+
+
+def base_report(source: str, function: str, typed_after_only: bool = False, stop_after: str = "lower",
+                extension: bool = False) -> dict:
     return {
         "schema_version": SCHEMA_VERSION, "status": "error",
         "compiler": compiler_identity(),
@@ -102,6 +108,7 @@ def base_report(source: str, function: str, typed_after_only: bool = False, stop
         "settings": {"environment": {k: os.environ[k] for k in ENV_KEYS if k in os.environ}
                      | {"PYSTACHY_IRCHECK": "1"},
                      "function_filter": function, "command": "ir", "executes_program": False,
+                     "extension": extension_name(source) if extension else "",
                      "forced_environment": {"PYSTACHY_IRCHECK": "1"},
                      "stop_after": stop_after,
                      "captures": "typed-after" if typed_after_only else "all"},
@@ -917,7 +924,8 @@ def worker(args) -> int:
     output = Path(args.output)
     typed_after_only = getattr(args, "typed_after_only", False)
     stop_after = getattr(args, "stop_after", "lower")
-    report = base_report(args.source, args.function, typed_after_only, stop_after)
+    extension = getattr(args, "extension", False)
+    report = base_report(args.source, args.function, typed_after_only, stop_after, extension)
     if typed_after_only:
         report["stages"][0]["status"] = "skipped"
     if stop_after == "finalize":
@@ -928,6 +936,14 @@ def worker(args) -> int:
     diagnostics.CAPTURED.clear()
     diagnostics.PHASE = "input"
     observer.install()
+    if extension:
+        # (pystachy ext: the program is the extension module named after its file, whose LLVM
+        # module ir prints, as ext compiles it before building the shared library)
+        def as_extension(original):
+            def compile_program(path, src, dirs, ext, backend=None):
+                return original(path, src, dirs, extension_name(path), backend)
+            return compile_program
+        observer.wrap(driver, "compile_program", as_extension)
     start = time.monotonic()
     old_argv = sys.argv
     exitcode = 2
@@ -1005,15 +1021,16 @@ def run_worker(args, output: Path) -> int:
     env["PYSTACHY_IRCHECK"] = "1"
     typed_after_only = getattr(args, "typed_after_only", False)
     stop_after = getattr(args, "stop_after", "lower")
+    extension = getattr(args, "extension", False)
     command = [sys.executable, str(Path(__file__).resolve()), args.source, "--output", str(output),
-               "--function", args.function, "--stop-after", stop_after, "--_worker"] + (["--typed-after-only"] if typed_after_only else []) + (["--guard-evidence"] if getattr(args, "guard_evidence", False) else [])
+               "--function", args.function, "--stop-after", stop_after, "--_worker"] + (["--typed-after-only"] if typed_after_only else []) + (["--guard-evidence"] if getattr(args, "guard_evidence", False) else []) + (["--extension"] if extension else [])
     start = time.monotonic()
     try:
         with (output / "worker.stderr").open("w", encoding="utf-8") as errors:
             run = subprocess.run(command, env=env, stdout=subprocess.DEVNULL, stderr=errors, timeout=args.timeout)
         exitcode = run.returncode
     except (subprocess.TimeoutExpired, OSError) as error:
-        report = base_report(args.source, args.function, typed_after_only, stop_after)
+        report = base_report(args.source, args.function, typed_after_only, stop_after, extension)
         timeout = isinstance(error, subprocess.TimeoutExpired)
         report["status"] = "timeout" if timeout else "error"
         report["diagnostics"].append(tool_diagnostic("PYS9002" if timeout else "PYS9001", "worker",
@@ -1022,7 +1039,7 @@ def run_worker(args, output: Path) -> int:
         write_json(output / "report.json", report)
         exitcode = 124 if timeout else 2
     if not (output / "report.json").exists():
-        report = base_report(args.source, args.function, typed_after_only, stop_after)
+        report = base_report(args.source, args.function, typed_after_only, stop_after, extension)
         report["diagnostics"].append(tool_diagnostic("PYS9001", "worker",
             f"Compilation worker exited {exitcode} without a report; see worker.stderr", args.source))
         report["elapsed_seconds"] = time.monotonic() - start
@@ -1043,6 +1060,8 @@ def main() -> int:
                         help="stop with retained typed IR, or include LLVM serialization (default: lower)")
     parser.add_argument("--guard-evidence", action="store_true",
                         help="retain union tags and nullcheck pass inputs/outputs for independent checking")
+    parser.add_argument("--extension", action="store_true",
+                        help="compile the program as pystachy ext does: the extension module named after its file")
     parser.add_argument("--_worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
     args.source = str(Path(args.source).absolute())

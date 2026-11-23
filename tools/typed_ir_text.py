@@ -58,9 +58,11 @@ lowering_state takes from the code generator once finalize_program has run (docs
 lists them by what lowering reads). A class also says whether it is a class template, the
 builtin exception class it derives from and its module; then come the holes' types (by number,
 from 1), globals, GC roots, module data (ir.Data), runtime functions and data, extern plans
-(lower_module.ExternDecl), the key kinds of holes' dicts and sets, in the compiler's order, and,
+(lower_module.ExternDecl), the key kinds of holes' dicts and sets, in the compiler's order,
 where the module has LLVM line tables (debuglines), the program's files (diagnostics.FILES, by
-number from 0), which its instructions' locations and its functions' `line` attributes name:
+number from 0), which its instructions' locations and its functions' `line` attributes name,
+and, where it is an extension module (extension=NAME: pystachy ext), the functions CPython sees,
+in the order of its table (lower_module.extension_entries):
 
     hole N [type=TYPE]
     global SYMBOL type=TYPE
@@ -71,6 +73,7 @@ number from 0), which its instructions' locations and its functions' `line` attr
     extern KEY symbol=SYMBOL [params=[TYPE ...]] result=TYPE [provided] [c] [csym=SYMBOL] ...
     keykind TYPE [kind=KIND] [built=KIND]
     file N path=PATH
+    entry SYMBOL
 
 A module with line tables also gives the directory its files' nodes name (`directory`, the
 compiler's working directory), and the text prints each instruction's location.
@@ -79,9 +82,9 @@ compiler's working directory), and the text prints each instruction's location.
 compiler's own lowering on it (compile_module): a module printed from a typed-after snapshot
 compiles to the LLVM module that the compiler emitted, byte for byte. It refuses (refusals) a
 module that does not declare lowering's state (complete), one whose printer named what it could
-not hold (unsupported), an extension module's entry points and runtime.py's module.
-`roundtrip` inspects programs (tools/inspect_compiler.py), prints each one's module,
-compiles it and compares the LLVM with what the compiler emitted.
+not hold (unsupported) and runtime.py's module. `roundtrip` inspects programs
+(tools/inspect_compiler.py; --extension: as pystachy ext compiles them), prints each one's
+module, compiles it and compares the LLVM with what the compiler emitted.
 
 One instruction is one line:
 
@@ -184,6 +187,7 @@ DECLARATIONS = {
                                   ("dynamic", "flag", False), ("narrow", "flag", False))),
     "keykind": ("key_kinds", "type", (("kind", "atom", ""), ("built", "atom", ""))),
     "file": ("source_files", "number", (("path", "atom", None),)),
+    "entry": ("entries", "function", ()),
 }
 # The tables a typed-after snapshot holds for the verifier (inspect_compiler.py): a snapshot with
 # them is printed as a module, whose other tables come from its "lowering" record, if any
@@ -1222,6 +1226,7 @@ def lowering_state(gen):
     hold yet is named in the attributes' unsupported, which compile refuses."""
     ir, specs, symbols, syntax, utils = compiler()
     from src.pystachy_compiler import diagnostics
+    from src.pystachy_compiler.lower_module import extension_entries
     unsupported = []
     for fn in gen.fns:
         # (state that to_ifn derives from the record: refuse what it would derive otherwise)
@@ -1236,7 +1241,12 @@ def lowering_state(gen):
         own = [len([k for k in table.values() if k >= len(ci.fields)]) for table in (ci.fflag, ci.fbox)]
         if own != [ci.nflag, ci.nbox]:
             unsupported.append(f"class {name}: its struct's flags and boxes are not those its fields name")
-    lowered = {fn.f.ll for fn in gen.fns}
+    lowered = {fn.f.ll: fn.f for fn in gen.fns}
+    # (pystachy ext: the functions CPython sees, which gen_pyext reads of Gen.funcs, as compiled)
+    entries = extension_entries(gen.funcs) if gen.ext != "" else []
+    for f in entries:
+        if lowered.get(f.ll) is not f:
+            unsupported.append(f"extension entry {f.name}: {f.ll} is not a function the program lowers")
     for table, keys in (("rdpass", list(gen.rdpass)), ("vrets", list(gen.vrets)), ("vconst", list(gen.vconst)),
                         ("vcalls", [key[: key.find(" ")] for key in gen.vcalls])):
         if any(key not in lowered for key in keys):
@@ -1267,6 +1277,7 @@ def lowering_state(gen):
                      "direct": p.direct, "declare": p.declare, "dynamic": p.dynamic, "narrow": p.narrow}
                     for key, p in gen.externs.items()],
         "key_kinds": [{"type": t, "kind": gen.keykinds.get(t, ""), "built": gen.builtkinds.get(t, "")} for t in kinds],
+        "entries": [{"function": f.ll} for f in entries],
         "functions": {fn.f.ll: function_attributes(fn, gen) for fn in gen.fns},
         "function_order": [fn.f.ll for fn in gen.fns],
     }
@@ -1280,8 +1291,6 @@ def refusals(module):
     if not a["complete"]:
         found.append("the module does not declare the state that lowering reads: print it from a typed-after "
                       "snapshot (tools/inspect_compiler.py), taken at the lowering boundary")
-    if a["extension"] != "":
-        found.append(f"the entry points of extension module {a['extension']} (pystachy ext: Gen.funcs, gen_pyext) are not serializable yet")
     if a["rtmode"]:
         found.append("runtime.py's module (pystachy rt: Gen.rtdefs) is not serializable yet")
     if a["debuglines"] and (len(module["source_files"]) == 0 or a["directory"] == ""):
@@ -1297,7 +1306,7 @@ def gen_for_module(module):
     require(not problems, "cannot compile the module: " + "; ".join(problems))
     ir, specs, symbols, syntax, utils = compiler()
     from src.pystachy_compiler.gen import Gen
-    from src.pystachy_compiler.lower_module import ExternDecl
+    from src.pystachy_compiler.lower_module import ExternDecl, extension_entries
     from src.pystachy_compiler.source_lines import SourceLines
     a = module["attributes"]
     g = Gen()
@@ -1308,6 +1317,7 @@ def gen_for_module(module):
     require([x["number"] for x in module["source_files"]] == [str(k) for k in range(len(module["source_files"]))],
             "files are numbered from 0, in order")
     g.opts = {o: True for o in a["opts"]}
+    g.ext = a["extension"]
     g.eh = a["exceptions"]
     g.gproto = a["protocol"]
     g.genplain = {t: True for t in a["plain"]}
@@ -1371,6 +1381,16 @@ def gen_for_module(module):
             g.vconst[symbol] = True
         for v in fa["tuplecalls"]:
             g.vcalls[f"{symbol} {v}"] = True
+    # pystachy ext: the functions CPython sees, in the order of its table (gen_pyext reads them
+    # of Gen.funcs): each a public function of the main module that the module compiles
+    require(not module["entries"] or a["extension"] != "", "entries are an extension module's")
+    compiled = {fn.f.ll: fn.f for fn in g.fns}
+    for x in module["entries"]:
+        f = compiled.get(x["function"])
+        require(f is not None, f"entry {x['function']}: no function of the module")
+        require(extension_entries({f.name: f}) == [f], f"entry {x['function']}: {f.name} is not a public function of the main module")
+        require(f.name not in g.funcs, f"entry {x['function']}: a second entry named {f.name}")
+        g.funcs[f.name] = f
     # (the typed program is final: lowering is the next stage, pipeline.py)
     g.pipeline.stage = "finalize"
     g.pipeline.history = ["prepare", "discover", "analyze", "optimize", "finalize"]
@@ -1507,10 +1527,11 @@ def module_roundtrip_errors(module):
     return []
 
 
-def inspected(program, directory, timeout=300.0):
+def inspected(program, directory, timeout=300.0, extension=False):
     """(report, typed-after snapshot or None, LLVM text or None) of a program, inspected in a
     new directory under directory (tools/inspect_compiler.py, typed-after only), with the
-    PYSTACHY_PATH that tests/run.sh gives it where it has a NAME.path."""
+    PYSTACHY_PATH that tests/run.sh gives it where it has a NAME.path; extension: as pystachy
+    ext compiles it, the extension module named after its file."""
     output = Path(directory) / "inspect"
     env = dict(os.environ)
     program = Path(program).resolve()
@@ -1519,7 +1540,8 @@ def inspected(program, directory, timeout=300.0):
                                   capture_output=True, text=True, check=True)
         env["PYSTACHY_PATH"] = str((ROOT / prepared.stdout.strip()).resolve())
     subprocess.run([sys.executable, str(ROOT / "tools/inspect_compiler.py"), str(program), "--output", str(output),
-                    "--typed-after-only", "--timeout", str(timeout)], cwd=ROOT, env=env, capture_output=True, check=False)
+                    "--typed-after-only", "--timeout", str(timeout)] + (["--extension"] if extension else []),
+                   cwd=ROOT, env=env, capture_output=True, check=False)
     report = json.loads((output / "report.json").read_text(encoding="utf-8"))
     snapshot = json.loads((output / "typed-after.json").read_text(encoding="utf-8")) if (output / "typed-after.json").exists() else None
     llvm = (output / "llvm.ll").read_text(encoding="latin-1") if (output / "llvm.ll").exists() else None
@@ -1535,14 +1557,15 @@ def first_difference(want, got):
     return f"the compiler's LLVM has {len(left)} lines, the text's {len(right)}"
 
 
-def roundtrip_program(program, timeout=300.0):
+def roundtrip_program(program, timeout=300.0, extension=False):
     """(status, detail) of a program's round trip: its typed-after module printed, parsed back and
     compiled (compile_module), the LLVM compared byte for byte with what the compiler emitted in
-    the same inspection. status: ok; differs (detail: where); refused (detail: what the module
-    cannot hold yet, refusals); rejected (the compiler rejects the program); error."""
+    the same inspection (extension: as pystachy ext compiles it). status: ok; differs (detail:
+    where); refused (detail: what the module cannot hold yet, refusals); rejected (the compiler
+    rejects the program); error."""
     with tempfile.TemporaryDirectory(prefix=".typed-ir-roundtrip-") as directory:
         try:
-            report, snapshot, llvm = inspected(program, directory, timeout)
+            report, snapshot, llvm = inspected(program, directory, timeout, extension)
         except (OSError, ValueError, subprocess.CalledProcessError) as error:
             return "error", f"inspection failed: {error}"
     if report["status"] != "ok" or snapshot is None or llvm is None:
@@ -1567,9 +1590,9 @@ def roundtrip_program(program, timeout=300.0):
 
 
 def roundtrip_worker(job):
-    program, timeout = job
+    program, timeout, extension = job
     try:
-        return program, roundtrip_program(program, timeout)
+        return program, roundtrip_program(program, timeout, extension)
     except Exception as error:  # (a measurement records every program, as an error)
         return program, ("error", f"{type(error).__name__}: {error}")
 
@@ -1584,6 +1607,8 @@ def main():
     parser.add_argument("--jobs", type=int, default=1, help="roundtrip: programs inspected at once (default: 1)")
     parser.add_argument("--timeout", type=float, default=300.0, help="roundtrip: each inspection's deadline in seconds")
     parser.add_argument("--records", type=Path, help="roundtrip: write each program's result here, as JSON lines")
+    parser.add_argument("--extension", action="store_true",
+                        help="roundtrip: compile each program as pystachy ext does, the extension module named after its file")
     args = parser.parse_args()
     if args.mode != "roundtrip" and len(args.path) != 1:
         parser.error(f"{args.mode} takes one file")
@@ -1646,7 +1671,7 @@ def roundtrip_main(args):
     the most common reasons of the programs that do not round-trip."""
     from collections import Counter
     from concurrent.futures import ProcessPoolExecutor
-    jobs = [(str(p), args.timeout) for p in args.path]
+    jobs = [(str(p), args.timeout, args.extension) for p in args.path]
     results = {}
     out = args.records.open("w", encoding="utf-8") if args.records is not None else None
     try:

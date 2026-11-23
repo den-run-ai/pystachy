@@ -52,6 +52,10 @@ it does not depend on observing each function as LLVM lowering consumes it.
 Failed compilations may stop before any typed IR or LLVM output is available;
 read `report.json` first.
 
+`--extension` compiles the program as `pystachy ext` does: the CPython extension module named
+after its file, whose LLVM module `llvm.ll` holds, without building the shared library. The
+report's `settings.extension` names the module.
+
 To inspect retained typed IR without serializing LLVM, add `--stop-after finalize`.
 This still prepares, discovers, analyzes, optimizes and finalizes the whole
 reachable program, including inference retries and module admission checks.
