@@ -845,9 +845,9 @@ def gen_iface_adapter(self, tab: ITab, k: int) -> str:
         msg = mk("str", f"{'format' if op == 'format()' else op[2:-2]}() of {what} held by a value of {typestr(tab.iface)} is not supported", line, [])
         body = [mk("raise", "", line, [mk("call", "", line, [mk("name", "NotImplementedError", line, []), msg])])]
     f.node.kids = [mk("params", "-1,-1", line, []), mk("noann", "", line, []), mk("block", "", line, body)]
-    self.making.append(f"making the table of {typestr(tab.impl)} as {typestr(tab.iface)} (for {face.dshow[op] if derived else op}), converted at {where(line)}")
     if note != "":
-        self.making.append(note)
+        self.making.append(note)  # (said after the table's making, as an error says the innermost first: err)
+    self.making.append(f"making the table of {typestr(tab.impl)} as {typestr(tab.iface)} (for {face.dshow[op] if derived else op}), converted at {where(line)}")
     if bad != "":
         self.err(bad)
     fr = self.save()
@@ -968,7 +968,7 @@ def eq_how(self, tab: ITab, op: str, e: Node) -> str:
     # tab.impl with a value of type T, where the compiler's own comparison of the two types does
     # not compile (eq_default: the entry tries it, eq_try); "" where that comparison decides
     parts = op.split("|", 2)
-    if tab.iface != OBJECT or len(parts) != 3 or (parts[0] != "==" and parts[0] != "!=") or parts[2] == "None":
+    if len(parts) != 3 or (parts[0] != "==" and parts[0] != "!=") or parts[2] == "None":
         return ""
     if self.is_iface(unopt(parts[2])) or self.is_iface(tab.impl) or e.kind != "cmp" or len(e.kids) != 2 or e.kids[0].kind != "name" or e.kids[1].kind != "name":
         return ""
@@ -981,7 +981,7 @@ def eq_note(self, tab: ITab, op: str, e: Node) -> str:
     # left operand's class defines the method CPython calls (__eq__, or __ne__ for !=) annotated
     # to take a type that the right operand's is not: "" for another entry
     parts = op.split("|", 2)
-    if tab.iface != OBJECT or len(parts) != 3 or (parts[0] != "==" and parts[0] != "!=") or e.kind != "cmp" or len(e.kids) != 2 or e.kids[0].kind != "name" or e.kids[1].kind != "name":
+    if len(parts) != 3 or (parts[0] != "==" and parts[0] != "!=") or e.kind != "cmp" or len(e.kids) != 2 or e.kids[0].kind != "name" or e.kids[1].kind != "name":
         return ""
     ts = [tab.impl if x.s == "_o" else parts[2] for x in e.kids]
     c = ts[0]
@@ -996,7 +996,7 @@ def eq_note(self, tab: ITab, op: str, e: Node) -> str:
                 t = f.ptypes[1] if len(f.ptypes) == 2 else ""
                 if t == "" or self.is_object(t) or t == "dyn" or t == ts[1]:
                     return ""
-                return f"{short(c)}.{m}() takes only {typestr(t)}, where CPython calls it with any value that a value of object holds: annotate its parameter object and narrow it with isinstance()"
+                return f"{short(c)}.{m}() takes only {typestr(t)}, where CPython calls it with any value that a value of {typestr(tab.iface)} holds: annotate its parameter object and narrow it with isinstance()"
         c = ci.base
     return ""
 

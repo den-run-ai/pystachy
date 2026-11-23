@@ -1048,11 +1048,15 @@ implementations may meet at run time, so `==` and `!=` are compiled for each pai
 [objects of two classes compare](semantics.md#object-protocols): plain classes, dataclasses,
 NamedTuples and builtin values need nothing
 ([tests](../../tests/programs/classes/protocol_equality_pairs.py),
-[records](../../tests/programs/classes/protocol_equality_records.py)). An implementation whose
+[records](../../tests/programs/classes/protocol_equality_records.py)). Where neither
+implementation's comparison takes the other (an exception class and a dataclass, an enum and a
+NamedTuple) and neither defines `__eq__`, CPython's identity answers, `False` (`True` for
+`!=`), and a class's `__eq__` that takes `object` is called, reflected where the other declines
+([test](../../tests/programs/classes/protocol_eq_implementers.py)). An implementation whose
 `__eq__` is annotated to take only its own class (`other: "Money"`), which CPython would call
 with any object, rejects the comparison of the protocol's values: annotate `other: object` and
-test it with `isinstance()`. So does an implementation of a library class or an exception class
-that has no method for another implementation.
+test it with `isinstance()`. So does an implementation of a library class that has no method
+for another implementation.
 Orderings, dict keys and set elements, searches and sorts of containers of protocol values
 (`in` a list, `count()`, `index()`, `sort()`, `min()`, `max()`), `id()`, `type()` and other
 reflection, `isinstance()` with another type and class patterns are compilation errors.
