@@ -23,6 +23,13 @@ under load, about ten programs per corpus run. The runner wraps each WASI import
 JavaScript function. This avoids the affected fast-call path within the guest and leaves
 the embedding process's V8 flags alone.
 
+The command-line runner runs the guest on a worker thread with a 256 MiB stack. On Node's
+main thread, V8 allows under 1 MiB, about 11,000 frames of a small recursive function, so a
+program that raised `sys.setrecursionlimit()` trapped where native code raises
+`RecursionError`. The runtime's stack floor bounds only the 8 MiB linear-memory stack:
+recursion past the engine's own stack still traps (status 134). Embedded runners use their
+caller's thread and its stack.
+
 `wasm/build.sh program` runs `pystachy ir`, adapts the IR to wasm32 (`wasm32_ir.py`),
 compiles it with `clang --target=wasm32-wasi -O2` and links it with `wasm-ld` against the
 runtime. The link treats a signature mismatch as an error, because a mismatched call traps.

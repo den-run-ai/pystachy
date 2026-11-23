@@ -76,6 +76,20 @@ function command(getSizes = "args_sizes_get", trap = false) {
   );
 }
 
+// Exit with f(1,000,000) & 255 = 64, where f(n) = n ? f(n - 1) + 1 : 0 holds a million frames:
+// tens of MiB, past V8's default stack of under 1 MiB.
+function recurse() {
+  const f = [0x20, 0, 0x04, i32, 0x20, 0, 0x41, 1, 0x6b, 0x10, 1, 0x41, 1, 0x6a, 0x05, 0x41, 0, 0x0b];
+  return wasm(
+    section(1, 3, fn([i32], [i32]), fn([i32], []), fn([], [])),
+    section(2, 1, imp("wasi_snapshot_preview1", "proc_exit", 0, 1)),
+    section(3, 2, 0, 2),
+    section(5, 1, 0, 1),
+    section(7, 2, exp("memory", 2, 0), exp("_start", 0, 2)),
+    section(10, 2, body(...f), body(0x41, 0xc0, 0x84, 0x3d, 0x10, 1, 0x41, 0xff, 0x01, 0x71, 0x10, 0)),
+  );
+}
+
 // Do finite CPU work in the normal entry point, or in the Wasm start section
 // that runs before the instance constructor returns. Both routes use the same loop.
 function countdown(entry, runAtInstantiation) {
@@ -173,4 +187,11 @@ test("CLI preserves argv and guest exit status", async (t) => {
   const cli = spawnSync(process.execPath, [fileURLToPath(new URL("./run.mjs", import.meta.url)), path, "one"]);
   assert.equal(cli.status, 2, cli.stderr.toString());
   assert.doesNotMatch(cli.stderr.toString(), /usage:/);
+});
+
+test("CLI runs the guest on a stack that holds a million frames", async (t) => {
+  const path = join(await temp(t), "recurse.wasm");
+  await writeFile(path, recurse());
+  const cli = spawnSync(process.execPath, [fileURLToPath(new URL("./run.mjs", import.meta.url)), path]);
+  assert.equal(cli.status, 64, cli.stderr.toString());
 });

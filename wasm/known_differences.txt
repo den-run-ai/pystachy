@@ -116,5 +116,3 @@ math_more libm
 port_sgp4_api libm
 upstream_math_functions libm
 upstream_math_testfiles libm
-
-recursion_stack_floor #1721

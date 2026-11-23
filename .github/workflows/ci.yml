@@ -197,7 +197,8 @@ jobs:
             tests/programs/language/varargs_stack.py tests/programs/reflection/reflect_vars_widths.py \
             tests/programs/reflection/getattr_hook_lookup.py \
             tests/programs/io/bfile_basic.py tests/programs/io/bfile_truncate_read.py \
-            tests/programs/numbers/float_span.py tests/programs/upstream/upstream_math_fma.py
+            tests/programs/numbers/float_span.py tests/programs/upstream/upstream_math_fma.py \
+            tests/programs/language/recursion_stack_floor.py
           # A matching recording through LLVM fallback must not mask lost direct coverage.
           for source in "${direct_cases[@]}"; do
             grep -Fxq "$source emitted" "$routes" || { cat "$routes"; exit 1; }
