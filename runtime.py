@@ -7444,6 +7444,7 @@ def list_item_eq(x: _rt.Ptr, i: int, y: _rt.Ptr, j: int, d: _rt.Ptr) -> bool:
     return list_same_item(x, i, y, j) or eqitem(_rt.word(_rt.getp(x, "List.a"), i), _rt.word(_rt.getp(y, "List.a"), j), d)
 
 
+@_rt.noinline
 @_rt.unchecked
 def pys_rt_list_item_eq(l: _rt.Ptr, i: int, v: int, d: str) -> int:
     # l[i] == v of the list searches (lists.py's), where an item's __eq__ may run
