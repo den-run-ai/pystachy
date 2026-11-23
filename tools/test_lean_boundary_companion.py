@@ -30,6 +30,7 @@ class RuntimeCompanionTests(unittest.TestCase):
     def setUpClass(cls):
         cls.runtime = companion.ROOT / "runtime.c"
         cls.source = cls.runtime.read_text()
+        cls.python = (companion.ROOT / "runtime.py").read_text(encoding="utf-8")
         cls.candidate = companion.normalize_runtime(cls.runtime)
 
     def changed(self, old, new):
@@ -41,6 +42,14 @@ class RuntimeCompanionTests(unittest.TestCase):
             path.write_text(source)
             return companion.normalize_runtime(path)
 
+    def changed_py(self, old, new):
+        # the constructor, growth and slice copy are runtime.py's: the same control on its source
+        self.assertEqual(self.python.count(old), 1, old)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "runtime.py"
+            path.write_text(self.python.replace(old, new), encoding="utf-8")
+            return companion.normalize_runtime(self.runtime, path)
+
     def test_live_allocations_layout_and_identity_offsets(self):
         self.assertEqual(self.candidate, CANDIDATE)
 
@@ -50,13 +59,25 @@ class RuntimeCompanionTests(unittest.TestCase):
 
     @unittest.skipUnless(companion.CHECKER.is_file(), "build the Lean companion checker")
     def test_each_atomic_allocation_loses_a_required_edge(self):
-        for allocation in ("pys_alloc(sizeof(List) + INLINE_CAP * sizeof(I))",
-                           "pys_alloc(sizeof(List) - 1)",
-                           "pys_alloc((l->cap + 1) * sizeof(I))",
-                           "pys_alloc((c + 1) * sizeof(I))"):
+        allocation = "pys_alloc((l->cap + 1) * sizeof(I))"
+        self.assertFalse(companion.checked(self.changed(allocation, allocation.replace("pys_alloc(", "pys_alloc_atomic("))))
+        for allocation in ('pys_alloc(_rt.sizeof("List") + 32)', 'pys_alloc(_rt.sizeof("List") - 1)', "pys_alloc((c + 1) * 8)"):
             with self.subTest(allocation=allocation):
-                changed = self.changed(allocation, allocation.replace("pys_alloc(", "pys_alloc_atomic("))
+                changed = self.changed_py(allocation, allocation.replace("pys_alloc(", "pys_alloc_atomic("))
                 self.assertFalse(companion.checked(changed))
+
+    def test_each_atomic_allocation_changes_the_derived_edge(self):
+        # (without the Lean checker: the fact that it would reject is the one derived)
+        for allocation, key in (('pys_alloc(_rt.sizeof("List") + 32)', "header_scanned"), ('pys_alloc(_rt.sizeof("List") - 1)', "header_scanned"),
+                                ("pys_alloc((c + 1) * 8)", "growth")):
+            with self.subTest(allocation=allocation):
+                changed = self.changed_py(allocation, allocation.replace("pys_alloc(", "pys_alloc_atomic("))
+                expected = copy.deepcopy(CANDIDATE)
+                if key == "growth":
+                    expected["growth"]["array_scanned"] = False
+                else:
+                    expected[key] = False
+                self.assertEqual(changed, expected)
 
     def test_missing_wrong_and_overwritten_attachment_fail_closed(self):
         mask = 11 if "ids[0] = kind & 11; l->ids = ids;" in self.source else 3
@@ -69,7 +90,6 @@ class RuntimeCompanionTests(unittest.TestCase):
     def test_changed_extent_and_identity_stores_fail_closed(self):
         for old, new in (
                 ("I *ids = pys_alloc((l->cap + 1) * sizeof(I));", "I *ids = pys_alloc(l->cap * sizeof(I));"),
-                ("List *l = pys_alloc(sizeof(List) - 1);", "List *l = pys_alloc(sizeof(List) - 9);"),
                 ("pys_list_identity(l, kind); l->ids[i + 1] = (I)id; AT(l, i) = v;",
                  "pys_list_identity(l, kind); l->ids[i] = (I)id; AT(l, i) = v;"),
                 ("pys_list_identity(l, kind); l->ids[i + 1] = (I)id; AT(l, i) = v;",
@@ -82,6 +102,12 @@ class RuntimeCompanionTests(unittest.TestCase):
                 ("return (Dyn *)l->ids[i + 1];", "return (Dyn *)l->a[i + 1];")):
             with self.subTest(new=new), self.assertRaises(ValueError):
                 self.changed(old, new)
+        for old, new in (('l = pys_alloc(_rt.sizeof("List") - 1)', 'l = pys_alloc(_rt.sizeof("List") - 9)'),
+                         ('l = pys_alloc(_rt.sizeof("List") + 32)', 'l = pys_alloc(_rt.sizeof("List") + 24)'),
+                         ('        _rt.setp(l, "List.a", list_inline(l))\n        return l', '        _rt.setp(l, "List.ids", list_inline(l))\n        return l'),
+                         ('    _rt.setp(l, "List.a", item_array(c, atomic))', '    _rt.setp(l, "List.ids", item_array(c, atomic))')):
+            with self.subTest(new=new), self.assertRaisesRegex(ValueError, "unsupported companion function shape: pys_list_make"):
+                self.changed_py(old, new)
 
     def test_macro_cannot_redirect_raw_store_into_the_identity_array(self):
         # Reference contract deliberately spells out Slot/a instead of using AT.
@@ -95,37 +121,48 @@ class RuntimeCompanionTests(unittest.TestCase):
             self.changed(declaration, "#define I int32_t\n" + declaration + "\n#undef I")
 
     def test_growth_copy_extent_source_and_attachment_are_checked(self):
-        copy = "memcpy(ids, l->ids, (l->len + 1) * sizeof(I)); l->ids = ids;"
+        copied = '        _rt.cpy(ids, _rt.getp(l, "List.ids"), (_rt.get(l, "List.len") + 1) * 8)\n'
+        attached = '        _rt.setp(l, "List.ids", ids)\n'
         for replacement in (
-                "memcpy(ids, l->ids, l->len * sizeof(I)); l->ids = ids;",
-                "memcpy(ids, l->ids + 1, (l->len + 1) * sizeof(I)); l->ids = ids;",
-                "memcpy(ids + 1, l->ids, (l->len + 1) * sizeof(I)); l->ids = ids;",
-                "memcpy(ids, l->a, (l->len + 1) * sizeof(I)); l->ids = ids;",
-                "memcpy(ids, l->ids, (l->len + 1) * sizeof(I));",
-                copy + " l->ids = NULL;"):
-            with self.subTest(replacement=replacement), self.assertRaises(ValueError):
-                self.changed(copy, replacement)
+                '        _rt.cpy(ids, _rt.getp(l, "List.ids"), _rt.get(l, "List.len") * 8)\n' + attached,
+                '        _rt.cpy(ids, _rt.at(_rt.getp(l, "List.ids"), 1), (_rt.get(l, "List.len") + 1) * 8)\n' + attached,
+                '        _rt.cpy(_rt.at(ids, 1), _rt.getp(l, "List.ids"), (_rt.get(l, "List.len") + 1) * 8)\n' + attached,
+                '        _rt.cpy(ids, _rt.getp(l, "List.a"), (_rt.get(l, "List.len") + 1) * 8)\n' + attached,
+                '        _rt.move(ids, _rt.getp(l, "List.ids"), (_rt.get(l, "List.len") + 1) * 8)\n' + attached,
+                copied,
+                copied + '        _rt.setp(l, "List.a", ids)\n',
+                copied + attached + '        _rt.setp(l, "List.ids", _rt.nil())\n'):
+            with self.subTest(replacement=replacement), self.assertRaisesRegex(ValueError, "unsupported companion function shape: pys_list_reserve"):
+                self.changed_py(copied + attached, replacement)
         with self.assertRaises(ValueError):
-            self.changed("I *ids = pys_alloc((c + 1) * sizeof(I));",
-                         "I *ids = pys_alloc(c * sizeof(I));")
+            self.changed_py("ids = pys_alloc((c + 1) * 8)", "ids = pys_alloc(c * 8)")
 
     def test_slice_copy_extent_offsets_and_result_are_checked(self):
-        copy = "memcpy(r->ids + 1, l->ids + lo + 1, (hi - lo) * 8);"
+        copied = '        _rt.cpy(_rt.at(_rt.getp(r, "List.ids"), 1), _rt.at(ids, lo + 1), (hi - lo) * 8)\n'
         for replacement in (
-                "memcpy(r->ids + 1, l->ids + lo, (hi - lo) * 8);",
-                "memcpy(r->ids, l->ids + lo + 1, (hi - lo) * 8);",
-                "memcpy(r->ids + 1, l->ids + lo + 1, (hi - lo - 1) * 8);",
-                "memcpy(r->ids + 1, l->a + lo + 1, (hi - lo) * 8);",
-                copy + " r->ids = l->ids;"):
-            with self.subTest(replacement=replacement), self.assertRaises(ValueError):
-                self.changed(copy, replacement)
-        with self.assertRaises(ValueError):
-            self.changed("return pys_list_slice(l, NONE, NONE);", "return pys_list_slice(l, 1, NONE);")
+                '        _rt.cpy(_rt.at(_rt.getp(r, "List.ids"), 1), _rt.at(ids, lo), (hi - lo) * 8)\n',
+                '        _rt.cpy(_rt.getp(r, "List.ids"), _rt.at(ids, lo + 1), (hi - lo) * 8)\n',
+                '        _rt.cpy(_rt.at(_rt.getp(r, "List.ids"), 1), _rt.at(ids, lo + 1), (hi - lo - 1) * 8)\n',
+                '        _rt.cpy(_rt.at(_rt.getp(r, "List.ids"), 1), _rt.at(_rt.getp(l, "List.a"), lo + 1), (hi - lo) * 8)\n',
+                copied + '        _rt.setp(r, "List.ids", ids)\n'):
+            with self.subTest(replacement=replacement), self.assertRaisesRegex(ValueError, "unsupported companion function shape: pys_list_slice"):
+                self.changed_py(copied, replacement)
+        with self.assertRaisesRegex(ValueError, "unsupported companion function shape: pys_list_copy"):
+            self.changed_py("return pys_list_slice(l, -9223372036854775807 - 1, -9223372036854775807 - 1)",
+                            "return pys_list_slice(l, 1, -9223372036854775807 - 1)")
 
-    def test_macros_cannot_rewrite_the_independent_copy_contract(self):
-        start = "static void reserve(List *l, I n) {"
-        with self.assertRaisesRegex(ValueError, "unsupported companion function shape: reserve"):
-            self.changed(start, "#define memcpy(dst, src, size) memset(dst, 0, size)\n" + start)
+    def test_runtime_py_cannot_redefine_what_the_contract_calls(self):
+        # the contract's trees name the allocator: runtime.py may only declare it
+        declared = "def pys_alloc(n: int) -> _rt.Ptr: ...\n"
+        for replacement in ("def pys_alloc(n: int) -> _rt.Ptr:\n    return pys_alloc_atomic(n)\n",
+                            declared + "def pys_alloc(n: int) -> _rt.Ptr: ...\n",
+                            ""):
+            with self.subTest(replacement=replacement), self.assertRaisesRegex(ValueError, "allocator|declare"):
+                self.changed_py(declared, replacement)
+        with self.assertRaisesRegex(ValueError, "binds a module name"):
+            self.changed_py(declared, declared + "pys_alloc_atomic = pys_alloc\n")
+        with self.assertRaisesRegex(ValueError, "duplicate companion function"):
+            self.changed_py("def pys_list_copy(l: _rt.Ptr) -> _rt.Ptr:\n", "def pys_list_copy(l: _rt.Ptr) -> _rt.Ptr:\n    return l\n\n\ndef pys_list_copy(l: _rt.Ptr) -> _rt.Ptr:\n")
 
     def test_clean_companion_fast_path_cannot_mutate_or_reclassify(self):
         guard = "if (!l->ids || (l->ids[0] & 4) || ((kind & 3) == 1 && big_list(l)))"
@@ -158,7 +195,7 @@ class RuntimeCompanionTests(unittest.TestCase):
             self.changed(header, overlapping)
 
     def test_field_macros_cannot_redirect_both_code_and_layout_extraction(self):
-        start = "static List *list_new(I cap, int atomic) {"
+        start = "static __attribute__((noinline)) void list_identity_slow(List *l, I kind) {"
         with self.assertRaisesRegex(ValueError, "unsupported companion function shape"):
             self.changed(start, "#define ids a\n" + start)
 

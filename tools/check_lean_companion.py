@@ -4,11 +4,15 @@
 The contract covers an initialized companion, successful in-bounds stores and
 successful reserve/slice copies. Materialization, allocation-time liveness,
 callbacks and the concrete allocator/collector remain outside the proof. The
-bounded C-AST adapter fails closed on unknown shapes; it is part of the trusted base.
+bounded adapters fail closed on unknown shapes and are part of the trusted base:
+clang's AST of the functions that runtime.c defines, and Python's of the list
+constructor, growth and slice copy, which runtime.py defines.
 """
 from __future__ import annotations
 
 import argparse
+import ast
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -17,6 +21,7 @@ import subprocess
 import sys
 
 import check_lean_alias as alias
+from src.pystachy_compiler.specs import RTRECORDS
 
 ROOT = alias.ROOT
 CHECKER = ROOT / "tools/lean_boundary/.lake/build/bin/pystachy-companion"
@@ -27,15 +32,6 @@ CHECKER = ROOT / "tools/lean_boundary/.lake/build/bin/pystachy-companion"
 # list kind's 3/11 masks do not change an address or scanned extent; materializing
 # a correct numeric value is deliberately not claimed by the tracing theorem.
 CONTRACTS = r"""
-static List *companion_contract_list_new(I cap, int atomic) {
-  if (!atomic && cap <= INLINE_CAP) {
-    List *l = pys_alloc(sizeof(List) + INLINE_CAP * sizeof(I));
-    l->cap = INLINE_CAP; l->a = inline_items(l); return l;
-  }
-  List *l = pys_alloc(sizeof(List) - 1);
-  l->cap = cap > INLINE_CAP ? cap : INLINE_CAP;
-  l->a = item_array(l->cap, atomic); return l;
-}
 static void companion_contract_list_identity_slow(List *l, I kind) {
   opt_in();
   if (big_list(l) && (kind & 3) == 1) {
@@ -70,39 +66,79 @@ static int companion_contract_big_list(List *l) {
 static void companion_contract_pys_list_identity(List *l, I kind) {
   if (!l->ids || (l->ids[0] & 4) || ((kind & 3) == 1 && big_list(l))) list_identity_slow(l, kind);
 }
-static void companion_contract_reserve(List *l, I n) {
-  if (n <= l->cap) return;
-  I c = l->cap * 2 > n ? l->cap * 2 : n, *a;
-  if (c < INLINE_CAP) c = INLINE_CAP;
-  if (l->a == empty_inline && c == INLINE_CAP) a = inline_items(l);
-  else {
-    a = item_array(c, atomic_items(l->a));
-    memcpy(a, l->a, l->len * 8);
-    if (l->a == inline_items(l)) memset(l->a, 0, INLINE_CAP * sizeof(I));
-  }
-  l->a = a;
-  if (l->ids && opt_in()) {
-    if (c > INT64_MAX / (I)sizeof(I) - 1) oom();
-    I *ids = pys_alloc((c + 1) * sizeof(I));
-    memcpy(ids, l->ids, (l->len + 1) * sizeof(I)); l->ids = ids;
-  }
-  l->cap = c;
-}
-static List *companion_contract_pys_list_slice(List *l, I lo, I hi) {
-  span(&lo, &hi, l->len);
-  if (l->ids && opt_in()) pys_list_identity(l, l->ids[0]);
-  List *r = list_new(hi - lo, atomic_items(l->a));
-  if (l->ids && opt_in()) {
-    pys_list_identity(r, l->ids[0]); memcpy(r->ids + 1, l->ids + lo + 1, (hi - lo) * 8);
-  }
-  memcpy(r->a, l->a + lo, (hi - lo) * 8); r->len = hi - lo; return r;
-}
-static List *companion_contract_pys_list_copy(List *l) {
-  return pys_list_slice(l, NONE, NONE);
-}
 """
-FUNCTIONS = ("list_new", "list_identity_slow", "pys_list_set_identity", "pys_list_get_identity",
-             "big_list", "pys_list_identity", "reserve", "pys_list_slice", "pys_list_copy")
+FUNCTIONS = ("list_identity_slow", "pys_list_set_identity", "pys_list_get_identity",
+             "big_list", "pys_list_identity")
+
+# runtime.py defines the constructor, growth and the slice copy. Python parses these bounded
+# contracts as it parses runtime.py, and the trees must be equal: every statement, call,
+# operand and field name. A field is a literal that the compiler resolves in RTRECORDS, whose
+# List record must be the header that clang lays out (tools/check_runtime.py compares the
+# two as well). Comments are no part of a tree.
+PY_CONTRACTS = '''
+@_rt.unchecked
+def pys_list_make(cap: int, atomic: int) -> _rt.Ptr:
+    if atomic == 0 and cap <= 4:
+        l = pys_alloc(_rt.sizeof("List") + 32)
+        _rt.set(l, "List.cap", 4)
+        _rt.setp(l, "List.a", list_inline(l))
+        return l
+    l = pys_alloc(_rt.sizeof("List") - 1)
+    c = cap if cap > 4 else 4
+    _rt.set(l, "List.cap", c)
+    _rt.setp(l, "List.a", item_array(c, atomic))
+    return l
+
+
+@_rt.unchecked
+def pys_list_reserve(l: _rt.Ptr, n: int) -> None:
+    if n <= _rt.get(l, "List.cap"):
+        return
+    c = _rt.get(l, "List.cap") * 2 if _rt.get(l, "List.cap") * 2 > n else n
+    if c < 4:
+        c = 4
+    a = _rt.nil()
+    if _rt.getp(l, "List.a") is pys_rt_empty_inline() and c == 4:
+        a = list_inline(l)
+    else:
+        a = item_array(c, pys_rt_atomic_items(_rt.getp(l, "List.a")))
+        _rt.cpy(a, _rt.getp(l, "List.a"), _rt.get(l, "List.len") * 8)
+        if _rt.getp(l, "List.a") is list_inline(l):
+            _rt.fill(_rt.getp(l, "List.a"), 0, 32)
+    _rt.setp(l, "List.a", a)
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
+        if c > 1152921504606846974:
+            pys_rt_oom()
+        ids = pys_alloc((c + 1) * 8)
+        _rt.cpy(ids, _rt.getp(l, "List.ids"), (_rt.get(l, "List.len") + 1) * 8)
+        _rt.setp(l, "List.ids", ids)
+    _rt.set(l, "List.cap", c)
+
+
+@_rt.unchecked
+def pys_list_slice(l: _rt.Ptr, lo: int, hi: int) -> _rt.Ptr:
+    n = _rt.get(l, "List.len")
+    lo = span_lo(lo, n)
+    hi = span_hi(hi, n)
+    if hi < lo:
+        hi = lo
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
+        pys_list_identity(l, _rt.word(_rt.getp(l, "List.ids"), 0))
+    r = pys_list_make(hi - lo, pys_rt_atomic_items(_rt.getp(l, "List.a")))
+    if not _rt.null(_rt.getp(l, "List.ids")) and pys_rt_opt_in() != 0:
+        ids = _rt.getp(l, "List.ids")
+        pys_list_identity(r, _rt.word(ids, 0))
+        _rt.cpy(_rt.at(_rt.getp(r, "List.ids"), 1), _rt.at(ids, lo + 1), (hi - lo) * 8)
+    _rt.cpy(_rt.getp(r, "List.a"), _rt.at(_rt.getp(l, "List.a"), lo), (hi - lo) * 8)
+    _rt.set(r, "List.len", hi - lo)
+    return r
+
+
+def pys_list_copy(l: _rt.Ptr) -> _rt.Ptr:
+    return pys_list_slice(l, -9223372036854775807 - 1, -9223372036854775807 - 1)
+'''
+PY_FUNCTIONS = ("pys_list_make", "pys_list_reserve", "pys_list_slice", "pys_list_copy")
+ALLOCATORS = ("pys_alloc", "pys_alloc_atomic")
 
 # Source macros must not rewrite the independent reference operations. The live
 # functions were parsed before these undefines, so redirecting memcpy or an
@@ -193,6 +229,42 @@ def allocations(tree):
     return found
 
 
+def python_functions(source):
+    """The contract's functions in runtime.py's source, by name, and its allocators' declarations."""
+    found, declared = {}, {}
+    for node in ast.parse(source).body:
+        if isinstance(node, ast.FunctionDef) and node.name in PY_FUNCTIONS:
+            alias.require(node.name not in found, "duplicate companion function: " + node.name)
+            found[node.name] = node
+        elif isinstance(node, ast.FunctionDef) and node.name in ALLOCATORS:
+            # runtime.c's allocator, which runtime.py only declares: a definition of that name
+            # would give every call in the contract another meaning
+            body = node.body[0] if len(node.body) == 1 else None
+            alias.require(node.name not in declared and isinstance(body, ast.Expr)
+                          and isinstance(body.value, ast.Constant) and body.value.value is Ellipsis
+                          and not node.decorator_list, "runtime.py must only declare " + node.name)
+            declared[node.name] = True
+        else:
+            alias.require(not isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign, ast.ClassDef)),
+                          "runtime.py binds a module name outside its functions")
+    return found, declared
+
+
+def python_shape(node):
+    """The tree with either allocator's name as one: the inventory, not the shape, tells them apart."""
+    node = copy.deepcopy(node)
+    for child in ast.walk(node):
+        if isinstance(child, ast.Name) and child.id in ALLOCATORS:
+            child.id = "allocation"
+    return ast.dump(node)
+
+
+def python_allocations(node):
+    calls = [child for child in ast.walk(node) if isinstance(child, ast.Call)
+             and isinstance(child.func, ast.Name) and child.func.id in ALLOCATORS]
+    return [call.func.id for call in sorted(calls, key=lambda call: (call.lineno, call.col_offset))]
+
+
 def physical_layout(path):
     source = '#include ' + json.dumps(str(Path(path).resolve())) + "\n" + FIELD_UNDEFINES + """
 const uint64_t companion_header = sizeof(List);
@@ -233,9 +305,13 @@ const uint64_t companion_slot_width = sizeof(((Slot *)0)->v);
     return layout
 
 
-def normalize_runtime(path):
+def normalize_runtime(path, python=None):
     path = Path(path).resolve()
     layout = physical_layout(path)
+    # runtime.py names the header's fields; the compiler places them by this record
+    record = RTRECORDS["List"].split()
+    alias.require(record == ["len", "cap", "a*", "ids*"] and [layout[name] for name in ("length", "capacity", "raw", "field")]
+                  == [8 * record.index(name) for name in record], "runtime.py's List record is not the companion header")
     reference = parse_functions(alias.run_clang([
         "-x", "c", "-Xclang", "-ast-dump=json", "-Xclang", "-ast-dump-filter=companion_contract_",
         "-fsyntax-only", "-"], source='#include ' + json.dumps(str(path)) + "\n" +
@@ -250,9 +326,16 @@ def normalize_runtime(path):
         alias.require(normalized_shape(actual) == normalized_shape(reference["companion_contract_" + name]),
                       "unsupported companion function shape: " + name)
         bodies[name] = actual[2]
-    header_allocations = allocations(bodies["list_new"])
+    reference, _ = python_functions(PY_CONTRACTS)
+    actual, declared = python_functions(Path(python or ROOT / "runtime.py").read_text(encoding="utf-8"))
+    alias.require(sorted(declared) == sorted(ALLOCATORS), "runtime.py does not declare both allocators")
+    for name in PY_FUNCTIONS:
+        alias.require(name in actual, "missing companion function: " + name)
+        alias.require(python_shape(actual[name]) == python_shape(reference[name]),
+                      "unsupported companion function shape: " + name)
+    header_allocations = python_allocations(actual["pys_list_make"])
     array_allocations = allocations(bodies["list_identity_slow"])
-    growth_allocations = allocations(bodies["reserve"])
+    growth_allocations = python_allocations(actual["pys_list_reserve"])
     alias.require(len(header_allocations) == 2 and len(array_allocations) == len(growth_allocations) == 1,
                   "companion allocator inventory changed")
     # Matching the complete ASTs establishes exactly one fresh-array attachment
@@ -280,16 +363,18 @@ def checked(candidate, checker=CHECKER):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runtime", type=Path, default=ROOT / "runtime.c")
+    parser.add_argument("--runtime-py", type=Path, default=ROOT / "runtime.py")
     parser.add_argument("--checker", type=Path, default=CHECKER)
     args = parser.parse_args(argv)
     try:
-        candidate = normalize_runtime(args.runtime)
+        candidate = normalize_runtime(args.runtime, args.runtime_py)
         accepted = checked(candidate, args.checker)
         print(json.dumps({"status": "accepted" if accepted else "rejected", "checked": True,
                           "runtime_sha256": hashlib.sha256(args.runtime.read_bytes()).hexdigest(),
+                          "runtime_py_sha256": hashlib.sha256(args.runtime_py.read_bytes()).hexdigest(),
                           "candidate": candidate,
                           "scope": "Initialized numeric-list companion: identity readback and tracing after direct stores, reserve growth and contiguous slice/copy.",
-                          "trusted": "C AST/layout adapter, initialized live indices, valid nonoverflowing extents, materialization and allocation-time liveness, called helpers, allocator and collector implementations."}))
+                          "trusted": "C and Python AST/layout adapters, the compiler's lowering of runtime.py's fields and words, initialized live indices, valid nonoverflowing extents, materialization and allocation-time liveness, called helpers, allocator and collector implementations."}))
         return 0 if accepted else 1
     except (ValueError, OSError, subprocess.SubprocessError) as error:
         print(json.dumps({"status": "error", "checked": False, "error": str(error)}))

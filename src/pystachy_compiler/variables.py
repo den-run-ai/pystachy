@@ -218,6 +218,8 @@ def gen_applies(self, st: Node, top: bool, loc: dict[str, bool]) -> bool:
         key = self.imported(x.s) if self.imported(x.s) != "" else x.s
         key = key[9:] if key.startswith("builtins.") else key
         typing = key.startswith("typing.") or key.startswith("typing_extensions.")
+        if self.rtmode and top and key in ("_rt.unchecked", "_rt.cold", "_rt.noinline", "_rt.inline"):
+            continue  # (runtime mode's own: declare_fn takes it as the function's arithmetic)
         if not typing and not (top and "f" in INERT_DECOS.get(key, "")):
             return True
     return False

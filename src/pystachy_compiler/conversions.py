@@ -378,7 +378,7 @@ def ends_in_id(d: str) -> bool:
 def gen_plain_desc(self, t: str, use: str) -> str:
     # (t's own constructor is no recursive alias's, though its parts may hold one: see gen_rec_desc)
     if is_union(unopt(t)):
-        # (a union of numbers also orders, as runtime.c's opv compares its members' values)
+        # (a union of numbers also orders, as runtime.py's opv compares its members' values)
         if not ((use == "repr" and (self.value_union(t) or self.tuple_union(t))) or (use == "==" and self.ueq_type(t)) or (self.num_union(unopt(t)) and all([op in ORDOP or op == "==" for op in use.split()]))):
             self.err("closed union operations require narrowing with isinstance() first")
         members = umembers(unopt(t))

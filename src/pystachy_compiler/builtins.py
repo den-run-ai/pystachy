@@ -900,6 +900,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(f"{name}() takes {'exactly one argument' if m == 1 else f'at most {m} arguments'} ({npos} given)")
     if len(args) == 0 and name in DEFAULTS:
         args = [self.parse_expr(DEFAULTS[name])]
+    if self.rtmode and name == "ord" and len(args) == 1 and args[0].kind == "str" and len(args[0].s) == 1 and ord(args[0].s) < 128:
+        # (runtime mode's ord() of a one-character ASCII literal is its code, a constant: runtime.py
+        # compares the bytes of descriptors with them)
+        return Val(str(ord(args[0].s)), "int")
     if name == "ord" and len(args) == 1 and args[0].kind == "index":
         point_at = self.indexed_ord(args[0])
         if point_at is not None:
@@ -986,6 +990,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.appending = True  # (len() of a str that str_append owns keeps it owned: it loads the length alone)
         vals = [self.read(args[0])]
         self.appending = False
+    elif self.rtmode and name in ("_rt.get", "_rt.set", "_rt.getp", "_rt.setp", "_rt.field", "_rt.sizeof", "_rt.local"):
+        # (a record or its field, named by a literal that only the compiler reads: no constant is made)
+        vals = [Val("@rec." + a.s, "str") if a.kind == "str" else self.expr(a, "") for a in args if a.kind != "kw"]
     else:
         vals = [self.expr(a, w, resultsoft=resultsoft) for a in args if a.kind != "kw"]
         kvals = [self.expr(a.kids[0], "") for a in kws]

@@ -40,7 +40,7 @@ specs.PYBUILTINS specs.MODNAMES specs.ANNKINDS specs.GENERICS specs.CBUILTIN
 specs.ABSTRACT_DECOS specs.STANDINS specs.OPAQUE specs.TYPEMODS specs.BOPENS specs.NOCALL
 specs.IOPS specs.CHECKED specs.IRT specs.FOPS specs.FRT specs.ICMP specs.FCMP
 specs.SPECIAL specs.UNCALLED specs.REFL specs.ORDOP specs.DUNDER specs.UNARY
-specs.CALLS specs.RTL specs.TBAA_SIZES specs.TBAA_NAMES specs.ERRNO specs.MODFUNCS
+specs.CALLS specs.RTL specs.RTRECORDS specs.RT_TBAA specs.TBAA_SIZES specs.TBAA_NAMES specs.ERRNO specs.MODFUNCS
 specs.CTYPES specs.MODATTRS specs.OSCONST specs.FLOATINFO specs.VERSIONINFO
 specs.TYPING specs.TYPEARGS specs.ABCS specs.ABCSMORE specs.ABC_BASES specs.ABC_TYPING specs.ABC_METHODS specs.ABC_NOMINAL specs.RANGE_TAKERS specs.RANGE_METHODS
 specs.FUTURE specs.DEFAULTS specs.EXCEPTIONS specs.EXCBASES specs.PLAIN_EXC_BASES specs.EXCATTRS specs.EXCINIT

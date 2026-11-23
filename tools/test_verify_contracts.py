@@ -108,6 +108,9 @@ if args[0] == "pystachy.py":
     args = args[1:]
 if args[0] == "run":
     sys.exit(0)
+if args[0] == "rt" and args[args.index("-o") + 1].endswith("dictprobe-rt.ll"):  # (runtime.py's two dict probes)
+    Path(args[args.index("-o") + 1]).write_text("define i64 @f.dict_find_int() {\\n  ret i64 0\\n}\\ndefine i64 @f.dict_find_str() {\\n  ret i64 0\\n}\\n")
+    sys.exit(0)
 stage(args)
 ''')
         (self.root / "bin/tool.py").write_text(tool)
@@ -129,8 +132,7 @@ args = sys.argv[1:]
 if "-o" in args:
     out = Path(args[args.index("-o") + 1])
     if out.name == "dictprobe.ll":  # (dict-probes checks the probes: only dfindc tests for wide int keys)
-        out.write_text("define i64 @dfind() {\\n  ret i64 0\\n}\\ndefine i64 @dfindc(i64 %k) {\\n  %w = icmp eq i64 %k, -9223372036854775808\\n  ret i64 0\\n}\\n"
-                       "define i64 @dfindi() {\\n  ret i64 0\\n}\\ndefine i64 @dfinds() {\\n  ret i64 0\\n}\\n")
+        out.write_text("define i64 @dfindo() {\\n  ret i64 0\\n}\\ndefine i64 @dfindc(i64 %k) {\\n  %w = icmp eq i64 %k, -9223372036854775808\\n  ret i64 0\\n}\\n")
     elif out.name == "fileprobe.ll":  # (file-buffers checks both readers and their per-byte inlining)
         mode = os.environ.get("MOCK_FILE_READ_IR", "inline")
         ir = "define ptr @pys_file_read() {\\n  ret ptr null\\n}\\ndefine ptr @pys_file_readline() {\\n  ret ptr null\\n}\\n"

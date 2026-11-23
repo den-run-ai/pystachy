@@ -306,36 +306,310 @@ taskset -c "$BENCH_CPU" python3.13 bench/runtime_subset/compare.py \
   --json /tmp/integer-helpers.json
 ```
 
-On a Linux x86-64 Intel Xeon Platinum 8573C, the benchmark compared the C
-helpers at `b34c6def` with the subset helpers at `88acad77`. Both clean trees
-used CPython 3.13.16 and LLVM 18.1.3. Each value is the median of seven paired
-ratios, candidate time divided by baseline time, pinned to CPU 8. Each workload
-produced the CPython checksum in both modes.
+On an idle Linux x86-64 host (four Intel Xeon cores, load average 0.5), the benchmark
+compared the C helpers at `b34c6def` with the subset helpers at `8749496b`, whose compiler
+and runtime sources are those of `88acad77`. Both clean trees used CPython 3.13.16 and LLVM
+18.1.3. Each value is the median of seven paired ratios, candidate time divided by baseline
+time, pinned to CPU 2. Each workload produced the CPython checksum in both modes.
 
-| Workload | Wall time, AOT | Wall time, JIT | Process CPU time, AOT | Process CPU time, JIT |
-|---|---:|---:|---:|---:|
-| Integer floor division | 1.431 | 1.008 | 1.028 | 0.992 |
-| Integer remainder | 1.089 | 0.907 | 0.991 | 0.992 |
-| Left shift | 0.777 | 0.910 | 0.781 | 0.821 |
-| Right shift | 0.784 | 1.201 | 1.019 | 1.011 |
-| Bit length | 0.931 | 0.818 | 0.971 | 0.919 |
-| Bit count | 1.017 | 1.103 | 1.037 | 0.983 |
-| True division, small operands | 0.731 | 0.827 | 0.813 | 0.959 |
-| True division, large operands | 0.534 | 0.522 | 0.540 | 0.546 |
+| Workload | AOT after / C | JIT after / C | AOT ns per iteration, C to after |
+|---|---:|---:|---:|
+| Integer floor division | 0.992 | 0.999 | 2.64 to 2.62 |
+| Integer remainder | 0.988 | 1.003 | 2.64 to 2.61 |
+| Left shift | 0.846 | 0.867 | 1.71 to 1.44 |
+| Right shift | 0.999 | 0.998 | 1.05 to 1.05 |
+| Bit length | 0.987 | 0.975 | 0.70 to 0.69 |
+| Bit count | 1.001 | 1.107 | 1.28 to 1.28 |
+| True division, small operands | 0.800 | 1.002 | 1.31 to 1.05 |
+| True division, large operands | 0.535 | 0.602 | 8.88 to 4.74 |
 
-The machine was shared. The [wall-clock recording](integers-wall.json) and
-[process CPU recording](integers-cpu.json) preserve all pairs. For AOT floor
-division, the middle half of the seven ratios spanned 1.16–1.51 on the wall clock
-and 0.90–1.13 on the CPU clock. For large integer true division, both clocks put
-the candidate near half the baseline time.
+Single pairs range from 0.532 to 1.133; the [recording](integers-wall.json) preserves
+them all. Floor division, remainder and right shift take the time they took in C. Left
+shift and true division are faster, large operands by almost half: one 128-bit division
+and a multiplication replace a division and a remainder.
 
-For the CPU-time run, copy `compare.py` and `integers.py` to the same temporary
-directory. In that copy of `integers.py`, replace `from time import perf_counter`
-with `from time import process_time as perf_counter`. Run the copied `compare.py`
-with the command above, using a separate output file. The timed loops, inputs
-and checksum checks are identical.
+`bit_count` under the JIT is 10% slower here, although the helper's machine code is the same
+in both runtimes. Moving the benchmark's kernel function to the front of its source changes
+the ratio to 0.92, so the difference is where the program's code lands, not the helper.
+
+An earlier recording, made on a shared host at a load average of 10, put AOT floor
+division at 1.43 and JIT right shift at 1.20. Neither reproduces on an idle host.
 
 The [full Lean run for the measured compiler](https://github.com/den-run-ai/pystachy/blob/52e2f31aec23695d5db646b6917bbf6cff791561/tools/lean_boundary/REPORT.md)
 covers all 3,169 programs in that checkout. Its 3,020 unproved obligations and
 the incomplete null check for `bytearray_methods.py` match the previous report.
 The pinned link keeps this result tied to the source used for the timings.
+
+## List and str operations
+
+The list header and item array code, the list searches, and `str` concatenation and
+repetition moved from `runtime.c` to `runtime.py` on its [machine-memory primitives](../../docs/runtime-in-subset.md#machine-memory).
+Their workload is [`lists.py`](lists.py), which `compare.py` selects for these cases:
+
+| Case | Default iterations | Work measured |
+|---|---:|---|
+| `list-append` | 200,000,000 | appends to a list of ints that is cleared every 4,096 items |
+| `list-append-str` | 100,000,000 | appends to a list of strs cleared every 48 items: inline items, then an array |
+| `list-short` | 40,000,000 | a list display of two ints, one append, a read and `len()` |
+| `list-stack` | 150,000,000 | two appends and two pops |
+| `list-pop-front` | 100,000,000 | `pop(0)` and an append on a queue of 64 ints |
+| `list-insert` | 60,000,000 | `insert` at index 0 or 1 of a list cleared every 64 items |
+| `list-slice` | 30,000,000 | a slice of 24 of 128 ints |
+| `list-slice-step` | 30,000,000 | a slice of every fifth of 128 ints |
+| `list-extend` | 20,000,000 | `extend` by 128 ints, the list cleared past 2,048 |
+| `list-reverse` | 10,000,000 | a copy of 128 ints, reversed |
+| `list-index` | 150,000,000 | checked reads and writes by a varying index, negative ones too |
+| `list-add` | 6,000,000 | `+` of two lists of 128 ints and of two of 256 strs |
+| `list-mul` | 8,000,000 | `*` of 128 ints by 3, and `*=` of 16 zeros by 2 |
+| `list-set-slice` | 15,000,000 | two slice assignments that shrink and grow the list, and a slice deletion |
+| `list-in` | 10,000,000 | `in` on 128 ints, every other query present |
+| `list-in-str` | 4,000,000 | `in` on 32 strs, half of the queries present |
+| `list-find` | 5,000,000 | `index` and `count` of an int among 128 |
+| `list-remove` | 8,000,000 | `remove` of one of the first 64 of 128 ints, and an append |
+| `list-range` | 10,000,000 | `list(range(a, a + 40, 3))` |
+| `list-bytes` | 8,000,000 | `list()` of 96 bytes |
+| `str-add` | 60,000,000 | `+` of two of 256 short strs |
+| `str-cat` | 30,000,000 | an f-string of three strs and two separators |
+| `str-mul` | 20,000,000 | a short str times 7, plus a one-byte str times 0 to 15 |
+
+```sh
+taskset -c "$BENCH_CPU" python3.13 bench/runtime_subset/compare.py \
+  --before "$BENCH_BASELINE" --after . --pairs 7 \
+  --cases list-append list-append-str list-short list-stack list-pop-front list-insert \
+          list-slice list-slice-step list-extend list-reverse list-index list-add list-mul \
+          list-set-slice list-in list-in-str list-find list-remove list-range list-bytes \
+          str-add str-cat str-mul \
+  --json /tmp/lists.json
+```
+
+The [recorded report](lists.json) compares
+`4998521d28413c6e32506105f836b6db9afeb1d7` with
+`15d25badf0fc3dffe9ce5a6397e1681396ea3499`, both from clean checkouts with freshly
+built compilers, on a Linux x86-64 host of four Intel Xeon cores with CPython 3.13.16 and
+LLVM 18.1.3. The run was pinned to CPU 2 and the load average was 0.71 when it began.
+Each workload produced the CPython checksum in both modes.
+
+| Case | AOT after / C | JIT after / C | AOT ns per iteration, C to after |
+|---|---:|---:|---:|
+| `list-append` | 0.998 | 1.047 | 1.35 to 1.35 |
+| `list-append-str` | 0.945 | 0.949 | 5.08 to 4.76 |
+| `list-short` | 1.005 | 0.936 | 10.56 to 10.77 |
+| `list-stack` | 1.014 | 0.844 | 7.61 to 7.80 |
+| `list-pop-front` | 0.980 | 0.980 | 11.00 to 10.78 |
+| `list-insert` | 1.004 | 0.990 | 9.32 to 9.35 |
+| `list-slice` | 1.005 | 0.990 | 24.25 to 24.05 |
+| `list-slice-step` | 0.887 | 0.869 | 35.96 to 31.90 |
+| `list-extend` | 1.000 | 1.000 | 98.32 to 98.40 |
+| `list-reverse` | 1.044 | 0.963 | 122 to 130 |
+| `list-index` | 1.004 | 1.036 | 3.02 to 3.05 |
+| `list-add` | 1.000 | 0.931 | 364 to 382 |
+| `list-mul` | 1.034 | 0.977 | 307 to 298 |
+| `list-set-slice` | 0.844 | 0.950 | 76.00 to 64.70 |
+| `list-in` | 0.988 | 0.971 | 37.20 to 37.05 |
+| `list-in-str` | 0.924 | 0.952 | 42.49 to 39.22 |
+| `list-find` | 1.011 | 1.002 | 50.48 to 50.98 |
+| `list-remove` | 0.966 | 0.981 | 24.47 to 23.63 |
+| `list-range` | 1.001 | 1.012 | 24.23 to 25.13 |
+| `list-bytes` | 0.975 | 1.041 | 114 to 112 |
+| `str-add` | 0.975 | 0.956 | 14.46 to 14.07 |
+| `str-cat` | 0.969 | 1.032 | 32.34 to 31.28 |
+| `str-mul` | 0.997 | 1.009 | 51.64 to 51.68 |
+
+Ratios are medians of 7 alternating pairs. Single pairs range from 0.755 to 1.389: the host
+was shared, and one side's times for a case that allocates in every iteration differ by up
+to half between pairs. An earlier recording of the same commits, taken while the host was
+busier, is not kept: its medians moved by up to 16% in four cases, each of which measured
+within 2% when run again alone. In AOT, where LLVM inlines these functions into the
+program, every case is within 5% of the C code or faster. Under the JIT, which calls them,
+the medians range from 0.84 to 1.05. The AOT executable of the workload is 163,824 bytes
+before and 168,680 after.
+
+The first version of this code was up to 20% slower under the JIT. It kept a list's
+length in a local across the call that grows the list; `runtime.c` reads the field again
+after that call. A value that lives across a rarely made call costs the common path a
+saved register, so `runtime.py` now follows `runtime.c`'s statements there.
+
+## Sets
+
+A set's table moved next: the probes, insertion, removal, rebuilds, merges, differences,
+comparison, iteration and `pop`. Their workload is [`tables.py`](tables.py):
+
+| Case | Default iterations | Work measured |
+|---|---:|---|
+| `set-add` | 150,000,000 | adds to a set of ints that is cleared every 4,096 elements |
+| `set-has` | 150,000,000 | `in` on 1,024 ints, half of the queries present |
+| `set-has-large` | 60,000,000 | `in` on 1,048,576 ints, at random: each probe misses the cache |
+| `set-churn` | 15,000,000 | an add and a discard among 1,024 ints, whose dummies make the table rebuild |
+| `set-str` | 50,000,000 | an add and an `in` among 256 strs, the set cleared every 1,024 |
+| `set-tuple` | 40,000,000 | `in` and add of a pair of ints, which `runtime.c` still compares |
+| `set-algebra` | 150,000 | `\|`, `&`, `-` and `^` of two sets of 192 ints |
+| `set-iterate` | 1,500,000 | a loop over 1,024 ints |
+| `set-update-list` | 500,000 | `update` with a list of 128 ints, then `difference_update` with 40 |
+| `set-pop` | 500,000 | `set()` of a list of 128 ints, then `pop` until it is empty |
+| `set-compare` | 1,500,000 | `==`, `<=` and `isdisjoint` on sets of 192 ints |
+
+```sh
+taskset -c "$BENCH_CPU" python3.13 bench/runtime_subset/compare.py \
+  --before "$BENCH_BASELINE" --after . --pairs 7 \
+  --cases set-add set-has set-has-large set-churn set-str set-tuple set-algebra \
+          set-iterate set-update-list set-pop set-compare \
+  --json /tmp/sets.json
+```
+
+The [recorded report](sets.json) compares
+`e124b71e1ef13dde1afad24bb747bb1621285262` with
+`595111584b8109e48bd9e72d37a9318315a4030b`, both from clean checkouts with freshly
+built compilers, on the same host, CPython and LLVM as the lists' report. The run was
+pinned to CPU 2 and the load average was 0.49 when it began. Each workload produced the
+CPython checksum in both modes.
+
+| Case | AOT after / C | JIT after / C | AOT ns per iteration, C to after |
+|---|---:|---:|---:|
+| `set-add` | 1.003 | 1.013 | 7.88 to 7.77 |
+| `set-has` | 1.028 | 1.003 | 4.11 to 4.22 |
+| `set-has-large` | 1.006 | 1.009 | 14.98 to 15.48 |
+| `set-churn` | 1.088 | 1.073 | 85.61 to 94.32 |
+| `set-str` | 0.957 | 1.103 | 8.58 to 8.20 |
+| `set-tuple` | 1.030 | 1.009 | 19.33 to 19.66 |
+| `set-algebra` | 0.998 | 1.027 | 6981 to 6840 |
+| `set-iterate` | 0.991 | 1.006 | 835 to 828 |
+| `set-update-list` | 0.929 | 0.980 | 1702 to 1484 |
+| `set-pop` | 0.959 | 1.104 | 1705 to 1624 |
+| `set-compare` | 0.947 | 0.975 | 952 to 895 |
+
+Ratios are medians of 7 alternating pairs; single pairs range from 0.615 to 1.374 on this
+shared host. Eight cases are within 3% of the C code or faster in AOT, and eight under the
+JIT. `set-churn` is 9% slower in AOT and 7% under the JIT, and `set-str` and `set-pop` 10%
+slower under the JIT alone. The runtime that the driver builds has the same instructions
+for these functions as it had for the C ones: the lookup, the insertion, the rebuild and
+the two entry points differ only in a signed test where C's was unsigned and in the name
+they call for an element's equality. What differs is where the code lands. The lookup's
+inner loop starts on a 64-byte boundary in the C build and 48 bytes past one in this
+build, and the insertion's the other way round. The AOT executable of the workload is
+169,912 bytes before and 169,840 after.
+
+## Dicts
+
+A dict's table moved after the sets': the entries and their index, the probes of int and
+str keys, insertion, deletion, the rebuilds, `popitem`, the copies and merges, the views
+and a loop's steps. Their workload is [`dicts.py`](dicts.py):
+
+| Case | Default iterations | Work measured |
+|---|---:|---|
+| `dict-set` | 100,000,000 | stores into a dict of ints that is cleared every 4,096 keys |
+| `dict-get` | 150,000,000 | `get` on 1,024 int keys, half of the queries present |
+| `dict-get-large` | 60,000,000 | `in` and `[]` on 1,048,576 int keys, at random |
+| `dict-str` | 60,000,000 | a word count: `get` and a store per str key |
+| `dict-tuple` | 30,000,000 | `in` and a store of a pair of ints, which `runtime.c` still hashes and compares |
+| `dict-churn` | 40,000,000 | a store and a `del` among 1,024 int keys, whose holes make the table rebuild |
+| `dict-iterate` | 600,000 | a loop over the items of 1,024 int keys |
+| `dict-copy` | 200,000 | `copy`, `update` and `dict()` of dicts of 192 int keys |
+| `dict-pop` | 150,000 | `dict()` of 192 items, `pop` of 32, then `popitem` until it is empty |
+| `dict-columns` | 300,000 | `list()` of the keys and of the values of 1,024 items |
+| `dict-setdefault` | 60,000,000 | `setdefault` of 256 str keys, the dict cleared every 2,048 |
+
+```sh
+taskset -c "$BENCH_CPU" python3.13 bench/runtime_subset/compare.py \
+  --before "$BENCH_BASELINE" --after . --pairs 7 \
+  --cases dict-set dict-get dict-get-large dict-str dict-tuple dict-churn dict-iterate \
+          dict-copy dict-pop dict-columns dict-setdefault \
+  --json /tmp/dicts.json
+```
+
+The [recorded report](dicts.json) compares
+`e124b71e1ef13dde1afad24bb747bb1621285262` with
+`11de952a4803d6dd62af3781f45ccb82299a06f9`, both from clean checkouts with freshly
+built compilers, on the same host, CPython and LLVM as the lists' report. The run was
+pinned to CPU 2 and the load average was 0.20 when it began. Each workload produced the
+CPython checksum in both modes.
+
+| Case | AOT after / C | JIT after / C | AOT ns per iteration, C to after |
+|---|---:|---:|---:|
+| `dict-set` | 0.992 | 0.986 | 15.08 to 15.07 |
+| `dict-get` | 0.965 | 0.827 | 4.38 to 4.26 |
+| `dict-get-large` | 0.878 | 0.939 | 26.79 to 23.51 |
+| `dict-str` | 0.968 | 0.968 | 10.28 to 10.21 |
+| `dict-tuple` | 1.004 | 1.008 | 16.47 to 16.60 |
+| `dict-churn` | 0.920 | 0.937 | 22.45 to 20.66 |
+| `dict-iterate` | 0.998 | 1.018 | 955 to 954 |
+| `dict-copy` | 0.943 | 0.977 | 2691 to 2655 |
+| `dict-pop` | 0.995 | 0.983 | 2128 to 2099 |
+| `dict-columns` | 0.891 | 0.844 | 2855 to 2497 |
+| `dict-setdefault` | 0.982 | 1.135 | 7.20 to 7.00 |
+
+Ratios are medians of 7 alternating pairs; single pairs range from 0.636 to 1.194. In AOT
+every case is within 0.4% of the C code or faster. Under the JIT all but one are within
+2% or faster; `dict-setdefault` is 13.5% slower, and timed again alone 0.45 s against
+0.51 s, although the runtime that the JIT links has the same calls for it as the C one
+and the same str probe, instruction for instruction but for two loads that it hoists.
+The AOT executable of the workload is 178,416 bytes before and 178,880 after.
+
+A first version of this code was 20% slower than the C code for `dict-get` in AOT. Each
+entry point hashed the key and then looked it up through two inlined functions, and each
+tested the key kind: LLVM kept both tests and the paths between them. Each kind of key now
+hashes and calls its own probe in one function, as `runtime.c`'s `dhfind` did.
+
+## Descriptor walks
+
+`repr()`, `==` and the orderings of a value that the compiler describes by its type
+descriptor moved next: the walks of lists, dicts, sets, tuples, optional values and unions.
+Their workload is [`walks.py`](walks.py):
+
+| Case | Default iterations | Work measured |
+|---|---:|---|
+| `walk-repr-ints` | 800,000 | `repr` of a list of 64 ints |
+| `walk-repr-strs` | 750,000 | `repr` of a list of 64 strs, some with a quote |
+| `walk-repr-floats` | 250,000 | `repr` of a list of 64 floats |
+| `walk-repr-nested` | 250,000 | `repr` of a dict of 16 lists of 4 tuples of an int and a str |
+| `walk-eq-tuples` | 800,000 | `==` of two lists of 64 tuples, equal at every other iteration |
+| `walk-eq-dicts` | 600,000 | `==` of two equal dicts of 16 lists of 16 ints |
+| `walk-sort-tuples` | 50,000 | `sorted()` of 256 tuples of an int and a str |
+| `walk-in-tuples` | 1,000,000 | `in` of a tuple in a list of 128 tuples |
+| `walk-order-lists` | 6,000,000 | `<` of two lists of 32 ints that differ in their last item |
+
+```sh
+taskset -c "$BENCH_CPU" python3.13 bench/runtime_subset/compare.py \
+  --before "$BENCH_BASELINE" --after . --pairs 7 \
+  --cases walk-repr-ints walk-repr-strs walk-repr-floats walk-repr-nested walk-eq-tuples \
+          walk-eq-dicts walk-sort-tuples walk-in-tuples walk-order-lists dict-tuple set-tuple \
+          list-find list-in list-remove \
+  --json /tmp/walks.json
+```
+
+The [recorded report](walks.json) compares
+`4cc273c688d63eb7f936c6106dcf9ff39baa82e1`, whose walks are `runtime.c`'s, with
+`cd2f8ea55b208ecd6496c59b05fe896b95c6373b`, both with freshly built compilers, on the same
+host, CPython and LLVM as the dicts' report. The run was pinned to CPU 2 and the load average
+was 0.61 when it began. Each workload produced the CPython checksum in both modes.
+
+| Case | AOT after / C | JIT after / C | AOT ns per iteration, C to after |
+|---|---:|---:|---:|
+| `walk-repr-ints` | 0.360 | 0.357 | 2526 to 935 |
+| `walk-repr-strs` | 0.721 | 0.670 | 1523 to 1092 |
+| `walk-repr-floats` | 1.013 | 1.015 | 3784 to 3781 |
+| `walk-repr-nested` | 0.511 | 0.508 | 5476 to 2798 |
+| `walk-eq-tuples` | 0.696 | 0.666 | 1080 to 752 |
+| `walk-eq-dicts` | 0.623 | 0.517 | 1232 to 788 |
+| `walk-sort-tuples` | 0.802 | 0.890 | 17362 to 14052 |
+| `walk-in-tuples` | 0.976 | 0.917 | 891 to 852 |
+| `walk-order-lists` | 0.502 | 0.438 | 132.8 to 66.4 |
+| `dict-tuple` | 1.015 | 0.972 | 15.8 to 16.1 |
+| `set-tuple` | 0.934 | 0.950 | 20.2 to 18.6 |
+| `list-find` | 0.874 | 0.939 | 57.8 to 50.6 |
+| `list-in` | 1.016 | 1.018 | 36.7 to 37.5 |
+| `list-remove` | 0.881 | 1.036 | 24.2 to 21.5 |
+
+Ratios are medians of 7 alternating pairs; single pairs range from 0.331 to 1.131. A list's
+`repr` writes an int's digits into its text where the C code formatted each with
+`snprintf`, and copies a str's printable runs at once. A container's item that is an int, a
+bool or a str is compared without a call of the generic comparison, and a tuple's walk steps
+past such an item's descriptor inline: lists and tuples compare 2 to 56% faster. A float's
+`repr` is the same `pys_str_float` call in both. `dict-tuple`, `set-tuple` and the list
+searches (whose items are ints, compared by their slots) are controls that the walks reach
+only through a key's or an item's comparison; they are within 4% of the C code or faster.
+
+A first version of this code compared lists and tuples 4 to 24% slower than the C code,
+at fewer instructions than it: `eqitem` called `eqv` for every item, and a tuple's walk
+called `pys_rt_skip` for every item's descriptor, where the C code had inlined `skip`.
+Inlined into the list searches, the item comparison also made a search of a `list[int]` by
+its slots 7% slower under the JIT; it is a function of its own again, as in `runtime.c`.

@@ -44,7 +44,7 @@ def gen_cx_union(self, t: str) -> bool:
 
 def gen_num_union(self, t: str) -> bool:
     # a union of numbers (int, float, bool), not None: sum() adds its values and orderings compare
-    # them, an int with a float exactly (runtime.c's opv)
+    # them, an int with a float exactly (runtime.py's opv)
     return is_union(t) and all([m == "int" or m == "float" or m == "bool" for m in umembers(t)])
 
 def gen_value_union(self, t: str) -> bool:

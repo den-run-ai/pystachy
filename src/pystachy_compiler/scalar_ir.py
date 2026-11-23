@@ -8,7 +8,7 @@ SCALAR_BIN = ["add", "sub", "mul", "sdiv", "srem", "udiv", "urem", "shl", "lshr"
 SCALAR_FLOAT = ["fadd", "fsub", "fmul", "fdiv", "fneg"]
 SCALAR_ICMP = ["eq", "ne", "slt", "sle", "sgt", "sge", "ult", "ule", "ugt", "uge"]
 SCALAR_FCMP = ["oeq", "one", "olt", "ole", "ogt", "oge", "ueq", "une", "ult", "ule", "ugt", "uge", "ord", "uno"]
-SCALAR_CASTS = ["zext:bool:int", "zext:%byte:int", "trunc:int:bool", "trunc:int:%byte", "trunc:int:%i32", "zext:%i32:int", "sitofp:int:float", "fptosi:float:int", "ptrtoint:%ptr:int", "inttoptr:int:%ptr",
+SCALAR_CASTS = ["zext:bool:int", "zext:%byte:int", "trunc:int:bool", "trunc:int:%byte", "trunc:int:%i32", "zext:%i32:int", "sext:%i32:int", "sitofp:int:float", "fptosi:float:int", "ptrtoint:%ptr:int", "inttoptr:int:%ptr",
                 "zext:int:%i128", "trunc:%i128:int", "bitcast:float:int", "bitcast:int:float"]
 
 

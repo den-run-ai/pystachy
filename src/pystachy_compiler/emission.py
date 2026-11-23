@@ -6,7 +6,7 @@ from src.pystachy_compiler.diagnostics import ClassBoxes, NeedHierarchy, Rejoin,
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.frames import Frame
 from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, Val, tmpname, one_num, value_definitions
-from src.pystachy_compiler.specs import BIGOPT, CHECKED, EMPTYFS, LIST_READS, LIST_WRITES, NARROWED, PATH_OPS, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS
+from src.pystachy_compiler.specs import BIGOPT, CHECKED, EMPTYFS, LIST_READS, LIST_WRITES, NARROWED, PATH_OPS, RTL, RTPTR, RTRECORDS, RTSYM, STR_HEADER_SIZE, TEXT_OPS
 from src.pystachy_compiler.unions import FLOATAT, MEMBERAT
 from src.pystachy_compiler.utils import (
     RtFn,
@@ -31,6 +31,8 @@ from src.pystachy_compiler.utils import (
     targs,
     typestr,
     unopt,
+    lt,
+    rt_field,
 )
 
 
@@ -650,9 +652,18 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
     if name not in RTL:
         self.err(f"_rt.{name} is not a runtime primitive")
     sig = RTL[name].split(":")
-    if ",".join([v.t for v in vals]) != sig[0]:
-        self.err(f"_rt.{name}() takes ({sig[0].replace(',', ', ')}), not ({', '.join([typestr(v.t) for v in vals])})")
+    want = sig[0].split(",") if sig[0] != "" else []
+    fits = len(want) == len(vals)
+    for j in range(len(vals) if fits else 0):
+        # (ref: any reference, which runtime.py reads as the layout it knows it to be)
+        t = vals[j].t
+        fits = fits and (t == want[j] or (want[j] == "ref" and lt(t) == "ptr" and not t.startswith("%") and not t.startswith("&") and not t.startswith("*") and t != "None"))
+    if not fits:
+        self.err(f"_rt.{name}() takes ({sig[0].replace(',', ', ').replace('ref', 'a reference').replace(RTPTR, '_rt.Ptr')}), not ({', '.join([typestr(v.t) for v in vals])})")
     a = [v.v for v in vals]
+    if name in ("nil", "ptr", "addr", "ref", "as_str", "word", "put", "byte_at", "put_byte", "i32_at", "put_i32", "at", "offset",
+                "get", "set", "getp", "setp", "field", "sizeof", "move", "cpy", "fill", "cmp", "local", "words"):
+        return machine_primitive(self, name, vals)
     # (a str's length and bytes are tagged, and the length bounded, in runtime.py's module, which
     # defines the metadata: lib/_pystachy_bytearray.py's module has the same operations untagged)
     lenr = "length.range" if self.rtmode else ""
@@ -705,6 +716,20 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
         return Val(self.rt("llvm.sqrt.f64", "double", [f"double {a[0]}"]), "float")
     if name == "fdiv":
         return Val(self.scalar('fdiv', [Val(a[0], 'float'), Val(a[1], 'float')]), "float")
+    if name == "ftrunc":
+        return Val(self.rt("llvm.trunc.f64", "double", [f"double {a[0]}"]), "float")
+    if name == "ffloor":
+        return Val(self.rt("llvm.floor.f64", "double", [f"double {a[0]}"]), "float")
+    if name == "fceil":
+        return Val(self.rt("llvm.ceil.f64", "double", [f"double {a[0]}"]), "float")
+    if name == "frint":
+        return Val(self.rt("llvm.nearbyint.f64", "double", [f"double {a[0]}"]), "float")
+    if name == "copysign":
+        return Val(self.rt("llvm.copysign.f64", "double", [f"double {a[0]}", f"double {a[1]}"]), "float")
+    if name == "f2i":
+        return Val(self.scalar_cast("fptosi", vals[0], "int"), "int")
+    if name == "ult" or name == "ule":
+        return self.int_ucmp("<" if name == "ult" else "<=", vals[0], vals[1])
     if name == "shl" or name == "lshr" or name == "ashr":
         # by n mod 64, as the hardware shifts (LLVM would make a larger shift poison)
         return Val(self.scalar(name, [Val(a[0], 'int'), Val(self.scalar('and', [Val(a[1], 'int'), Val('63', 'int')]), 'int')]), "int")
@@ -778,8 +803,104 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
     self.mstore('%byte', f"{self.scalar_cast('trunc', Val(a[2], 'int'), '%byte')}", p, data)
     return Val("null", "None")
 
+def machine_primitive(self, name: str, vals: list[Val]) -> Val:
+    # runtime.py's machine memory (_rt.word, _rt.get, ...): loads, stores and addresses that
+    # nothing checks, as runtime.c's are not. An address is a %ptr to the IR, which reads any
+    # reference; a value that runtime.py keeps is an rtptr (_rt.Ptr)
+    a = [v.v for v in vals]
+    none = Val("null", "None")
+    if name == "nil":
+        return Val("null", RTPTR)
+    if name == "ptr":
+        return self.cast(Val(self.scalar_cast("inttoptr", vals[0], "%ptr"), "%ptr"), RTPTR, "bits")
+    if name == "addr":
+        return Val(self.scalar_cast("ptrtoint", Val(a[0], "%ptr"), "int"), "int")
+    if name == "ref" or name == "as_str":
+        t = RTPTR if name == "ref" else "str"
+        return vals[0] if vals[0].t == t else self.cast(vals[0], t, "raw")
+    if name == "word":
+        return Val(self.mload("int", self.maddr("int", a[0], a[1]), "rt.word"), "int")
+    if name == "put":
+        self.mstore("int", a[2], self.maddr("int", a[0], a[1]), "rt.word")
+        return none
+    if name == "byte_at":
+        return Val(self.scalar_cast("zext", Val(self.mload("%byte", self.maddr("%byte", a[0], a[1])), "%byte"), "int"), "int")
+    if name == "put_byte":
+        self.mstore("%byte", self.scalar_cast("trunc", vals[2], "%byte"), self.maddr("%byte", a[0], a[1]))
+        return none
+    if name == "i32_at":
+        return Val(self.scalar_cast("sext", Val(self.mload("%i32", self.maddr("%i32", a[0], a[1])), "%i32"), "int"), "int")
+    if name == "put_i32":
+        self.mstore("%i32", self.scalar_cast("trunc", vals[2], "%i32"), self.maddr("%i32", a[0], a[1]))
+        return none
+    if name == "at" or name == "offset":
+        return self.cast(Val(self.maddr("int" if name == "at" else "%byte", a[0], a[1]), "%ptr"), RTPTR, "bits")
+    if name == "move":
+        self.rt("llvm.memmove.p0.p0.i64", "void", [f"ptr {a[0]}", f"ptr {a[1]}", f"i64 {a[2]}", "i1 false"])
+        return none
+    if name == "cpy":
+        self.rt("llvm.memcpy.p0.p0.i64", "void", [f"ptr {a[0]}", f"ptr {a[1]}", f"i64 {a[2]}", "i1 false"])
+        return none
+    if name == "fill":
+        self.rt("llvm.memset.p0.i64", "void", [f"ptr {a[0]}", f"i8 {self.scalar_cast('trunc', vals[1], '%byte')}", f"i64 {a[2]}", "i1 false"])
+        return none
+    if name == "cmp":
+        return Val(self.scalar_cast("sext", Val(self.rt("memcmp", "i32", [f"ptr {a[0]}", f"ptr {a[1]}", f"i64 {a[2]}"]), "%i32"), "int"), "int")
+    if name == "local" or name == "words":
+        # storage in this function's frame, as runtime.c's local struct (Buf b) or array (I w[2]):
+        # n words that the function's entry block allocates, a stack tuple's (lowered to an alloca
+        # of [n x i64]), its contents unset. Its address may go to the functions this one calls,
+        # and the collector's scan of the native stack reads its words as it reads C's locals.
+        # A record's fields are words or pointers, so n words hold one on any target
+        n = 0
+        if name == "words":
+            n = int(a[0]) if a[0].isdigit() else 0
+            if n < 1 or n > 16:
+                self.err("_rt.words() takes the count of words, from 1 to 16, as an int literal")
+        else:
+            if not a[0].startswith("@rec.") or a[0][5:] not in RTRECORDS:
+                self.err("_rt.local() takes a record of the runtime (RTRECORDS) as a str literal")
+            n = len(RTRECORDS[a[0][5:]].split())
+        t = self.ctype("tuple", ["int"] * n)
+        self.n += 1
+        i = Ins("slot", t, "")
+        i.k = 2
+        i.r = one_num(self.n)
+        self.slot(i)
+        return self.cast(Val(f"%stk.{self.n}", t), RTPTR, "raw")
+    # the others name a record of runtime.c's, or one of its fields, by a literal
+    lit = a[0] if name == "sizeof" else a[1]
+    if not lit.startswith("@rec."):
+        self.err(f"_rt.{name}() takes {'the record' if name == 'sizeof' else 'the field, as Record.field,'} as a str literal")
+    spec = lit[5:]  # (Gen.builtin's, which evaluates no constant for it)
+    if name == "sizeof":
+        if spec not in RTRECORDS:
+            self.err(f"_rt.sizeof(): '{spec}' is no record of the runtime (RTRECORDS)")
+        end = self.maddr("rec." + spec, "null", str(len(RTRECORDS[spec].split())))
+        return Val(self.scalar_cast("ptrtoint", Val(end, "%ptr"), "int"), "int")
+    f = rt_field(spec)
+    if len(f) == 0:
+        self.err(f"_rt.{name}(): '{spec}' is no field of a record of the runtime (RTRECORDS)")
+    if name != "field" and (f[2] == "ptr") != (name == "getp" or name == "setp"):
+        self.err(f"_rt.{name}(): {spec} holds {'an address: read it with _rt.getp and write it with _rt.setp' if f[2] == 'ptr' else 'a word: read it with _rt.get and write it with _rt.set'}")
+    p = self.maddr("rec." + f[0], a[0], f[1], True)
+    if name == "field":
+        return self.cast(Val(p, "%ptr"), RTPTR, "bits")
+    # (a str's length has the tag that its other reads and writes give it)
+    tag = "length" if spec == "Str.len" else "rt.int" if f[2] == "int" else "rt.ptr"
+    if name == "get":
+        return Val(self.mload("int", p, tag), "int")
+    if name == "getp":
+        return self.cast(Val(self.mload("%ptr", p, tag), "%ptr"), RTPTR, "bits")
+    self.mstore("int" if name == "set" else "%ptr", a[2], p, tag)
+    return none
+
 def gen_iop(self, op: str, a: str, b: str) -> str:
     # checked 64-bit arithmetic (op: + - *): overflow raises OverflowError (CPython would grow the int)
+    if self.rtmode and self.curfn.unchecked:
+        # (runtime mode's @_rt.unchecked: as runtime.c's signed arithmetic on sizes and indexes,
+        # whose overflow is undefined, so that LLVM knows of a size what it knows there)
+        return self.scalar("add" if op == "+" else "sub" if op == "-" else "mul", [Val(a, "int"), Val(b, "int")], "nsw")
     r = self.checked(op, a, b)
     self.guard(r[1], "OverflowError: integer result does not fit in 64 bits")
     return r[0]

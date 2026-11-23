@@ -51,7 +51,8 @@
 #                  existing JSON repair process cases and agent loopback-HTTP checks also pass, and
 #                  the recorded JSON repair corpus replays natively, JIT and AOT
 #   rtcheck        tools/rtcheck.py: runtime.py, run by CPython, gives what CPython's str methods and
-#                  math functions give on random inputs
+#                  math functions give on random inputs; its lists and strs, on a model of the
+#                  heap that checks each access, are CPython's lists and strs
 #   re-fuzz        tools/re_fuzz.py: lib/re, run by CPython, compiles random patterns to the code and
 #                  errors CPython's re does and matches, splits and substitutes as it does, on CPython's
 #                  strs and on Pystachy's UTF-8 ones, and so do test_re's cases too big for gc-stress
@@ -94,9 +95,10 @@
 #   dict-probes    tools/dictprobe.c: dict lookups visit few table slots for keys that defeat a weak
 #                  hash or probe sequence (deterministic counts against a fixed limit, no timings);
 #                  the collector scans the key tables of strs and tuples, and none of ints;
-#                  only dfindc, the probe of CPython-hashed tables, tests entries for a key
-#                  past 64 bits: not dfinds (str keys), dfindi (native int keys, which
-#                  compares no strs) or dfind's generic probe
+#                  only dfindc, runtime.c's probe of CPython-hashed tables, tests entries for
+#                  a key past 64 bits: not runtime.py's dict_find_str (str keys) or
+#                  dict_find_int (native int keys, which compares no strs), or dfindo's
+#                  generic probe
 #   compile-limits tools/compilelimits.py: hosted/native ir/run/build reject growing types,
 #                  specialization breadth and the signature bytes specializations retain under
 #                  256 MiB / ten CPU seconds, with short diagnostics;
@@ -1144,18 +1146,20 @@ fi
 if want dict-probes; then
 L=$V/dict-probes.log; s=$(now); r=fail
 { "$V/pystachy2" rt runtime.py -o "$V/dictprobe-rt.ll" && "${LLVM}clang" -O2 -S -emit-llvm tools/dictprobe.c -o "$V/dictprobe.ll" &&
-  if [ "$(grep -Ec '^define[^@]*@dfind[cis]?\(' "$V/dictprobe.ll")" != 4 ]; then
-    echo 'dict-probes: dictprobe.ll must define dfind, dfindc, dfindi and dfinds'; false; fi &&
-  if sed -n '/^define[^@]*@dfinds(/,/^}/p' "$V/dictprobe.ll" | grep -q -- '-9223372036854775808'; then
-    echo 'dict-probes: the str-key probe (dfinds) must not test entries for wide int keys'; false; fi &&
-  if sed -n '/^define[^@]*@dfindi(/,/^}/p' "$V/dictprobe.ll" | grep -Eq '@(bcmp|memcmp|pys_str_eq)\('; then
-    echo 'dict-probes: dfindi, the probe of native int keys, must compare no strs (str keys use dfinds)'; false; fi &&
-  if sed -n '/^define[^@]*@dfindi(/,/^}/p' "$V/dictprobe.ll" | grep -q -- '-9223372036854775808'; then
-    echo 'dict-probes: dfindi, the probe of native int keys, must not test entries for wide int keys (hbig)'; false; fi &&
+  if [ "$(grep -Ec '^define[^@]*@dfind[co]\(' "$V/dictprobe.ll")" != 2 ]; then
+    echo 'dict-probes: dictprobe.ll must define dfindc and dfindo'; false; fi &&
+  if [ "$(grep -Ec '^define[^@]*@f\.dict_find_(int|str)\(' "$V/dictprobe-rt.ll")" != 2 ]; then
+    echo 'dict-probes: dictprobe-rt.ll must define dict_find_int and dict_find_str'; false; fi &&
+  if sed -n '/^define[^@]*@f\.dict_find_str(/,/^}/p' "$V/dictprobe-rt.ll" | grep -q -- '-9223372036854775808'; then
+    echo 'dict-probes: the str-key probe (dict_find_str) must not test entries for wide int keys'; false; fi &&
+  if sed -n '/^define[^@]*@f\.dict_find_int(/,/^}/p' "$V/dictprobe-rt.ll" | grep -Eq '@(bcmp|memcmp|pys_str_eq|f\.same_str)\('; then
+    echo 'dict-probes: dict_find_int, the probe of native int keys, must compare no strs (str keys use dict_find_str)'; false; fi &&
+  if sed -n '/^define[^@]*@f\.dict_find_int(/,/^}/p' "$V/dictprobe-rt.ll" | grep -q -- '-9223372036854775808'; then
+    echo 'dict-probes: dict_find_int, the probe of native int keys, must not test entries for wide int keys (hbig)'; false; fi &&
   ktag_wide=$(sed -n '/^define[^@]*@dfindc(/,/^}/p' "$V/dictprobe.ll" | grep -c -- '-9223372036854775808' || true) &&
-  generic_wide=$(sed -n '/^define[^@]*@dfind(/,/^}/p' "$V/dictprobe.ll" | grep -c -- '-9223372036854775808' || true) &&
+  generic_wide=$(sed -n '/^define[^@]*@dfindo(/,/^}/p' "$V/dictprobe.ll" | grep -c -- '-9223372036854775808' || true) &&
   if [ "$ktag_wide" -le "$generic_wide" ]; then
-    echo "dict-probes: dfindc must test entries for wide int keys, and dfind's generic probe must not: they compare $ktag_wide and $generic_wide words with -2**63"; false; fi &&
+    echo "dict-probes: dfindc must test entries for wide int keys, and dfindo's generic probe must not: they compare $ktag_wide and $generic_wide words with -2**63"; false; fi &&
   "${LLVM}llvm-link" "$V/dictprobe-rt.ll" "$V/dictprobe.ll" -o "$V/dictprobe.bc" && "${LLVM}clang" -O2 "$V/dictprobe.bc" -o "$V/dictprobe" -lm &&
   "$V/dictprobe" && PYSTACHY_GC_STRESS=1 "$V/dictprobe" --hash-cache && r=pass; } > "$L" 2>&1
 step dict-probes $r "$s" "$L" "$(sed -n 's/^worst average: \([0-9.]*\) slots per lookup (limit \([0-9.]*\))$/, "worst_average_slots": \1, "limit": \2/p' "$L")"

@@ -17,6 +17,10 @@ INT_TEXT = Path(__file__).with_name("int_text.py").resolve()
 REDUCTIONS = Path(__file__).with_name("reductions.py").resolve()
 NUMERIC = Path(__file__).with_name("numeric.py").resolve()
 INTEGERS = Path(__file__).with_name("integers.py").resolve()
+LISTS = Path(__file__).with_name("lists.py").resolve()
+TABLES = Path(__file__).with_name("tables.py").resolve()
+DICTS = Path(__file__).with_name("dicts.py").resolve()
+WALKS = Path(__file__).with_name("walks.py").resolve()
 # Keep the small arithmetic kernels long enough to measure without launch time.
 COUNTS = {"scalar": 120000000, "range": 60000000, "power": 60000000,
           "sum-float": 5000, "sum-int": 5000, "reduction": 5000, "ascii": 5000, "unicode": 5000,
@@ -27,16 +31,43 @@ COUNTS = {"scalar": 120000000, "range": 60000000, "power": 60000000,
           "hypot": 60000000, "hypot-3": 30000000, "dist-3": 40000000, "dist-64": 4000000, "fma": 150000000,
           "powmod": 3000000, "powmod-31": 3500000, "round-int": 70000000, "ints-sum": 900000,
           "floordiv": 50000000, "modulo": 50000000, "lshift": 50000000, "rshift": 50000000,
-          "bit-length": 50000000, "bit-count": 50000000, "idiv-small": 50000000, "idiv-wide": 20000000}
+          "bit-length": 50000000, "bit-count": 50000000, "idiv-small": 50000000, "idiv-wide": 20000000,
+          "list-append": 200000000, "list-append-str": 100000000, "list-short": 40000000, "list-stack": 150000000,
+          "list-pop-front": 100000000, "list-insert": 60000000, "list-slice": 30000000, "list-slice-step": 30000000,
+          "list-extend": 20000000, "list-reverse": 10000000, "list-index": 150000000,
+          "list-add": 6000000, "list-mul": 8000000, "list-set-slice": 15000000,
+          "list-in": 10000000, "list-in-str": 4000000, "list-find": 5000000, "list-remove": 8000000,
+          "list-range": 10000000, "list-bytes": 8000000,
+          "str-add": 60000000, "str-cat": 30000000, "str-mul": 20000000,
+          "set-add": 150000000, "set-has": 150000000, "set-has-large": 60000000, "set-churn": 15000000,
+          "set-str": 50000000, "set-tuple": 40000000, "set-algebra": 150000, "set-iterate": 1500000,
+          "set-update-list": 500000, "set-pop": 500000, "set-compare": 1500000,
+          "dict-set": 100000000, "dict-get": 150000000, "dict-get-large": 60000000, "dict-str": 60000000,
+          "dict-tuple": 30000000, "dict-churn": 40000000, "dict-iterate": 600000, "dict-copy": 200000,
+          "dict-pop": 150000, "dict-columns": 300000, "dict-setdefault": 60000000,
+          "walk-repr-ints": 800000, "walk-repr-strs": 750000, "walk-repr-floats": 250000, "walk-repr-nested": 250000,
+          "walk-eq-tuples": 800000, "walk-eq-dicts": 600000, "walk-sort-tuples": 50000, "walk-in-tuples": 1000000,
+          "walk-order-lists": 6000000}
 # The cases of a later migration have a source of their own, so that workload.py keeps the hash
 # that the first recorded report names.
 INT_TEXT_CASES = ("str-int", "str-int-short", "int-str", "int-str-short", "int-str-hex", "int-str-padded")
 REDUCTION_CASES = ("ints-any-all", "ints-any-all-short", "ints-sum-float", "join", "join-bytes", "join-slice", "path-join")
 NUMERIC_CASES = ("hypot", "hypot-3", "dist-3", "dist-64", "fma", "powmod", "powmod-31", "round-int", "ints-sum")
 INTEGER_CASES = ("floordiv", "modulo", "lshift", "rshift", "bit-length", "bit-count", "idiv-small", "idiv-wide")
+LIST_CASES = ("list-append", "list-append-str", "list-short", "list-stack", "list-pop-front", "list-insert", "list-slice",
+              "list-slice-step", "list-extend", "list-reverse", "list-index", "list-add", "list-mul", "list-set-slice",
+              "list-in", "list-in-str", "list-find", "list-remove", "list-range", "list-bytes",
+              "str-add", "str-cat", "str-mul")
+SET_CASES = ("set-add", "set-has", "set-has-large", "set-churn", "set-str", "set-tuple", "set-algebra", "set-iterate",
+             "set-update-list", "set-pop", "set-compare")
+DICT_CASES = ("dict-set", "dict-get", "dict-get-large", "dict-str", "dict-tuple", "dict-churn", "dict-iterate", "dict-copy",
+              "dict-pop", "dict-columns", "dict-setdefault")
+WALK_CASES = ("walk-repr-ints", "walk-repr-strs", "walk-repr-floats", "walk-repr-nested", "walk-eq-tuples", "walk-eq-dicts",
+              "walk-sort-tuples", "walk-in-tuples", "walk-order-lists")
 SOURCES = dict.fromkeys(COUNTS, SOURCE)
 for source, workload_cases in ((INT_TEXT, INT_TEXT_CASES), (REDUCTIONS, REDUCTION_CASES),
-                               (NUMERIC, NUMERIC_CASES), (INTEGERS, INTEGER_CASES)):
+                               (NUMERIC, NUMERIC_CASES), (INTEGERS, INTEGER_CASES), (LISTS, LIST_CASES),
+                               (TABLES, SET_CASES), (DICTS, DICT_CASES), (WALKS, WALK_CASES)):
     SOURCES.update(dict.fromkeys(workload_cases, source))
 
 

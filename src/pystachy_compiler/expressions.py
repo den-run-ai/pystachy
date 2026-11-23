@@ -5723,6 +5723,9 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
             return Val(self.iop(op, a.v, b.v), "int")
         if op in IOPS:
             return Val(self.scalar(IOPS[op], [Val(a.v, 'int'), Val(b.v, 'int')]), "int")
+        if self.rtmode and self.curfn.unchecked and (op == "<<" or op == ">>"):
+            # (runtime mode's @_rt.unchecked: by the count modulo 64, the right shift an arithmetic one)
+            return Val(self.scalar("shl" if op == "<<" else "ashr", [Val(a.v, "int"), Val(self.scalar("and", [Val(b.v, "int"), Val("63", "int")]), "int")]), "int")
         if op in IRT:
             return Val(self.rt(IRT[op], "i64", [f"i64 {a.v}", f"i64 {b.v}"]), "int")
     if (a.t == "int" or a.t == "float") and (b.t == "int" or b.t == "float"):

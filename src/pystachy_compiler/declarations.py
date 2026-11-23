@@ -18,6 +18,8 @@ from src.pystachy_compiler.specs import (
     BYTEARRAYC,
     BYTEARRAYS,
     CLASSVAR,
+    COMPLEXC,
+    COMPLEXS,
     CTYPES,
     EXCATTRS,
     EXCFIELDS,
@@ -32,14 +34,13 @@ from src.pystachy_compiler.specs import (
     METHODS,
     MODFUNCS,
     NONEVAR,
+    OBJECTC,
     OPTTYPES,
     PATHLIKE,
     PYBUILTINS,
-    COMPLEXC,
-    COMPLEXS,
-    OBJECTC,
     RANGEC,
     RANGES,
+    RTPTR,
     SPECIAL,
     STANDINS,
     STUB,
@@ -50,9 +51,9 @@ from src.pystachy_compiler.specs import (
     TYPING,
     UNARY,
     UNCALLED,
+    VTUPLE_ITEMS,
     exc_derives,
     is_excname,
-    VTUPLE_ITEMS,
 )
 from src.pystachy_compiler.syntax import Node, has_kind, has_value_return, mentions, mk, other_return
 from src.pystachy_compiler.unions import ANNTYPES, ann_site, field_home
@@ -177,6 +178,8 @@ def gen_ann(self, n: Node) -> str:
     s = n.s
     if k == "attr":
         c = self.imported_ref(n)
+        if self.rtmode and c == "_rt.Ptr":
+            return RTPTR  # (runtime mode's raw address: docs/runtime-in-subset.md)
         if c.startswith("ffi.") and c[4:] in CTYPES:
             return "int"
         if c == "ffi.c_buf" or c == "ffi.c_float":
@@ -1577,6 +1580,23 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         f.name = d.s + "." + acc
         f.ll = f"@m.{cls}.{f.name}"
     deco = short(deco)
+    own = 0
+    for x in d.kids[3:] if self.rtmode and cls == "" else []:
+        # runtime mode's own decorators. @_rt.unchecked: the function's + - * are unchecked, as
+        # runtime.c's signed arithmetic on sizes and indexes is (an overflow is undefined), and
+        # its << and >> shift by their count modulo 64. @_rt.cold: a slow path, which stays out of line.
+        # @_rt.noinline: a call of its own that is not cold, and @_rt.inline: a copy in each caller
+        if len(x.kids) == 0 and self.imported(x.s) == "_rt.unchecked":
+            f.unchecked = True
+            own += 1
+        elif len(x.kids) == 0 and self.imported(x.s) == "_rt.cold":
+            f.cold = True
+            own += 1
+        elif len(x.kids) == 0 and (self.imported(x.s) == "_rt.noinline" or self.imported(x.s) == "_rt.inline"):
+            f.inlining = self.imported(x.s)[4:]
+            own += 1
+    if own > 0 and own == len(d.kids) - 3:
+        deco = ""
     if deco != "" and f.deco == "" and not f.prop and f.acc == "" and not self.lib and not f.extern and not f.pyexport:
         # (CPython applies a decorator when the def runs, called or not: see decorators())
         if deco in TYPING and self.imported(deco) == "" and not self.bound(deco):
@@ -1757,7 +1777,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         f.npos = len(f.params) if f.kwarg < 0 else f.kwarg
     if f.vararg >= 0:
         f.npos = f.vararg
-    if len(d.kids) > 3 and f.deco == "" and not f.prop and f.acc == "" and not f.extern and not f.pyexport:
+    if len(d.kids) > 3 and f.deco == "" and not f.prop and f.acc == "" and not f.extern and not f.pyexport and not (deco == "" and (f.unchecked or f.cold or f.inlining != "")):
         bad = f"unsupported decorator @{deco}" if deco != "" else "async functions are not supported"
         bad = STUB.replace("NAME", short(d.s)) if stub else bad
     if f.deco != "" and d.s.startswith("__") and d.s.endswith("__"):

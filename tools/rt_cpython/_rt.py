@@ -9,7 +9,46 @@ import math
 import struct
 from fractions import Fraction
 
+from rt_heap import Fault, Ptr, Str, nsw, shift  # noqa: F401  (a raw address; unchecked arithmetic, as load() rewrites it)
+
 M64 = (1 << 64) - 1
+
+
+def unchecked(f):
+    # (CPython's ints do not wrap: rt_heap.load() makes a function's + - * << >> what they are compiled)
+    return f
+
+
+def cold(f):
+    return f
+
+
+def noinline(f):
+    return f
+
+
+def inline(f):
+    return f
+
+
+MACHINE = ("nil", "ptr", "addr", "ref", "as_str", "word", "put", "byte_at", "put_byte", "i32_at", "put_i32", "at",
+           "offset", "get", "set", "getp", "setp", "field", "sizeof", "move", "cpy", "fill", "cmp", "local", "words")
+
+
+def _machine(name):
+    def primitive(*args):
+        raise NotImplementedError(f"_rt.{name}: runtime.py's machine memory needs a heap here (rt_heap.py, as tools/rtcheck.py gives it)")
+    return primitive
+
+
+for _name in MACHINE:
+    globals()[_name] = _machine(_name)
+
+
+def use(table):
+    # machine memory from rt_heap.primitives(heap): tools/rtcheck.py runs the memory code on it
+    for name in MACHINE + ("null",):
+        globals()[name] = table[name]
 
 
 def i64(x):
@@ -20,6 +59,8 @@ def i64(x):
 def byte(s, i):
     if not 0 <= i < len(s):
         raise IndexError("string index out of range")
+    if isinstance(s, Str):  # (a str in the heap: its byte is read there, untagged as compiled)
+        return s.heap.load(s.addr + 24 + i, 1, None, False)
     return s[i] if isinstance(s, bytearray) else ord(s[i])
 
 
@@ -94,6 +135,8 @@ def same(a, i, b, j, n):
 
 
 def find_byte(s, c, st, en):
+    if isinstance(s, Str):  # (a str in the heap: its bytes)
+        s = s.text()
     if not 0 <= st <= en <= len(s):
         raise IndexError("search out of range")
     if not 0 <= c <= 255:
@@ -226,5 +269,49 @@ def fail(kind, msg):
         raise UnicodeDecodeError(msg)
     if kind == "UnicodeEncodeError":
         raise UnicodeEncodeError(msg)
+    if kind == "KeyError":
+        raise KeyErrorText(msg)
     import builtins
     raise getattr(builtins, kind)(msg)
+
+
+class KeyErrorText(KeyError):
+    # a KeyError whose str() is its message as given: CPython's is the repr of its key
+    def __str__(self):
+        return self.args[0]
+
+
+KeyErrorText.__name__ = "KeyError"
+
+
+def ftrunc(x):
+    return float(math.trunc(x)) if math.isfinite(x) else x
+
+
+def ffloor(x):
+    return float(math.floor(x)) if math.isfinite(x) else x
+
+
+def fceil(x):
+    return float(math.ceil(x)) if math.isfinite(x) else x
+
+
+def frint(x):
+    # nearbyint in the default rounding mode: half to even
+    return float(round(x)) if math.isfinite(x) else x
+
+
+def copysign(x, y):
+    return math.copysign(x, y)
+
+
+def f2i(x):
+    return int(x)
+
+
+def ult(a, b):
+    return (a & M64) < (b & M64)
+
+
+def ule(a, b):
+    return (a & M64) <= (b & M64)

@@ -4119,8 +4119,8 @@ class Gen:
     def tbaa_nodes(self) -> list[str]:
         return lower_module_tbaa_nodes(self)
 
-    def tuple_rets(self) -> None:
-        return lowering_tuple_rets(self)
+    def tuple_rets(self, all: bool = True) -> None:
+        return lowering_tuple_rets(self, all)
 
     def key_kinds(self) -> None:
         return lowering_key_kinds(self)

@@ -7,9 +7,10 @@ from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.optimizations import recursion_unsnapshot
-from src.pystachy_compiler.specs import BIG, CTYPES, NONEVAR, RTSYM
+from src.pystachy_compiler.specs import BIG, CTYPES, NONEVAR, RTPTR, RTSYM
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
+    two_words,
     RtFn,
     clone,
     closure_default_slots,
@@ -467,7 +468,7 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         for t in f.ptypes + [f.ret]:
             if t == "bool" or t == "":
                 self.err(f"runtime function {f.name}() takes or returns {typestr(t) if t != '' else 'an untyped value'}: the runtime ABI passes bools as int")
-        have = [lt(f.ret)] + [lt(f.ptypes[j]) for j in self.fn.ps]
+        have = ["{i64, ptr}" if two_words(f, self.rtmode) else lt(f.ret)] + [lt(f.ptypes[j]) for j in self.fn.ps]
         if f.ll[1:] in RTSYM and have != RtFn(RTSYM[f.ll[1:]]).ll:
             want = RtFn(RTSYM[f.ll[1:]]).ll
             self.err(f"{f.name}() is defined as {have[0]}({', '.join(have[1:])}), but the compiler calls it as {want[0]}({', '.join(want[1:])}) (RUNTIME's {RTSYM[f.ll[1:]]})")
@@ -556,7 +557,7 @@ def gen_untold(self, f: FnInfo, ts: list[str], how: str) -> None:
     # passes those alone
     if f.ll[1:] not in RTSYM:
         for t in ts:
-            if t not in ("int", "float", "str", "None"):
-                self.err(f"{f.name}() is {how} with {typestr(t)}, which RUNTIME has no entry to check: a function of runtime mode that the compiler does not call takes and returns int, float, str or None")
+            if t not in ("int", "float", "str", "None", RTPTR):
+                self.err(f"{f.name}() is {how} with {typestr(t)}, which RUNTIME has no entry to check: a function of runtime mode that the compiler does not call takes and returns int, float, str, _rt.Ptr or None")
 
 # ---- lowering: an IFn as LLVM text

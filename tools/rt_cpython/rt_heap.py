@@ -1,0 +1,839 @@
+"""A model of machine memory for running runtime.py's memory code on CPython (tools/rtcheck.py).
+
+runtime.py reads and writes runtime.c's records and arrays through _rt's machine primitives,
+which nothing checks in a compiled runtime. Here each is checked, so that fuzzing the code on
+CPython finds what a compiled run would only corrupt:
+
+- an access outside the block that an allocation gave (the allocator's byte of slack is part
+  of the block; blocks are apart, so one past the end is in none);
+- a read of bytes that nothing has written (pys_rt_raw zeroes nothing);
+- a typed read of a slot that another type last wrote: the three alias rules of
+  docs/runtime-in-subset.md, which LLVM's type-based alias analysis relies on. A record's
+  fields are read and written as fields (_rt.get, _rt.set, _rt.getp, _rt.setp) and an array's
+  words as words (_rt.word, _rt.put); bytes, 32-bit words and the block operations carry no
+  type, and neither does what runtime.c writes;
+- a sum, difference or product past 64 bits in a function that is @_rt.unchecked, whose
+  arithmetic is runtime.c's: undefined there (load() rewrites those functions to check it);
+- overlapping _rt.cpy ranges, and sizes below zero;
+- an operation that reads more than any real one does (LIMIT): a loop that does not end.
+
+A fault raises Fault, which is no exception of the runtime's: a test that expects CPython's
+outcome reports it as a failure.
+
+Addresses are ints; an _rt.Ptr is an interned object of its address, so that `is` compares
+addresses as it does compiled. A str that the memory code made (_rt.as_str) is a Str here: a
+view of its header and bytes, whose text() is the CPython str. A CPython str that the memory
+code is given is copied into the heap once, with no cached count.
+"""
+import ast
+import bisect
+import os
+import sys
+
+M64 = (1 << 64) - 1
+MIN = -(1 << 63)
+MAX = (1 << 63) - 1
+
+
+class Fault(Exception):
+    """Something that a compiled runtime would not notice: a bug in runtime.py's memory code."""
+
+
+class Runaway(Fault):
+    """An operation that read more than any real one does: its loop has no end."""
+
+
+class Ptr:
+    __slots__ = ("addr",)
+
+    def __init__(self, addr):
+        self.addr = addr
+
+    def __repr__(self):
+        return f"<Ptr {self.addr:#x}>"
+
+
+class Block:
+    __slots__ = ("base", "size", "data", "known", "tags", "kind", "name")
+
+    def __init__(self, base, size, kind, name):
+        self.base = base
+        self.size = size
+        self.data = bytearray(size)
+        self.known = bytearray(b"\x01" * size if kind != "raw" else size)
+        self.tags = [None] * ((size + 7) // 8)
+        self.kind = kind  # "scan", "atomic", "raw" (a str's) or "static"
+        self.name = name
+
+
+class Str(str):
+    """A str in the heap: its length and bytes are read there when asked for."""
+    __slots__ = ("heap", "addr")
+
+    def __len__(self):
+        return self.heap.load(self.addr, 8, "length")
+
+    def text(self):
+        n = len(self)
+        return bytes(self.heap.read(self.addr + 24, n)).decode("latin-1")
+
+    def __repr__(self):
+        return f"<Str {self.addr:#x}>"
+
+
+def signed(x):
+    x &= M64
+    return x - (1 << 64) if x >> 63 else x
+
+
+class Heap:
+    LIMIT = 1000000
+
+    def __init__(self, records):
+        self.records = {name: spec.split() for name, spec in records.items()}
+        self.reset()
+
+    def reset(self):
+        self.steps = 0  # (the reads of the operation under way: whoever starts one resets it)
+        self.bases = []
+        self.blocks = {}
+        self.ptrs = {0: Ptr(0)}
+        self.next = 0x10000
+        self.strs = {}
+        self.allocated = 0
+
+    # ---- addresses
+    def P(self, addr):
+        addr &= M64
+        p = self.ptrs.get(addr)
+        if p is None:
+            p = self.ptrs[addr] = Ptr(addr)
+        return p
+
+    def of(self, x):
+        # the address of a reference: a Ptr, a heap Str, None, or a CPython str (copied in once)
+        if isinstance(x, Ptr):
+            return x.addr
+        if x is None:
+            return 0
+        if isinstance(x, Str):
+            return x.addr
+        if isinstance(x, str):
+            return self.str_addr(x)
+        raise Fault(f"{x!r} is no reference")
+
+    def new(self, n, kind, name=""):
+        if not 0 <= n <= 1 << 40:
+            raise MemoryError()
+        size = n + 1  # (the allocator's byte of slack)
+        base = self.next
+        self.next += (size + 15 & ~15) + 32  # (apart: one past a block's end is in no block)
+        b = Block(base, size, kind, name)
+        self.bases.append(base)
+        self.blocks[base] = b
+        self.allocated += 1
+        return base
+
+    def static(self, words, name):
+        # a static array of runtime.c's (a sentinel): its words are part of no allocation's slack
+        base = self.next
+        self.next += (len(words) * 8 + 15 & ~15) + 32
+        b = Block(base, len(words) * 8, "static", name)
+        for i, w in enumerate(words):
+            b.data[i * 8 : i * 8 + 8] = (w & M64).to_bytes(8, "little")
+        self.bases.append(base)
+        self.blocks[base] = b
+        return base
+
+    def block(self, addr, n, what):
+        if n < 0:
+            raise Fault(f"{what} of {n} bytes")
+        i = bisect.bisect_right(self.bases, addr) - 1
+        b = self.blocks[self.bases[i]] if i >= 0 else None
+        if b is None or addr + n > b.base + b.size:
+            where = f"{addr - b.base} of a block of {b.size} ({b.kind} {b.name})".rstrip() if b is not None and addr < b.base + b.size + 48 else "no block"
+            raise Fault(f"{what} of {n} bytes at {addr:#x}: offset {where}")
+        return b
+
+    def block_of(self, addr):
+        i = bisect.bisect_right(self.bases, addr) - 1
+        b = self.blocks[self.bases[i]] if i >= 0 else None
+        return b if b is not None and addr < b.base + b.size else None
+
+    # ---- typed loads and stores (tag None: no type)
+    def load(self, addr, n, tag, sign=True):
+        self.steps += 1
+        if self.steps > self.LIMIT:
+            raise Runaway(f"more than {self.LIMIT} reads in one operation: a loop that does not end")
+        b = self.block(addr, n, "a read")
+        o = addr - b.base
+        if b.known[o : o + n] != b"\x01" * n:
+            raise Fault(f"a read of {n} bytes at offset {o} of a block of {b.size} ({b.kind}) that nothing wrote")
+        if tag is not None:
+            if o & 7:
+                raise Fault(f"a typed read at offset {o}, which no word starts at")
+            have = b.tags[o >> 3]
+            if have is not None and have != tag:
+                raise Fault(f"a read as {tag} at offset {o} of a block of {b.size} ({b.kind}) of what was written as {have}")
+        return int.from_bytes(b.data[o : o + n], "little", signed=sign)
+
+    def store(self, addr, n, value, tag):
+        if not isinstance(value, int):
+            raise Fault(f"a store of {value!r}, which is no int")
+        if tag is not None and not MIN <= value <= MAX:
+            raise Fault(f"a store of {value}, which does not fit in 64 bits")
+        b = self.block(addr, n, "a write")
+        o = addr - b.base
+        data = (value & ((1 << 8 * n) - 1)).to_bytes(n, "little")
+        if b.kind == "static" and b.name.startswith("empty") and b.data[o : o + n] != data:
+            raise Fault(f"a write that changes the sentinel {b.name}")  # (runtime.c stores its kind's own bits again)
+        if tag is not None and o & 7:
+            raise Fault(f"a typed write at offset {o}, which no word starts at")
+        b.data[o : o + n] = data
+        b.known[o : o + n] = b"\x01" * n
+        for s in range(o >> 3, (o + n + 7) >> 3):
+            if s < len(b.tags):
+                b.tags[s] = tag
+
+    def read(self, addr, n):
+        # n bytes as runtime.c or the test reads them: no type, but they are written ones
+        if n == 0:
+            return b""
+        b = self.block(addr, n, "a read")
+        o = addr - b.base
+        if b.known[o : o + n] != b"\x01" * n:
+            raise Fault(f"a read of {n} bytes at offset {o} of a block of {b.size} ({b.kind}), some of which nothing wrote")
+        return bytes(b.data[o : o + n])
+
+    def write(self, addr, data):
+        if len(data) == 0:
+            return
+        b = self.block(addr, len(data), "a write")
+        o = addr - b.base
+        b.data[o : o + len(data)] = data
+        b.known[o : o + len(data)] = b"\x01" * len(data)
+        for s in range(o >> 3, (o + len(data) + 7) >> 3):
+            if s < len(b.tags):
+                b.tags[s] = None
+
+    def words(self, addr, n):
+        raw = self.read(addr, n * 8)
+        return [int.from_bytes(raw[i * 8 : i * 8 + 8], "little", signed=True) for i in range(n)]
+
+    def copy(self, dst, src, n, overlap):
+        if n < 0:
+            raise Fault(f"a copy of {n} bytes")
+        if n == 0:
+            return  # (any addresses: a copy of nothing reads and writes nothing)
+        if not overlap and dst != src and dst < src + n and src < dst + n:
+            raise Fault(f"_rt.cpy of {n} bytes between overlapping ranges ({dst:#x}, {src:#x}): _rt.move copies those")
+        s = self.block(src, n, "a read")
+        d = self.block(dst, n, "a write")
+        so = src - s.base
+        do = dst - d.base
+        data = bytes(s.data[so : so + n])
+        if d.kind == "static" and d.name.startswith("empty") and d.data[do : do + n] != data:
+            raise Fault(f"a write that changes the sentinel {d.name}")
+        known = bytes(s.known[so : so + n])
+        d.data[do : do + n] = data
+        d.known[do : do + n] = known  # (bytes that nothing wrote may be copied: reading them is the fault)
+        for t in range(do >> 3, (do + n + 7) >> 3):
+            if t < len(d.tags):
+                d.tags[t] = None
+
+    # ---- strs
+    def str_addr(self, s):
+        key = id(s)
+        have = self.strs.get(key)
+        if have is None:
+            have = self.strs[key] = (s, self.new_str(s.encode("latin-1"), 0))
+        return have[1]
+
+    def new_str(self, data, chars1):
+        # a Str of runtime.c's: length, cached dict hash, cached count of code points + 1 (0: unset)
+        a = self.new(24 + len(data), "atomic", "str")
+        self.write(a, len(data).to_bytes(8, "little") + bytes(8) + chars1.to_bytes(8, "little") + data + b"\0")
+        self.blocks[a].tags[0] = "length"
+        return a
+
+    def as_str(self, addr):
+        if addr == 0:
+            return None
+        s = Str("")
+        s.heap = self
+        s.addr = addr
+        return s
+
+    def field(self, spec):
+        rec, _, name = spec.partition(".")
+        fields = self.records.get(rec)
+        if fields is None:
+            raise Fault(f"'{spec}' names no record of the runtime (RTRECORDS)")
+        for i, f in enumerate(fields):
+            if f.rstrip("*") == name:
+                return i * 8, f.endswith("*")
+        raise Fault(f"'{spec}' is no field of a record of the runtime (RTRECORDS)")
+
+
+def primitives(heap):
+    """_rt's machine primitives on heap, by name."""
+    def nil():
+        return heap.P(0)
+
+    def ptr(i):
+        return heap.P(i)
+
+    def addr(p):
+        return signed(heap.of(p))
+
+    def ref(x):
+        return heap.P(heap.of(x))
+
+    def as_str(x):
+        return x if isinstance(x, str) else heap.as_str(heap.of(x))
+
+    def word(p, i):
+        return heap.load(heap.of(p) + 8 * i, 8, "rt.word")
+
+    def put(p, i, v):
+        heap.store(heap.of(p) + 8 * i, 8, v, "rt.word")
+
+    def byte_at(p, i):
+        return heap.load(heap.of(p) + i, 1, None, False)
+
+    def put_byte(p, i, v):
+        heap.store(heap.of(p) + i, 1, v, None)
+
+    def i32_at(p, i):
+        return heap.load(heap.of(p) + 4 * i, 4, None)
+
+    def put_i32(p, i, v):
+        heap.store(heap.of(p) + 4 * i, 4, v, None)
+
+    def at(p, i):
+        return heap.P(heap.of(p) + 8 * i)
+
+    def offset(p, n):
+        return heap.P(heap.of(p) + n)
+
+    def tag(spec, pointer):
+        return "length" if spec == "Str.len" else "rt.ptr" if pointer else "rt.int"
+
+    def get(p, spec):
+        o, pointer = heap.field(spec)
+        if pointer:
+            raise Fault(f"_rt.get of {spec}, which holds an address")
+        return heap.load(heap.of(p) + o, 8, tag(spec, pointer))
+
+    def set_(p, spec, v):
+        o, pointer = heap.field(spec)
+        if pointer:
+            raise Fault(f"_rt.set of {spec}, which holds an address")
+        heap.store(heap.of(p) + o, 8, v, tag(spec, pointer))
+
+    def getp(p, spec):
+        o, pointer = heap.field(spec)
+        if not pointer:
+            raise Fault(f"_rt.getp of {spec}, which holds a word")
+        return heap.P(heap.load(heap.of(p) + o, 8, tag(spec, pointer), False))
+
+    def setp(p, spec, q):
+        o, pointer = heap.field(spec)
+        if not pointer:
+            raise Fault(f"_rt.setp of {spec}, which holds a word")
+        heap.store(heap.of(p) + o, 8, signed(heap.of(q)), tag(spec, pointer))
+
+    def field(p, spec):
+        return heap.P(heap.of(p) + heap.field(spec)[0])
+
+    def sizeof(rec):
+        if rec not in heap.records:
+            raise Fault(f"'{rec}' is no record of the runtime (RTRECORDS)")
+        return 8 * len(heap.records[rec])
+
+    def local(rec):
+        # a record in the caller's frame: a block of its own here, which nothing frees (a frame's
+        # lifetime is the function's, which the code that takes its address keeps to)
+        if rec not in heap.records:
+            raise Fault(f"'{rec}' is no record of the runtime (RTRECORDS)")
+        return heap.P(heap.new(8 * len(heap.records[rec]), "frame", rec))
+
+    def words(n):
+        if not 1 <= n <= 16:
+            raise Fault(f"_rt.words({n}): from 1 to 16 words")
+        return heap.P(heap.new(8 * n, "frame", "words"))
+
+    def move(d, s, n):
+        heap.copy(heap.of(d), heap.of(s), n, True)
+
+    def cpy(d, s, n):
+        heap.copy(heap.of(d), heap.of(s), n, False)
+
+    def fill(p, b, n):
+        if n < 0:
+            raise Fault(f"a fill of {n} bytes")
+        heap.write(heap.of(p), bytes([b & 255]) * n)
+
+    def cmp(a, b, n):
+        if n < 0:
+            raise Fault(f"a comparison of {n} bytes")
+        x = heap.read(heap.of(a), n)
+        y = heap.read(heap.of(b), n)
+        # (memcmp's sign is what C promises: its size is not the bytes' difference everywhere)
+        return (x > y) * 77 - (x < y) * 77
+
+    def null(x):
+        return x is None or (isinstance(x, Ptr) and x.addr == 0)
+
+    out = dict(nil=nil, ptr=ptr, addr=addr, ref=ref, as_str=as_str, word=word, put=put, byte_at=byte_at, put_byte=put_byte,
+               i32_at=i32_at, put_i32=put_i32, at=at, offset=offset, get=get, getp=getp, setp=setp, field=field, sizeof=sizeof,
+               move=move, cpy=cpy, fill=fill, cmp=cmp, null=null, local=local, words=words)
+    out["set"] = set_
+    return out
+
+
+def nsw(op, a, b):
+    # + - * of a function that is @_rt.unchecked: runtime.c's signed arithmetic, undefined past
+    # 64 bits (floats are not its business)
+    r = a + b if op == "+" else a - b if op == "-" else a * b
+    if type(r) is int and not MIN <= r <= MAX:
+        raise Fault(f"{a} {op} {b} overflows 64 bits in an @_rt.unchecked function")
+    return r
+
+
+def shift(op, a, n):
+    # << and >> there: by the count's low six bits, >> keeping the sign
+    n &= 63
+    return signed(a << n) if op == "<<" else signed(a) >> n
+
+
+class Unchecked(ast.NodeTransformer):
+    """Rewrite the arithmetic of @_rt.unchecked functions to what it is compiled: nsw and shift."""
+    OPS = {ast.Add: "+", ast.Sub: "-", ast.Mult: "*"}
+    SHIFTS = {ast.LShift: "<<", ast.RShift: ">>"}
+
+    def __init__(self):
+        self.on = False
+
+    def visit_FunctionDef(self, node):
+        was = self.on
+        self.on = any(isinstance(d, ast.Attribute) and d.attr == "unchecked" for d in node.decorator_list)
+        self.generic_visit(node)
+        self.on = was
+        return node
+
+    def call(self, name, op, a, b, at):
+        f = ast.Attribute(ast.Name("_rt", ast.Load()), name, ast.Load())
+        return ast.copy_location(ast.Call(f, [ast.Constant(op), a, b], []), at)
+
+    def visit_BinOp(self, node):
+        self.generic_visit(node)
+        if self.on and type(node.op) in self.OPS:
+            return self.call("nsw", self.OPS[type(node.op)], node.left, node.right, node)
+        if self.on and type(node.op) in self.SHIFTS:
+            return self.call("shift", self.SHIFTS[type(node.op)], node.left, node.right, node)
+        return node
+
+    def visit_UnaryOp(self, node):
+        self.generic_visit(node)
+        if self.on and isinstance(node.op, ast.USub) and not isinstance(node.operand, ast.Constant):
+            return self.call("nsw", "-", ast.Constant(0), node.operand, node)
+        return node
+
+    def visit_AugAssign(self, node):
+        self.generic_visit(node)
+        if self.on and isinstance(node.target, ast.Name) and (type(node.op) in self.OPS or type(node.op) in self.SHIFTS):
+            read = ast.copy_location(ast.Name(node.target.id, ast.Load()), node)
+            if type(node.op) in self.OPS:
+                value = self.call("nsw", self.OPS[type(node.op)], read, node.value, node)
+            else:
+                value = self.call("shift", self.SHIFTS[type(node.op)], read, node.value, node)
+            return ast.copy_location(ast.Assign([node.target], value), node)
+        return node
+
+
+def load(path, name="runtime"):
+    """runtime.py as a CPython module whose @_rt.unchecked functions check their arithmetic."""
+    import types
+    with open(path, encoding="utf-8") as f:
+        tree = ast.parse(f.read(), path)
+    tree = ast.fix_missing_locations(Unchecked().visit(tree))
+    mod = types.ModuleType(name)
+    mod.__file__ = os.path.abspath(path)
+    sys.modules[name] = mod
+    exec(compile(tree, path, "exec"), mod.__dict__)
+    return mod
+
+
+class CSide:
+    """What runtime.py's memory code calls in runtime.c, on a Heap: the allocators, the lists'
+    sentinels, the kind of an item array, the opt-in test and the identity companions' boxes.
+    It reads and writes as C does, with no type that runtime.py's analysis knows."""
+    LEN, CAP, A, IDS = 0, 8, 16, 24
+
+    def __init__(self, heap, opt_in=0):
+        self.heap = heap
+        self.opt = opt_in
+        self.setup()
+
+    def setup(self):
+        h = self.heap
+        self.empty_list = h.static([0], "empty_list")
+        self.empty_atomic = h.static([0], "empty_atomic")
+        self.empty_inline = h.static([0], "empty_inline")
+        self.empty_ids = {k: h.static([k], "empty_identity") for k in (1, 2, 3, 9, 10)}
+        self.boxes = {}
+        self.on_eq = None
+        self.mpz = {}    # an Mpz's address: the int it is
+        self.objs = {}   # an object's address: the CPython object that is its element or key
+        self.dicts = {}  # a Dict's address: the keys it holds, as CPython values
+        self.probes = 0  # the idx slots that the dicts' probes have visited (runtime.c's DICT_PROBE)
+        self.busy = set()  # the containers whose repr is under way (pys_repr_enter)
+        self.eqs = 0     # the comparisons the walks made (runtime.c's EQ_PROBE)
+
+    # ---- raw words
+    def w(self, addr):
+        return int.from_bytes(self.heap.read(addr, 8), "little", signed=True)
+
+    def put(self, addr, v):
+        self.heap.write(addr, (v & M64).to_bytes(8, "little"))
+
+    # ---- what runtime.py declares
+    def pys_alloc(self, n):
+        return self.heap.P(self.heap.new(n, "scan"))
+
+    def pys_alloc_atomic(self, n):
+        return self.heap.P(self.heap.new(n, "atomic"))
+
+    def pys_rt_raw(self, n):
+        return self.heap.P(self.heap.new(n, "raw"))
+
+    def pys_rt_oom(self):
+        raise MemoryError()
+
+    def pys_rt_opt_in(self):
+        return self.opt
+
+    def pys_rt_empty_list(self):
+        return self.heap.P(self.empty_list)
+
+    def pys_rt_empty_atomic(self):
+        return self.heap.P(self.empty_atomic)
+
+    def pys_rt_empty_inline(self):
+        return self.heap.P(self.empty_inline)
+
+    def empty_identity(self, kind):
+        if kind & 8:
+            return self.empty_ids[9 if kind & 3 == 1 else 10]
+        return self.empty_ids[1 if kind & 3 == 1 else 2 if kind & 3 == 2 else 3]
+
+    def pys_rt_empty_identity(self, kind):
+        return self.heap.P(self.empty_identity(kind))
+
+    def pys_rt_atomic_items(self, a):
+        addr = self.heap.of(a)
+        if addr == self.empty_atomic:
+            return 1
+        b = self.heap.block_of(addr)
+        return int(b is not None and b.kind == "atomic")
+
+    def box(self, value):
+        a = self.heap.new(16, "atomic", "box")
+        self.boxes[a] = value
+        return a
+
+    def list_box(self, value, kind):
+        if not self.opt:
+            raise Fault("list_box in a program that does not opt in")
+        if kind & 8:
+            raise Fault("the model has no optional numeric slots")
+        return 0 if kind & 3 == 3 else self.box(value)
+
+    def pys_rt_list_box(self, value, kind):
+        return self.list_box(value, kind)
+
+    def big_list(self, l):
+        ids = self.w(l + self.IDS)
+        return int(ids != 0 and self.w(ids) & 3 == 3)
+
+    def pys_rt_big_list(self, l):
+        return self.big_list(self.heap.of(l))
+
+    def list_identity(self, l, kind):
+        # runtime.c's pys_list_identity and list_identity_slow
+        ids = self.w(l + self.IDS)
+        if ids != 0 and not self.w(ids) & 4 and not (kind & 3 == 1 and self.big_list(l)):
+            return
+        if not self.opt:
+            raise Fault("list_identity_slow in a program that does not opt in")
+        n = self.w(l + self.LEN)
+        cap = self.w(l + self.CAP)
+        if self.big_list(l) and kind & 3 == 1:
+            if cap == 0:
+                self.put(l + self.IDS, self.empty_ids[1])
+                return
+            a = self.w(l + self.A)
+            for i in range(n):
+                m = self.w(ids + 8 * (i + 1)) if self.w(a + 8 * i) == MIN else 0
+                self.put(ids + 8 * (i + 1), self.box(("big", m) if m else self.w(a + 8 * i)))
+            self.put(ids, 1)
+            return
+        if ids == 0:
+            ids = self.heap.new((cap + 1) * 8, "scan", "ids")
+            self.put(ids, kind & 11)
+            self.put(l + self.IDS, ids)
+        a = self.w(l + self.A)
+        for i in range(n):
+            if self.w(ids + 8 * (i + 1)) == 0:
+                self.put(ids + 8 * (i + 1), self.list_box(self.w(a + 8 * i), self.w(ids)))
+        self.put(ids, self.w(ids) & 11)
+
+    def pys_list_identity(self, l, kind):
+        self.list_identity(self.heap.of(l), kind)
+
+    # ---- what the searches and the promoting ints' companions call
+    def text(self, addr):
+        return self.heap.read(addr + 24, self.w(addr)).decode("latin-1")
+
+    def pys_str_eq(self, a, b):
+        return int(self.text(self.heap.of(a)) == self.text(self.heap.of(b)))
+
+    def pys_rt_not_in_list(self, x, d):
+        d = self.text(self.heap.of(d))
+        raise ValueError(("None" if d == "s" and x == 0 else repr(self.text(x)) if d == "s" else str(x)) + " is not in list")
+
+    def pys_dyn_big(self, lo, hi):
+        hi = self.heap.of(hi)
+        return self.heap.P(self.box(("big", hi) if hi else lo))
+
+    def pys_dyn_big_ptr(self, x):
+        v = self.boxes[self.heap.of(x)]
+        return self.heap.P(v[1] if isinstance(v, tuple) else 0)
+
+    # ---- what the sets call: the hash and the equality of the elements that a type descriptor
+    # describes (here CPython objects, whose __hash__ and __eq__ are the program's), the memory
+    # of a key table, Mpz, and the dict whose keys a set takes
+    SET_MASK, SET_KEYS = 24, 40
+
+    def new_mpz(self, value):
+        a = self.heap.new(16, "atomic", "mpz")
+        self.mpz[a] = value
+        return a
+
+    def new_obj(self, obj):
+        a = self.heap.new(16, "scan", "object")
+        self.objs[a] = obj
+        return a
+
+    def element(self, k, kind):
+        # the CPython value of word k of a set or a dict of this kind
+        return k if kind & ~2 == 0 else self.text(k) if kind & ~2 == 1 else self.objs[k] if self.text(kind & ~2).lstrip("!")[0] not in "ib" else k
+
+    def pys_mpz_hash(self, m):
+        return hash(self.mpz[self.heap.of(m)])
+
+    def pys_mpz_cmp(self, a, b):
+        x, y = self.mpz[self.heap.of(a)], self.mpz[self.heap.of(b)]
+        return (x > y) - (x < y)
+
+    def pys_rt_keymem(self, kind, n):
+        # runtime.c's keymem: an int key holds no pointer
+        ints = kind == 0 or (kind > 3 and self.text(kind & ~2).lstrip("!")[0] in "ib")
+        return self.pys_alloc_atomic(n * 8) if ints else self.pys_alloc(n * 8)
+
+    def pys_rt_hitem(self, k, kind):
+        return hash(self.element(k, kind))
+
+    def pys_rt_set_eq(self, s, j, x, k, add):
+        # runtime.c's seq and sxeq: the comparison, then whether it left the table and the slot
+        a = self.heap.of(s)
+        keys, mask, kind = self.w(a + self.SET_KEYS), self.w(a + self.SET_MASK), self.w(a + 8)
+        eq = int(self.element(x, kind) == self.element(k, kind))
+        if eq and add:
+            return 1
+        now = self.w(a + self.SET_KEYS)
+        if (now != keys and (mask != 7 or self.w(a + self.SET_MASK) != 7)) or self.w(now + 8 * j) != x:
+            return -1
+        return eq
+
+    def pys_rt_set_keyerr(self, s, k):
+        raise KeyError(self.element(k, self.w(self.heap.of(s) + 8)))
+
+    def pys_rt_bkeyerr(self, m):
+        raise KeyError(self.mpz[self.heap.of(m)])
+
+    def pys_rt_khash(self, kind):
+        # runtime.c's khash: are the keys hashed by CPython's hash (marked so, or by their descriptor)
+        if kind & 2:
+            return 1
+        return int(kind > 3 and (self.text(kind)[0] == "!" or "H" in self.text(kind) or "A" in self.text(kind)))
+
+    def pys_rt_dict_lacks(self, d, k, h, m, c):
+        d = self.heap.of(d)
+        m = self.heap.of(m)
+        return int((self.mpz[m] if m else self.element(k, self.w(d + 8))) not in self.dicts[d])
+
+    # ---- what the dicts call: the hash and the probes of the keys that a type descriptor
+    # describes, the KeyError, the box of a value and the count of the slots that probes visit
+    D_KIND, D_SIZE, D_KEYS, D_HS, D_IDX = 8, 24, 32, 48, 56
+
+    def i32(self, addr):
+        return int.from_bytes(self.heap.read(addr, 4), "little", signed=True)
+
+    def pys_rt_probe(self):
+        self.probes += 1
+
+    def pys_rt_hash_str(self, s):
+        return self.rt.pys_hash_str(self.heap.as_str(self.heap.of(s)))
+
+    def pys_rt_hobj(self, kind, k):
+        return hash(self.element(k, kind))
+
+    def pys_big_box(self, v, m):
+        m = self.heap.of(m)
+        return self.heap.P(self.box(("big", m) if m else v))
+
+    def pys_rt_dict_keyerr(self, d, k):
+        raise KeyError(self.element(k, self.w(self.heap.of(d) + self.D_KIND)))
+
+    def pys_rt_dfind_obj(self, dp, k, h):
+        # runtime.c's dfindo and dlook, of a table whose keys are hashed by CPython's hash (dfindc)
+        # or not (dfindg): a key is found as itself, then by the comparison that may run an __eq__
+        # (dkeyeq), after which the lookup starts again if the table or the entry changed, and
+        # takes the slot the entry moved to if only that did (dmoved)
+        d = self.heap.of(dp)
+        while True:
+            size, kind = self.w(d + self.D_SIZE), self.w(d + self.D_KIND)
+            if size == 0:
+                return -1
+            m = (size if kind & 2 else size * 2) - 1
+            f, ran, again = -1, False, False
+            i, p = h & m, h & M64
+            while not again:
+                self.probes += 1
+                e = self.i32(self.w(d + self.D_IDX) + 4 * i)
+                if e == 0:
+                    return -2 - (self.rt.pys_rt_dempty(dp, h) if ran else i if f < 0 else f)
+                if e < 0:
+                    if f < 0:
+                        f = i
+                else:
+                    x = self.w(self.w(d + self.D_KEYS) + 8 * (e - 1))
+                    if kind & 2 and self.rt.dict_key_big(dp, e - 1).addr:
+                        pass  # (a key past 64 bits is never the 64-bit one looked up)
+                    elif kind & 2 and x == k:
+                        return i
+                    elif self.w(self.w(d + self.D_HS) + 8 * (e - 1)) == h:
+                        if x == k:
+                            return i
+                        ix = self.w(d + self.D_IDX)
+                        eq = int(self.element(x, kind) == self.element(k, kind))
+                        ran = True
+                        if self.w(d + self.D_IDX) != ix or self.w(self.w(d + self.D_KEYS) + 8 * (e - 1)) != x:
+                            eq = -1
+                        elif eq and self.i32(ix + 4 * i) != e:
+                            if self.rt.dict_live(dp, e - 1):
+                                return self.rt.pys_rt_dslot(dp, e - 1)
+                            eq = -1
+                        if eq < 0:
+                            again = True
+                        elif eq:
+                            return i
+                p >>= 5
+                i = (i * 5 + p + 1) & m
+
+    # ---- what the walks call: the marks of the reprs under way, an object's __eq__, ordering
+    # and __repr__ (the program's: here a CPython object's, where on_eq may change a container),
+    # an Mpz's text and comparisons, a float's text, the order of strs, the printable characters,
+    # the errors whose text runtime.c formats, and the count of comparisons
+    def heap_str(self, s):
+        return self.heap.as_str(self.heap.new_str(s.encode("utf-8"), 0))
+
+    def pys_repr_enter(self, p):
+        a = self.heap.of(p)
+        if a in self.busy:
+            return 0
+        self.busy.add(a)
+        return 1
+
+    def pys_repr_leave(self, p):
+        self.busy.discard(self.heap.of(p))
+
+    def pys_obj_eq(self, c, a, b):
+        if c < 0:
+            return hash(self.objs[a])
+        if self.on_eq is not None:
+            self.on_eq()
+        return int(self.objs[a] == self.objs[b])
+
+    def pys_obj_cmp(self, c, op, a, b):
+        x, y = self.objs[a], self.objs[b]
+        return int(x < y if op == 0 else x <= y if op == 1 else x > y if op == 2 else x >= y)
+
+    def pys_obj_repr(self, c, a, b):
+        return self.heap_str(repr(self.objs[a]))
+
+    def pys_str(self, p, n):
+        return self.heap.as_str(self.heap.new_str(self.heap.read(self.heap.of(p), n), n + 1 if n < 2 else 0))
+
+    def pys_str_float(self, x):
+        return self.heap_str(repr(x))
+
+    def pys_str_cmp(self, a, b):
+        x, y = self.text(self.heap.of(a)), self.text(self.heap.of(b))
+        return (x > y) - (x < y)
+
+    def pys_rt_printable(self, c):
+        return int(chr(c).isprintable())
+
+    def pys_rt_mpz_digits(self, m):
+        try:
+            return self.heap.P(self.heap.new_str(str(self.mpz[self.heap.of(m)]).encode(), 0))
+        except ValueError:  # (CPython's limit of 4300 digits, runtime.c's too)
+            return self.heap.P(0)
+
+    def pys_rt_mpz_cmp_float(self, m, x):
+        v = self.mpz[self.heap.of(m)]
+        return 2 if x != x else (v > x) - (v < x)
+
+    def pys_big_cmp(self, alo, ahi, blo, bhi):
+        x = self.mpz[self.heap.of(ahi)] if self.heap.of(ahi) else alo
+        y = self.mpz[self.heap.of(bhi)] if self.heap.of(bhi) else blo
+        return (x > y) - (x < y)
+
+    def pys_rt_rec_deep(self, cmp):
+        raise RecursionError("maximum recursion depth exceeded in comparison" if cmp else "maximum recursion depth exceeded while getting the repr of an object")
+
+    def pys_rt_digits_deep(self):
+        raise ValueError("Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit")
+
+    TYPE_NAMES = {"i": "int", "J": "int", "b": "bool", "f": "float", "s": "str", "L": "list", "D": "dict", "T": "tuple", "V": "tuple",
+                  "S": "set", "F": "frozenset", "C": "type", "Y": "type", "n": "NoneType"}
+
+    def pys_rt_order_error(self, op, ca, cb, ea, eb):
+        if self.heap.of(ea):
+            raise Fault("the model has no exceptions")
+        o = ("<", "<=", ">", ">=")[op]
+        raise TypeError(f"'{o}' not supported between instances of '{self.TYPE_NAMES.get(chr(ca), 'object')}' and '{self.TYPE_NAMES.get(chr(cb), 'object')}'")
+
+    def pys_rt_eq_probe(self):
+        self.eqs += 1
+
+    NAMES = ("pys_alloc pys_alloc_atomic pys_rt_raw pys_rt_oom pys_rt_opt_in pys_rt_empty_list pys_rt_empty_atomic "
+             "pys_rt_empty_inline pys_rt_empty_identity pys_rt_atomic_items pys_rt_list_box pys_rt_big_list "
+             "pys_list_identity pys_str_eq pys_rt_not_in_list pys_dyn_big pys_dyn_big_ptr "
+             "pys_repr_enter pys_repr_leave pys_obj_eq pys_obj_cmp pys_obj_repr pys_str pys_str_float pys_str_cmp "
+             "pys_rt_printable pys_rt_mpz_digits pys_rt_mpz_cmp_float pys_big_cmp pys_rt_rec_deep pys_rt_digits_deep "
+             "pys_rt_order_error pys_rt_eq_probe "
+             "pys_mpz_hash pys_mpz_cmp pys_rt_keymem pys_rt_hitem pys_rt_set_eq pys_rt_set_keyerr pys_rt_bkeyerr "
+             "pys_rt_khash pys_rt_dict_lacks pys_rt_probe pys_rt_hash_str pys_rt_hobj pys_big_box pys_rt_dict_keyerr "
+             "pys_rt_dfind_obj").split()
+
+    def install(self, module):
+        # give module (runtime.py, loaded) these in place of its declarations
+        self.rt = module
+        for name in self.NAMES:
+            if not hasattr(module, name):
+                raise Fault(f"runtime.py declares no {name}")
+            setattr(module, name, getattr(self, name))

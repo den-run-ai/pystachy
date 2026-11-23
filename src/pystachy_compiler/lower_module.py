@@ -9,7 +9,7 @@ from src.pystachy_compiler.ir import Data, Val
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import CLASSREC_LL, COMPLEXC, CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_DEPTH_TYPE, TBAA_FIELDS, TBAA_FLOOR, TBAA_FLOOR_TYPE, TBAA_LEN, TBAA_LIMIT, TBAA_LIMIT_TYPE, TBAA_NAMES, TBAA_SIZES
+from src.pystachy_compiler.specs import CLASSREC_LL, COMPLEXC, CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, RT_TBAA, RT_TBAA_TYPES, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_DEPTH_TYPE, TBAA_FIELDS, TBAA_FLOOR, TBAA_FLOOR_TYPE, TBAA_LEN, TBAA_LIMIT, TBAA_LIMIT_TYPE, TBAA_NAMES, TBAA_SIZES
 from src.pystachy_compiler.utils import RtFn, float_slot, lt, runtime_decl, typestr
 
 # pystachy run on Linux, which loads the runtime as a shared library (the driver's RTSO, #704): a
@@ -822,6 +822,14 @@ def gen_lower_module(self) -> str:
         hdr.append(f"!{TBAA_LEN} = !{{!{TBAA_LEN - 2}, !{TBAA_LEN - 2}, i64 0}}")
         hdr.append(f"!{TBAA_BYTES} = !{{!{TBAA_LEN - 1}, !{TBAA_LEN - 1}, i64 0}}")
         hdr.append(f"!{STRLEN_RANGE} = !{{i64 0, i64 9223372036854775791}}")
+        # and of machine memory, an item array's word, a record's word and a record's address
+        # (RT_TBAA): a store to one changes neither of the others
+        names = ["word", "record word", "record address"]
+        tags = [RT_TBAA["rt.word"], RT_TBAA["rt.int"], RT_TBAA["rt.ptr"]]
+        for j in range(3):
+            hdr.append(f'!{RT_TBAA_TYPES + j} = !{{!"{names[j]}", !{TBAA_LEN - 3}, i64 0}}')
+        for j in range(3):
+            hdr.append(f"!{tags[j]} = !{{!{RT_TBAA_TYPES + j}, !{RT_TBAA_TYPES + j}, i64 0}}")
         return self.source_lines.finish(hdr)
     recursion = [key for key in self.rtfns if key.startswith("recursion.")]
     # (lowering stores and loads the depth itself: only the extension's entries and pys.gen.drop.counted

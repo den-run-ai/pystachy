@@ -15,8 +15,8 @@ disagrees with its entry is an internal error. This tool checks the table itself
     every class a raise statement accepts (EXCEPTIONS);
   - effects: every letter is one of the compiler's FX, U? or R?; an entry has R if the function's
     C call graph reaches a raise funnel (RAISES; not counting the allocator's MemoryError: that
-    is A) other than through rec_deep (DEEP: a descriptor walk past a recursive alias's 512th
-    edge, which those walks alone may call, DEEP_WALKS), and R or R? if it reaches rec_deep (R? is
+    is A) other than through pys_rt_rec_deep (DEEP: a descriptor walk past a recursive alias's
+    512th edge, which runtime.py's walks alone may call, DEEP_WALKS), and R or R? if it reaches it (R? is
     R where the op's descriptor holds such an edge: Gen.opfx), A if it reaches the allocator's slow
     path (gc_slow) other than on the way out of a raise (through a raise funnel, or the exception
     it builds, EXC_MAKERS: R stands for that),
@@ -62,8 +62,10 @@ compiler builds for runtime.py, in this process:
     a cycle through a helper (helper -> math.gcd -> pys_m_gcd -> helper) or through runtime.c
     (pys_format_str formatting with a nested spec, which calls runtime.c's pys_format, which calls
     pys_format_str) would recurse without end where nothing in the source shows a call. Recursion
-    by name stays allowed; the check is conservative, as it does not follow descriptors (a str ==
-    in pys_hash_str would be reported, through pys_eq's dict case).
+    by name stays allowed. A cycle through a walk of a value by its descriptor (eqv, repr, and
+    the two with a depth guard) is not one: the walk goes as deep as the value's type and guards
+    a recursive alias itself, so a set of frozensets may compare its elements with the set's own
+    functions, and a dict look a key up whose comparison looks up another dict's.
 The runtime the driver builds must also call no function that only a recent C library has under
 that name: glibc 2.38 compiles strtol(), atoi() and sscanf() to __isoc23_* names, which an older
 glibc lacks, so runtime.c reads its numbers itself (decnum, hexnum). The check sees those names
@@ -89,7 +91,7 @@ TOOL = (LLVM.rstrip("/") + "/") if LLVM else ""
 # The native recursion guards and the C limit APIs must share these three i64 words
 # (active depth, limit, native stack floor).
 MUTABLE_DATA = {"pys_recursion_state": "[3 x i64]", "pys_fl": "[80 x ptr]"}   # (pys_fl: the free lists the JIT tier pops, lower_module.py's JITFAST)
-# functions whose call graph reaches user code, and rec_deep, only through comparing elements, which
+# functions whose call graph reaches user code, and pys_rt_rec_deep, only through comparing elements, which
 # they never do: set.copy merges into a new set, whose table has none yet (the dict and set
 # operations that hash or compare keys have U? and R?, which an object's or a recursive alias's
 # key descriptor makes U or R: Gen.opfx)
@@ -106,13 +108,14 @@ CheckBig check_big_abi(__INT64_TYPE__ lo, void *hi) {
 }
 """
 RAISES = {"pys_fail", "pys_raise", "oserr", "kbint_exit", "throw_", "pys_reraise"}
-# the depth guard of runtime.c's descriptor walks (repr_depth, eqpair_depth), which counts only the
+# the depth guard of runtime.py's descriptor walks (repr_walk, eqpair_walk), which counts only the
 # edges of recursive aliases, so that an op whose descriptor holds none never raises through it: R?;
-# and repr_depth's raise for a list's int past CPython's 4300 digits, which an op whose descriptor
-# holds no list of ints never reaches, nor one of a program whose lists hold no promoting ints (Gen.opfx)
-DEEP = {"rec_deep", "digits_deep"}
-# and those walks, its only callers: R? stands for nothing else
-DEEP_WALKS = {"repr_depth", "eqpair_depth"}
+# and repr_walk's raise for a list's int past CPython's 4300 digits, which an op whose descriptor
+# holds no list of ints never reaches, nor one of a program whose lists hold no promoting ints
+# (Gen.opfx). runtime.c raises both, out of line
+DEEP = {"pys_rt_rec_deep", "pys_rt_digits_deep"}
+# and those walks, their only callers (repr_walk's digits through put_digits): R? stands for nothing else
+DEEP_WALKS = {"f.repr_walk", "f.eqpair_walk", "f.put_digits"}
 # what the raise funnels build their exception with: in a program that has a try, a raise allocates
 # its Exc on the way out, which R stands for (a collection may then run before a handler takes it),
 # so these do not make an entry A
@@ -125,9 +128,12 @@ USER = {"pys_obj_eq", "pys_obj_cmp", "pys_obj_repr", "dyn_user_iter", "dyn_user_
 # runs, an object's helpers among them, so that the compiler gives an op whose descriptor holds
 # an A every effect, as it does for an O (Gen.opfx). The walks of other entries do not look into
 # them, as they do not into user code; the dyn.* entries are checked from their own bodies
-DYN_WALKS = {"pys_dyn_eq", "pys_dyn_cmp", "pys_dyn_hash", "dyn_eqitem"}
-# the functions that walk a value by its descriptor (its static type), reading the lists and dicts in it
-BY_DESC = {"eqv", "opv", "repr"}
+DYN_WALKS = {"pys_dyn_eq", "pys_dyn_cmp", "pys_dyn_hash", "dyn_eqitem", "pys_rt_dyn_eqitem"}
+# the functions that walk a value by its descriptor (its static type), reading the lists and dicts in
+# it: runtime.py's walks, their entry points, and runtime.c's names for them
+BY_DESC = {"eqv", "opv", "repr", "eqitem", "eqpair", "big_eq", "pys_rt_eqv", "pys_rt_opv", "pys_rt_repr_to", "pys_rt_eqitem",
+           "pys_rt_eqpair", "pys_rt_big_eq", "pys_rt_repr_str", "pys_repr", "pys_eq", "pys_cmpop", "pys_eq_pair",
+           "f.repr_walk", "f.eqv", "f.eqitem", "f.eqpair_walk", "f.opv", "f.dict_eq", "f.dict_eqpair"}
 # the messages of the subset's implicit checks that fire only on a bug of runtime.py: an index out
 # of range (its primitives' and s[i]'s), a zero divisor, a negative shift count, a float that does
 # not fit an int, a square root's domain (runtime.py raises what a caller may cause with raise)
@@ -342,7 +348,8 @@ def params(ll):
                 hook[h.group(1)] = h.group(2)
             # Only a direct i64 store to Str's hash or character count is an invisible cache write.
             # Keep its loads, calls, and every other reachable store in the effect analysis.
-            m = re.fullmatch(r"  (%[\w.]+) = getelementptr (?:inbounds )?%struct.Str, ptr %[\w.]+, i64 0, i32 [12]", line)
+            # (runtime.c's Str, or the record that runtime.py's fields address: RTRECORDS)
+            m = re.fullmatch(r"  (%[\w.]+) = getelementptr (?:inbounds )?(?:%struct\.Str|\{ i64, i64, i64 \}), ptr %[\w.]+, i64 0, i32 [12]", line)
             if cache_layout and m:
                 cache_fields.add(m.group(1))
             x = instruction(line.strip())
@@ -540,6 +547,33 @@ def runtime_py(pys):
     return ir, ops
 
 
+def promoted(rpy_ir, tmp):
+    # runtime.py's IR at -O1, whose SSA form leaves few locals, as clang's of runtime.c for params()
+    src = os.path.join(tmp, "rtpy-o1-in.ll")
+    with open(src, "w", encoding="latin-1") as f:
+        f.write(rpy_ir)
+    out = subprocess.run([TOOL + "opt", "-O1", "-S", src, "-o", "-"], capture_output=True, text=True, encoding="latin-1")
+    if out.returncode != 0:
+        sys.exit(f"check_runtime: opt -O1 of runtime.py's IR:\n{out.stderr}")
+    return out.stdout
+
+
+def record_errors(ll, records):
+    # each record of RTRECORDS against runtime.c's struct of its name (clang's layout of it): a
+    # word is an i64 and an address a ptr, in order; a struct may end in a flexible array
+    bad = []
+    for name, fields in records.items():
+        m = re.search(r"^%struct\." + name + r" = type \{ (.*) \}$", ll, re.M)
+        if m is None:
+            bad.append(f"RTRECORDS: runtime.c has no struct {name}")
+            continue
+        have = [t for t in split_top(m.group(1)) if not t.startswith("[0 x ")]
+        want = ["ptr" if f.endswith("*") else "i64" for f in fields.split()]
+        if have != want:
+            bad.append(f"RTRECORDS: {name} is {{{', '.join(want)}}} to the compiler, {{{', '.join(have)}}} in runtime.c")
+    return bad
+
+
 def linked(rpy_ir, tmp):
     # runtime.py's IR linked with runtime.c's and optimized, as the driver builds the cached
     # runtime: (name -> its function (as functions gives it), name -> the messages of the raises in
@@ -589,15 +623,17 @@ def linked(rpy_ir, tmp):
     return functions(ll), msgs, nounwind, sorted(set(re.findall(r"@(__isoc23_\w+)", ll)))
 
 
-def raises(fns, msgs, f):
+def raises(fns, msgs, f, skip=frozenset()):
     # the messages of the raises f reaches in the linked runtime, the allocator's aside (gc_slow);
-    # the raising functions' own bodies too, as their callers' messages say what they raise
+    # the raising functions' own bodies too, as their callers' messages say what they raise. skip:
+    # functions it does not go through (the depth guards of the descriptor walks, R?, and a
+    # dynamic value's walks, which are the op's own boundary)
     seen = set()
     todo = [f]
     out = set()
     while todo:
         g = todo.pop()
-        if g in seen or g in ("gc_slow", "pys_fail", "failf", "pys_raise"):
+        if g in seen or g in ("gc_slow", "pys_fail", "failf", "pys_raise") or g in skip:
             continue
         seen.add(g)
         out |= msgs.get(g, set())
@@ -627,12 +663,38 @@ def cycle(graph, start, inner):
                     todo.append(m)
         return None
 
-    for y in sorted(inner):
-        there = path(start, y)
-        back = path(y, start) if there else None
-        if there and back:
-            return there + back[1:]
+    def reach(g, a):
+        # the nodes that one or more edges of g lead to from a
+        seen = set()
+        todo = list(g.get(a, ()))
+        while todo:
+            n = todo.pop()
+            if n not in seen:
+                seen.add(n)
+                todo.extend(g.get(n, ()))
+        return seen
+
+    # (only a node of inner that start reaches and that reaches start can be on such a path: two
+    # walks find them all, where a search for each node of inner made the check quadratic in the
+    # runtime's size; the first of them in order is the one a search of each would have found)
+    there = reach(graph, start) & inner
+    if not there:
+        return None
+    if _REVERSED[0] is not graph:
+        rev = {}
+        for n, ms in graph.items():
+            for m in ms:
+                rev.setdefault(m, set()).add(n)
+        _REVERSED[:] = [graph, rev]
+    for y in sorted(there & reach(_REVERSED[1], start)):
+        to = path(start, y)
+        back = path(y, start)
+        if to and back:
+            return to + back[1:]
     return None
+
+
+_REVERSED = [None, {}]  # (the graph that cycle last reversed, and its reverse: one per check)
 
 
 # a cycle through a node of inner: found, the shortest way there and back; none without one
@@ -673,6 +735,9 @@ def main():
     # from the ops, through the functions they call, to a fixpoint
     with tempfile.TemporaryDirectory() as tmp:
         lfns, lmsgs, nounwind, c23 = linked(rpy_ir, tmp)
+        rpy_o1 = promoted(rpy_ir, tmp)
+    from src.pystachy_compiler.specs import RTRECORDS
+    bad.extend(record_errors(ll, RTRECORDS))
     for sym in c23:
         bad.append(f"the runtime calls {sym}, which glibc before 2.38 lacks: read numbers with runtime.c's decnum and hexnum, not strtol, atoi or sscanf")
     letters = {}  # runtime.py's function -> the effect letters derived (R A U I)
@@ -683,8 +748,12 @@ def main():
     via = {}  # a function of runtime.c that runtime.py declares -> runtime.py's functions it calls
     for f, ops in rpy_ops.items():
         m = set()
-        if any(x != "?" and not x.startswith(BUG_ONLY) and not x.startswith("MemoryError") or x == "?" for x in raises(lfns, lmsgs, f)):
+        # (as for a function of runtime.c, below: a walk's depth guard is R?, and the allocation
+        # of an exception on its way out is the raise's)
+        if any(x != "?" and not x.startswith(BUG_ONLY) and not x.startswith("MemoryError") or x == "?" for x in raises(lfns, lmsgs, f, DEEP | DYN_WALKS)):
             m.add("R")
+        elif reaches(lfns, f, DEEP, DYN_WALKS):
+            m.add("R?")
         for op, x, d in ops:
             if op == "raise":
                 m.add("R")  # (an explicit raise statement, whatever its message)
@@ -694,19 +763,24 @@ def main():
                 m.update(y for y in ls if y in ("A", "U", "I"))
                 if "U?" in ls and "O" in d:
                     m.add("U")  # (as Gen.opfx: when the descriptor holds a class)
+            elif op == "call" and x[1:] in DYN_WALKS:
+                pass  # (a dynamic value's walk, as for runtime.c's: its effects are the op's boundary's)
             elif op == "call" and x[1:] not in rpy_ops:
                 # one of runtime.c's functions, which runtime.py declares: its entry, if RUNTIME
                 # names it, and what runtime.c's call graph shows
                 if x[1:] in pys.RTSYM:
                     e = rt[pys.RTSYM[x[1:]]]
                     m.update(y for y in e[e.find("|") + 1 : e.rfind("|")].split() if y in ("A", "U", "I"))
-                if reaches(fns, x[1:], {"gc_slow"}, DYN_WALKS - {x[1:]}):
+                if reaches(fns, x[1:], {"gc_slow"}, EXC_MAKERS | RAISES | (DYN_WALKS - {x[1:]})):
                     m.add("A")
                 if reaches(fns, x[1:], USER | (DYN_WALKS - {x[1:]}), set()):
                     m.add("U")
                 if uses_state(fns, used, x[1:], DYN_WALKS - {x[1:]}):
                     m.add("I")
-                via[x[1:]] = {g for g in rpy_ops if reaches(fns, x[1:], {g}, set())}
+                # (not through a dynamic value's walks: their effects are the op's boundary's; nor
+                # through a raise, whose report of an uncaught exception escapes text with runtime.py's
+                # repr: R stands for that, as for what it allocates)
+                via[x[1:]] = {g for g in rpy_ops if reaches(fns, x[1:], {g}, (DYN_WALKS - {x[1:]}) | RAISES | EXC_MAKERS)}
         letters[f] = m
         # (whether it may write memory it did not allocate: an rt op that writes lists, dicts,
         # objects, globals or files, or a function of runtime.c it declares)
@@ -716,11 +790,24 @@ def main():
     while more:
         more = False
         for f, ops in rpy_ops.items():
-            for op, x, _ in ops:
+            for op, x, d in ops:
                 g = pys.rtsym(x) if op == "rt" else x[1:] if op == "call" else ""
+                # (an operation whose entry says U? runs user code where its descriptor holds a
+                # class, as one that lowers to a function of runtime.c: Gen.opfx. R? is each
+                # function's own, from the linked runtime)
+                maybe = {"R?"}
+                if op == "rt":
+                    ls = rt[x][rt[x].find("|") + 1 : rt[x].rfind("|")].split()
+                    if "U?" in ls and "O" not in d:
+                        maybe.add("U")
                 for h in via.get(g, set()) | {g}:
-                    if h in letters and h != f and (not letters[h] <= letters[f] or writes[h] and not writes[f]):
-                        letters[f] |= letters[h]
+                    # (an operation that lowers to a function of runtime.py, as x[i] to pys_list_get and
+                    # x / y to pys_fdiv: whether its check can fire where f makes it is what the linked
+                    # runtime shows, above, as for one that lowers to a function of runtime.c. opt folds
+                    # the division by a constant, and an index check's message is a bug's alone)
+                    got = letters[h] - ({"R"} if op == "rt" else set()) - (maybe if h == g else set()) if h in letters else set()
+                    if h in letters and h != f and (not got <= letters[f] or writes[h] and not writes[f]):
+                        letters[f] |= got
                         writes[f] = writes[f] or writes[h]
                         more = True
     # runtime.c calls some of them (hsh calls pys_hash_str): to the analysis of runtime.c below,
@@ -739,7 +826,8 @@ def main():
             PURE_C.add(f)
         if not writes[f]:
             READS_ONLY.add(f)
-    eff = params(llvm_ir(os.path.join(ROOT, "runtime.c"), "runtime.c", "-O1"))
+    # (runtime.py's definitions beside runtime.c's: each reads and writes what its own body shows)
+    eff = params(llvm_ir(os.path.join(ROOT, "runtime.c"), "runtime.c", "-O1") + "\n" + rpy_o1)
     with tempfile.TemporaryDirectory() as tmp:
         libc = [pys.rtsym(k) for k in rt if not pys.rtsym(k).startswith(("pys_", "llvm."))]
         probe = os.path.join(tmp, "probe.c")
@@ -862,8 +950,15 @@ def main():
             continue
         e = rt[k]
         have = e[e.find("|") + 1 : e.rfind("|")].split()
-        for x in sorted(letters[sym]):
-            if x not in have and not (x == "U" and "U?" in have):
+        memory = []
+        for i, p in enumerate(pys.rtsig(k)[1:]):
+            o = OWNER.get(k[: k.find(".") + 1], "") if p == "S" or p == "U" else "L" if p.startswith("list[") else "D" if p.startswith("dict[") or p.startswith("set[") else "F" if p == "file" else ""
+            if o and sym in eff and i < len(eff[sym]) and eff[sym][i] is not None:
+                memory.extend((["r" + o] if eff[sym][i][0] else []) + (["w" + o] if eff[sym][i][1] else []))
+        for x in sorted(letters[sym]) + memory:
+            if k in NO_USER and x in ("U", "R?"):
+                continue  # (reached only through comparing elements, which it never does)
+            if x not in have and "U" not in have and not (x == "U" and "U?" in have) and not (x == "R?" and "R" in have):
                 bad.append(f"{k}: runtime.py's {sym} has effect {x}, which RUNTIME leaves out")
         if "N" in have:
             bad.append(f"{k}: RUNTIME says N, but runtime.py's {sym} returns")
@@ -872,10 +967,11 @@ def main():
                 note.append(f"{k}: {x}, which runtime.py's code does not show")
     # effects of runtime.c's functions: what their call graph shows, runtime.py's functions they
     # call included (with the letters derived above)
-    callers = sorted(n for n, v in fns.items() if v[4] == "define" and DEEP & v[3])
+    callers = sorted([n for n, v in fns.items() if v[4] == "define" and DEEP & v[3]] +
+                     [f for f, ops in rpy_ops.items() if any(op == "call" and x[1:] in DEEP for op, x, _ in ops)])
     if callers != sorted(DEEP_WALKS):
-        bad.append(f"rec_deep has the callers {', '.join(callers) or 'none'}, but R? stands for the depth guards of "
-                   f"{' and '.join(sorted(DEEP_WALKS))} alone")
+        bad.append(f"pys_rt_rec_deep and pys_rt_digits_deep have the callers {', '.join(callers) or 'none'}, but R? "
+                   f"stands for the depth guards of {' and '.join(sorted(DEEP_WALKS))} alone")
     pyr = {f for f in letters if "R" in letters[f]}
     pya = {f for f in letters if "A" in letters[f]}
     pyu = {f for f in letters if "U" in letters[f]}
@@ -915,11 +1011,15 @@ def main():
             if x in have and x not in derived:
                 note.append(f"{k}: {x}, which runtime.c does not show")
     # recursion: an rt op that calls a function of runtime.py goes through a node of its own, so
-    # that a cycle through it, or through runtime.c, is found
-    graph = {n: v[3] for n, v in fns.items() if v[4] == "define"}
+    # that a cycle through it, or through runtime.c, is found. A walk of a value by its descriptor
+    # (BY_DESC, and the two with a depth guard) is not followed: what it calls for an element is
+    # as deep as the value's type, and its own guard counts the edges of a recursive alias (a set
+    # of frozensets compares frozensets, and a dict's lookup of a key that holds a dict looks
+    # that dict's keys up, with the set's and the dict's own functions)
+    graph = {n: set() if n in BY_DESC | DEEP_WALKS else v[3] for n, v in fns.items() if v[4] == "define"}
     for f, ops in rpy_ops.items():
         graph[f] = set()
-        for op, x, _ in ops:
+        for op, x, _ in ops if f not in BY_DESC | DEEP_WALKS else []:
             g = pys.rtsym(x) if op == "rt" else x[1:] if op == "call" else ""
             if op == "rt" and g in rpy_ops:
                 graph[f].add("rt:" + g)
