@@ -579,6 +579,11 @@ def gen_isinst(self, t: str, c: Node) -> int:
                 # one where its chain holds a specialization of it)
                 if self.tmpl_derives(t, c.s):
                     return -2
+                if self.under_tbase(c.s) != "" and self.derives(self.under_tbase(c.s), t):
+                    # (a template under an ordinary class that derives from t: each of its
+                    # specializations does, which code may make after this test is compiled, and
+                    # the next pass makes before it, program.py's late_sub; the value keeps t)
+                    return -1
                 return -1 if len([x for x in self.classes.values() if x.tag > 0 and self.tmpl_derives(x.name, c.s) and self.derives(x.name, t)]) > 0 else 0
             return -1 if self.derives(c.s, t) or c.s in self.classes[t].overlaps else 0
         # (an exception of class t, or of a builtin one, may be an object of a class deriving from t)
@@ -1814,6 +1819,13 @@ def gen_cvar_stores(self, ns: list[Node]) -> None:
                             related = self.classes[c].tag > 0 and x.tag > 0 and (self.derives(c, x.name) or self.derives(x.name, c))
                             if t.s in x.ftypes and (related or (t.s in x.fdefault and self.cvar_home(x, t.s) is h)):
                                 self.cvars[x.name + "." + t.s] = True
+                                if t.s in x.fdefault:
+                                    # (and of the class whose class statement makes the global that x's
+                                    # objects read: a class template under c, or a class that derives
+                                    # from one, that binds the attribute again. It derives from no class
+                                    # itself, template_under, so it is not related, but its
+                                    # specializations are)
+                                    self.cvars[self.cvar_home(x, t.s).name + "." + t.s] = True
         self.cvar_stores(n.kids)
 
 def gen_cvar_home(self, x: ClassInfo, a: str) -> ClassInfo:

@@ -1275,6 +1275,11 @@ from src.pystachy_compiler.program import (
     gen_template_subclass as program_template_subclass,
     gen_tmpl_member as program_tmpl_member,
     gen_tmpl_sub as program_tmpl_sub,
+    gen_plain_chain as program_plain_chain,
+    gen_template_under as program_template_under,
+    gen_under_base as program_under_base,
+    gen_under_tbase as program_under_tbase,
+    gen_tmpl_hint as program_tmpl_hint,
     gen_sub_base as program_sub_base,
     gen_late_sub as program_late_sub,
     gen_template_hierarchy as program_template_hierarchy,
@@ -1765,6 +1770,9 @@ class Gen:
         # as hierarchies. newlate: this pass added one, so it ends in NeedHierarchy
         self.tlate: dict[str, list[str]] = {}
         self.newlate = False
+        # each class template under an ordinary class (program.py's template_under): that class,
+        # which its specializations derive from, the template itself from none (made per pass)
+        self.tbases: dict[str, str] = {}
         # the greatest class tag: those assigned as classes are declared, then those of a template
         # hierarchy's specializations, made later (templates.new_tag); never reused
         self.ntag = 0
@@ -4336,6 +4344,21 @@ class Gen:
 
     def tmpl_sub(self, ci: ClassInfo) -> bool:
         return program_tmpl_sub(self, ci)
+
+    def plain_chain(self, name: str) -> bool:
+        return program_plain_chain(self, name)
+
+    def template_under(self, st: Node, base: str) -> bool:
+        return program_template_under(self, st, base)
+
+    def under_base(self, t: ClassInfo, base: str) -> None:
+        program_under_base(self, t, base)
+
+    def under_tbase(self, c: str) -> str:
+        return program_under_tbase(self, c)
+
+    def tmpl_hint(self, t: str, name: str) -> str:
+        return program_tmpl_hint(self, t, name)
 
     def sub_base(self, t: ClassInfo, init: FnInfo, ts: list[str]) -> str:
         return program_sub_base(self, t, init, ts)

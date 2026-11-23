@@ -1,0 +1,6 @@
+mods: init mods
+mods.shapes: init mods.shapes
+shape with 0 sides False
+poly tri with 3 sides True
+poly 4 with 4 sides True
+[exit 0]

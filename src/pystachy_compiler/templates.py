@@ -81,8 +81,16 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     p = ""
     if self.tmpl_sub(t):
         # (a subclass of a class template whose own __init__ is one: derives from the specialization
-        # of its base that its super().__init__(...) makes, sub_base)
+        # of its base that its super().__init__(...) makes, sub_base; with its base's methods, also
+        # where template_bases makes it before the declarations' inherit: a property's setter that
+        # its __init__ assigns through is no field of its own, scan_fields)
+        self.inherit(t)
         p = self.sub_base(t, init, ts)
+    elif c in self.tbases:
+        # (a class template under an ordinary class: derives from that class, program.py's
+        # template_under, whose fields and methods under_base readies)
+        p = self.tbases[c]
+        self.under_base(t, p)
     t.nspec += 1
     name = f"{c}-{t.nspec}"
     self.specing[doing] = name
@@ -123,7 +131,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
                 s.fguess[x] = pc.fguess[x]
             for x in pc.fann:
                 s.fann[x] = pc.fann[x]
-            b = self.classes[t.base]
+            b = self.classes[t.base if t.base != "" else p]
             for x in t.fields:
                 if x not in b.ftypes:
                     self.add_field(s, x, t.ftypes[x])
