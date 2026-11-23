@@ -1416,6 +1416,11 @@ class Emitter:
         return size
 
     def release(self, size: int) -> None:
+        # (cleared first: a later scan of the dead stack below a live frame must not find its values)
+        for offset in range(0, size, 8):
+            self.get(self.spill_local)
+            self.i64c(0)
+            self.mem(0x37, 3, offset)
         if size:
             self.get(self.spill_local)
             self.i32c(size)
