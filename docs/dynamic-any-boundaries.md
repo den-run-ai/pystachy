@@ -126,6 +126,18 @@ and template-typed fields of declaration-time specializations were supported (#9
 `_pystachy_json_any` is the dynamic JSON codec itself: no program reaches it without an
 opt-in somewhere.
 
+[Values of `object`](language/typing.md#object) can now hold these open payloads in a module
+that does not opt in. With `inspect`'s comment removed and its `Any` annotations written
+`object` (and `_kind` annotated), 8 of its 12 programs print what they print now; three stop
+compiling, which keeps the opt-in. A caller operates on a default as an `Any` value, as
+`q.default + 1` does (`lib_inspect_any.py`), which a value of `object` takes only once
+`isinstance()` narrows it; a module-level read is not narrowed (`lib_inspect_defaults.py`); and
+`object` parameters make `Parameter` a class template, which `lib_inspect_subclass.py` cannot
+subclass. `_pystachy_percent` so annotated stops at `mapping[key]`: a test of a container type
+narrows a value of `object` to nothing that can be indexed or measured, and it and `logging` would
+also need numeric conversions (`%d`, `%f`) of such values, functions as values of `object` (a
+logger's filters) and subclasses of class templates.
+
 ## Evidence required for a migration
 
 Keep public output layouts and mutable aliases stable, including callbacks that

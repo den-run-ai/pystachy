@@ -1,0 +1,13 @@
+global 1 None y None 2 two
+3.5
+{1: [1], 2: None}
+10 s None [10, 's']
+5 True
+five True
+None True
+4 True
+None
+[1, None]
+4
+0 () {} 3 (1, 'a', None) {'k': 2.5} 2 (1, 2) {'x': 'y'}
+[exit 0]

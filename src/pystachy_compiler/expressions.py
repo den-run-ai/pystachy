@@ -1978,8 +1978,10 @@ def gen_percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
         if self.nt_wide(v):
             return self.percent_opt(fmt, v)  # (None, or its fields as they are: nt_wide)
         v = self.ntup(v)  # (a NamedTuple is a tuple: its fields are the arguments)
-        if is_tuple(unopt(v.t)) and is_opt(v.t):
+        if (is_tuple(unopt(v.t)) or is_vtuple(unopt(v.t))) and is_opt(v.t):
             return self.percent_opt(fmt, v)
+        if is_vtuple(v.t):
+            return self.pformat(fmt, [], False, [], v)  # (its items, as many as it has: pformat)
         if is_tuple(v.t):
             for i in range(len(targs(v.t))):
                 items.append(self.tget(v, i))
@@ -2045,9 +2047,9 @@ def gen_percent_opt(self, fmt: str, v: Val) -> Val:
     self.place(l2)
     tv = self.ntup(v, True) if v.t in self.nts else Val(v.v, unopt(v.t))
     items: list[Val] = []
-    for i in range(len(targs(tv.t))):
+    for i in range(len(targs(tv.t)) if not is_vtuple(tv.t) else 0):
         items.append(self.tget(tv, i))
-    b = self.pformat(fmt, items, False, [])
+    b = self.pformat(fmt, items, False, [], tv if is_vtuple(tv.t) else None)
     if not self.term:
         self.incoming(ph, b.v, self.cur)
     self.br(l3)
@@ -2057,13 +2059,16 @@ def gen_percent_opt(self, fmt: str, v: Val) -> Val:
         return Val(self.sconst(""), "str")
     return Val(self.phi(ph), "str")
 
-def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]) -> Val:
+def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node], vt: Val | None = None) -> Val:
     # fmt % items; rtnone: a None among them that a conversion cannot take raises when it runs
     # (it is a tuple's place, see percent_opt), as CPython's error; lazy: the items' expressions
-    # instead, each evaluated as its conversion comes (an f-string's order: percent)
+    # instead, each evaluated as its conversion comes (an f-string's order: percent); vt: a tuple
+    # of any length (tuple[T, ...]) instead, whose items are the arguments: as CPython checks a
+    # tuple's, each conversion checks that one is left when it comes, and the end that none is
     parts: list[Val] = []
     lit: list[str] = []
     count = len(lazy) if len(lazy) > 0 else len(items)
+    vn = Val(self.mload('int', vt.v), "int") if vt is not None else Val("0", "int")
     used = 0
     i = 0
     while i < len(fmt):
@@ -2101,9 +2106,13 @@ def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]
             self.err("% formatting with a * width or precision is not supported")
         if t not in "sradiuxXoeEfFgGc":
             self.err(f"unsupported format character '{t}' ({ord(t):#x}) at index {i - 1}")
-        if used >= count:
+        if vt is not None:
+            self.guard(self.scalar_cmp("sle", vn, Val(str(used), "int")), "TypeError: not enough arguments for format string")
+            v = self.vtuple_item(vt, Val(str(used), "int"))
+        elif used >= count:
             return self.fmt_error("not enough arguments for format string")
-        v = self.expr(lazy[used], "") if len(lazy) > 0 else items[used]
+        else:
+            v = self.expr(lazy[used], "") if len(lazy) > 0 else items[used]
         used += 1
         if len(lit) > 0:
             parts.append(Val(self.sconst("".join(lit)), "str"))
@@ -2113,7 +2122,9 @@ def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]
         if is_sopt(v.t) and t not in "sra":
             v = self.unwrap(v, "TypeError: " + self.nonefmt(t))
         parts.append(self.conversion(v, flags, width, prec, t))
-    if used < count:
+    if vt is not None:
+        self.guard(self.scalar_cmp("sgt", vn, Val(str(used), "int")), "TypeError: not all arguments converted during string formatting")
+    elif used < count:
         return self.fmt_error("not all arguments converted during string formatting")
     if len(lit) > 0:
         parts.append(Val(self.sconst("".join(lit)), "str"))
@@ -2552,11 +2563,11 @@ def gen_conversion(self, v: Val, flags: str, width: str, prec: str, t: str) -> V
             v = Val(self.rt("pys_f2i", "i64", [f"double {v.v}"]), "int")  # %d truncates a float, as int() does
         v = v if v.t == BIG else self.as_int(v)  # (a promoting int's own digits: format_)
         if v.t != "int" and v.t != BIG:
-            self.err(f"%{t} format: {'a real number' if t in 'diu' else 'an integer'} is required, not {tname(v.t)}")
+            self.err(f"%{t} format: {'a real number' if t in 'diu' else 'an integer'} is required, not {tname(v.t)}" + self.object_note([v.t]))
         return self.format_(v, mk("str", spec + ("d" if t == "i" or t == "u" else t), self.line, []))
     v = self.as_float(v if v.t == BIG else self.as_int(v))
     if v.t != "float":
-        self.err(f"must be real number, not {tname(v.t)}")
+        self.err(f"must be real number, not {tname(v.t)}" + self.object_note([v.t]))
     return self.format_(v, mk("str", spec + (prec if prec != "" else ".6") + t, self.line, []))
 
 def gen_format_(self, v: Val, spec: Node) -> Val:
@@ -3735,7 +3746,7 @@ def gen_argtype(self, t: str, m: str, j: int, missing: str) -> str:
     # argument is evaluated for that type); missing: the error where t does not define m
     ms = self.classes[t].methods
     if m not in ms:
-        self.err(missing)
+        self.err(missing + self.object_note([t]))
     if ms[m].bad != "":
         self.err(ms[m].bad)  # (an imported module's method that cannot be compiled)
     return ms[m].ptypes[j] if j < len(ms[m].ptypes) else ""
@@ -3783,7 +3794,7 @@ def gen_obj_iterator(self, v: Val, none: str, missing: str, name: str = "__iter_
     if name not in ms and "__getitem__" in ms:
         self.err(f"iterating over {short(v.t)} by its __getitem__ is not supported (CPython calls __getitem__(0), __getitem__(1), ... until IndexError): define __iter__")
     if name not in ms:
-        self.err(missing)
+        self.err(missing + self.object_note([v.t]))
     f = ms[name]
     if f.bad != "":
         self.err(f.bad)  # (an imported module's generator __iter__: its own error, not its type's)
@@ -4097,8 +4108,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
         a = left_operand(self, n.kids[1], want, resultsoft, [])
     else:
         a = self.expr(n.kids[1], want, resultsoft=resultsoft)
-    if is_vtuple(unopt(want)) or want == "dyn" or (is_aset(unopt(want)) and (self.widens(a.t, want) or a.t == EMPTYFS)):
-        a = self.coerce(a, want)  # (construct the requested representation in its arm: a box, dynamic.py; a set or a frozenset as the AbstractSet wanted)
+    if is_vtuple(unopt(want)) or want == "dyn" or self.is_object(want) or (is_aset(unopt(want)) and (self.widens(a.t, want) or a.t == EMPTYFS)):
+        a = self.coerce(a, want)  # (construct the requested representation in its arm: a box, dynamic.py, or a value of object, interfaces.py; a set or a frozenset as the AbstractSet wanted)
     keep = kept is not None and is_union(unopt(want)) and a.t in ["int", "float", "bool", "str", BIG]
     if not keep and ((is_fn(a.t) and is_callable(unopt(want))) or is_union(unopt(want))):
         a = self.coerce(a, want)  # (a function where a Callable is expected: made one in its arm)
@@ -4121,7 +4132,7 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
     else:
         b = self.expr(n.kids[2], wb, resultsoft=resultsoft)
     self.branch -= 1
-    if is_vtuple(unopt(want)) or want == "dyn" or (is_aset(unopt(want)) and (self.widens(b.t, want) or b.t == EMPTYFS)):
+    if is_vtuple(unopt(want)) or want == "dyn" or self.is_object(want) or (is_aset(unopt(want)) and (self.widens(b.t, want) or b.t == EMPTYFS)):
         b = self.coerce(b, want)
     # (an operand's arms of one type, or an int and a promoting int, which join below: no union is made)
     same = keep and (b.t == a.t or self.join(a.t, b.t) == BIG)
@@ -4334,7 +4345,7 @@ def gen_unary(self, n: Node) -> Val:
         return r
     if v.infer_from != "":
         self.err(f"cannot infer what {v.infer_from}() returns: its recursive return type is unresolved; annotate its return type")
-    self.err(f"bad operand type for unary {op}: '{tname(v.t)}'")
+    self.err(f"bad operand type for unary {op}: '{tname(v.t)}'" + self.object_note([v.t]))
     return v
 
 def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
@@ -5779,14 +5790,15 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
     # CPython's TypeError, at compile time
     an = tname(a.t)
     bn = tname(b.t)
+    note = self.object_note([a.t, b.t])
     if op == "+" and (a.t == "str" or is_list(a.t) or is_tuple(a.t)):
-        self.err(f'can only concatenate {an} (not "{bn}") to {an}')
+        self.err(f'can only concatenate {an} (not "{bn}") to {an}' + note)
     if op == "+" and a.t == "bytes":
-        self.err(f"can't concat {bn} to bytes")
+        self.err(f"can't concat {bn} to bytes" + note)
     sq = a.t == "str" or a.t == "bytes" or is_list(a.t) or is_tuple(a.t)
     if op == "*" and (sq or b.t == "str" or b.t == "bytes" or is_list(b.t) or is_tuple(b.t)):
-        self.err(f"can't multiply sequence by non-int of type '{bn if sq else an}'")
-    self.err(f"unsupported operand type(s) for {shown if shown != '' else '** or pow()' if op == '**' else op}: '{an}' and '{bn}'")
+        self.err(f"can't multiply sequence by non-int of type '{bn if sq else an}'" + note)
+    self.err(f"unsupported operand type(s) for {shown if shown != '' else '** or pow()' if op == '**' else op}: '{an}' and '{bn}'" + note)
     return a
 
 def gen_complex_value(self, re: Val, im: Val) -> Val:
@@ -6467,6 +6479,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         return self.optcmp(op, a, b) if is_opt(a.t) or is_opt(b.t) else self.ucmp(op, a, b)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and (self.isnum(unopt(a.t)) or unopt(a.t) == BIG) and (self.isnum(unopt(b.t)) or unopt(b.t) == BIG):
         return self.optcmp(op, a, b)  # (an int | None of a module that opts in: None, or its promoting int)
+    if (a.t == BIG or b.t == BIG) and (is_sopt(a.t) or is_sopt(b.t)) and (op in ORDOP or op == "==" or op == "!="):
+        # (a promoting int and a 64-bit int, float or bool | None: None, or its number compared
+        # with the promoting int as it is, which may not fit 64 bits)
+        return self.optcmp(op, a, b)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and a.t != "None" and b.t != "None":
         # (with another type, an int | None of a module that opts in compares as the 64-bit int | None
         # it holds: bigints.py)

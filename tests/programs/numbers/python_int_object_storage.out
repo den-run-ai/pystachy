@@ -1,0 +1,11 @@
+1180591620717411303424 1180591620717411303424 True False False False 1180591620717411303424
+5 5 False True True False 5
+-1 -1 False False False False -1
+True True False False False False True
+s 's' False False False False s
+None None False False False True None
+2.5 2.5 False False False False 2.5
+True True True True True True
+1393796574908163946345982392040522594123776 True False True True
+False True True int
+[exit 0]

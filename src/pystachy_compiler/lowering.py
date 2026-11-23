@@ -5,7 +5,7 @@ from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, slot_register, tmpname,
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.lower_module import const_slot, struct_types
 from src.pystachy_compiler.specs import CHECKED, CLASSREC_LL, COMPLEXC, CONTAINER_HEADERS, DYNTYPE_LL, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
-from src.pystachy_compiler.utils import atomic_dict, atomic_list, gelem, generator_identity, generator_slots, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
+from src.pystachy_compiler.utils import atomic_dict, atomic_list, gelem, generator_identity, generator_slots, id_param, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
 
 
 def gen_lower(self, fn: IFn) -> None:
@@ -19,7 +19,7 @@ def gen_lower(self, fn: IFn) -> None:
     # Attribute calls check receivers; explicit class calls may pass None as self.
     ps = [f"{lt(f.ptypes[j])}{' nonnull' if j == 0 and takes_self(f) and not f.nullable_self else ''} %a{j}" for j in fn.ps]
     if identity_abi(f):
-        ps.extend([f"ptr %aid{j}" for j in fn.ps if numeric_identity(f.ptypes[j])])
+        ps.extend([f"ptr %aid{j}" for j in fn.ps if id_param(f, j)])
         if numeric_identity(f.ret):
             ps.append("ptr %idret")
     # tupleret: a function that returns its tuple's slots by value (Gen.tuple_rets) is lowered as
@@ -97,7 +97,7 @@ def gen_lower(self, fn: IFn) -> None:
         o.append("entry:")
         forwarded = [f'{lt(f.ptypes[j])} %a{j}' for j in fn.ps]
         if identity_abi(f):
-            forwarded.extend([f"ptr %aid{j}" for j in fn.ps if numeric_identity(f.ptypes[j])])
+            forwarded.extend([f"ptr %aid{j}" for j in fn.ps if id_param(f, j)])
             if numeric_identity(f.ret):
                 forwarded.append("ptr %idret")
         forwarded.append("i64 %rd")
@@ -115,7 +115,7 @@ def gen_lower(self, fn: IFn) -> None:
         o.append("entry:")
         forwarded = [f'{lt(f.ptypes[j])} %a{j}' for j in fn.ps]
         if identity_abi(f):
-            forwarded.extend([f"ptr %aid{j}" for j in fn.ps if numeric_identity(f.ptypes[j])])
+            forwarded.extend([f"ptr %aid{j}" for j in fn.ps if id_param(f, j)])
             if numeric_identity(f.ret):
                 forwarded.append("ptr %idret")
         o.append(f"  %v = call {agg} @v.{f.ll[1:]}({', '.join(forwarded)})")

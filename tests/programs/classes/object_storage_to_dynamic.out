@@ -1,0 +1,9 @@
+1 a [1, 'a']
+[1, 'a', 2.5, None, Tag(4)] 5
+3 True False int
+4
+['int 2', 'str A', 'other 2.5', 'other None', 'other Tag(4)']
+int 4 str B
+Tag(4) True
+8
+[exit 0]

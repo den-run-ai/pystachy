@@ -217,10 +217,16 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return Val("undef", t)
     if v.t == t:
         return v
+    if t == "dyn" and self.is_object(v.t):
+        return self.object_dyn(v)  # (its object as an Any value: interfaces.py)
     if t == "dyn":
         # Any has its own integer representation. Preserve the promoting value
         # before the checked conversions into fixed-width storage below.
         return self.dyn_box(v)
+    if self.is_object(t) and v.t != "None":
+        # (a value of object, which holds a promoting int as it is: before the narrowings below,
+        # interfaces.py)
+        return self.to_object(v)
     if is_tuple(v.t) and BIG in v.t and is_vtuple(unopt(t)) and targs(unopt(t))[0] == "dyn":
         vals = [self.dyn_box(self.tget(v, i)) for i in range(len(targs(v.t)))]
         return Val(self.vtuple_make(vals, unopt(t)).v, t)
@@ -350,6 +356,9 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         # (builtin_bases.py: a list knows no class, so the object's would be lost there)
         kind = self.bkind(unopt(v.t))
         hint = f": an object of a class that derives from {kind} is not stored or passed as a {kind} yet, where it would lose its class (declare {short(unopt(v.t))} there, leave a parameter unannotated, or copy the items with {kind}(...))"
+    if self.is_object(v.t):
+        # (where ints promote, isinstance(x, int) narrows nothing: object_note says so)
+        hint = self.object_note([v.t]) if self.int_policy(self.line) else " (narrow a value of object with isinstance() first, as `if isinstance(x, int):` narrows x to an int)"
     self.err(f"expected {typestr(t)}, got {typestr(v.t)}{hint}")
     return v
 

@@ -1100,8 +1100,8 @@ runs `make check-lean-storage` for [storage guards](../tools/lean_boundary/STORA
 including programs that import opted-in modules, and upload `lean-storage.json`.
 Code PRs and full CI retain `make check-lean-guards` in the x86 `contracts` group on the explicit
 `null_guards.py`, `null_reloads.py`, `union_effects.py`, `union_guards.py`, `union_split.py`,
-`union_memory.py`, `union_defaults.py`, `gc_arrays.py` and `field_init.py` examples, uploading
-`lean-guards.json`. The selection and its limits are recorded in
+`union_memory.py`, `union_defaults.py`, `gc_arrays.py`, `field_init.py` and `object_narrowing.py`
+examples, uploading `lean-guards.json`. The selection and its limits are recorded in
 [GUARDS.md](../tools/lean_boundary/GUARDS.md). These enforce bounded null/union guard,
 field-initialization and collector-scanning coverage; the strict full-corpus guard command remains an investigation tool with
 unsupported forms, not a passing whole-corpus gate. No CI job runs every check over the

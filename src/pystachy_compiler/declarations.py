@@ -199,6 +199,11 @@ def gen_ann(self, n: Node) -> str:
             return s
         if s == "type":
             return "type[object]"  # (the class object of any ordinary class: class_values.py)
+        if s == "object" and not self.bound(s):
+            # (a variable's, a field's, a container's items', a result's: any value, held behind a
+            # table of its type's operations, interfaces.py; a parameter's makes a template,
+            # declare_fn)
+            return self.object_iface()
         if s == "range" and RANGEC in self.classes:
             return RANGEC  # (the class of range objects, lib/_pystachy_range.py)
         if s == "complex" and COMPLEXC in self.classes:
@@ -3731,7 +3736,7 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
             self.err(f"'{short(o.t)}' object has no attribute '{name}' (of an exception object, only the fields of its class are supported; str(e) and repr(e) are)")
         if o.t in self.nts and name == "__doc__":
             self.err(f"reading the __doc__ of NamedTuple {short(o.t)} is not supported (Pystachy keeps no docstrings of classes)")
-        self.err(f"'{shown(o.t)}' object has no attribute '{name}'" + self.nested_hint(o.t, name))
+        self.err(f"'{shown(o.t)}' object has no attribute '{name}'" + self.nested_hint(o.t, name) + self.object_note([o.t]))
     extra = " and no __dict__ for setting new attributes" if store else ""
     if self.rolex != o.v and self.role_field(o.t, name):
         # (the object may be a combining class's, whose layout holds the attribute elsewhere:

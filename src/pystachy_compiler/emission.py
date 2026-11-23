@@ -846,7 +846,7 @@ def gen_converts(self, a: str, b: str) -> bool:
     # does a value of type a take code to be one of type b (convert_in): also a runtime-length
     # tuple whose items each become a box (coerce's pys_vtuple_box), which a join of tuples makes;
     # and an object as a value of an interface, its box (interfaces.py)
-    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a)) or (b == "int+" and a == "int") or (is_vtuple(a) and is_vtuple(unopt(b)) and is_sopt(targs(unopt(b))[0]) and targs(a)[0] == unopt(targs(unopt(b))[0])) or (self.is_iface(b) and a != b and a != "None" and not self.is_iface(a) and self.iface_impl(a) == "")
+    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a)) or (b == "int+" and a == "int") or (is_vtuple(a) and is_vtuple(unopt(b)) and is_sopt(targs(unopt(b))[0]) and targs(a)[0] == unopt(targs(unopt(b))[0])) or (self.is_iface(b) and a != b and a != "None" and not self.is_iface(a) and (self.object_impl(a) == "" if self.is_object(b) else self.iface_impl(a) == ""))
 
 def gen_boxes(self, a: str, b: str) -> bool:
     # is a value of type a one of type b once boxed: an int as an int | None, a member as a

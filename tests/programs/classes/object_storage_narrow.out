@@ -1,0 +1,22 @@
+bool False
+int 14
+float 1.25
+str ABC 3
+bytes 2 120
+Box 5
+Animal rex barks
+Animal cat makes a sound
+list [1, 2]
+dict {'a': 1}
+tuple (1, 2, 3)
+set {9}
+type Box
+None
+other frozenset({1})
+True False True True False
+True True True False True
+101 -1 hi! not a str 0 5 0
+42
+abbb
+fido barks fido
+[exit 0]

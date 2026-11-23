@@ -897,6 +897,13 @@ def identity_abi(f: FnInfo) -> bool:
     return dynamic_program() and not f.extern and not f.export and not f.pyexport and f.node.kind == "def"
 
 
+def id_param(f: FnInfo, j: int) -> bool:
+    # Does parameter j of f take its number's provenance besides (identity_abi)? Not an interface
+    # table entry's object (interfaces.py, FnInfo "<interface>"), which icall passes as its env,
+    # one word whatever its type, as every entry of the operation takes it.
+    return identity_abi(f) and numeric_identity(f.ptypes[j]) and not (j == 0 and f.name == "<interface>")
+
+
 def numeric_identity(t: str) -> bool:
     # Storage which may hold an int/float object's identity, including joined locals.
     u = unopt(t)

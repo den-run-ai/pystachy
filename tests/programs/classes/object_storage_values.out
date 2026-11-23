@@ -1,0 +1,38 @@
+1 1 1 1 True True True True True False
+2.5 2.5 2.5 2.5 True False False True True False
+True True True True True True True True True False
+s 's' s s True False False False False False
+b'b' b'b' b'b' b'b' True False False True True False
+[1, 'a'] [1, 'a'] [1, 'a'] [1, 'a'] True False False True True False
+{'k': 2} {'k': 2} {'k': 2} {'k': 2} True False False True True False
+(1, 't') (1, 't') (1, 't') (1, 't') True False False True True False
+{3} {3} {3} {3} True False False True True False
+Point(0, 0) Point(0, 0) Point(0, 0) Point(0, 0) True False False True True False
+None None None None False False False True True True
+<class 'int'> <class 'int'> <class 'int'> <class 'int'> True False False True True False
+<class '__main__.Point'> <class '__main__.Point'> <class '__main__.Point'> <class '__main__.Point'> True False False True True False
+1000000000000000 1000000000000000 1000000000000000 1000000000000000 True False False True True False
+[True, True, True, False, False, False, False, False, True, True, True, False, False, False, False, True]
+True True True True
+a 1 False
+b two True
+c None False
+(1, 'x', None) 1 True 3 True
+(1, 'a', 2.5) 3 1-a-2.5 1|'a'|2.5
+0 42 True False 42
+1 text False False 'text'
+2 Point(1, 2) False False Point(1, 2)
+3 [1, 2] False False [1, 2]
+4 None False True None
+h None
+3 True
+now a str
+True True False
+True True True False
+2.50    1   s   's' and 1
+True True True True True
+True True True True True True
+False True True False True True
+int Point NoneType type Point
+False True True False
+[exit 0]

@@ -1,0 +1,8 @@
+[2.5, 1, 'a', None, True, b'b'] [2.5, 1, 'a', None, True, b'b', 'tail'] 7 tail [1, 'a'] tail
+b'b' 2.5 [1, 'a', None, True]
+['a', None, True] ["'a'", 'None', 'True'] ['a', True]
+1 None 0 1 [('b', 'two')] ['two'] {'b': 'two'}
+(1, 'x', None) ('x', None) [1, 'x'] ('a', None, True) 3
+{'k1': 1, 'k2': 'v'} {'k1': 1, 'k2': 'v'} [1, 'v']
+['0', 1, '2', 3] ['0', 1, '2', 3] [3, '2', 1, '0']
+[exit 0]

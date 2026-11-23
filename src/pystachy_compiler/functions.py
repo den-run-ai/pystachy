@@ -13,6 +13,7 @@ from src.pystachy_compiler.utils import (
     RtFn,
     clone,
     closure_default_slots,
+    id_param,
     identity_abi,
     is_list,
     is_opt,
@@ -310,19 +311,20 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             self.nonevars[f.params[i]] = 0
             continue
         self.fn.ps.append(i)
+        idp = id_param(f, i)  # (its number's provenance: %aid<i>)
         if self.dyn_widened(f.params[i]):
             # (one that an Any value is assigned later: a dynamic slot from the start, dyn_widen)
             incoming = Val(f"%a{i}", t)
-            if identity_abi(f) and (t == "int" or t == "float"):
+            if idp and (t == "int" or t == "float"):
                 # (null where the caller passed a new number: dyn_id_arg)
                 incoming.idfrom = self.rt("pys_dyn_int_box" if t == "int" else "pys_dyn_float_box", "ptr", [f"{'i64' if t == 'int' else 'double'} %a{i}", f"ptr %aid{i}"])
-            elif identity_abi(f) and t == BIG:
+            elif idp and t == BIG:
                 slot = self.alloca("dyn", "")
                 self.mem_store(Val(slot, "&dyn"), Val(f"%aid{i}", "dyn"))
                 incoming.idslot = slot
                 incoming.idheld = f"%aid{i}"
                 incoming.idexact = True
-            elif identity_abi(f) and numeric_identity(t):
+            elif idp:
                 incoming.idfrom = f"%aid{i}"
             self.mem_store(Val(self.alloca("dyn", f.params[i]), "&dyn"), self.dyn_box(incoming))
         elif f.cmprebind != "" and i == 1:
@@ -339,7 +341,7 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             held = self.ltype[f.params[i]]
             self.mem_store(Val(slot, "&" + held), self.coerce(Val(f"%a{i}", t), held))
         if identity_abi(f) and numeric_identity(t) and f.params[i] in self.idbox:
-            self.mem_store(Val(self.idbox[f.params[i]], "&dyn"), Val(f"%aid{i}", "dyn"))
+            self.mem_store(Val(self.idbox[f.params[i]], "&dyn"), Val(f"%aid{i}" if idp else "null", "dyn"))
         if f.params[i] in self.lflag:
             self.mem_store(Val(self.lflag[f.params[i]], "&bool"), Val("true", "bool"))  # (a parameter that del unbinds)
     if f.clo >= 0:
