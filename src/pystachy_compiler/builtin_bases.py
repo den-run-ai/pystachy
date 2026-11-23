@@ -216,6 +216,36 @@ def gen_bcalled(self, op: str, t: str, side: int) -> bool:
     return op == "!=" and self.bkind(t) == "" and "__eq__" in ms and not ms["__eq__"].synthetic
 
 
+def gen_bsearched(self, item: Val, a: Val) -> list[Val]:
+    # item == a, as a tuple search compares an item with what it looks for (titem_eq), where one
+    # is an object of a class deriving from a builtin container that defines no __eq__ and the
+    # other's class has an __eq__ of the program that takes not that object but its container:
+    # CPython calls the method with the object, and the method can take it here only as the
+    # container, as == hands it over where no method takes the object itself (bcompared, #1763).
+    # Beside a list or dict, or another such object, that defines no __eq__ either, both as the
+    # containers, whose == CPython's is then. Else both as they are
+    r = [item, a]
+    kinds = [self.bkind(item.t), self.bkind(a.t)]
+    for i in range(2):
+        x = r[i]
+        y = r[1 - i]
+        if kinds[i] == "" or not self.bdecays(x.t, ["__eq__"]):
+            continue
+        u = unopt(y.t)
+        if (is_list(u) if kinds[i] == "list" else is_dict(u)) or (kinds[1 - i] == kinds[i] and self.bdecays(y.t, ["__eq__"])):
+            r[i] = self.bview(x)
+            continue
+        if y.t not in self.classes or kinds[1 - i] != "":
+            continue
+        ms = self.classes[y.t].methods
+        if "__eq__" not in ms or ms["__eq__"].synthetic or self.cmp_method(y.t, "__eq__", x.t) != "":
+            continue
+        v = self.bview(x)
+        if self.cmp_method(y.t, "__eq__", v.t) != "":
+            r[i] = v
+    return r
+
+
 def gen_bfound(self, t: str, b: str) -> None:
     # the objects of class t, whose bare base names no item type, hold what builtin type b
     # does, which a first fill showed: so for the rest of this pass, whose code so far made
