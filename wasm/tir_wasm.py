@@ -31,7 +31,8 @@ import sys
 
 from src.pystachy_compiler.diagnostics import LINES
 from src.pystachy_compiler.machine_ir import WORD_READS
-from src.pystachy_compiler.specs import CONTAINER_HEADERS, GENDONE, GENNAME, GENNEW, GENRET, GENSTATE, GENVAL, OP_TEMPS, RTSYM, RUNTIME
+from src.pystachy_compiler.specs import (CONTAINER_HEADERS, GENCLEAN, GENCMD, GENDONE, GENNAME, GENNEW, GENRET, GENRUN, GENSTATE,
+                                         GENVAL, OP_TEMPS, RTSYM, RUNTIME)
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, generator_slots, is_tuple, lt, rtll, rtsig, rtsym, tslots
 from wasm.wasi_abi import LIBC_WRAPPERS
 
@@ -798,6 +799,9 @@ def frame_addresses(block: Block, fn: Func, promise: int) -> None:
     for slot in fn.slots:
         frame_address(block, slot, at)
         at += 1
+    # (a tuple an ordinary function keeps in its stack frame: here it must outlive each suspension)
+    for name in fn.tuple_offsets:
+        frame_address(block, name, at + fn.tuple_offsets[name] // 8)
 
 
 def spill_type(i: Inst, index: int) -> str:
@@ -850,15 +854,15 @@ def save_generator_position(block: Block, saved: list[Operand], words: dict[str,
 
 def split_generator(fn: Func, resume: Func, target_slot: str, m: Module) -> Func:
     labels = fn.block_indices()
-    if not fn.blocks or not fn.blocks[0].code or fn.frame_bytes:
-        raise Refused(f"generator frame or entry in {fn.name}")
+    if not fn.blocks or not fn.blocks[0].code:
+        raise Refused(f"generator entry in {fn.name}")
     entry = fn.blocks[0]
     start = entry.code[-1]
     if start.op != "gen.start" or len(start.args) != 1 or len(start.targets) != 1:
         raise Refused(f"generator initial suspension in {fn.name}")
     spills = generator_spills(fn, labels)
     promise = promise_words(m)
-    first_spill = promise + 2 + len(fn.slots)
+    first_spill = promise + 2 + len(fn.slots) + fn.frame_bytes // 8
     words: dict[str, int] = {}
     for saved in spills.values():
         for value in saved:
@@ -932,11 +936,12 @@ def split_generator(fn: Func, resume: Func, target_slot: str, m: Module) -> Func
         resume.blocks.append(out)
         for i in block.code:
             if i.op == "gen.yield":
-                if i.fields.get("cleanup", "0") != "0" or len(i.args) != 1:
-                    raise Refused(f"generator yield with cleanup or an extended promise in {fn.name}")
+                if len(i.args) != 1:
+                    raise Refused(f"generator yield with an extended promise in {fn.name}")
                 frame_store(out, "%wasm.value", i.args[0])
                 save_generator_position(out, spills[block.label], words, positions[block.label])
-                frame_store(out, "%wasm.state", Operand("int", "0"))
+                # (GENCLEAN where closing it here runs its code: generator_drops)
+                frame_store(out, "%wasm.state", Operand("int", i.fields.get("cleanup", "0")))
                 out.code.append(frame_inst("ret", []))
             elif i.op == "gen.ret":
                 if len(i.args) > 1:
@@ -977,41 +982,141 @@ def generator_functions(m: Module, targets: dict[str, str], handles: set[str]) -
         else:
             functions.append(fn)
     if handles:
-        check_generator_drops(m)
+        functions.extend(generator_drops(m, functions))
     return functions
 
 
-def check_generator_drops(m: Module) -> None:
-    # A counted drop enters the runtime only to run suspended cleanup. Match the
-    # original SSA handle before splitting the coroutine inserts spill reloads.
-    constructors: dict[str, str] = {}
-    cleanup: set[str] = set()
+def generator_drops(m: Module, functions: list[Func]) -> list[Func]:
+    # Where a generator can be suspended at a yield whose closing runs its code (cleanup=1: in a
+    # try, a with block, a yield from or a loop of its own), every gen.drop becomes a call of
+    # pys.gen.drop's or pys.gen.drop.counted's Wasm helper (lower_module.gen_gen_module), which
+    # reads the generator's state: generators of one handle type need not share their cleanup.
+    # Elsewhere no generator's state is ever GENCLEAN, and a drop marks it finished.
+    handle = ""
     for fn in m.funcs:
-        if fn.coroutine:
-            if any(i.op == "gen.yield" and i.fields.get("cleanup", "0") != "0" for b in fn.blocks for i in b.code):
-                cleanup.add(fn.ret)
-            else:
-                constructors[fn.name] = fn.ret
-    for fn in m.funcs:
-        dropped: dict[str, str] = {}
+        if fn.coroutine and any(i.op == "gen.yield" and i.fields.get("cleanup", "0") != "0"
+                                for b in fn.blocks for i in b.code):
+            handle = fn.ret
+            break
+    if handle == "":
+        return []
+    helpers: dict[str, bool] = {}
+    for fn in functions:
         for block in fn.blocks:
-            for i in block.code:
+            for k in range(len(block.code)):
+                i = block.code[k]
                 if i.op == "gen.drop" and len(i.args) == 1:
-                    handle = i.args[0]
-                    if handle.t not in m.plain_generators or handle.t in cleanup:
-                        dropped[handle.v] = handle.t
-        if dropped:
-            found: set[str] = set()
-            for block in fn.blocks:
-                for i in block.code:
-                    for name in i.res:
-                        if name in dropped:
-                            if i.op != "call" or constructors.get(i.fields.get("callee", ""), "") != dropped[name]:
-                                raise Refused(f"counted generator drop in {fn.name}")
-                            found.add(name)
-            if len(found) != len(dropped):
-                raise Refused(f"counted generator drop in {fn.name}")
+                    # (a generator whose body can recur, Gen.recursionscope: its cleanup counts as a frame)
+                    counted = i.args[0].t not in m.plain_generators
+                    name = "@wasm.gen.drop.counted" if counted else "@wasm.gen.drop"
+                    helpers[name] = counted
+                    call = frame_inst("call", [Operand(handle, i.args[0].v)], "", "None")
+                    call.fields["callee"] = name
+                    call.line = i.line
+                    block.code[k] = call
+    return [drop_function(name, handle, helpers[name], m) for name in sorted(helpers)]
 
+
+def drop_block(fn: Func, label: str) -> Block:
+    b = Block(label)
+    fn.blocks.append(b)
+    return b
+
+
+def drop_word(b: Block, result: str, index: int) -> Operand:
+    # the address of the promise's word index (a generator's handle is its promise)
+    address = frame_inst("mach.addr", [Operand("%ptr", "%a0"), Operand("int", str(index))], result, "%ptr")
+    address.fields["element"] = "int"
+    b.code.append(address)
+    return Operand("%ptr", result)
+
+
+def drop_runtime(b: Block, key: str, args: list[Operand], result: str, t: str, targets: list[str]) -> Operand:
+    i = frame_inst("rt", args, result, t)
+    i.fields["entry"] = key
+    i.targets = targets
+    b.code.append(i)
+    return Operand(t, result)
+
+
+def drop_branch(b: Block, value: Operand, expected: int, yes: str, no: str) -> None:
+    test = frame_inst("num.cmp", [value, Operand("int", str(expected))], value.v + ".is", "bool")
+    test.operator = "=="
+    b.code.append(test)
+    cbr = frame_inst("cbr", [Operand("bool", value.v + ".is")])
+    cbr.targets = [yes, no]
+    b.code.append(cbr)
+
+
+def drop_jump(b: Block, target: str) -> None:
+    br = frame_inst("br", [])
+    br.targets = [target]
+    b.code.append(br)
+
+
+def drop_function(name: str, handle: str, counted: bool, m: Module) -> Func:
+    # pys.gen.drop: a generator suspended where closing it runs code of its (GENCLEAN) is resumed
+    # with the close command, which raises GeneratorExit at its yield; its landing block reports
+    # anything else it raises, and a yield after GeneratorExit is reported here (pys_gen_ignored).
+    # Counted, the resume enters a recursion frame, and a RecursionError there, like an exception
+    # that cleanup lets out, is reported as unraisable with the depth restored. Either way the
+    # generator ends finished, as close() leaves it.
+    if counted and "exceptions" not in m.attrs:
+        raise Refused(f"counted generator drop without exceptions ({handle})")
+    fn = Func(name)
+    fn.ptypes = [handle]
+    fn.ret = "None"
+    entry = drop_block(fn, "entry")
+    state = drop_word(entry, "%wasm.state", GENSTATE)
+    entry.code.append(frame_inst("mach.load", [state], "%wasm.s", "int"))
+    drop_branch(entry, Operand("int", "%wasm.s"), GENCLEAN, "close", "done")
+    close = drop_block(fn, "close")
+    base = Operand("int", "0")
+    mark = Operand("int", "0")
+    if counted:
+        base = drop_runtime(close, "recursion.depth", [], "%wasm.base", "int", [])
+        mark = drop_runtime(close, "try_mark", [], "%wasm.mark", "int", [])
+    handled = drop_runtime(close, "exc.handled", [], "%wasm.handled", "exc", [])
+    close.code.append(frame_inst("mach.store", [drop_word(close, "%wasm.command", GENCMD), Operand("int", "1")]))
+    resume = close
+    if counted:
+        fn.add_slot("%wasm.caught", "exc", 0)
+        drop_runtime(close, "recursion.enter", [], "%wasm.depth", "int", ["resume", "failed"])
+        resume = drop_block(fn, "resume")
+    resume.code.append(frame_inst("mach.store", [state, Operand("int", str(GENRUN))]))
+    call = frame_inst("gen.resume", [Operand(handle, "%a0")])
+    resume.code.append(call)
+    resumed = resume
+    if counted:
+        call.targets = ["resumed", "failed"]
+        resumed = drop_block(fn, "resumed")
+        drop_runtime(resumed, "recursion.restore", [base], "", "None", [])
+    drop_runtime(resumed, "exc.restore", [handled], "", "None", [])
+    resumed.code.append(frame_inst("mach.load", [state], "%wasm.after", "int"))
+    drop_branch(resumed, Operand("int", "%wasm.after"), GENDONE, "done", "ignored")
+    ignored = drop_block(fn, "ignored")
+    ignored.code.append(frame_inst("mach.load", [drop_word(ignored, "%wasm.name", GENNAME)], "%wasm.qualname", "str"))
+    drop_runtime(ignored, "gen.ignored", [Operand("str", "%wasm.qualname"), Operand("%ptr", "%a0")], "", "None", [])
+    drop_jump(ignored, "done")
+    if counted:
+        failed = drop_block(fn, "failed")
+        landing = frame_inst("landing", [Operand("%addr", "%wasm.caught")], "", "exc")
+        landing.targets = ["report"]
+        failed.code.append(landing)
+        report = drop_block(fn, "report")
+        report.code.append(frame_inst("mach.load", [Operand("%ptr", "%wasm.caught")], "%wasm.raised", "exc"))
+        drop_runtime(report, "recursion.restore", [base], "", "None", [])
+        error = drop_runtime(report, "exc.begin", [Operand("exc", "%wasm.raised"), mark], "%wasm.error", "exc", [])
+        name_word = drop_word(report, "%wasm.ename", GENNAME)
+        report.code.append(frame_inst("mach.load", [name_word], "%wasm.equalname", "str"))
+        drop_runtime(report, "gen.unraisable", [error, Operand("str", "%wasm.equalname"), Operand("%ptr", "%a0")],
+                     "", "None", [])
+        drop_runtime(report, "exc.restore", [handled], "", "None", [])
+        drop_jump(report, "done")
+    done = drop_block(fn, "done")
+    done.code.append(frame_inst("mach.store", [state, Operand("int", str(GENDONE))]))
+    done.code.append(frame_inst("ret", []))
+    return fn
 
 # ---------- emission ----------
 
@@ -1133,6 +1238,23 @@ class Emitter:
                 self.slot(c.items[2])
                 self.ref(c.refs[4])
                 self.align8()
+            elif c.kind == "classnames" and len(c.items) == len(c.refs):
+                # runtime.c's ReflName {Str *name; I kind;} for each name, at wasm32's offsets 0 and 8
+                for j in range(len(c.refs)):
+                    self.ref(c.refs[j])
+                    self.align8()
+                    self.slot(c.items[j])
+            elif c.kind == "classfields" and len(c.items) == len(c.refs) and c.text.startswith("%C."):
+                # runtime.c's ReflField {Str *name, *desc; I off, flag;} for each field, at wasm32's
+                # offsets 0 4 8 16: the field's byte offset in wasm32's layout of the class, and its
+                # "is assigned" flag's (-1: always assigned)
+                cls = c.text[3:]
+                for j in range(0, len(c.refs) - 1, 2):
+                    self.ref(c.refs[j])
+                    self.ref(c.refs[j + 1])
+                    self.word(self.field_offset(cls, int(c.items[j].v)))
+                    flag = c.items[j + 1].v
+                    self.word(-1 if flag == "-1" else self.field_offset(cls, int(flag)))
             else:
                 raise Refused(f"constants of kind {c.kind}")
         for g in self.m.order:
@@ -3029,6 +3151,10 @@ def const_size(c: Const) -> int:
         return 20
     if c.kind == "classrec":
         return 56
+    if c.kind == "classnames":
+        return 16 * len(c.refs)
+    if c.kind == "classfields":
+        return 24 * (len(c.refs) // 2)
     raise Refused(f"constants of kind {c.kind}")
 
 

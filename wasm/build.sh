@@ -171,7 +171,10 @@ emitter() {
 }
 
 direct() {
-  if [ -x "$RT/wasm_from_source" ]; then
+  # the native tools (wasm/build.sh emitter) while no source they hold has changed since they were
+  # built: a stale binary would emit the old emitter's output. Otherwise the hosted tool
+  if [ -x "$RT/wasm_from_source" ] && [ -z "$(find tools/wasm_from_source.py wasm/tir_wasm.py wasm/wasi_abi.py \
+      src/pystachy_compiler -name '*.py' -newer "$RT/wasm_from_source" | head -n 1)" ]; then
     PYSTACHY_HOME=${PYSTACHY_HOME:-$PWD} "$RT/wasm_from_source" "$@"
   else
     PYTHONPATH=.${PYTHONPATH:+:$PYTHONPATH} "$PY" tools/wasm_from_source.py "$@"

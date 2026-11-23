@@ -18,10 +18,12 @@ def values():
 for v in values():
     print(v)
 `;
-const generator = source + generatorBody;
+// (the direct emitter refuses a module that opts in to dynamic Any, #1746: LLVM builds it)
+const refused = "# pystachy: dynamic-any\n";
+const generator = refused + source + generatorBody;
 
 test("LLVM fallback catches Python exceptions and lets host errors escape", async t => {
-  const script = `from codemode import call
+  const script = `${refused}from codemode import call
 
 def parse():
     try:
@@ -105,10 +107,10 @@ print(os.environ[name])
   const output = await open(path, "w");
   t.after(() => output.close());
   for (const backend of ["direct", "llvm"]) {
-    const artifact = await compile(backend === "direct" ? stateful : stateful + generatorBody);
+    const artifact = await compile((backend === "direct" ? "" : refused) + stateful + generatorBody);
     assert.ok(artifact.module instanceof WebAssembly.Module);
     assert.equal(artifact.backend, backend);
-    if (backend === "llvm") assert.match(artifact.refusal, /^tir_wasm: refused: .*generator/);
+    if (backend === "llvm") assert.match(artifact.refusal, /^tir_wasm: refused: .*dynamic/);
     else assert.equal(artifact.refusal, null);
     for (const reply of ["first", "second"]) {
       const tools = new Map([["lookup", previous => {
@@ -118,9 +120,9 @@ print(os.environ[name])
       assert.equal(await run(artifact.module, { tools, stdout: output.fd }), 0);
     }
   }
-  assert.equal(await readFile(path, "utf8"), "first\nsecond\nfirst\n42\nsecond\n42\n");
+  assert.equal(await readFile(path, "utf8"), "first\n42\nsecond\n42\nfirst\n42\nsecond\n42\n");
   await assert.rejects(compile("print(unknown_name)\n"), { code: 1, message: /unknown_name/ });
-  await assert.rejects(createCompiler({ fallback: false })(generator), { code: 3, message: /refused: .*generator/ });
+  await assert.rejects(createCompiler({ fallback: false })(generator), { code: 3, message: /refused: .*dynamic/ });
 });
 
 test("a deadline applies to a directly compiled Python loop", async () => {

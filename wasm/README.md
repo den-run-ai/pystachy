@@ -98,23 +98,27 @@ bound method keeps its receiver. An indirect call uses its finalized IR signatur
 including its exception handler. Both hosts also run registered Python exit handlers
 on normal return, on `sys.exit()` and while reporting an uncaught exception.
 
-Plain generators start on first resume. Each instance has its own heap frame, which
-keeps the next instruction, the producer's function-table index and its local slots.
-At each suspension it saves the typed temporary values needed on that edge. Resuming
-restores them before the successor block selects its phi inputs. This allows different
-producers to share an `Iterator[T]` interface. A loop can drop a recursively resumed
-generator when its handle comes directly from a constructor whose yields need no cleanup.
-For programs using `send()` or `throw()`,
-the frame also has space for the sent value and thrown exception. A new generator
-rejects a non-None first send, as Python does. Yields requiring cleanup during close
-and programs using explicit dynamic values receive a named refusal. `wasm/build.sh tir` then builds the program through LLVM, and
-`WASM_TIR_LOG` records the route taken.
+Generators start on first resume. Each instance has its own heap frame, which keeps the
+next instruction, the producer's function-table index, its local slots and the tuples an
+ordinary function would keep on its stack. At each suspension it saves the typed
+temporary values needed on that edge. Resuming restores them before the successor block
+selects its phi inputs. This allows different producers to share an `Iterator[T]`
+interface. Where a program has a yield whose closing runs code (in a `try`, a `with`
+block, a `yield from` or a loop of its own), a loop leaves its generator through
+`@wasm.gen.drop`, the native `pys.gen.drop`: a generator suspended at such a yield
+resumes with the close command, so `GeneratorExit` runs its `finally` blocks. Where the
+generator's body can recur, `@wasm.gen.drop.counted` runs that cleanup one recursion
+frame deeper and reports what escapes it as unraisable. For programs using `send()` or
+`throw()`, the frame also has space for the sent value and thrown exception. A new
+generator rejects a non-None first send, as Python does. Programs using explicit dynamic
+values or promoting integers receive a named refusal. `wasm/build.sh tir` then builds the
+program through LLVM, and `WASM_TIR_LOG` records the route taken.
 
 The source compiler passes the finalized functions and declarations directly to the emitter.
 `build/wasm/wasm_from_source SOURCE.py OUT.wasm` compiles a file in one process. Use `- -`
 for UTF-8 source on stdin and binary Wasm on stdout. For existing module text, use
-`build/wasm/tir_wasm MODULE.tir OUT.wasm`. The shell build can also run the source compiler
-on Python when the native executable is absent. In fallback mode a named refusal reuses
+`build/wasm/tir_wasm MODULE.tir OUT.wasm`. The shell build runs the source compiler on
+Python when the native executable is absent or older than a source it was built from. In fallback mode a named refusal reuses
 the same compilation's LLVM IR. Input errors and failed builds propagate to the caller.
 
 ## Calling tools from a Node host
