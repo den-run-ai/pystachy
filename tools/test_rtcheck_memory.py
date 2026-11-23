@@ -4,7 +4,8 @@ Each mutant is one change to the list, str, set or dict code that a compiled run
 run without complaint: a write past a block, a stale slot that the collector would scan, a
 read that breaks an alias rule, arithmetic that overflows unchecked, an identity that a
 companion loses, a set whose table is no longer CPython's slot for slot, a dict whose
-entries are no longer CPython's items. The heap model of
+entries are no longer CPython's items, a repr, == or ordering of a value by its descriptor that
+is no longer CPython's. The heap model of
 tools/rt_cpython/rt_heap.py must report every one of them at the size this test runs, and
 nothing in the code as it is.
 """
@@ -192,6 +193,61 @@ MUTANTS = [
 ]
 
 
+WALK_MUTANTS = [
+    ("a str's repr does not escape its quote",
+     '    if c == q or c == 92:\n        _rt.put_byte(t, 0, 92)\n        _rt.put_byte(t, 1, c)\n        return 2 + n',
+     '    if c == 92:\n        _rt.put_byte(t, 0, 92)\n        _rt.put_byte(t, 1, c)\n        return 2 + n'),
+    ("a str's repr always takes single quotes",
+     '    q = 34 if _rt.find_byte(s, 39, 0, n) >= 0 and _rt.find_byte(s, 34, 0, n) < 0 else 39\n    t = _rt.words(2)',
+     '    q = 39\n    t = _rt.words(2)'),
+    ("a run of two-byte characters copies one that is not printable",
+     '            if pys_rt_printable((c & 0x1F) << 6 | (_rt.byte_at(p, n + 1) & 0x3F)) == 0:\n                break\n',
+     ''),
+    ("escapes in upper-case hex",
+     '    return 48 + v if v < 10 else 87 + v',
+     '    return 48 + v if v < 10 else 55 + v'),
+    ("a negative int's repr loses its sign",
+     '    if v < 0:\n        i -= 1\n        _rt.put_byte(w, i, 45)',
+     '    if v < -(1 << 62):\n        i -= 1\n        _rt.put_byte(w, i, 45)'),
+    ("a list's repr leaves its mark",
+     '        put_char(b, ord("]"))\n        pys_repr_leave(l)',
+     '        put_char(b, ord("]"))'),
+    ("a text grows by too little for a long part",
+     '        c = _rt.get(b, "Buf.cap") * 2 + n + 64',
+     '        c = _rt.get(b, "Buf.cap") * 2 + 64'),
+    ("repr follows a 513th edge",
+     '    if c == ord("R"):\n        if depth >= 512:\n            pys_rt_rec_deep(0)',
+     '    if c == ord("R"):\n        if depth >= 513:\n            pys_rt_rec_deep(0)'),
+    ("a comparison of two descriptors forgets the edges it follows",
+     '            d = recdesc(d)\n            edge = 1',
+     '            d = recdesc(d)\n            edge = 0'),
+    ("a tuple's promoting int takes the Mpz of the item before",
+     '    _rt.put(w, 1, _rt.word(t, n + i) if x == -9223372036854775807 - 1 else 0)',
+     '    _rt.put(w, 1, _rt.word(t, n + i - 1) if x == -9223372036854775807 - 1 else 0)'),
+    ("a list equals a list it begins",
+     '        if _rt.get(x, "List.len") != _rt.get(y, "List.len"):\n            return False\n        e = _rt.offset(d, 1)\n        i = 0\n        while i < _rt.get(x, "List.len") and i < _rt.get(y, "List.len") and list_item_eq(x, i, y, i, e):\n            i += 1\n        return (i >= _rt.get(x, "List.len") or i >= _rt.get(y, "List.len")) and _rt.get(x, "List.len") == _rt.get(y, "List.len")',
+     '        e = _rt.offset(d, 1)\n        i = 0\n        while i < _rt.get(x, "List.len") and i < _rt.get(y, "List.len") and list_item_eq(x, i, y, i, e):\n            i += 1\n        return i >= _rt.get(x, "List.len") or i >= _rt.get(y, "List.len")'),
+    ("a counted tuple equals a longer one",
+     '        return i >= _rt.get(x, "VTuple.len") and i >= _rt.get(y, "VTuple.len")',
+     '        return i >= _rt.get(x, "VTuple.len")'),
+    ("lists whose items are equal compare as equal whatever their lengths",
+     '            return opv(_rt.word(_rt.getp(x, "List.a"), i), _rt.word(_rt.getp(y, "List.a"), i), e, op)\n        return cmpop(sign(_rt.get(x, "List.len"), _rt.get(y, "List.len")), op)',
+     '            return opv(_rt.word(_rt.getp(x, "List.a"), i), _rt.word(_rt.getp(y, "List.a"), i), e, op)\n        return cmpop(0, op)'),
+    ("a tuple orders its first unequal items the other way",
+     '                if not eqitem(p, q, e):\n                    return opv(p, q, e, op)',
+     '                if not eqitem(p, q, e):\n                    return opv(q, p, e, op)'),
+    ("<= of floats is <",
+     '    return x < y if op == 0 else x <= y if op == 1 else x > y if op == 2 else x >= y',
+     '    return x < y if op == 0 else x < y if op == 1 else x > y if op == 2 else x >= y'),
+    ("a dict's equality takes the other dict's entry for a slot",
+     '                f = pys_rt_dfind(y, _rt.word(_rt.getp(x, "Dict.keys"), e), h)\n                f = _rt.i32_at(_rt.getp(y, "Dict.idx"), f) - 1 if f >= 0 else -1',
+     '                f = pys_rt_dfind(y, _rt.word(_rt.getp(x, "Dict.keys"), e), h)'),
+    ("a union's member is the one after its tag",
+     '        if desc_num(d) == tag:\n            return desc_past_num(d)',
+     '        if desc_num(d) == tag:\n            return pys_rt_skip(desc_past_num(d))'),
+]
+
+
 def check(runtime, part="memory"):
     # (--stop: a seeded bug's run ends at its first failure)
     return subprocess.run([sys.executable, os.path.join(ROOT, "tools", "rtcheck.py"), ROUNDS, "1", "--runtime", runtime, "--only", part, "--stop"],
@@ -210,15 +266,16 @@ class Memory(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             def run(j):
                 # (each against the part of the fuzz that is about its code)
-                name, old, new = (MUTANTS + SET_MUTANTS + DICT_MUTANTS)[j]
+                name, old, new = (MUTANTS + SET_MUTANTS + DICT_MUTANTS + WALK_MUTANTS)[j]
                 self.assertEqual(source.count(old), 1, f"{name}: runtime.py no longer has the text this mutant replaces")
                 path = os.path.join(tmp, f"runtime{j}.py")
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(source.replace(old, new))
-                return name, check(path, "lists" if j < len(MUTANTS) else "sets" if j < len(MUTANTS) + len(SET_MUTANTS) else "dicts")
+                k = len(MUTANTS) + len(SET_MUTANTS)
+                return name, check(path, "lists" if j < len(MUTANTS) else "sets" if j < k else "dicts" if j < k + len(DICT_MUTANTS) else "walks")
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-                for name, r in pool.map(run, range(len(MUTANTS) + len(SET_MUTANTS) + len(DICT_MUTANTS))):
+                for name, r in pool.map(run, range(len(MUTANTS) + len(SET_MUTANTS) + len(DICT_MUTANTS) + len(WALK_MUTANTS))):
                     with self.subTest(name):
                         self.assertNotEqual(r.returncode, 0, f"{name}: not found\n{r.stdout[-400:]}")
 

@@ -119,5 +119,39 @@ class Decorators(unittest.TestCase):
                 self.assertEqual(attributes(ir, name), ["noinline"])
 
 
+FRAME = '''import _rt
+
+
+@_rt.unchecked
+def pys_frame_sum(n: int) -> int:
+    total = 0
+    i = 0
+    while i < n:
+        w = _rt.words(2)
+        _rt.put(w, 0, i)
+        _rt.put(w, 1, i + 1)
+        b = _rt.local("Buf")
+        _rt.set(b, "Buf.n", _rt.word(w, 0) + _rt.word(w, 1))
+        total += _rt.get(b, "Buf.n")
+        i += 1
+    return total
+'''
+
+
+class Frame(unittest.TestCase):
+    def test_frame_storage_is_allocated_once_in_the_entry_block(self):
+        # _rt.words and _rt.local in a loop: the entry block's allocas, of the words and of the
+        # record's fields, so that the loop does not grow the native stack
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "module.py"
+            source.write_text(FRAME)
+            ir = compile_runtime(source, tmp)
+        body = ir[ir.index("@pys_frame_sum("):]
+        body = body[: body.index("\n}\n")]
+        entry = body[: body.index("\nL")]
+        self.assertEqual(re.findall(r"alloca \[(\d+) x i64\], align 8", body), ["2", "3"])
+        self.assertEqual(re.findall(r"alloca \[(\d+) x i64\], align 8", entry), ["2", "3"])
+
+
 if __name__ == "__main__":
     unittest.main()

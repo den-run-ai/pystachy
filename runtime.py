@@ -4151,7 +4151,6 @@ def pys_list_reverse(l: _rt.Ptr) -> None:
 # ---- companions: pairing two lists, and the Mpzs of ints past 64 bits (runtime.c: BIGIDS)
 
 
-def pys_rt_list_item_eq(l: _rt.Ptr, i: int, v: int, d: str) -> int: ...
 def pys_rt_not_in_list(x: int, d: str) -> None: ...
 def pys_dyn_big(lo: int, hi: _rt.Ptr) -> _rt.Ptr: ...
 def pys_dyn_big_ptr(x: _rt.Ptr) -> _rt.Ptr: ...
@@ -6734,6 +6733,1243 @@ def pys_dict_fromkeys_dict(o: _rt.Ptr, v: int) -> _rt.Ptr:
                 pys_rt_dbput(d, k, h, v)
         e += 1
     return d
+
+
+# ---------- repr, equality and ordering by a type descriptor ----------
+# The compiler describes a value's static type with a descriptor, a str whose letters runtime.c
+# lists (its "generic repr / equality / ordering" comment): i int, f float, s str, L<e> list,
+# D<k><v> dict, T<n><e...> fixed tuple, V<e> counted tuple, ?<e> None or a value, U<n>:... a
+# tagged union, R<n>: an edge back to an enclosing descriptor, O<id> an object, and so on. The
+# walks read a descriptor from its bytes on (d, an address into them) and step past a part with
+# desc_skip. runtime.c keeps what they ask of it: the marks of the reprs under way
+# (pys_repr_enter), which an unwind clears; the program's own __eq__, ordering and __repr__
+# (pys_obj_*); exceptions; dynamic values; an Mpz's digits and a float's text; the table of
+# printable characters; and the errors whose text it formats without allocating.
+
+
+def pys_repr_enter(p: _rt.Ptr) -> int: ...
+def pys_repr_leave(p: _rt.Ptr) -> None: ...
+def pys_obj_eq(c: int, a: int, b: int) -> int: ...
+def pys_obj_cmp(c: int, op: int, a: int, b: int) -> int: ...
+def pys_obj_repr(c: int, a: int, b: int) -> str: ...
+def pys_exc_repr(e: _rt.Ptr) -> str: ...
+def pys_exc_type(e: _rt.Ptr) -> str: ...
+def pys_exc_id(e: _rt.Ptr) -> _rt.Ptr: ...
+def pys_dyn_eq(a: _rt.Ptr, b: _rt.Ptr) -> int: ...
+def pys_dyn_cmp(a: _rt.Ptr, b: _rt.Ptr, op: int) -> int: ...
+def pys_rt_dyn_eqitem(a: _rt.Ptr, b: _rt.Ptr) -> int: ...
+def pys_rt_mpz_digits(m: _rt.Ptr) -> _rt.Ptr: ...
+def pys_rt_mpz_cmp_float(m: _rt.Ptr, x: float) -> int: ...
+def pys_big_cmp(alo: int, ahi: _rt.Ptr, blo: int, bhi: _rt.Ptr) -> int: ...
+def pys_str_float(x: float) -> str: ...
+def pys_str_cmp(a: str, b: str) -> int: ...
+def pys_rt_printable(c: int) -> int: ...
+def pys_rt_rec_deep(cmp: int) -> None: ...
+def pys_rt_digits_deep() -> None: ...
+def pys_rt_order_error(op: int, ca: int, cb: int, ea: _rt.Ptr, eb: _rt.Ptr) -> None: ...
+def pys_rt_eq_probe() -> None: ...
+def pys_str(p: _rt.Ptr, n: int) -> str: ...
+
+
+# ---- the growing text of a repr (runtime.c's Buf, which a caller keeps in its frame)
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_rt_put(b: _rt.Ptr, s: _rt.Ptr, n: int) -> None:
+    # n bytes at s onto b. Its bytes grow to twice and more, allocated by the collector unzeroed
+    # (the bytes past Buf.n are never read); out of line, which keeps the walks small
+    have = _rt.get(b, "Buf.n")
+    if have + n > _rt.get(b, "Buf.cap"):
+        c = _rt.get(b, "Buf.cap") * 2 + n + 64
+        p = pys_rt_raw(c)
+        if have != 0:
+            _rt.cpy(p, _rt.getp(b, "Buf.p"), have)
+        _rt.setp(b, "Buf.p", p)
+        _rt.set(b, "Buf.cap", c)
+    if n != 0:
+        _rt.cpy(_rt.offset(_rt.getp(b, "Buf.p"), have), s, n)
+        _rt.set(b, "Buf.n", have + n)
+
+
+@_rt.unchecked
+def put_text(b: _rt.Ptr, s: str) -> None:
+    pys_rt_put(b, str_bytes(s), len(s))
+
+
+@_rt.unchecked
+def put_char(b: _rt.Ptr, c: int) -> None:
+    have = _rt.get(b, "Buf.n")
+    if have < _rt.get(b, "Buf.cap"):
+        _rt.put_byte(_rt.getp(b, "Buf.p"), have, c)
+        _rt.set(b, "Buf.n", have + 1)
+        return
+    w = _rt.words(1)
+    _rt.put_byte(w, 0, c)
+    pys_rt_put(b, w, 1)
+
+
+@_rt.unchecked
+def put_int(b: _rt.Ptr, v: int) -> None:
+    # v's decimal digits, written from the last one into the frame (20 bytes and the sign at most)
+    w = _rt.words(3)
+    u = _rt.wrap_sub(0, v) if v < 0 else v
+    i = 24
+    while True:
+        i -= 1
+        _rt.put_byte(w, i, _rt.wrap_add(48, _rt.urem(u, 10)))
+        u = _rt.udiv(u, 10)
+        if u == 0:
+            break
+    if v < 0:
+        i -= 1
+        _rt.put_byte(w, i, 45)
+    pys_rt_put(b, _rt.offset(w, i), 24 - i)
+
+
+@_rt.unchecked
+def put_digits(b: _rt.Ptr, m: _rt.Ptr) -> None:
+    # an int past 64 bits: its Mpz's digits, or CPython's ValueError past 4300 of them
+    s = pys_rt_mpz_digits(m)
+    if _rt.null(s):
+        pys_rt_digits_deep()
+    put_text(b, _rt.as_str(s))
+
+
+@_rt.unchecked
+def buf_done(b: _rt.Ptr) -> str:
+    return pys_str(_rt.getp(b, "Buf.p"), _rt.get(b, "Buf.n"))
+
+
+@_rt.unchecked
+def buf_open(b: _rt.Ptr) -> None:
+    _rt.setp(b, "Buf.p", _rt.nil())
+    _rt.set(b, "Buf.n", 0)
+    _rt.set(b, "Buf.cap", 0)
+
+
+# ---- descriptors
+
+
+@_rt.unchecked
+def desc_of(s: _rt.Ptr) -> _rt.Ptr:
+    # the bytes of a descriptor that a Str holds
+    return _rt.offset(s, _rt.sizeof("Str"))
+
+
+def is_digit(c: int) -> bool:
+    return c >= 48 and c <= 57
+
+
+@_rt.unchecked
+def desc_num(d: _rt.Ptr) -> int:
+    # a count or tag that ':' ends (the compiler's descriptors)
+    n = 0
+    i = 0
+    c = _rt.byte_at(d, 0)
+    while is_digit(c):
+        n = n * 10 + c - 48
+        i += 1
+        c = _rt.byte_at(d, i)
+    return n
+
+
+@_rt.unchecked
+def desc_past_num(d: _rt.Ptr) -> _rt.Ptr:
+    # and the bytes past its ':'
+    i = 0
+    while is_digit(_rt.byte_at(d, i)):
+        i += 1
+    return _rt.offset(d, i + 1)
+
+
+@_rt.unchecked
+def pys_rt_ocls(d: _rt.Ptr) -> int:
+    # an object's class number: three digits, then those of an id of 1000 or more
+    c = (_rt.byte_at(d, 0) - 48) * 100 + (_rt.byte_at(d, 1) - 48) * 10 + _rt.byte_at(d, 2) - 48
+    i = 3
+    while is_digit(_rt.byte_at(d, i)):
+        c = c * 10 + _rt.byte_at(d, i) - 48
+        i += 1
+    return c
+
+
+@_rt.unchecked
+def pys_rt_skip(d: _rt.Ptr) -> _rt.Ptr:
+    # the bytes past the descriptor at d. An edge (R) is a leaf; an object's id ends at a letter, at
+    # the end or at the '.' that a union puts after a member's (which this takes)
+    c = _rt.byte_at(d, 0)
+    d = _rt.offset(d, 1)
+    if c == ord("R"):
+        return desc_past_num(d)
+    if c == ord("O") or c == ord("P") or c == ord("H"):
+        i = 3
+        while is_digit(_rt.byte_at(d, i)):
+            i += 1
+        return _rt.offset(d, i + 1 if _rt.byte_at(d, i) == ord(".") else i)
+    if c == ord("L") or c == ord("V") or c == ord("?") or c == ord("S") or c == ord("F"):
+        return pys_rt_skip(d)
+    if c == ord("D"):
+        return pys_rt_skip(pys_rt_skip(d))
+    if c == ord("T"):
+        n = _rt.byte_at(d, 0) - 48
+        d = _rt.offset(d, 1)
+        while n > 0:
+            d = pys_rt_skip(d)
+            n -= 1
+    elif c == ord("U"):
+        n = desc_num(d)
+        d = desc_past_num(d)
+        while n > 0:
+            d = pys_rt_skip(desc_past_num(d))
+            n -= 1
+    return d
+
+
+@_rt.unchecked
+def recdesc(d: _rt.Ptr) -> _rt.Ptr:
+    # where an edge leads: the descriptor that its count of bytes back begins
+    while _rt.byte_at(d, 0) == ord("R"):
+        d = _rt.offset(d, 0 - desc_num(_rt.offset(d, 1)))
+    return d
+
+
+@_rt.unchecked
+def pys_rt_utype(tag: int, d: _rt.Ptr) -> _rt.Ptr:
+    # the descriptor of union d's member of program-wide tag tag, which the union covers
+    n = desc_num(_rt.offset(d, 1))
+    d = desc_past_num(_rt.offset(d, 1))
+    while n > 0:
+        if desc_num(d) == tag:
+            return desc_past_num(d)
+        d = pys_rt_skip(desc_past_num(d))
+        n -= 1
+    return d  # (not reached: the compiler's descriptor covers every tag)
+
+
+@_rt.unchecked
+def unbox(v: int, d: _rt.Ptr) -> int:
+    # the value of a ?<d> that is not None: an int's, float's or bool's box holds it
+    c = _rt.byte_at(d, 0)
+    if c == ord("i") or c == ord("f") or c == ord("b"):
+        return _rt.word(_rt.ptr(v), 0)
+    return v
+
+
+@_rt.unchecked
+def jbig_hi(v: int) -> _rt.Ptr:
+    # a promoting int's two words at v (J): the Mpz of one past 64 bits, else null
+    if _rt.word(_rt.ptr(v), 0) == -9223372036854775807 - 1 and pys_rt_opt_in() != 0:
+        return _rt.ptr(_rt.word(_rt.ptr(v), 1))
+    return _rt.nil()
+
+
+@_rt.unchecked
+def jbig_lo(v: int) -> int:
+    # and its 64-bit value, 0 where it has an Mpz
+    return 0 if not _rt.null(jbig_hi(v)) else _rt.word(_rt.ptr(v), 0)
+
+
+@_rt.unchecked
+def tuple_item(t: _rt.Ptr, n: int, i: int, e: _rt.Ptr, w: _rt.Ptr) -> int:
+    # item i of fixed tuple t of n items, of descriptor e: a promoting int's two words in w, its
+    # Mpz from word n + i where its slot holds -2**63
+    if _rt.byte_at(e, 0) != ord("J") or pys_rt_opt_in() == 0:
+        return _rt.word(t, i)
+    x = _rt.word(t, i)
+    _rt.put(w, 0, x)
+    _rt.put(w, 1, _rt.word(t, n + i) if x == -9223372036854775807 - 1 else 0)
+    return _rt.addr(w)
+
+
+@_rt.unchecked
+def vtuple_items(t: _rt.Ptr) -> _rt.Ptr:
+    return _rt.offset(t, _rt.sizeof("VTuple"))
+
+
+@_rt.unchecked
+def vtuple_same(x: _rt.Ptr, y: _rt.Ptr, i: int) -> bool:
+    # are items i of counted tuples x and y one object, by their identity companions
+    a = _rt.getp(x, "VTuple.ids")
+    b = _rt.getp(y, "VTuple.ids")
+    if _rt.null(a) or _rt.null(b):
+        return False
+    k = _rt.word(a, i + 1)
+    return k != 0 and k == _rt.word(b, i + 1)
+
+
+@_rt.unchecked
+def kind_desc(kind: int) -> _rt.Ptr:
+    # the key descriptor of a dict's kind above 1 (2 marks CPython's hash; 3 is str and bytes keys
+    # by that hash), without the '!' that asks for it
+    p = str_bytes("!s") if kind == 3 else desc_of(_rt.ptr(kind & -3))
+    return _rt.offset(p, 1) if _rt.byte_at(p, 0) == ord("!") else p
+
+
+@_rt.unchecked
+def desc_text_eq(p: _rt.Ptr, q: _rt.Ptr) -> bool:
+    # are the descriptors at p and q, to their ends, the same text
+    i = 0
+    while True:
+        c = _rt.byte_at(p, i)
+        if c != _rt.byte_at(q, i):
+            return False
+        if c == 0:
+            return True
+        i += 1
+    return False  # (not reached)
+
+
+@_rt.unchecked
+def same_desc(x: _rt.Ptr, y: _rt.Ptr) -> bool:
+    # are the parts at x and y the same descriptor
+    n = _rt.addr(pys_rt_skip(x)) - _rt.addr(x)
+    return n == _rt.addr(pys_rt_skip(y)) - _rt.addr(y) and _rt.cmp(x, y, n) == 0
+
+
+# ---- repr
+
+
+@_rt.unchecked
+def u8_point(p: _rt.Ptr, n: int) -> int:
+    # the character at p (n > 0 bytes left), as its code point times 8 plus its byte count: a
+    # UTF-8 sequence as chr() writes it, else the one byte (runtime.c's u8char)
+    c = _rt.byte_at(p, 0)
+    k = 1 if c > 0xF4 else 4 if c >= 0xF0 else 3 if c >= 0xE0 else 2 if c >= 0xC2 else 1
+    if k == 1 or k > n:
+        return c * 8 + 1
+    v = c & (0x7F >> k)
+    i = 1
+    while i < k:
+        x = _rt.byte_at(p, i)
+        if x & 0xC0 != 0x80:
+            return c * 8 + 1
+        v = v << 6 | (x & 0x3F)
+        i += 1
+    if v < (0x80 if k == 2 else 0x800 if k == 3 else 0x10000) or v > 0x10FFFF:
+        return c * 8 + 1
+    return v * 8 + k
+
+
+@_rt.unchecked
+def hex_digit(v: int) -> int:
+    return 48 + v if v < 10 else 87 + v
+
+
+@_rt.unchecked
+def pys_rt_char_repr(t: _rt.Ptr, p: _rt.Ptr, left: int, q: int) -> int:
+    # the character at p (left > 0 bytes) as CPython's unicode_repr writes it between quotes q,
+    # into t (12 bytes): the bytes written, plus 256 times the bytes it takes at p
+    k = u8_point(p, left)
+    c = k >> 3
+    n = (k & 7) << 8
+    if c == q or c == 92:
+        _rt.put_byte(t, 0, 92)
+        _rt.put_byte(t, 1, c)
+        return 2 + n
+    if c == 10 or c == 13 or c == 9:
+        _rt.put_byte(t, 0, 92)
+        _rt.put_byte(t, 1, ord("n") if c == 10 else ord("r") if c == 13 else ord("t"))
+        return 2 + n
+    if c < 32 or c == 127 or (c > 127 and pys_rt_printable(c) == 0):
+        # not printable: \xhh, \uhhhh or \Uhhhhhhhh
+        w = 2 if c < 0x100 else 4 if c < 0x10000 else 8
+        _rt.put_byte(t, 0, 92)
+        _rt.put_byte(t, 1, ord("x") if w == 2 else ord("u") if w == 4 else ord("U"))
+        j = 0
+        while j < w:
+            _rt.put_byte(t, 2 + j, hex_digit(c >> (4 * (w - 1 - j)) & 15))
+            j += 1
+        return 2 + w + n
+    _rt.cpy(t, p, k & 7)
+    return (k & 7) + n
+
+
+@_rt.unchecked
+def pys_rt_rquote(p: _rt.Ptr, n: int) -> int:
+    # the quote repr() puts around the n bytes at p: " where they hold a ' and no ", else '
+    single = False
+    i = 0
+    while i < n:
+        c = _rt.byte_at(p, i)
+        if c == 34:
+            return 39
+        if c == 39:
+            single = True
+        i += 1
+    return 34 if single else 39
+
+
+@_rt.noinline
+@_rt.unchecked
+def printable_run(p: _rt.Ptr, left: int, q: int) -> int:
+    # The bytes of the printable characters from p on (left > 0 bytes, the first not ASCII) that
+    # repr() copies as they are: all but the quote q and the backslash. A character of two or
+    # three bytes is read here as u8_point reads it, and steps by that count, not by one taken
+    # from its bytes: the next can then begin before this one is read. Out of line, so that a str
+    # of ASCII pays nothing for it
+    n = 0
+    while n < left:
+        c = _rt.byte_at(p, n)
+        if c < 128:
+            if c < 32 or c == 127 or c == q or c == 92:
+                break
+            n += 1
+        elif c >= 0xC2 and c < 0xE0 and left - n > 1 and _rt.byte_at(p, n + 1) & 0xC0 == 0x80:
+            if pys_rt_printable((c & 0x1F) << 6 | (_rt.byte_at(p, n + 1) & 0x3F)) == 0:
+                break
+            n += 2
+        elif c >= 0xE0 and c < 0xF0 and left - n > 2 and _rt.byte_at(p, n + 1) & 0xC0 == 0x80 and _rt.byte_at(p, n + 2) & 0xC0 == 0x80 and ((c & 0x0F) << 12 | (_rt.byte_at(p, n + 1) & 0x3F) << 6 | (_rt.byte_at(p, n + 2) & 0x3F)) >= 0x800:
+            if pys_rt_printable((c & 0x0F) << 12 | (_rt.byte_at(p, n + 1) & 0x3F) << 6 | (_rt.byte_at(p, n + 2) & 0x3F)) == 0:
+                break
+            n += 3
+        else:
+            k = u8_point(_rt.offset(p, n), left - n)
+            if pys_rt_printable(k >> 3) == 0:
+                break
+            n += k & 7
+    return n
+
+
+@_rt.unchecked
+def pys_rt_repr_str(b: _rt.Ptr, s: str) -> None:
+    # repr(s) onto b, as CPython's unicode_repr writes it: runs of printable ASCII, and of other
+    # printable characters, as they are; the others escaped
+    n = len(s)
+    p = str_bytes(s)
+    q = 34 if _rt.find_byte(s, 39, 0, n) >= 0 and _rt.find_byte(s, 34, 0, n) < 0 else 39
+    t = _rt.words(2)
+    put_char(b, q)
+    i = 0
+    while i < n:
+        k = 0
+        while i + k < n:
+            c = _rt.byte_at(p, i + k)
+            if c < 32 or c > 126 or c == q or c == 92:
+                break
+            k += 1
+        if k == 0 and _rt.byte_at(p, i) > 127:
+            k = printable_run(_rt.offset(p, i), n - i, q)
+        if k != 0:
+            pys_rt_put(b, _rt.offset(p, i), k)
+        else:
+            r = pys_rt_char_repr(t, _rt.offset(p, i), n - i, q)
+            pys_rt_put(b, t, r & 255)
+            k = r >> 8
+        i += k
+    put_char(b, q)
+
+
+@_rt.unchecked
+def repr_bytes(b: _rt.Ptr, s: str) -> None:
+    # a bytes's repr(), as CPython's PyBytes_Repr writes it: b and the quotes; \t, \n, \r, \xhh
+    # below 32 and from 127 on, \\ and the quote
+    n = len(s)
+    p = str_bytes(s)
+    q = 34 if _rt.find_byte(s, 39, 0, n) >= 0 and _rt.find_byte(s, 34, 0, n) < 0 else 39
+    t = _rt.words(1)
+    put_char(b, ord("b"))
+    put_char(b, q)
+    i = 0
+    while i < n:
+        k = 0
+        while i + k < n:
+            c = _rt.byte_at(p, i + k)
+            if c < 32 or c > 126 or c == q or c == 92:
+                break
+            k += 1
+        if k != 0:
+            pys_rt_put(b, _rt.offset(p, i), k)
+            i += k
+            continue
+        c = _rt.byte_at(p, i)
+        _rt.put_byte(t, 0, 92)
+        if c == q or c == 92 or c == 9 or c == 10 or c == 13:
+            _rt.put_byte(t, 1, ord("t") if c == 9 else ord("n") if c == 10 else ord("r") if c == 13 else c)
+            pys_rt_put(b, t, 2)
+        else:
+            _rt.put_byte(t, 1, ord("x"))
+            _rt.put_byte(t, 2, hex_digit(c >> 4))
+            _rt.put_byte(t, 3, hex_digit(c & 15))
+            pys_rt_put(b, t, 4)
+        i += 1
+    put_char(b, q)
+
+
+@_rt.unchecked
+def repr_walk(b: _rt.Ptr, v: int, d: _rt.Ptr, depth: int) -> _rt.Ptr:
+    # repr(v) onto b by descriptor d: the bytes past d's part (runtime.c's repr_depth). depth
+    # counts the recursive alias edges (R) followed: a recursive value can nest without bound, so
+    # following more than 512 raises RecursionError, as CPython's repr does for deep nesting;
+    # other reprs, a class's own __repr__ among them, are limited only by the native stack
+    c = _rt.byte_at(d, 0)
+    e = _rt.offset(d, 1)
+    if c == ord("i"):
+        put_int(b, v)
+        return e
+    if c == ord("s"):
+        if v != 0:
+            pys_rt_repr_str(b, _rt.as_str(_rt.ptr(v)))
+        else:
+            put_text(b, "None")  # (None in a looked-up key: see runtime.c's hval)
+        return e
+    if c == ord("f"):
+        put_text(b, pys_str_float(_rt.bits_float(v)))
+        return e
+    if c == ord("b"):
+        put_text(b, "True" if v != 0 else "False")
+        return e
+    if c == ord("R"):
+        if depth >= 512:
+            pys_rt_rec_deep(0)
+        repr_walk(b, v, recdesc(d), depth + 1)
+        return pys_rt_skip(d)
+    if c == ord("U"):
+        end = pys_rt_skip(d)
+        if v == 0:
+            put_text(b, "None")  # (None, which a union of classes may hold: a KeyError's key, #1452)
+            return end
+        box = _rt.ptr(v)
+        repr_walk(b, _rt.word(box, 1), pys_rt_utype(_rt.word(box, 0), d), depth)
+        return end
+    if c == ord("A"):
+        x = _rt.ptr(v)
+        repr_walk(b, _rt.get(x, "Dyn.v"), desc_of(_rt.getp(_rt.getp(x, "Dyn.t"), "DynType.desc")), depth)
+        return e
+    if c == ord("G"):
+        put_text(b, "<generator object>")
+        return e
+    if c == ord("Q"):
+        put_text(b, "<iterator object>")
+        return e
+    if c == ord("Z"):
+        put_text(b, "<function>")  # (a dynamic value's function: by identity, unnamed)
+        return e
+    if c == ord("Y"):
+        # a class value: its reflection record's name, qualified name and module
+        r = _rt.ptr(v)
+        put_text(b, "<class '")
+        if pys_str_eq(_rt.as_str(_rt.getp(r, "ReflRec.mod")), "builtins") == 0:
+            put_text(b, _rt.as_str(_rt.getp(r, "ReflRec.mod")))
+            put_char(b, ord("."))
+        put_text(b, _rt.as_str(_rt.getp(r, "ReflRec.qual")))
+        put_text(b, "'>")
+        return e
+    if c == ord("J"):
+        # a promoting int's two words
+        pys_rt_opt_in()
+        m = jbig_hi(v)
+        if not _rt.null(m):
+            put_digits(b, m)
+        else:
+            put_int(b, jbig_lo(v))
+        return e
+    if c == ord("j"):
+        # a dynamic wide int's immutable Mpz
+        pys_rt_opt_in()
+        put_digits(b, _rt.ptr(v))
+        return e
+    if c == ord("y"):
+        if v != 0:
+            repr_bytes(b, _rt.as_str(_rt.ptr(v)))
+        else:
+            put_text(b, "None")
+        return e
+    if c == ord("L"):
+        # a list or dict being printed already (through an object) is [...] or {...}
+        l = _rt.ptr(v)
+        if pys_repr_enter(l) == 0:
+            put_text(b, "[...]")
+            return pys_rt_skip(e)
+        put_char(b, ord("["))
+        i = 0
+        while i < _rt.get(l, "List.len"):
+            if i != 0:
+                put_text(b, ", ")
+            m = pys_rt_lbig(l, i)  # (an int past 64 bits)
+            if not _rt.null(m):
+                put_digits(b, m)
+            else:
+                repr_walk(b, _rt.word(_rt.getp(l, "List.a"), i), e, depth)
+            i += 1
+        put_char(b, ord("]"))
+        pys_repr_leave(l)
+        return pys_rt_skip(e)
+    if c == ord("D"):
+        m = _rt.ptr(v)
+        dv = pys_rt_skip(e)
+        if pys_repr_enter(m) == 0:
+            put_text(b, "{...}")
+            return pys_rt_skip(dv)
+        put_char(b, ord("{"))
+        j = 0
+        k = 0
+        while j < _rt.get(m, "Dict.n"):
+            if dict_live(m, j):
+                if k != 0:
+                    put_text(b, ", ")
+                k += 1
+                # (a key's __repr__ may empty the dict: all four are read first)
+                key = _rt.word(_rt.getp(m, "Dict.keys"), j)
+                val = _rt.word(_rt.getp(m, "Dict.vals"), j)
+                big = pys_rt_dbig(m, j)
+                kbm = dict_key_big(m, j)
+                if not _rt.null(kbm):
+                    put_digits(b, kbm)
+                else:
+                    repr_walk(b, key, e, depth)
+                put_text(b, ": ")
+                if not _rt.null(big):
+                    put_digits(b, big)
+                else:
+                    repr_walk(b, val, dv, depth)
+            j += 1
+        put_char(b, ord("}"))
+        pys_repr_leave(m)
+        return pys_rt_skip(dv)
+    if c == ord("S") or c == ord("F"):
+        # set() or {1, 2}; frozenset() or frozenset({1, 2})
+        s = _rt.ptr(v)
+        fz = c == ord("F")
+        if _rt.get(s, "Set.len") == 0:
+            put_text(b, "frozenset()" if fz else "set()")
+            return pys_rt_skip(e)
+        # (one being printed already, through an element's __repr__, is set(...), as CPython's
+        # set_repr prints it: #1586)
+        if pys_repr_enter(s) == 0:
+            put_text(b, "frozenset(...)" if fz else "set(...)")
+            return pys_rt_skip(e)
+        put_text(b, "frozenset({" if fz else "{")
+        i = 0
+        k = 0
+        while i <= _rt.get(s, "Set.mask"):
+            if _rt.word(_rt.getp(s, "Set.hs"), i) != -1:
+                if k != 0:
+                    put_text(b, ", ")
+                k += 1
+                m = pys_rt_sbig(s, i)  # (an int past 64 bits)
+                if not _rt.null(m):
+                    put_digits(b, m)
+                else:
+                    repr_walk(b, _rt.word(_rt.getp(s, "Set.keys"), i), e, depth)
+            i += 1
+        put_text(b, "})" if fz else "}")
+        pys_repr_leave(s)
+        return pys_rt_skip(e)
+    if c == ord("T"):
+        if v == 0:
+            put_text(b, "None")
+            return pys_rt_skip(d)
+        n = _rt.byte_at(e, 0) - 48
+        e = _rt.offset(e, 1)
+        t = _rt.ptr(v)
+        w = _rt.words(2)
+        put_char(b, ord("("))
+        i = 0
+        while i < n:
+            if i != 0:
+                put_text(b, ", ")
+            e = repr_walk(b, tuple_item(t, n, i, e, w), e, depth)
+            i += 1
+        put_text(b, ",)" if n == 1 else ")")
+        return e
+    if c == ord("V"):
+        if v == 0:
+            put_text(b, "None")
+            return pys_rt_skip(e)
+        t = _rt.ptr(v)
+        if pys_repr_enter(t) == 0:
+            put_text(b, "(...)")
+            return pys_rt_skip(e)
+        put_char(b, ord("("))
+        i = 0
+        while i < _rt.get(t, "VTuple.len"):
+            if i != 0:
+                put_text(b, ", ")
+            repr_walk(b, _rt.word(vtuple_items(t), i), e, depth)
+            i += 1
+        put_text(b, ",)" if _rt.get(t, "VTuple.len") == 1 else ")")
+        pys_repr_leave(t)
+        return pys_rt_skip(e)
+    if c == ord("O") or c == ord("P") or c == ord("H"):
+        put_text(b, pys_obj_repr(pys_rt_ocls(e), v, 0))
+        return pys_rt_skip(d)
+    if c == ord("?"):
+        if v != 0:
+            return repr_walk(b, unbox(v, e), e, depth)
+        put_text(b, "None")
+        return pys_rt_skip(e)
+    if c == ord("E"):
+        put_text(b, pys_exc_repr(_rt.ptr(v)))
+        return e
+    if c == ord("C"):
+        put_text(b, pys_exc_type(_rt.ptr(v)))  # (an exception class: its class object)
+        return e
+    return e
+
+
+@_rt.unchecked
+def pys_rt_repr_to(b: _rt.Ptr, v: int, d: _rt.Ptr) -> None:
+    # repr(v) of descriptor d (its bytes) onto b, for runtime.c's messages
+    repr_walk(b, v, d, 0)
+
+
+@_rt.unchecked
+def pys_repr(v: int, d: _rt.Ptr) -> str:
+    b = _rt.local("Buf")
+    buf_open(b)
+    repr_walk(b, v, desc_of(d), 0)
+    return buf_done(b)
+
+
+# ---- equality
+
+
+@_rt.unchecked
+def list_same_item(a: _rt.Ptr, i: int, b: _rt.Ptr, j: int) -> bool:
+    # are a[i] and b[j] one object, by the lists' identity companions
+    x = _rt.getp(a, "List.ids")
+    y = _rt.getp(b, "List.ids")
+    if _rt.null(x) or _rt.null(y) or pys_rt_opt_in() == 0:
+        return False
+    if _rt.addr(a) == _rt.addr(b) and i == j:
+        return True
+    k = _rt.word(x, i + 1)
+    return k != 0 and k == _rt.word(y, j + 1)
+
+
+@_rt.unchecked
+def list_item_eq(x: _rt.Ptr, i: int, y: _rt.Ptr, j: int, d: _rt.Ptr) -> bool:
+    # x[i] == y[j] of lists of one type: ints past 64 bits equal their values only
+    m = pys_rt_lbig(x, i)
+    n = pys_rt_lbig(y, j)
+    if not _rt.null(m) or not _rt.null(n):
+        return not _rt.null(m) and not _rt.null(n) and pys_mpz_cmp(m, n) == 0
+    return list_same_item(x, i, y, j) or eqitem(_rt.word(_rt.getp(x, "List.a"), i), _rt.word(_rt.getp(y, "List.a"), j), d)
+
+
+@_rt.unchecked
+def pys_rt_list_item_eq(l: _rt.Ptr, i: int, v: int, d: str) -> int:
+    # l[i] == v of the list searches (lists.py's), where an item's __eq__ may run
+    if not _rt.null(pys_rt_lbig(l, i)):
+        return 0
+    return 1 if eqitem(_rt.word(_rt.getp(l, "List.a"), i), v, str_bytes(d)) else 0
+
+
+@_rt.unchecked
+def eqitem(a: int, b: int, d: _rt.Ptr) -> bool:
+    # Container items use identity before equality (PyObject_RichCompareBool). This stays apart
+    # from direct comparison: equal unboxed float bits need not compare equal, and an optional
+    # scalar's box gives that scalar no Python object identity
+    d = recdesc(d)
+    c = _rt.byte_at(d, 1 if _rt.byte_at(d, 0) == ord("?") else 0)
+    if c == ord("U"):
+        return eqpair_walk(a, b, d, d, 0)
+    if c == ord("A"):
+        return pys_rt_dyn_eqitem(_rt.ptr(a), _rt.ptr(b)) != 0
+    if a == b and (c == ord("L") or c == ord("D") or c == ord("T") or c == ord("V") or c == ord("S") or c == ord("F")):
+        return True
+    return eqv(a, b, d)
+
+
+@_rt.unchecked
+def eqv(a: int, b: int, d: _rt.Ptr) -> bool:
+    # a == b of one descriptor d
+    d = recdesc(d)
+    pys_rt_eq_probe()
+    c = _rt.byte_at(d, 0)
+    if c == ord("s"):
+        if a != 0 and b != 0:
+            return pys_str_eq(_rt.as_str(_rt.ptr(a)), _rt.as_str(_rt.ptr(b))) != 0
+        return a == b  # (None in a looked-up key: see runtime.c's hval)
+    if c == ord("f"):
+        return _rt.bits_float(a) == _rt.bits_float(b)
+    if c == ord("U"):
+        return eqpair_walk(a, b, d, d, 0)
+    if c == ord("A"):
+        return pys_dyn_eq(_rt.ptr(a), _rt.ptr(b)) != 0
+    if c == ord("J"):
+        pys_rt_opt_in()
+        return pys_big_cmp(jbig_lo(a), jbig_hi(a), jbig_lo(b), jbig_hi(b)) == 0
+    if c == ord("L"):
+        # an __eq__ may change either list: as CPython's list_richcompare, both lengths are read
+        # again at every step, and once a list has no item left they are compared
+        x = _rt.ptr(a)
+        y = _rt.ptr(b)
+        if _rt.get(x, "List.len") != _rt.get(y, "List.len"):
+            return False
+        e = _rt.offset(d, 1)
+        i = 0
+        while i < _rt.get(x, "List.len") and i < _rt.get(y, "List.len") and list_item_eq(x, i, y, i, e):
+            i += 1
+        return (i >= _rt.get(x, "List.len") or i >= _rt.get(y, "List.len")) and _rt.get(x, "List.len") == _rt.get(y, "List.len")
+    if c == ord("D"):
+        return dict_eq(_rt.ptr(a), _rt.ptr(b), _rt.offset(d, 1))
+    if c == ord("T"):
+        if a == 0 or b == 0:
+            return a == b
+        x = _rt.ptr(a)
+        y = _rt.ptr(b)
+        n = _rt.byte_at(d, 1) - 48
+        e = _rt.offset(d, 2)
+        wx = _rt.words(2)
+        wy = _rt.words(2)
+        i = 0
+        while i < n:
+            p = _rt.word(x, i)
+            q = _rt.word(y, i)
+            if _rt.byte_at(e, 0) == ord("J") and p != -9223372036854775807 - 1 and q != -9223372036854775807 - 1:
+                # (promoting ints that fit: their slots)
+                if p != q:
+                    return False
+            elif not eqitem(tuple_item(x, n, i, e, wx), tuple_item(y, n, i, e, wy), e):
+                return False
+            e = pys_rt_skip(e)
+            i += 1
+        return True
+    if c == ord("V"):
+        # as CPython's tuplerichcompare: the items both have, then the lengths (lists test lengths
+        # first; tuples do not, so an object item's __eq__ runs anyway)
+        if a == b:
+            return True
+        if a == 0 or b == 0:
+            return False
+        x = _rt.ptr(a)
+        y = _rt.ptr(b)
+        e = _rt.offset(d, 1)
+        i = 0
+        while i < _rt.get(x, "VTuple.len") and i < _rt.get(y, "VTuple.len") and (vtuple_same(x, y, i) or eqitem(_rt.word(vtuple_items(x), i), _rt.word(vtuple_items(y), i), e)):
+            i += 1
+        return i >= _rt.get(x, "VTuple.len") and i >= _rt.get(y, "VTuple.len")
+    if c == ord("S") or c == ord("F"):
+        return pys_set_cmp(_rt.ptr(a), _rt.ptr(b), 4) != 0  # (a set equals a frozenset of its elements)
+    if c == ord("O") or c == ord("H"):
+        return a == b or pys_obj_eq(pys_rt_ocls(_rt.offset(d, 1)), a, b) != 0  # (identity first, as CPython)
+    if c == ord("?"):
+        if a != 0 and b != 0:
+            return eqv(unbox(a, _rt.offset(d, 1)), unbox(b, _rt.offset(d, 1)), _rt.offset(d, 1))
+        return a == b  # (None equals only None)
+    if c == ord("E"):
+        return _rt.addr(pys_exc_id(_rt.ptr(a))) == _rt.addr(pys_exc_id(_rt.ptr(b)))
+    return a == b
+
+
+@_rt.unchecked
+def dict_eq(x: _rt.Ptr, y: _rt.Ptr, d: _rt.Ptr) -> bool:
+    # x == y of dicts of key descriptor d, as CPython's dict_equal: each of x's keys looked up in
+    # y, with the hash x keeps where y's keys are of the same kind
+    dv = pys_rt_skip(d)
+    kx = _rt.get(x, "Dict.kind")
+    ky = _rt.get(y, "Dict.kind")
+    same = kx == ky or (kx > 1 and ky > 1 and desc_text_eq(kind_desc(kx), kind_desc(ky)))
+    if _rt.get(x, "Dict.len") != _rt.get(y, "Dict.len"):
+        return False
+    e = 0
+    while e < _rt.get(x, "Dict.n"):
+        if dict_live(x, e):
+            val = _rt.word(_rt.getp(x, "Dict.vals"), e)
+            xb = pys_rt_dbig(x, e)
+            xk = dict_key_big(x, e)  # (a key past 64 bits)
+            h = _rt.word(_rt.getp(x, "Dict.hs"), e)
+            f = -1
+            # (a key's __eq__ may empty x: what the lookup needs is read first)
+            if not _rt.null(xk):
+                f = pys_rt_dbfind(y, xk, h)
+                f = _rt.i32_at(_rt.getp(y, "Dict.idx"), f) - 1 if f >= 0 else -1
+            elif same:
+                f = pys_rt_dfind(y, _rt.word(_rt.getp(x, "Dict.keys"), e), h)
+                f = _rt.i32_at(_rt.getp(y, "Dict.idx"), f) - 1 if f >= 0 else -1
+            else:
+                f = dict_entry(y, _rt.word(_rt.getp(x, "Dict.keys"), e))
+            if f < 0:
+                return False
+            yb = pys_rt_dbig(y, f)  # (values past 64 bits: equal to their values only)
+            if not _rt.null(xb) or not _rt.null(yb):
+                if _rt.null(xb) or _rt.null(yb) or pys_mpz_cmp(xb, yb) != 0:
+                    return False
+            elif not eqitem(val, _rt.word(_rt.getp(y, "Dict.vals"), f), dv):
+                return False
+        e += 1
+    return True
+
+
+@_rt.unchecked
+def eq_resolve(v: int, d: _rt.Ptr, out: _rt.Ptr) -> _rt.Ptr:
+    # Each operand has its own layout: an optional number is a one-slot box, a union is a
+    # tag/payload box, and a concrete container is its original pointer. The descriptor v has
+    # past them ("n" for None); its value in out's word 0, and in word 1 whether a recursive
+    # alias's edge (R) led here
+    edge = 0
+    while True:
+        c = _rt.byte_at(d, 0)
+        if c == ord("R"):
+            d = recdesc(d)
+            edge = 1
+        elif c == ord("?"):
+            if v == 0:
+                d = str_bytes("n")
+                break
+            d = _rt.offset(d, 1)
+            v = unbox(v, d)
+        elif c == ord("U"):
+            if v == 0:
+                d = str_bytes("n")  # (None: a union key's, #1452)
+                break
+            box = _rt.ptr(v)
+            d = pys_rt_utype(_rt.word(box, 0), d)
+            v = _rt.word(box, 1)
+        else:
+            break
+    _rt.put(out, 0, v)
+    _rt.put(out, 1, edge)
+    return d
+
+
+@_rt.unchecked
+def pys_rt_eqresolve(v: int, d: _rt.Ptr, out: _rt.Ptr) -> _rt.Ptr:
+    return eq_resolve(v, d, out)
+
+
+@_rt.unchecked
+def big_eq(m: _rt.Ptr, b: int, y: _rt.Ptr) -> bool:
+    # the int m past 64 bits == value b of descriptor y (no 64-bit int or bool equals it)
+    r = _rt.words(2)
+    e = eq_resolve(b, y, r)
+    return _rt.byte_at(e, 0) == ord("f") and pys_rt_mpz_cmp_float(m, _rt.bits_float(_rt.word(r, 0))) == 0
+
+
+@_rt.unchecked
+def eqpair_walk(a: int, b: int, x: _rt.Ptr, y: _rt.Ptr, depth: int) -> bool:
+    # a == b of descriptors x and y (runtime.c's eqpair_depth). Only closed builtin value trees
+    # reach this path (the compiler rejects user callbacks), and objects that compare by identity
+    # (P: a union key's member). b is never decoded with x: equal Python types may have different
+    # native element layouts, nested unions and boxed optionals among them
+    pys_rt_eq_probe()
+    r = _rt.words(2)
+    x = eq_resolve(a, x, r)
+    a = _rt.word(r, 0)
+    edge = _rt.word(r, 1)
+    y = eq_resolve(b, y, r)
+    b = _rt.word(r, 0)
+    edge = edge | _rt.word(r, 1)
+    cx = _rt.byte_at(x, 0)
+    cy = _rt.byte_at(y, 0)
+    tx = cx == ord("T") or cx == ord("V")
+    ty = cy == ord("T") or cy == ord("V")
+    # The original container's identity survives separate union boxes. Besides matching Python,
+    # this keeps a shared DAG from expanding into its logical tree. Scalar boxes deliberately
+    # confer no numeric identity (notably for NaNs)
+    if a == b and (cx == cy or (tx and ty)) and (cx == ord("L") or cx == ord("D") or tx):
+        return True
+    # Recursive values can form cycles after parsing. Distinct cycles raise, as Python does,
+    # while shared descendants keep the identity shortcut above. depth counts the recursive
+    # alias edges followed, as repr_walk's does, and is checked before any leaf is compared, so
+    # the 513th edge raises whatever it leads to
+    if edge != 0:
+        if depth >= 512:
+            pys_rt_rec_deep(1)
+        depth += 1
+    if cx == ord("n") or cy == ord("n"):
+        return cx == cy
+    if (cx == ord("J") or cy == ord("J")) and pys_rt_opt_in() != 0:
+        # a promoting int and a number, exactly; another type equals it never
+        jv = a if cx == ord("J") else b
+        ov = b if cx == ord("J") else a
+        ce = cy if cx == ord("J") else cx
+        hi = jbig_hi(jv)
+        lo = jbig_lo(jv)
+        if ce == ord("J"):
+            return pys_big_cmp(lo, hi, jbig_lo(ov), jbig_hi(ov)) == 0
+        if ce == ord("f"):
+            # (allocating nothing)
+            return (pys_rt_mpz_cmp_float(hi, _rt.bits_float(ov)) if not _rt.null(hi) else pys_cmp_if(lo, _rt.bits_float(ov))) == 0
+        return (ce == ord("i") or ce == ord("b")) and _rt.null(hi) and lo == ov
+    nx = cx == ord("i") or cx == ord("b")
+    ny = cy == ord("i") or cy == ord("b")
+    if nx and ny:
+        return a == b
+    if nx and cy == ord("f"):
+        return pys_cmp_if(a, _rt.bits_float(b)) == 0
+    if cx == ord("f") and ny:
+        return pys_cmp_if(b, _rt.bits_float(a)) == 0
+    if cx != cy and not (tx and ty):
+        return False
+    if cx == ord("f"):
+        return _rt.bits_float(a) == _rt.bits_float(b)
+    if cx == ord("s"):
+        if a != 0 and b != 0:
+            return pys_str_eq(_rt.as_str(_rt.ptr(a)), _rt.as_str(_rt.ptr(b))) != 0
+        return a == b
+    if cx == ord("P"):
+        return a == b  # (objects of union keys' classes, which compare by identity: #1452)
+    if cx == ord("L"):
+        p = _rt.ptr(a)
+        q = _rt.ptr(b)
+        if _rt.get(p, "List.len") != _rt.get(q, "List.len"):
+            return False
+        ex = _rt.offset(x, 1)
+        ey = _rt.offset(y, 1)
+        i = 0
+        while i < _rt.get(p, "List.len"):
+            m = pys_rt_lbig(p, i)  # (ints past 64 bits)
+            n = pys_rt_lbig(q, i)
+            if not _rt.null(m) and not _rt.null(n):
+                if pys_mpz_cmp(m, n) != 0:
+                    return False
+            elif not _rt.null(m):
+                if not big_eq(m, _rt.word(_rt.getp(q, "List.a"), i), ey):
+                    return False
+            elif not _rt.null(n):
+                if not big_eq(n, _rt.word(_rt.getp(p, "List.a"), i), ex):
+                    return False
+            elif not list_same_item(p, i, q, i) and not eqpair_walk(_rt.word(_rt.getp(p, "List.a"), i), _rt.word(_rt.getp(q, "List.a"), i), ex, ey, depth):
+                return False
+            i += 1
+        return True
+    if cx == ord("D"):
+        return dict_eqpair(_rt.ptr(a), _rt.ptr(b), _rt.offset(x, 1), _rt.offset(y, 1), depth)
+    if tx:
+        if a == 0 or b == 0:
+            return a == b
+        xt = cx == ord("T")
+        yt = cy == ord("T")
+        cnt = _rt.byte_at(x, 1) - 48 if xt else _rt.get(_rt.ptr(a), "VTuple.len")
+        if cnt != (_rt.byte_at(y, 1) - 48 if yt else _rt.get(_rt.ptr(b), "VTuple.len")):
+            return False
+        p = _rt.ptr(a) if xt else vtuple_items(_rt.ptr(a))
+        q = _rt.ptr(b) if yt else vtuple_items(_rt.ptr(b))
+        ex = _rt.offset(x, 2 if xt else 1)
+        ey = _rt.offset(y, 2 if yt else 1)
+        wx = _rt.words(2)
+        wy = _rt.words(2)
+        i = 0
+        while i < cnt:
+            if not (not xt and not yt and vtuple_same(_rt.ptr(a), _rt.ptr(b), i)):
+                if not eqpair_walk(tuple_item(p, cnt, i, ex, wx) if xt else _rt.word(p, i), tuple_item(q, cnt, i, ey, wy) if yt else _rt.word(q, i), ex, ey, depth):
+                    return False
+            if xt:
+                ex = pys_rt_skip(ex)
+            if yt:
+                ey = pys_rt_skip(ey)
+            i += 1
+        return True
+    return False  # (not reached: the compiler permits only the builtin value descriptors above)
+
+
+@_rt.unchecked
+def dict_eqpair(p: _rt.Ptr, q: _rt.Ptr, kx: _rt.Ptr, ky: _rt.Ptr, depth: int) -> bool:
+    # p == q of dicts whose key descriptors are kx and ky, which may differ: a key is looked up
+    # where both describe one type, or ints and bools; else found by comparing it with each
+    vx = pys_rt_skip(kx)
+    vy = pys_rt_skip(ky)
+    if _rt.get(p, "Dict.len") != _rt.get(q, "Dict.len"):
+        return False
+    lookup = same_desc(kx, ky) or ((_rt.byte_at(kx, 0) == ord("i") or _rt.byte_at(kx, 0) == ord("b")) and (_rt.byte_at(ky, 0) == ord("i") or _rt.byte_at(ky, 0) == ord("b")))
+    i = 0
+    while i < _rt.get(p, "Dict.n"):
+        if dict_live(p, i):
+            j = -1
+            pk = dict_key_big(p, i)
+            if not _rt.null(pk):
+                # (a key past 64 bits equals such a key only)
+                j = pys_rt_dbfind(q, pk, _rt.word(_rt.getp(p, "Dict.hs"), i))
+                j = _rt.i32_at(_rt.getp(q, "Dict.idx"), j) - 1 if j >= 0 else -1
+            elif lookup:
+                j = dict_entry(q, _rt.word(_rt.getp(p, "Dict.keys"), i))
+            else:
+                k = 0
+                while k < _rt.get(q, "Dict.n"):
+                    if dict_live(q, k) and _rt.null(dict_key_big(q, k)) and eqpair_walk(_rt.word(_rt.getp(p, "Dict.keys"), i), _rt.word(_rt.getp(q, "Dict.keys"), k), kx, ky, depth):
+                        j = k
+                        break
+                    k += 1
+            if j < 0:
+                return False
+            m = pys_rt_dbig(p, i)  # (values past 64 bits)
+            n = pys_rt_dbig(q, j)
+            if not _rt.null(m) and not _rt.null(n):
+                if pys_mpz_cmp(m, n) != 0:
+                    return False
+            elif not _rt.null(m):
+                if not big_eq(m, _rt.word(_rt.getp(q, "Dict.vals"), j), vy):
+                    return False
+            elif not _rt.null(n):
+                if not big_eq(n, _rt.word(_rt.getp(p, "Dict.vals"), i), vx):
+                    return False
+            elif not eqpair_walk(_rt.word(_rt.getp(p, "Dict.vals"), i), _rt.word(_rt.getp(q, "Dict.vals"), j), vx, vy, depth):
+                return False
+        i += 1
+    return True
+
+
+@_rt.unchecked
+def pys_eq(a: int, b: int, d: _rt.Ptr) -> int:
+    # a == b of descriptor d. Of two strs ("s", which the compiler passes for every str == str
+    # and str != str): eqv's answer, without its walk
+    p = desc_of(d)
+    if _rt.byte_at(p, 0) == ord("s"):
+        if a != 0 and b != 0:
+            return pys_str_eq(_rt.as_str(_rt.ptr(a)), _rt.as_str(_rt.ptr(b)))
+        return 1 if a == b else 0
+    return 1 if eqv(a, b, p) else 0
+
+
+@_rt.unchecked
+def pys_eq_pair(a: int, b: int, x: _rt.Ptr, y: _rt.Ptr) -> int:
+    return 1 if eqpair_walk(a, b, desc_of(x), desc_of(y), 0) else 0
+
+
+@_rt.unchecked
+def pys_rt_eqv(a: int, b: int, d: _rt.Ptr) -> int:
+    # for runtime.c's walks, which have a descriptor's bytes (d): eqv, eqitem, eqpair and big_eq
+    return 1 if eqv(a, b, d) else 0
+
+
+@_rt.unchecked
+def pys_rt_eqitem(a: int, b: int, d: _rt.Ptr) -> int:
+    return 1 if eqitem(a, b, d) else 0
+
+
+@_rt.unchecked
+def pys_rt_eqpair(a: int, b: int, x: _rt.Ptr, y: _rt.Ptr) -> int:
+    return 1 if eqpair_walk(a, b, x, y, 0) else 0
+
+
+@_rt.unchecked
+def pys_rt_big_eq(m: _rt.Ptr, b: int, y: _rt.Ptr) -> int:
+    return 1 if big_eq(m, b, y) else 0
+
+
+# ---- ordering
+
+
+@_rt.unchecked
+def cmpop(c: int, op: int) -> bool:
+    # c, a comparison's -1, 0 or 1, as op 0..3, < <= > >=
+    return c < 0 if op == 0 else c <= 0 if op == 1 else c > 0 if op == 2 else c >= 0
+
+
+def sign(a: int, b: int) -> int:
+    return 1 if a > b else -1 if a < b else 0
+
+
+def float_op(x: float, y: float, op: int) -> bool:
+    return x < y if op == 0 else x <= y if op == 1 else x > y if op == 2 else x >= y
+
+
+@_rt.unchecked
+def type_letter(v: int, d: _rt.Ptr) -> int:
+    # the descriptor letter of v's type (a union's: its member's), for an ordering's TypeError
+    if _rt.byte_at(d, 0) != ord("U"):
+        return _rt.byte_at(d, 0)
+    r = _rt.words(2)
+    return _rt.byte_at(eq_resolve(v, d, r), 0)
+
+
+@_rt.unchecked
+def opv(a: int, b: int, d: _rt.Ptr, op: int) -> bool:
+    # a OP b of descriptor d, op 0..3 for < <= > >=, as CPython compares: sequences find the
+    # first pair of items that are not equal (identity, then ==) and apply OP to that pair only,
+    # else compare lengths; objects go through the program's rich comparison (reflection,
+    # TypeError)
+    c = _rt.byte_at(d, 0)
+    e = _rt.offset(d, 1)
+    if c == ord("f"):
+        return float_op(_rt.bits_float(a), _rt.bits_float(b), op)
+    if c == ord("s"):
+        return cmpop(pys_str_cmp(_rt.as_str(_rt.ptr(a)), _rt.as_str(_rt.ptr(b))), op)
+    if c == ord("L"):
+        x = _rt.ptr(a)
+        y = _rt.ptr(b)
+        i = 0
+        while i < _rt.get(x, "List.len") and i < _rt.get(y, "List.len") and list_item_eq(x, i, y, i, e):
+            i += 1
+        if i < _rt.get(x, "List.len") and i < _rt.get(y, "List.len"):
+            mx = pys_rt_lbig(x, i)
+            my = pys_rt_lbig(y, i)
+            if not _rt.null(mx) or not _rt.null(my):
+                # (an int past 64 bits)
+                return cmpop(pys_big_cmp(0 if not _rt.null(mx) else _rt.word(_rt.getp(x, "List.a"), i), mx, 0 if not _rt.null(my) else _rt.word(_rt.getp(y, "List.a"), i), my), op)
+            return opv(_rt.word(_rt.getp(x, "List.a"), i), _rt.word(_rt.getp(y, "List.a"), i), e, op)
+        return cmpop(sign(_rt.get(x, "List.len"), _rt.get(y, "List.len")), op)
+    if c == ord("J"):
+        pys_rt_opt_in()
+        return cmpop(pys_big_cmp(jbig_lo(a), jbig_hi(a), jbig_lo(b), jbig_hi(b)), op)
+    if c == ord("T"):
+        x = _rt.ptr(a)
+        y = _rt.ptr(b)
+        n = _rt.byte_at(e, 0) - 48
+        e = _rt.offset(e, 1)
+        wx = _rt.words(2)
+        wy = _rt.words(2)
+        i = 0
+        while i < n:
+            if _rt.byte_at(e, 0) == ord("J") and _rt.word(x, i) != -9223372036854775807 - 1 and _rt.word(y, i) != -9223372036854775807 - 1:
+                # (as eqv's)
+                if _rt.word(x, i) != _rt.word(y, i):
+                    return cmpop(sign(_rt.word(x, i), _rt.word(y, i)), op)
+            else:
+                p = tuple_item(x, n, i, e, wx)
+                q = tuple_item(y, n, i, e, wy)
+                if not eqitem(p, q, e):
+                    return opv(p, q, e, op)
+            e = pys_rt_skip(e)
+            i += 1
+        return cmpop(0, op)
+    if c == ord("V"):
+        if a == b:
+            return cmpop(0, op)
+        x = _rt.ptr(a)
+        y = _rt.ptr(b)
+        i = 0
+        while i < _rt.get(x, "VTuple.len") and i < _rt.get(y, "VTuple.len") and (vtuple_same(x, y, i) or eqitem(_rt.word(vtuple_items(x), i), _rt.word(vtuple_items(y), i), e)):
+            i += 1
+        if i < _rt.get(x, "VTuple.len") and i < _rt.get(y, "VTuple.len"):
+            return opv(_rt.word(vtuple_items(x), i), _rt.word(vtuple_items(y), i), e, op)
+        return cmpop(sign(_rt.get(x, "VTuple.len"), _rt.get(y, "VTuple.len")), op)
+    if c == ord("S") or c == ord("F"):
+        return pys_set_cmp(_rt.ptr(a), _rt.ptr(b), op) != 0  # (subsets)
+    if c == ord("O"):
+        return pys_obj_cmp(pys_rt_ocls(e), op, a, b) != 0
+    if c == ord("A"):
+        return pys_dyn_cmp(_rt.ptr(a), _rt.ptr(b), op) != 0
+    if c == ord("K"):
+        # key='s records {key, value}: their keys
+        return opv(_rt.word(_rt.ptr(a), 0), _rt.word(_rt.ptr(b), 0), e, op)
+    if c == ord("U"):
+        # numbers of a union (the compiler orders no other): an int and a float exactly, as CPython
+        r = _rt.words(2)
+        fx = _rt.byte_at(eq_resolve(a, d, r), 0) == ord("f")
+        va = _rt.word(r, 0)
+        fy = _rt.byte_at(eq_resolve(b, d, r), 0) == ord("f")
+        vb = _rt.word(r, 0)
+        if not fx and not fy:
+            return cmpop(sign(va, vb), op)
+        if fx and fy:
+            return float_op(_rt.bits_float(va), _rt.bits_float(vb), op)
+        k = pys_cmp_if(va, _rt.bits_float(vb)) if not fx else pys_cmp_if(vb, _rt.bits_float(va))
+        return k != 2 and cmpop(k if not fx else 0 - k, op)  # (2: a NaN, for which no ordering holds)
+    if c == ord("D"):
+        pys_rt_order_error(op, c, c, _rt.nil(), _rt.nil())
+    if c == ord("?"):
+        if a != 0 and b != 0:
+            return opv(unbox(a, e), unbox(b, e), e, op)
+        pys_rt_order_error(op, type_letter(a, e) if a != 0 else ord("n"), type_letter(b, e) if b != 0 else ord("n"), _rt.nil(), _rt.nil())
+    if c == ord("C") or c == ord("Y"):
+        pys_rt_order_error(op, ord("C"), ord("C"), _rt.nil(), _rt.nil())
+    if c == ord("E"):
+        pys_rt_order_error(op, c, c, _rt.ptr(a), _rt.ptr(b))
+    return cmpop(sign(a, b), op)
+
+
+@_rt.unchecked
+def pys_cmpop(a: int, b: int, d: _rt.Ptr, op: int) -> int:
+    return 1 if opv(a, b, desc_of(d), op) else 0
+
+
+@_rt.unchecked
+def pys_rt_opv(a: int, b: int, d: _rt.Ptr, op: int) -> int:
+    return 1 if opv(a, b, d, op) else 0
 
 
 # ---------- floats and ints: division, conversion, rounding, comparison ----------

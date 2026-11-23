@@ -351,6 +351,18 @@ def primitives(heap):
             raise Fault(f"'{rec}' is no record of the runtime (RTRECORDS)")
         return 8 * len(heap.records[rec])
 
+    def local(rec):
+        # a record in the caller's frame: a block of its own here, which nothing frees (a frame's
+        # lifetime is the function's, which the code that takes its address keeps to)
+        if rec not in heap.records:
+            raise Fault(f"'{rec}' is no record of the runtime (RTRECORDS)")
+        return heap.P(heap.new(8 * len(heap.records[rec]), "frame", rec))
+
+    def words(n):
+        if not 1 <= n <= 16:
+            raise Fault(f"_rt.words({n}): from 1 to 16 words")
+        return heap.P(heap.new(8 * n, "frame", "words"))
+
     def move(d, s, n):
         heap.copy(heap.of(d), heap.of(s), n, True)
 
@@ -375,7 +387,7 @@ def primitives(heap):
 
     out = dict(nil=nil, ptr=ptr, addr=addr, ref=ref, as_str=as_str, word=word, put=put, byte_at=byte_at, put_byte=put_byte,
                i32_at=i32_at, put_i32=put_i32, at=at, offset=offset, get=get, getp=getp, setp=setp, field=field, sizeof=sizeof,
-               move=move, cpy=cpy, fill=fill, cmp=cmp, null=null)
+               move=move, cpy=cpy, fill=fill, cmp=cmp, null=null, local=local, words=words)
     out["set"] = set_
     return out
 
@@ -476,6 +488,8 @@ class CSide:
         self.objs = {}   # an object's address: the CPython object that is its element or key
         self.dicts = {}  # a Dict's address: the keys it holds, as CPython values
         self.probes = 0  # the idx slots that the dicts' probes have visited (runtime.c's DICT_PROBE)
+        self.busy = set()  # the containers whose repr is under way (pys_repr_enter)
+        self.eqs = 0     # the comparisons the walks made (runtime.c's EQ_PROBE)
 
     # ---- raw words
     def w(self, addr):
@@ -584,16 +598,6 @@ class CSide:
 
     def pys_str_eq(self, a, b):
         return int(self.text(self.heap.of(a)) == self.text(self.heap.of(b)))
-
-    def pys_rt_list_item_eq(self, l, i, v, d):
-        # runtime.c's !lbig(l, i) && eqitem(l->a[i], v, d->s), for items that are words: on_eq,
-        # where a test sets it, is the program's __eq__, which may change the list
-        a = self.heap.of(l)
-        item = self.w(self.w(a + self.A) + 8 * i)
-        big = self.rt.pys_rt_lbig(l, i)
-        if self.on_eq is not None:
-            self.on_eq()
-        return int(big.addr == 0 and item == v)
 
     def pys_rt_not_in_list(self, x, d):
         d = self.text(self.heap.of(d))
@@ -739,9 +743,89 @@ class CSide:
                 p >>= 5
                 i = (i * 5 + p + 1) & m
 
+    # ---- what the walks call: the marks of the reprs under way, an object's __eq__, ordering
+    # and __repr__ (the program's: here a CPython object's, where on_eq may change a container),
+    # an Mpz's text and comparisons, a float's text, the order of strs, the printable characters,
+    # the errors whose text runtime.c formats, and the count of comparisons
+    def heap_str(self, s):
+        return self.heap.as_str(self.heap.new_str(s.encode("utf-8"), 0))
+
+    def pys_repr_enter(self, p):
+        a = self.heap.of(p)
+        if a in self.busy:
+            return 0
+        self.busy.add(a)
+        return 1
+
+    def pys_repr_leave(self, p):
+        self.busy.discard(self.heap.of(p))
+
+    def pys_obj_eq(self, c, a, b):
+        if c < 0:
+            return hash(self.objs[a])
+        if self.on_eq is not None:
+            self.on_eq()
+        return int(self.objs[a] == self.objs[b])
+
+    def pys_obj_cmp(self, c, op, a, b):
+        x, y = self.objs[a], self.objs[b]
+        return int(x < y if op == 0 else x <= y if op == 1 else x > y if op == 2 else x >= y)
+
+    def pys_obj_repr(self, c, a, b):
+        return self.heap_str(repr(self.objs[a]))
+
+    def pys_str(self, p, n):
+        return self.heap.as_str(self.heap.new_str(self.heap.read(self.heap.of(p), n), n + 1 if n < 2 else 0))
+
+    def pys_str_float(self, x):
+        return self.heap_str(repr(x))
+
+    def pys_str_cmp(self, a, b):
+        x, y = self.text(self.heap.of(a)), self.text(self.heap.of(b))
+        return (x > y) - (x < y)
+
+    def pys_rt_printable(self, c):
+        return int(chr(c).isprintable())
+
+    def pys_rt_mpz_digits(self, m):
+        try:
+            return self.heap.P(self.heap.new_str(str(self.mpz[self.heap.of(m)]).encode(), 0))
+        except ValueError:  # (CPython's limit of 4300 digits, runtime.c's too)
+            return self.heap.P(0)
+
+    def pys_rt_mpz_cmp_float(self, m, x):
+        v = self.mpz[self.heap.of(m)]
+        return 2 if x != x else (v > x) - (v < x)
+
+    def pys_big_cmp(self, alo, ahi, blo, bhi):
+        x = self.mpz[self.heap.of(ahi)] if self.heap.of(ahi) else alo
+        y = self.mpz[self.heap.of(bhi)] if self.heap.of(bhi) else blo
+        return (x > y) - (x < y)
+
+    def pys_rt_rec_deep(self, cmp):
+        raise RecursionError("maximum recursion depth exceeded in comparison" if cmp else "maximum recursion depth exceeded while getting the repr of an object")
+
+    def pys_rt_digits_deep(self):
+        raise ValueError("Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit")
+
+    TYPE_NAMES = {"i": "int", "J": "int", "b": "bool", "f": "float", "s": "str", "L": "list", "D": "dict", "T": "tuple", "V": "tuple",
+                  "S": "set", "F": "frozenset", "C": "type", "Y": "type", "n": "NoneType"}
+
+    def pys_rt_order_error(self, op, ca, cb, ea, eb):
+        if self.heap.of(ea):
+            raise Fault("the model has no exceptions")
+        o = ("<", "<=", ">", ">=")[op]
+        raise TypeError(f"'{o}' not supported between instances of '{self.TYPE_NAMES.get(chr(ca), 'object')}' and '{self.TYPE_NAMES.get(chr(cb), 'object')}'")
+
+    def pys_rt_eq_probe(self):
+        self.eqs += 1
+
     NAMES = ("pys_alloc pys_alloc_atomic pys_rt_raw pys_rt_oom pys_rt_opt_in pys_rt_empty_list pys_rt_empty_atomic "
              "pys_rt_empty_inline pys_rt_empty_identity pys_rt_atomic_items pys_rt_list_box pys_rt_big_list "
-             "pys_list_identity pys_str_eq pys_rt_list_item_eq pys_rt_not_in_list pys_dyn_big pys_dyn_big_ptr "
+             "pys_list_identity pys_str_eq pys_rt_not_in_list pys_dyn_big pys_dyn_big_ptr "
+             "pys_repr_enter pys_repr_leave pys_obj_eq pys_obj_cmp pys_obj_repr pys_str pys_str_float pys_str_cmp "
+             "pys_rt_printable pys_rt_mpz_digits pys_rt_mpz_cmp_float pys_big_cmp pys_rt_rec_deep pys_rt_digits_deep "
+             "pys_rt_order_error pys_rt_eq_probe "
              "pys_mpz_hash pys_mpz_cmp pys_rt_keymem pys_rt_hitem pys_rt_set_eq pys_rt_set_keyerr pys_rt_bkeyerr "
              "pys_rt_khash pys_rt_dict_lacks pys_rt_probe pys_rt_hash_str pys_rt_hobj pys_big_box pys_rt_dict_keyerr "
              "pys_rt_dfind_obj").split()

@@ -11,11 +11,13 @@ Pystachy str is given as its bytes, one character per byte. 64-bit overflow is n
 The format functions get runtime.c's pys_fmt_float (float digits by snprintf, or by Ryu as repr's
 without a type or precision) from CPython's own float formatting, which it reproduces.
 
-The memory code (lists and strs in runtime.c's layouts) runs on a model of the heap that
-checks each access, tools/rt_cpython/rt_heap.py, against CPython's own list and str.
+The memory code (lists, strs, sets and dicts in runtime.c's layouts, and the walks of a value
+by its descriptor: repr, == and ordering) runs on a model of the heap that checks each access,
+tools/rt_cpython/rt_heap.py, against CPython's own list, str, set, dict, repr and comparisons.
 
-usage: python3 tools/rtcheck.py [N] [SEED] [--runtime FILE] [--only memory]
-(N rounds of cases, default 5000; FILE in place of runtime.py; the memory code's checks alone)
+usage: python3 tools/rtcheck.py [N] [SEED] [--runtime FILE] [--only memory|lists|sets|dicts|walks] [--stop]
+(N rounds of cases, default 5000; FILE in place of runtime.py; the memory code's checks alone, or
+a part of them; --stop: end at the first failure)
 """
 import itertools
 import math
@@ -51,8 +53,8 @@ for flag in ("--runtime", "--only"):
         else:
             ONLY = ARGS[at + 1]
         del ARGS[at : at + 2]
-if ONLY not in ("", "memory", "lists", "sets", "dicts"):
-    sys.exit("rtcheck: --only takes memory, or lists, sets or dicts for a part of it")
+if ONLY not in ("", "memory", "lists", "sets", "dicts", "walks"):
+    sys.exit("rtcheck: --only takes memory, or lists, sets, dicts or walks for a part of it")
 HEAP = rt_heap.Heap(RTRECORDS)
 _rt.use(rt_heap.primitives(HEAP))
 rt = rt_heap.load(RUNTIME)
@@ -369,7 +371,7 @@ def fuzz_list_search():
         C.setup()
         how = R.choice(["i", "b", "s", "x", "companion"])
         C.opt = int(how == "companion")
-        d = HEAP.as_str(HEAP.new_str({"companion": b"i", "x": b"?i"}.get(how, how.encode()), 2))
+        d = HEAP.as_str(HEAP.new_str({"companion": b"i", "x": b"O000"}.get(how, how.encode()), 2))
         if how == "s":
             pool = [None, "", "a", "b", "ab", "abc"]
             values = [R.choice(pool) for _ in range(R.randrange(9))]
@@ -381,7 +383,12 @@ def fuzz_list_search():
             values = [R.randrange(2) if how == "b" else R.choice([0, 1, 2, 3, -1, none, MAXI]) for _ in range(R.randrange(9))]
             x = xw = R.choice([0, 1, 2, 3, -1, none, MAXI, 9])
             words = values
-            l = rt.pys_list_new_atomic(len(words))
+            if how == "x":
+                # (objects of a class of the program's, here of these ints, whose __eq__ the heap
+                # side runs through runtime.c's pys_obj_eq)
+                words = [C.new_obj(v) for v in values]
+                xw = C.new_obj(x)
+            l = (rt.pys_list_new if how == "x" else rt.pys_list_new_atomic)(len(words))
         for w in words:
             rt.pys_list_append(l, w)
         if how == "companion":
@@ -409,7 +416,7 @@ def fuzz_list_search():
             if heap_count[0] == count[1] and C.w(HEAP.of(l)):
                 rt.pys_list_pop(l, -1)
 
-        generic = how in ("x", "companion")
+        generic = how == "x"
         if generic:
             ref[:] = [E(v) for v in values]
             C.on_eq = on_eq
@@ -432,6 +439,8 @@ def fuzz_list_search():
             a = HEAP.of(l)
             have = HEAP.words(C.w(a + 16), C.w(a))
             left = [w.v if generic else w for w in ref]
+            if generic:
+                have = [C.objs[w] for w in have]
             if how == "s":
                 have = [None if w == 0 else C.text(w) for w in have]
             if have != left:
@@ -1207,6 +1216,347 @@ def fuzz_dicts():
                 for s in (d, o, made):
                     if s is not None and not sound(s, op):
                         return
+
+
+class Obj:
+    # an object of a class of the program's: its __eq__, ordering and __repr__ are the program's
+    # (pys_obj_*), here those of its value
+    def __init__(self, v):
+        self.v = v
+
+    def __eq__(self, o):
+        return self.v == o.v if isinstance(o, Obj) else NotImplemented
+
+    def __lt__(self, o):
+        return self.v < o.v
+
+    def __le__(self, o):
+        return self.v <= o.v
+
+    def __gt__(self, o):
+        return self.v > o.v
+
+    def __ge__(self, o):
+        return self.v >= o.v
+
+    def __repr__(self):
+        return f"Obj({self.v})"
+
+    __hash__ = None
+
+
+WALK_STRS = ["", "a", "ab", "it's", 'say "hi"', "both ' and \"", "tab\there", "nl\n\r", "\\", "\x00\x1f\x7f", "\xe9", "\u20acuro",
+             "\U0001d11e", "\u200b", "\U000e0001", "\u0378", "\xa0", "\u2028", "ab\u0300c", "\ud7ff\ue000"]
+WALK_FLOATS = [0.0, -0.0, 1.5, -2.5, 1e300, 1e-310, 1 / 3, 3.0, 2.0 ** 63, float("inf"), float("-inf"), 1e16, 12345.678]
+BIG_J = [0, 5, -1, -(1 << 63), (1 << 63) - 1, 1 << 64, -(1 << 70), 10 ** 30, -(10 ** 25)]
+KIND = {"i": int, "b": bool, "f": float, "s": str, "y": bytes, "L": list, "D": dict, "S": set, "F": frozenset, "T": tuple, "V": tuple}
+
+
+def wtype(depth, numeric=False):
+    # a random type, as a tuple of its letter and parts (numeric: only what CPython orders by
+    # value with an int and a float in a union: ints, floats, and sequences of them)
+    if numeric:
+        r = R.randrange(7 if depth > 0 else 3)
+        if r < 3:
+            return (("i",), ("f",), ("b",))[r]
+        if r == 3:
+            return ("L", wtype(depth - 1, True))
+        if r == 4:
+            return ("T", [wtype(depth - 1, True) if R.randrange(4) else ("J",) for _ in range(R.randrange(4))])
+        if r == 5:
+            return ("U", [(3, ("i",)), (8, ("f",))]) if R.randrange(2) else ("V", wtype(depth - 1, True))
+        inner = wtype(depth - 1, True)
+        return inner if inner[0] == "?" else ("?", inner)
+    r = R.randrange(14 if depth > 0 else 6)
+    if r < 6:
+        return (("i",), ("b",), ("f",), ("s",), ("O",), ("y",))[r]
+    if r == 6:
+        return ("L", wtype(depth - 1))
+    if r == 7:
+        return ("D", R.choice([("i",), ("s",)]), wtype(depth - 1))
+    if r == 8:
+        return (R.choice("SF"), ("i",))
+    if r == 9:
+        return ("T", [wtype(depth - 1) if R.randrange(4) else ("J",) for _ in range(R.randrange(4))])
+    if r == 10:
+        return ("V", wtype(depth - 1))
+    if r == 11:
+        inner = wtype(depth - 1)
+        return inner if inner[0] == "?" else ("?", inner)
+    if r == 12:
+        # a union: members of distinct Python types (no bool beside int), each of a program-wide tag
+        # (and no object compared by its __eq__: the compiler gives a union's classes P, by identity)
+        inner = wtype(depth - 1)
+        pool = [("i",), ("f",), ("s",), ("L", inner if not has(inner, "OSF") else ("s",)), ("T", [("i",), ("s",)]), ("D", ("s",), ("i",))]
+        ms = R.sample(pool, R.randrange(2, 4))
+        tags = R.sample(range(1, 30), len(ms))
+        return ("U", list(zip(tags, ms)))
+    return ("L", ("i",))
+
+
+def wdesc(t):
+    k = t[0]
+    if k == "O":
+        return "O000"
+    if k in "LVSF?":
+        return k + wdesc(t[1])
+    if k == "D":
+        return "D" + wdesc(t[1]) + wdesc(t[2])
+    if k == "T":
+        return "T" + str(len(t[1])) + "".join(wdesc(x) for x in t[1])
+    if k == "U":
+        # (a member that ends in an object's id ends at a '.')
+        return "U" + str(len(t[1])) + ":" + "".join(f"{tag}:{wdesc(m)}" + ("." if re.search(r"[OPH][0-9]{3,}$", wdesc(m)) else "") for tag, m in t[1])
+    return k
+
+
+def wvalue(t, depth=0):
+    # a CPython value of type t
+    k = t[0]
+    if k == "i":
+        return R.choice([0, 1, -1, 7, 255, MAXI, -MAXI - 1, R.randrange(-1000, 1000)])
+    if k == "b":
+        return R.choice([False, True])
+    if k == "f":
+        return R.choice(WALK_FLOATS)
+    if k == "s":
+        return R.choice(WALK_STRS) if R.randrange(3) else text()
+    if k == "y":
+        return bytes(R.randrange(256) for _ in range(R.randrange(6)))
+    if k == "J":
+        return R.choice(BIG_J)
+    if k == "O":
+        return Obj(R.randrange(4))
+    if k == "L":
+        return [wvalue(t[1], depth + 1) for _ in range(R.randrange(4))]
+    if k == "D":
+        return {wvalue(t[1]): wvalue(t[2], depth + 1) for _ in range(R.randrange(4))}
+    if k in "SF":
+        xs = [R.randrange(-5, 40) for _ in range(R.randrange(12))]
+        return ("set" if k == "S" else "frozenset", xs)  # (the insertion order: the table's order is CPython's)
+    if k == "T":
+        return tuple(wvalue(x, depth + 1) for x in t[1])
+    if k == "V":
+        return tuple(wvalue(t[1], depth + 1) for _ in range(R.randrange(4)))
+    if k == "?":
+        return None if R.randrange(3) == 0 else wvalue(t[1], depth)
+    return wvalue(R.choice(t[1])[1], depth)
+
+
+def wpy(v):
+    # the CPython value of a generated one: a set made in its insertion order
+    if isinstance(v, tuple) and len(v) == 2 and type(v[0]) is str and v[0] in ("set", "frozenset") and isinstance(v[1], list):
+        return set(v[1]) if v[0] == "set" else frozenset(v[1])
+    if isinstance(v, list):
+        return [wpy(x) for x in v]
+    if isinstance(v, tuple):
+        return tuple(wpy(x) for x in v)
+    if isinstance(v, dict):
+        return {k: wpy(x) for k, x in v.items()}
+    return v
+
+
+def fbits(x):
+    return struct.unpack("<q", struct.pack("<d", x))[0]
+
+
+def wlay(t, v):
+    # the word of value v of type t in runtime.c's layouts, on the heap
+    k = t[0]
+    if k in "ib":
+        return int(v)
+    if k == "f":
+        return fbits(v)
+    if k == "s":
+        return HEAP.new_str(v.encode("utf-8"), 0)
+    if k == "y":
+        return HEAP.new_str(v, 0)
+    if k == "O":
+        return C.new_obj(v)
+    if k == "L":
+        atomic = t[1][0] in "ibf"
+        l = (rt.pys_list_new_atomic if atomic else rt.pys_list_new)(len(v))
+        for x in v:
+            rt.pys_list_append(l, wlay(t[1], x))
+        return HEAP.of(l)
+    if k == "D":
+        d = (rt.pys_dict_new_atomic if t[2][0] in "ibf" else rt.pys_dict_new)(0 if t[1][0] == "i" else 1, 0)
+        for key, x in v.items():
+            rt.pys_dict_set(d, wlay(t[1], key), wlay(t[2], x))
+        return HEAP.of(d)
+    if k in "SF":
+        s = rt.pys_set_new(0)
+        for x in v[1]:
+            rt.pys_set_add(s, x)
+        return HEAP.of(s)
+    if k == "T":
+        n = len(t[1])
+        big = any(x[0] == "J" for x in t[1])
+        a = HEAP.new(8 * (2 * n if big else n), "scan", "tuple")
+        for i, (x, item) in enumerate(zip(t[1], v)):
+            if x[0] == "J":
+                fit = -(1 << 63) < item < (1 << 63)
+                C.put(a + 8 * i, item if fit else -(1 << 63))
+                C.put(a + 8 * (n + i), 0 if fit or item == -(1 << 63) else C.new_mpz(item))
+            else:
+                C.put(a + 8 * i, wlay(x, item))
+            if big and x[0] != "J":
+                C.put(a + 8 * (n + i), 0)
+        return a
+    if k == "V":
+        a = HEAP.new(16 + 8 * len(v), "scan", "vtuple")
+        C.put(a, len(v))
+        C.put(a + 8, 0)
+        for i, item in enumerate(v):
+            C.put(a + 16 + 8 * i, wlay(t[1], item))
+        return a
+    if k == "?":
+        if v is None:
+            return 0
+        if t[1][0] in "ibf":
+            a = HEAP.new(16, "atomic", "box")
+            C.put(a, wlay(t[1], v))
+            C.put(a + 8, 0)
+            return a
+        return wlay(t[1], v)
+    if v is None:
+        return 0
+    for tag, m in t[1]:
+        if type(wpy(v)) is KIND[m[0]] or (m[0] == "f" and type(v) is float):
+            a = HEAP.new(16, "scan", "union")
+            C.put(a, tag)
+            C.put(a + 8, wlay(m, v))
+            return a
+    raise AssertionError(f"no member of {wdesc(t)} holds {v!r}")
+
+
+def walt(t):
+    # another type whose values include t's, for == of two descriptors (eq.pair)
+    k = t[0]
+    r = R.randrange(3)
+    if k == "i":
+        return (("i",), ("?", ("i",)), ("U", [(4, ("i",)), (9, ("s",))]))[r]
+    if k == "b":
+        return (("b",), ("?", ("b",)), ("U", [(4, ("b",)), (9, ("s",))]))[r]
+    if k == "f":
+        return (("f",), ("?", ("f",)), ("U", [(5, ("i",)), (6, ("f",))]))[r]
+    if k == "s":
+        return (("s",), ("?", ("s",)), ("U", [(7, ("s",)), (2, ("f",))]))[r]
+    if k == "L":
+        return ("L", walt(t[1]))
+    if k == "D":
+        return ("D", t[1], walt(t[2]))
+    if k == "T":
+        same_items = len(t[1]) > 0 and all(x == t[1][0] and x[0] != "J" for x in t[1])
+        return ("V", walt(t[1][0])) if same_items and r == 0 else ("T", [walt(x) if x[0] != "J" else x for x in t[1]])
+    if k == "V":
+        return ("V", walt(t[1]))
+    if k == "?":
+        inner = walt(t[1])
+        return inner if inner[0] == "?" else ("?", inner)
+    return t
+
+
+def has(t, letters):
+    if t[0] in letters:
+        return True
+    parts = t[1:] if t[0] != "U" and t[0] != "T" else [m for _, m in t[1]] if t[0] == "U" else t[1]
+    return any(isinstance(x, tuple) and has(x, letters) for x in parts)
+
+
+def only(t, letters):
+    if t[0] not in letters:
+        return False
+    parts = t[1:] if t[0] != "U" and t[0] != "T" else [m for _, m in t[1]] if t[0] == "U" else t[1]
+    return all(only(x, letters) for x in parts if isinstance(x, tuple))
+
+
+def wout(f, *a):
+    # outcome's, with a str in the heap as its text
+    r = outcome(f, *a)
+    return (r[0], r[1].text()) if r[0] == "ok" and isinstance(r[1], rt_heap.Str) else r
+
+
+def fuzz_walks():
+    # repr(), == and < <= > >= of values that a descriptor describes (runtime.py's walks), against
+    # CPython's: values of a random type laid out in runtime.c's layouts, and == of two
+    # descriptors of the same values (eq.pair). Ints past 64 bits are promoting ints, items of a
+    # tuple; objects are a class's of the program, whose __eq__, ordering and __repr__ it defines
+    for _ in range(N):
+        HEAP.reset()
+        C.setup()
+        C.opt = 1
+        t = wtype(R.randrange(4))
+        d = wdesc(t)
+        ds = HEAP.as_str(HEAP.new_str(d.encode(), 0))
+        v = wvalue(t)
+        w = wlay(t, v)
+        p = wpy(v)
+        same("walk-repr", wout(rt.pys_repr, w, ds), ref(lambda: repr(p)), (d, p))
+        same("walk-repr-marks", sorted(C.busy), [], (d, p))  # (each repr under way is ended)
+        # ==, and the orderings where every float is a number (a NaN's identity, which CPython keeps
+        # in a container, an unboxed float has not)
+        v2 = wvalue(t) if R.randrange(2) else v
+        w2 = w if v2 is v and R.randrange(2) else wlay(t, v2)
+        p2 = p if w2 == w else wpy(v2)
+        if not has(t, "y"):
+            same("walk-eq", outcome(rt.pys_eq, w, w2, ds), ref(lambda: int(p == p2)), (d, p, p2))
+        tn = wtype(R.randrange(3), True)
+        dn = HEAP.as_str(HEAP.new_str(wdesc(tn).encode(), 0))
+        a, b2 = wvalue(tn), wvalue(tn)
+        pa, pb = wpy(a), wpy(b2)
+        wa, wb = wlay(tn, a), wlay(tn, b2)
+        op = R.randrange(4)
+        cmp = (lambda x, y: x < y, lambda x, y: x <= y, lambda x, y: x > y, lambda x, y: x >= y)[op]
+        same("walk-order", outcome(rt.pys_cmpop, wa, wb, dn, op), ref(lambda: int(cmp(pa, pb))), (wdesc(tn), pa, pb, op))
+        if not has(t, "OySF"):
+            # == of two descriptors: the same type's values, laid out as another type that holds them
+            t2 = walt(t)
+            d2 = HEAP.as_str(HEAP.new_str(wdesc(t2).encode(), 0))
+            w3 = wlay(t2, v2)
+            same("walk-eq-pair", outcome(rt.pys_eq_pair, w, w3, ds, d2), ref(lambda: int(p == p2)), (d, wdesc(t2), p, p2))
+        if has(t, "O") and only(t, "OLTV"):
+            # the orderings of objects: theirs, the program's
+            same("walk-order-obj", outcome(rt.pys_cmpop, w, w2, ds, op), ref(lambda: int(cmp(p, p2))), (d, p, p2, op))
+    # deterministic: a recursive alias's 512 edges (list[R], descriptor LR1:), then the 513th, which
+    # RecursionError ends (CPython's own limit is the interpreter's); an int past CPython's 4300
+    # digits; a list being printed again through its own item
+    was = sys.getrecursionlimit()
+    sys.setrecursionlimit(max(was, 20000))  # (runtime.py's walks recurse here as compiled)
+    for depth, want in [(512, None), (513, "RecursionError")]:
+        HEAP.reset()
+        C.setup()
+        ds = HEAP.as_str(HEAP.new_str(b"LR1:", 0))
+        chains = []
+        for _ in range(2):
+            inner = rt.pys_list_new(0)
+            for _ in range(depth):
+                outer = rt.pys_list_new(1)
+                rt.pys_list_append(outer, HEAP.of(inner))
+                inner = outer
+            chains.append(HEAP.of(inner))
+        p = []
+        for _ in range(depth):
+            p = [p]
+        got = wout(rt.pys_repr, chains[0], ds)
+        same("walk-deep-repr", got[0], want or "ok", (depth,))
+        if want is None:
+            same("walk-deep-repr-text", got[1], b(repr(p)), (depth,))
+        same("walk-deep-eq", outcome(rt.pys_eq_pair, chains[0], chains[1], ds, ds)[0], want or "ok", (depth,))
+    sys.setrecursionlimit(was)
+    HEAP.reset()
+    C.setup()
+    C.opt = 1
+    t = ("T", [("J",), ("i",)])
+    ds = HEAP.as_str(HEAP.new_str(b"T2Ji", 0))
+    for v in [(10 ** 4299, 1), (10 ** 4300, 2)]:
+        same("walk-digits", wout(rt.pys_repr, wlay(t, v), ds), ref(lambda: repr(v)), (len(str(v[0])) if v[0] < 10 ** 4300 else 4301,))
+    l = rt.pys_list_new(1)
+    ds = HEAP.as_str(HEAP.new_str(b"LO000", 0))
+    rt.pys_list_append(l, C.new_obj(Obj(1)))
+    same("walk-busy", wout(rt.pys_repr, HEAP.of(l), ds), ("ok", "[Obj(1)]"), ())
+    C.busy.add(HEAP.of(l))
+    same("walk-busy", wout(rt.pys_repr, HEAP.of(l), ds), ("ok", "[...]"), ())
 
 
 def u8count(data):
@@ -2102,6 +2452,8 @@ if ONLY in ("", "memory", "sets"):
     fuzz_sets()
 if ONLY in ("", "memory", "dicts"):
     fuzz_dicts()
+if ONLY in ("", "memory", "walks"):
+    fuzz_walks()
 if ONLY != "":
     print(f"{cases} cases, {fails} failed")
     sys.exit(1 if fails else 0)

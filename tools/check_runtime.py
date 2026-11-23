@@ -15,8 +15,8 @@ disagrees with its entry is an internal error. This tool checks the table itself
     every class a raise statement accepts (EXCEPTIONS);
   - effects: every letter is one of the compiler's FX, U? or R?; an entry has R if the function's
     C call graph reaches a raise funnel (RAISES; not counting the allocator's MemoryError: that
-    is A) other than through rec_deep (DEEP: a descriptor walk past a recursive alias's 512th
-    edge, which those walks alone may call, DEEP_WALKS), and R or R? if it reaches rec_deep (R? is
+    is A) other than through pys_rt_rec_deep (DEEP: a descriptor walk past a recursive alias's
+    512th edge, which runtime.py's walks alone may call, DEEP_WALKS), and R or R? if it reaches it (R? is
     R where the op's descriptor holds such an edge: Gen.opfx), A if it reaches the allocator's slow
     path (gc_slow) other than on the way out of a raise (through a raise funnel, or the exception
     it builds, EXC_MAKERS: R stands for that),
@@ -91,7 +91,7 @@ TOOL = (LLVM.rstrip("/") + "/") if LLVM else ""
 # The native recursion guards and the C limit APIs must share these three i64 words
 # (active depth, limit, native stack floor).
 MUTABLE_DATA = {"pys_recursion_state": "[3 x i64]", "pys_fl": "[80 x ptr]"}   # (pys_fl: the free lists the JIT tier pops, lower_module.py's JITFAST)
-# functions whose call graph reaches user code, and rec_deep, only through comparing elements, which
+# functions whose call graph reaches user code, and pys_rt_rec_deep, only through comparing elements, which
 # they never do: set.copy merges into a new set, whose table has none yet (the dict and set
 # operations that hash or compare keys have U? and R?, which an object's or a recursive alias's
 # key descriptor makes U or R: Gen.opfx)
@@ -108,13 +108,14 @@ CheckBig check_big_abi(__INT64_TYPE__ lo, void *hi) {
 }
 """
 RAISES = {"pys_fail", "pys_raise", "oserr", "kbint_exit", "throw_", "pys_reraise"}
-# the depth guard of runtime.c's descriptor walks (repr_depth, eqpair_depth), which counts only the
+# the depth guard of runtime.py's descriptor walks (repr_walk, eqpair_walk), which counts only the
 # edges of recursive aliases, so that an op whose descriptor holds none never raises through it: R?;
-# and repr_depth's raise for a list's int past CPython's 4300 digits, which an op whose descriptor
-# holds no list of ints never reaches, nor one of a program whose lists hold no promoting ints (Gen.opfx)
-DEEP = {"rec_deep", "digits_deep"}
-# and those walks, its only callers: R? stands for nothing else
-DEEP_WALKS = {"repr_depth", "eqpair_depth"}
+# and repr_walk's raise for a list's int past CPython's 4300 digits, which an op whose descriptor
+# holds no list of ints never reaches, nor one of a program whose lists hold no promoting ints
+# (Gen.opfx). runtime.c raises both, out of line
+DEEP = {"pys_rt_rec_deep", "pys_rt_digits_deep"}
+# and those walks, their only callers (repr_walk's digits through put_digits): R? stands for nothing else
+DEEP_WALKS = {"f.repr_walk", "f.eqpair_walk", "f.put_digits"}
 # what the raise funnels build their exception with: in a program that has a try, a raise allocates
 # its Exc on the way out, which R stands for (a collection may then run before a handler takes it),
 # so these do not make an entry A
@@ -127,9 +128,12 @@ USER = {"pys_obj_eq", "pys_obj_cmp", "pys_obj_repr", "dyn_user_iter", "dyn_user_
 # runs, an object's helpers among them, so that the compiler gives an op whose descriptor holds
 # an A every effect, as it does for an O (Gen.opfx). The walks of other entries do not look into
 # them, as they do not into user code; the dyn.* entries are checked from their own bodies
-DYN_WALKS = {"pys_dyn_eq", "pys_dyn_cmp", "pys_dyn_hash", "dyn_eqitem"}
-# the functions that walk a value by its descriptor (its static type), reading the lists and dicts in it
-BY_DESC = {"eqv", "opv", "repr"}
+DYN_WALKS = {"pys_dyn_eq", "pys_dyn_cmp", "pys_dyn_hash", "dyn_eqitem", "pys_rt_dyn_eqitem"}
+# the functions that walk a value by its descriptor (its static type), reading the lists and dicts in
+# it: runtime.py's walks, their entry points, and runtime.c's names for them
+BY_DESC = {"eqv", "opv", "repr", "eqitem", "eqpair", "big_eq", "pys_rt_eqv", "pys_rt_opv", "pys_rt_repr_to", "pys_rt_eqitem",
+           "pys_rt_eqpair", "pys_rt_big_eq", "pys_rt_repr_str", "pys_repr", "pys_eq", "pys_cmpop", "pys_eq_pair",
+           "f.repr_walk", "f.eqv", "f.eqitem", "f.eqpair_walk", "f.opv", "f.dict_eq", "f.dict_eqpair"}
 # the messages of the subset's implicit checks that fire only on a bug of runtime.py: an index out
 # of range (its primitives' and s[i]'s), a zero divisor, a negative shift count, a float that does
 # not fit an int, a square root's domain (runtime.py raises what a caller may cause with raise)
@@ -759,6 +763,8 @@ def main():
                 m.update(y for y in ls if y in ("A", "U", "I"))
                 if "U?" in ls and "O" in d:
                     m.add("U")  # (as Gen.opfx: when the descriptor holds a class)
+            elif op == "call" and x[1:] in DYN_WALKS:
+                pass  # (a dynamic value's walk, as for runtime.c's: its effects are the op's boundary's)
             elif op == "call" and x[1:] not in rpy_ops:
                 # one of runtime.c's functions, which runtime.py declares: its entry, if RUNTIME
                 # names it, and what runtime.c's call graph shows
@@ -771,8 +777,10 @@ def main():
                     m.add("U")
                 if uses_state(fns, used, x[1:], DYN_WALKS - {x[1:]}):
                     m.add("I")
-                # (not through a dynamic value's walks: their effects are the op's boundary's)
-                via[x[1:]] = {g for g in rpy_ops if reaches(fns, x[1:], {g}, DYN_WALKS - {x[1:]})}
+                # (not through a dynamic value's walks: their effects are the op's boundary's; nor
+                # through a raise, whose report of an uncaught exception escapes text with runtime.py's
+                # repr: R stands for that, as for what it allocates)
+                via[x[1:]] = {g for g in rpy_ops if reaches(fns, x[1:], {g}, (DYN_WALKS - {x[1:]}) | RAISES | EXC_MAKERS)}
         letters[f] = m
         # (whether it may write memory it did not allocate: an rt op that writes lists, dicts,
         # objects, globals or files, or a function of runtime.c it declares)
@@ -959,10 +967,11 @@ def main():
                 note.append(f"{k}: {x}, which runtime.py's code does not show")
     # effects of runtime.c's functions: what their call graph shows, runtime.py's functions they
     # call included (with the letters derived above)
-    callers = sorted(n for n, v in fns.items() if v[4] == "define" and DEEP & v[3])
+    callers = sorted([n for n, v in fns.items() if v[4] == "define" and DEEP & v[3]] +
+                     [f for f, ops in rpy_ops.items() if any(op == "call" and x[1:] in DEEP for op, x, _ in ops)])
     if callers != sorted(DEEP_WALKS):
-        bad.append(f"rec_deep has the callers {', '.join(callers) or 'none'}, but R? stands for the depth guards of "
-                   f"{' and '.join(sorted(DEEP_WALKS))} alone")
+        bad.append(f"pys_rt_rec_deep and pys_rt_digits_deep have the callers {', '.join(callers) or 'none'}, but R? "
+                   f"stands for the depth guards of {' and '.join(sorted(DEEP_WALKS))} alone")
     pyr = {f for f in letters if "R" in letters[f]}
     pya = {f for f in letters if "A" in letters[f]}
     pyu = {f for f in letters if "U" in letters[f]}
@@ -1010,7 +1019,7 @@ def main():
     graph = {n: set() if n in BY_DESC | DEEP_WALKS else v[3] for n, v in fns.items() if v[4] == "define"}
     for f, ops in rpy_ops.items():
         graph[f] = set()
-        for op, x, _ in ops:
+        for op, x, _ in ops if f not in BY_DESC | DEEP_WALKS else []:
             g = pys.rtsym(x) if op == "rt" else x[1:] if op == "call" else ""
             if op == "rt" and g in rpy_ops:
                 graph[f].add("rt:" + g)

@@ -204,7 +204,7 @@ RTL: dict[str, str] = {
     "word": "ref,int:int", "put": "ref,int,int:None", "byte_at": "ref,int:int", "put_byte": "ref,int,int:None",
     "i32_at": "ref,int:int", "put_i32": "ref,int,int:None", "at": "ref,int:rtptr", "offset": "ref,int:rtptr",
     "get": "ref,str:int", "set": "ref,str,int:None", "getp": "ref,str:rtptr", "setp": "ref,str,ref:None",
-    "field": "ref,str:rtptr", "sizeof": "str:int",
+    "field": "ref,str:rtptr", "sizeof": "str:int", "local": "str:rtptr", "words": "int:rtptr",
     "move": "ref,ref,int:None", "cpy": "ref,ref,int:None", "fill": "ref,int,int:None", "cmp": "ref,ref,int:int",
 }
 RTPTR = "rtptr"  # runtime mode's raw address (_rt.Ptr): a native reference that names no layout
@@ -218,6 +218,10 @@ RTRECORDS: dict[str, str] = {
     "VTuple": "len ids*",
     "Dict": "len kind n size keys* vals* hs* idx* cut vatomic vb* kb*",
     "Set": "len kind fill mask finger keys* hs* kb*",
+    "Buf": "p* n cap",
+    "Dyn": "t* v",
+    "DynType": "kind desc* name* cls base* flags iter* next* len*",
+    "ReflRec": "name* qual* mod* flags nnames names* nfields fields*",
 }
 STR_HEADER_SIZE = 24  # offsetof(Str, s), checked against runtime.c and both CPython glues by rt-abi
 TBAA_LEN = 3

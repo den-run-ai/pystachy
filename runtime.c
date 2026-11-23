@@ -2601,6 +2601,9 @@ I pys_ceil(double d);
    tuple's item, the box of an int | None of a module that opts in, a field), its two words
    (jbig).
    skip treats R as a leaf; value operations follow it without changing the slot layout.
+   The walks themselves (repr, ==, ordering) are runtime.py's ("repr, equality and ordering by a
+   type descriptor"); what they ask of this file follows, with this file's own walks (the hashes
+   of keys, dynamic values, the sort), which step through a descriptor with runtime.py's skip.
    A dict's key kind and a set's element kind (Dict.kind) and their tuples' items have P<id> and
    H<id> where the type is a class: P where no class its objects may be of defines __eq__ or
    __hash__, so that they hash and compare by identity alone, else H, hashed by the program's
@@ -2627,11 +2630,8 @@ static uint64_t hdyn(Dyn *x);
 DynIter *pys_dyn_iter(Dyn *o);
 Dyn *pys_dyn_next(DynIter *it);
 static I dyn_user_len(Dyn *o);
-static I ocls(const char *d) {   /* three digits, then those of an id of 1000 or more */
-  I c = (d[0] - '0') * 100 + (d[1] - '0') * 10 + d[2] - '0';
-  for (d += 3; *d >= '0' && *d <= '9'; d++) c = c * 10 + *d - '0';
-  return c;
-}
+I pys_rt_ocls(const char *d);   /* runtime.py's: an object's class number, from its id's digits */
+static inline I ocls(const char *d) { return pys_rt_ocls(d); }
 Str *pys_default_repr(Str *cls, void *p) {
   const char *f = "<%s object at %p>"; int n = snprintf(0, 0, f, cls->s, p);
   Str *s = pys_alloc_atomic(sizeof(Str) + n + 1); s->len = n; snprintf(s->s, n + 1, f, cls->s, p); return s;
@@ -2663,41 +2663,25 @@ void *pys_ubox(I tag, I v) { I *p = gc_box(0); p[0] = tag; p[1] = v; return p; }
 void *pys_ubox_opt(I tag, void *p, I deref) { return p ? pys_ubox(tag, deref ? *(I *)p : (I)p) : NULL; }
 
 static I unbox(I v, const char *d) { return *d == 'i' || *d == 'f' || *d == 'b' ? *(I *)v : v; }   /* the value of a ?d */
-static I unum(const char **d) {   /* a count or tag terminated by ':' (compiler-generated descriptors) */
-  I n = 0;
-  while (**d >= '0' && **d <= '9') { n = n * 10 + **d - '0'; (*d)++; }
-  (*d)++;
-  return n;
-}
-static const char *skip(const char *d) {
-  char c = *d++;
-  if (c == 'R') { unum(&d); return d; }
-  if (c == 'O' || c == 'P' || c == 'H') { d += 3; while (*d >= '0' && *d <= '9') d++; return d + (*d == '.'); }   /* (a union member's ends at a '.' before the next member's tag) */
-  if (c == 'L' || c == 'V' || c == '?' || c == 'S' || c == 'F') return skip(d);
-  if (c == 'D') return skip(skip(d));
-  if (c == 'T') for (int n = *d++ - '0'; n > 0; n--) d = skip(d);
-  if (c == 'U') for (I n = unum(&d); n > 0; n--) { unum(&d); d = skip(d); }
-  return d;
-}
-static const char *recdesc(const char *d) {
-  while (*d == 'R') { const char *n = d + 1; d -= unum(&n); }
-  return d;
-}
+const char *pys_rt_skip(const char *d);           /* runtime.py's: the bytes past the descriptor at d */
+const char *pys_rt_utype(I tag, const char *d);   /* and union d's member of tag tag */
+static inline const char *skip(const char *d) { return pys_rt_skip(d); }
+static inline const char *utype(I tag, const char *d) { return pys_rt_utype(tag, d); }
 /* A recursive alias's edge (R) is the one way a descriptor lets a value nest without bound, so
-   repr_depth and eqpair_depth count the edges they follow and raise here past 512. Nothing else
-   calls it: tools/check_runtime.py gives what reaches it R?, which the compiler makes R where the
-   op's descriptor holds an R (Gen.opfx); other descriptors never get here */
-static _Noreturn NOMERGE void rec_deep(const char *m) { pys_fail(m); }
-/* a list's int past 64 bits (BIGIDS), a set's (sbig) or a dict's (dbig), with more digits than
-   CPython's limit for an int's text, in repr_depth: its ValueError, which the compiler's RUNTIME
-   counts as rec_deep's (R?: Gen.opfx makes it R where a descriptor holds a list, set or dict of ints,
-   in a program whose lists, sets and dicts hold promoting ints) */
-static _Noreturn NOMERGE void digits_deep(void) { pys_fail(DIGITS_LIMIT); }
-static const char *utype(I tag, const char *d) {
-  d++;
-  for (I n = unum(&d); n > 0; n--) { if (unum(&d) == tag) return d; d = skip(d); }
-  __builtin_unreachable();   /* the compiler's descriptor covers every possible tag */
+   runtime.py's repr_walk and eqpair_walk count the edges they follow and raise here past 512 (cmp:
+   in a comparison). Nothing else calls it: tools/check_runtime.py gives what reaches it R?, which
+   the compiler makes R where the op's descriptor holds an R (Gen.opfx); other descriptors never get
+   here. Out of line, so that the optimized runtime keeps its raise apart from theirs */
+_Noreturn NOMERGE __attribute__((noinline, cold)) void pys_rt_rec_deep(I cmp) {
+  pys_fail(cmp ? "RecursionError: maximum recursion depth exceeded in comparison"
+               : "RecursionError: maximum recursion depth exceeded while getting the repr of an object");
 }
+/* a list's int past 64 bits (BIGIDS), a set's (sbig) or a dict's (dbig), with more digits than
+   CPython's limit for an int's text, in repr_walk: its ValueError, which the compiler's RUNTIME
+   counts as pys_rt_rec_deep's (R?: Gen.opfx makes it R where a descriptor holds a list, set or dict
+   of ints, in a program whose lists, sets and dicts hold promoting ints) */
+_Noreturn NOMERGE __attribute__((noinline, cold)) void pys_rt_digits_deep(void) { pys_fail(DIGITS_LIMIT); }
+Str *pys_rt_mpz_digits(Mpz *m) { return mpz_digits(m); }   /* an Mpz's text, or NULL past 4300 digits */
 static const char *umember(I *v, const char *d) {
   I *box = (I *)*v, tag = box[0];
   *v = box[1];
@@ -2705,84 +2689,13 @@ static const char *umember(I *v, const char *d) {
 }
 static double dbl(I v) { double x; memcpy(&x, &v, 8); return x; }
 static int printable(I c);
-static char rquote(const char *s, I n) { return memchr(s, '\'', n) && !memchr(s, '"', n) ? '"' : '\''; }
-static void repr_bytes(Buf *b, Str *s) {   /* a bytes's repr(), as CPython's PyBytes_Repr writes it: b and rquote's
-                                              quotes; \t, \n, \r, \xhh below 32 and from 127 on, \\ and the quote */
-  char q = rquote(s->s, s->len), t[4] = {'\\', 'x', 0, 0};
-  put(b, "b", 1);
-  put(b, &q, 1);
-  for (I i = 0, n; i < s->len; i += n) {
-    for (n = 0; i + n < s->len; n++) {   /* a run of printable ASCII: one put */
-      unsigned char c = s->s[i + n];
-      if (c < 32 || c > 126 || c == q || c == '\\') break;
-    }
-    if (n) { put(b, s->s + i, n); continue; }
-    unsigned char c = s->s[i];
-    n = 1;
-    if (c == q || c == '\\' || c == '\t' || c == '\n' || c == '\r') {
-      t[1] = c == '\t' ? 't' : c == '\n' ? 'n' : c == '\r' ? 'r' : (char)c;
-      put(b, t, 2);
-      t[1] = 'x';
-    } else {
-      t[2] = "0123456789abcdef"[c >> 4];
-      t[3] = "0123456789abcdef"[c & 15];
-      put(b, t, 4);
-    }
-  }
-  put(b, &q, 1);
-}
-static I resc(char *t, const char *s, I len, char q, I *n) {   /* the character at s as CPython's unicode_repr writes it
-                                                                 between quotes q, into t (12 bytes); *n: its bytes in s */
-  I c;
-  *n = u8char(s, len, &c);
-  if (c == q || c == '\\') { t[0] = '\\'; t[1] = (char)c; return 2; }
-  if (c == '\n' || c == '\r' || c == '\t') { t[0] = '\\'; t[1] = c == '\n' ? 'n' : c == '\r' ? 'r' : 't'; return 2; }
-  if (c < 32 || c == 127 || (c > 127 && !printable(c)))   /* not printable: \xhh, \uhhhh or \Uhhhhhhhh */
-    return snprintf(t, 12, c < 0x100 ? "\\x%02llx" : c < 0x10000 ? "\\u%04llx" : "\\U%08llx", (long long)c);
-  memcpy(t, s, *n);
-  return *n;
-}
-/* The bytes of the printable characters from p on (left > 0 bytes, the first not ASCII) that
-   repr() copies as they are: all but the quote q and the backslash. A character of two or three
-   bytes is read here as u8char reads it, and steps by that count, not by one taken from its bytes:
-   the next can then begin before this one is read. Out of line, so that a str of ASCII pays
-   nothing for it. */
-__attribute__((noinline)) static I printable_run(const unsigned char *p, I left, char q) {
-  I n = 0, cp;
-  while (n < left) {
-    if (p[n] < 128) {
-      if (p[n] < 32 || p[n] == 127 || p[n] == q || p[n] == '\\') break;
-      n++;
-    } else if (p[n] >= 0xC2 && p[n] < 0xE0 && left - n > 1 && (p[n + 1] & 0xC0) == 0x80) {
-      if (!printable((p[n] & 0x1F) << 6 | (p[n + 1] & 0x3F))) break;
-      n += 2;
-    } else if (p[n] >= 0xE0 && p[n] < 0xF0 && left - n > 2 && (p[n + 1] & 0xC0) == 0x80 && (p[n + 2] & 0xC0) == 0x80
-               && (cp = (p[n] & 0x0F) << 12 | (p[n + 1] & 0x3F) << 6 | (p[n + 2] & 0x3F)) >= 0x800) {
-      if (!printable(cp)) break;
-      n += 3;
-    } else {
-      I k = u8char((const char *)p + n, left - n, &cp);
-      if (!printable(cp)) break;
-      n += k;
-    }
-  }
-  return n;
-}
-static void repr_str(Buf *b, Str *s) {
-  char q = rquote(s->s, s->len), t[12];
-  put(b, &q, 1);
-  for (I i = 0, n; i < s->len; i += n) {
-    for (n = 0; i + n < s->len; n++) {   /* a run of printable ASCII, which resc copies as it is: one put */
-      unsigned char c = s->s[i + n];
-      if (c < 32 || c > 126 || c == q || c == '\\') break;
-    }
-    if (n) put(b, s->s + i, n);
-    else if ((unsigned char)s->s[i] > 127 && (n = printable_run((const unsigned char *)s->s + i, s->len - i, q)) > 0)
-      put(b, s->s + i, n);                /* (and a run that begins with a printable character that is not ASCII: another) */
-    else put(b, t, resc(t, s->s + i, s->len - i, q, &n));
-  }
-  put(b, &q, 1);
-}
+I pys_rt_printable(I c) { return printable(c); }
+/* repr(s) onto b (CPython's unicode_repr), the quote that repr() puts around n bytes, and the
+   character at p escaped into t, 12 bytes (its bytes, plus 256 times those it takes at p): runtime.py's */
+void pys_rt_repr_str(Buf *b, Str *s);
+I pys_rt_rquote(const char *p, I n);
+I pys_rt_char_repr(char *t, const char *p, I left, I q);
+static inline void repr_str(Buf *b, Str *s) { pys_rt_repr_str(b, s); }
 /* KTAG on Dict.kind: the dict's keys are hashed by CPython's hash (their descriptor has an H), and
    its idx has CPython's size slots. build sets it at a table's first build, since the compiler may
    store a descriptor into an empty dict (typed_empty); kdesc is the descriptor of a kind > 1 */
@@ -2803,118 +2716,21 @@ static int dlive(Dict *d, I e) {
    Mpz in the entry's word of vb, an array as long as the entries' that the collector scans, which
    the first such value makes (runtime.py's pys_rt_dbig_make); every other entry's word is null, and every store of a
    value clears its entry's word (dbig_clear). Compiled code reads the Mpz where it reads -2**63
-   (pys_dict_big_val) */
-static Mpz *dbig(Dict *d, I e) { return d->vb && d->vals[e] == INT64_MIN && opt_in() ? (Mpz *)d->vb[e] : NULL; }
+   (pys_dict_big_val; runtime.py's pys_rt_dbig) */
 /* and a key past 64 bits of a dict of int keys holds -2**63 in its slot, and its Mpz in the entry's
    word of kb, which the first such key makes (dbput), as vb holds a value's; its hash is hbig's
    (see dicts), so the lookups of 64-bit keys never find it. The words of entries past the last are
    null (a deletion clears its entry's, builds and copies make new arrays), so an insertion of a
    64-bit key writes none */
 static Mpz *kbig(Dict *d, I e) { return d->keys[e] == INT64_MIN && d->kb && opt_in() ? (Mpz *)d->kb[e] : NULL; }
-/* depth counts the recursive alias edges (R) followed: a recursive value can nest without bound,
-   so following more than 512 raises RecursionError, as CPython's repr does for deep nesting; other
-   reprs, a class's own __repr__ among them, are limited only by the native stack. A local depth
-   argument survives native unwinding without mutable state. */
-static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
-  switch (*d++) {
-  case 'R': {
-    const char *ref = d - 1;
-    if (depth >= 512) rec_deep("RecursionError: maximum recursion depth exceeded while getting the repr of an object");
-    repr_depth(b, v, recdesc(ref), depth + 1); return skip(ref);
-  }
-  case 'U': {
-    const char *end = skip(d - 1);
-    if (!v) { put(b, "None", 4); return end; }   /* (None, which a union of classes may hold: a KeyError's key, #1452) */
-    const char *member = umember(&v, d - 1); repr_depth(b, v, member, depth); return end;
-  }
-  case 'A': { Dyn *x = (Dyn *)v; repr_depth(b, x->v, x->t->desc->s, depth); return d; }
-  case 'G': put(b, "<generator object>", 18); return d;
-  case 'Q': put(b, "<iterator object>", 17); return d;
-  case 'Z': put(b, "<function>", 10); return d;   /* (a dynamic value's function: by identity, unnamed) */
-  case 'Y': {   /* a class value: ReflRec's first words are name, qualname and module */
-    Str **r = (Str **)v;
-    put(b, "<class '", 8);
-    if (strcmp(r[2]->s, "builtins")) { put(b, r[2]->s, r[2]->len); put(b, ".", 1); }
-    put(b, r[1]->s, r[1]->len); put(b, "'>", 2); return d;
-  }
-  case 'i': { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)v)); return d; }
-  case 'J': {                                       /* a promoting int's two words (jbig) */
-    opt_in(); Big x = jbig(v);
-    if (x.hi) { Str *s = mpz_digits(x.hi); if (!s) digits_deep(); put(b, s->s, s->len); }
-    else { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)x.lo)); }
-    return d;
-  }
-  case 'j': {                                       /* a dynamic wide int's immutable Mpz */
-    opt_in(); Str *s = mpz_digits((Mpz *)v); if (!s) digits_deep(); put(b, s->s, s->len); return d;
-  }
-  case 'f': { Str *s = pys_str_float(dbl(v)); put(b, s->s, s->len); return d; }
-  case 'b': put(b, v ? "True" : "False", v ? 4 : 5); return d;
-  case 's': if (v) repr_str(b, (Str *)v); else put(b, "None", 4); return d;   /* (see hval) */
-  case 'y': if (v) repr_bytes(b, (Str *)v); else put(b, "None", 4); return d;
-  case 'L': {                                       /* a list or dict being printed already (through an object) is [...] or {...} */
-    List *l = (List *)v;
-    if (!pys_repr_enter(l)) { put(b, "[...]", 5); return skip(d); }
-    put(b, "[", 1);
-    for (I i = 0; i < l->len; i++) {
-      if (i) put(b, ", ", 2);
-      Mpz *m = lbig(l, i);   /* (an int past 64 bits: BIGIDS) */
-      if (m) { Str *s = mpz_digits(m); if (!s) digits_deep(); put(b, s->s, s->len); } else repr_depth(b, l->a[i], d, depth);
-    }
-    put(b, "]", 1); pys_repr_leave(l); return skip(d);
-  }
-  case 'D': {
-    Dict *m = (Dict *)v; const char *dv = skip(d);
-    if (!pys_repr_enter(m)) { put(b, "{...}", 5); return skip(dv); }
-    put(b, "{", 1);
-    for (I e = 0, k = 0; e < m->n; e++) {
-      if (!dlive(m, e)) continue;
-      if (k++) put(b, ", ", 2);
-      I key = m->keys[e], val = m->vals[e];         /* (a key's __repr__ may empty the dict) */
-      Mpz *big = dbig(m, e), *kbm = kbig(m, e);     /* (a value, a key past 64 bits) */
-      if (kbm) { Str *s = mpz_digits(kbm); if (!s) digits_deep(); put(b, s->s, s->len); } else repr_depth(b, key, d, depth);
-      put(b, ": ", 2);
-      if (big) { Str *s = mpz_digits(big); if (!s) digits_deep(); put(b, s->s, s->len); } else repr_depth(b, val, dv, depth);
-    }
-    put(b, "}", 1); pys_repr_leave(m); return skip(dv);
-  }
-  case 'S': case 'F': {                             /* set() or {1, 2}; frozenset() or frozenset({1, 2}) */
-    Set *s = (Set *)v; int f = d[-1] == 'F';
-    if (!s->len) { put(b, f ? "frozenset()" : "set()", f ? 11 : 5); return skip(d); }
-    /* (one being printed already, through an element's __repr__, is set(...), as CPython's set_repr
-       prints it: #1586) */
-    if (!pys_repr_enter(s)) { put(b, f ? "frozenset(...)" : "set(...)", f ? 14 : 8); return skip(d); }
-    put(b, f ? "frozenset({" : "{", f ? 11 : 1);
-    for (I i = 0, n = 0; i <= s->mask; i++) if (s->hs[i] != -1) {
-      if (n++) put(b, ", ", 2);
-      Mpz *m = sbig(s, i);   /* (an int past 64 bits: kb) */
-      if (m) { Str *t = mpz_digits(m); if (!t) digits_deep(); put(b, t->s, t->len); } else repr_depth(b, s->keys[i], d, depth);
-    }
-    put(b, f ? "})" : "}", f ? 2 : 1); pys_repr_leave(s); return skip(d);
-  }
-  case 'T': {
-    if (!v) { put(b, "None", 4); return skip(d - 1); }
-    int n = *d++ - '0'; I *t = (I *)v, w[2]; put(b, "(", 1);
-    for (int i = 0; i < n; i++) { if (i) put(b, ", ", 2); d = repr_depth(b, titem(t, n, i, d, w), d, depth); }
-    put(b, n == 1 ? ",)" : ")", n == 1 ? 2 : 1); return d;
-  }
-  case 'V': {
-    if (!v) { put(b, "None", 4); return skip(d); }
-    VTuple *t = (VTuple *)v;
-    if (!pys_repr_enter(t)) { put(b, "(...)", 5); return skip(d); }
-    put(b, "(", 1);
-    for (I i = 0; i < t->len; i++) { if (i) put(b, ", ", 2); repr_depth(b, t->a[i], d, depth); }
-    put(b, t->len == 1 ? ",)" : ")", t->len == 1 ? 2 : 1);
-    pys_repr_leave(t); return skip(d);
-  }
-  case 'O': case 'P': case 'H': { Str *s = pys_obj_repr(ocls(d), v, 0); put(b, s->s, s->len); return skip(d - 1); }
-  case '?': if (v) return repr_depth(b, unbox(v, d), d, depth); put(b, "None", 4); return skip(d);
-  case 'E': { Str *s = pys_exc_repr((Exc *)v); put(b, s->s, s->len); return d; }
-  case 'C': { Str *s = pys_exc_type((Exc *)v); put(b, s->s, s->len); return d; }   /* an exception class (its class object) */
-  }
-  return d;
-}
-static const char *repr(Buf *b, I v, const char *d) { return repr_depth(b, v, d, 0); }
-Str *pys_repr(I v, Str *d) { Buf b = {0}; repr(&b, v, d->s); return done(&b); }
+void pys_rt_repr_to(Buf *b, I v, const char *d);   /* runtime.py's: repr(v) of descriptor d onto b */
+static inline void repr(Buf *b, I v, const char *d) { pys_rt_repr_to(b, v, d); }
+/* and the entry points the compiler calls, runtime.py's: repr(v), a == b and a OP b by a descriptor,
+   and a == b of two descriptors */
+Str *pys_repr(I v, Str *d);
+I pys_eq(I a, I b, Str *d);
+I pys_cmpop(I a, I b, Str *d, I op);
+I pys_eq_pair(I a, I b, Str *x, Str *y);
 /* A class's reflection record (the compiler's reflection.py; lowered by lower_module.py): an
    internal constant per class that reaches a reflective site, whose address is the class's
    identity (type(x)). Its name table lists the names the class's objects answer to, sorted by
@@ -2957,262 +2773,48 @@ static I entry(Dict *d, I k);
 static I dfind(Dict *d, I k, uint64_t h, I *free);
 static I dbfind(Dict *d, Mpz *m, uint64_t h, I *free);
 I pys_set_cmp(Set *a, Set *b, I op);
-static int list_same_item(List *a, I i, List *b, I j) {
-  return a->ids && b->ids && opt_in() && ((a == b && i == j) ||
-         (a->ids[i + 1] && a->ids[i + 1] == b->ids[j + 1]));
+/* runtime.py's walks, for this file's (d: a descriptor's bytes): a == b (eqv), the same as a
+   container's items, identity first (eqitem), of two descriptors (eqpair), an int past 64 bits
+   against a value (big_eq), and a OP b for op 0..3 = < <= > >= (opv); eqresolve gives the value and
+   the descriptor past a value's boxes, and whether a recursive alias's edge led there */
+I pys_rt_eqv(I a, I b, const char *d);
+I pys_rt_eqitem(I a, I b, const char *d);
+I pys_rt_eqpair(I a, I b, const char *x, const char *y);
+I pys_rt_big_eq(Mpz *m, I b, const char *y);
+I pys_rt_opv(I a, I b, const char *d, I op);
+const char *pys_rt_eqresolve(I v, const char *d, I *out);
+static inline int eqv(I a, I b, const char *d) { return pys_rt_eqv(a, b, d) != 0; }
+static inline int eqitem(I a, I b, const char *d) { return pys_rt_eqitem(a, b, d) != 0; }
+static inline int eqpair(I a, I b, const char *x, const char *y) { return pys_rt_eqpair(a, b, x, y) != 0; }
+static inline int big_eq(Mpz *m, I b, const char *y) { return pys_rt_big_eq(m, b, y) != 0; }
+static inline int opv(I a, I b, const char *d, I op) { return pys_rt_opv(a, b, d, op) != 0; }
+typedef struct { I value; const char *desc; int edge; } EqValue;
+static EqValue eqresolve(I v, const char *d) {
+  I w[2]; const char *r = pys_rt_eqresolve(v, d, w);
+  return (EqValue){w[0], r, (int)w[1]};
 }
-static int eqv(I a, I b, const char *d);
-static int eqpair(I a, I b, const char *x, const char *y);
-static int eqitem(I a, I b, const char *d);
-static int list_item_eq(List *x, I i, List *y, I j, const char *d) {   /* x[i] == y[j] of lists of one type */
-  Mpz *m = lbig(x, i), *n = lbig(y, j);   /* (ints past 64 bits, BIGIDS: equal to their values only) */
-  if (m || n) return m && n && pys_mpz_cmp(m, n) == 0;
-  return list_same_item(x, i, y, j) || eqitem(x->a[i], y->a[j], d);
-}
-/* Container items use identity before equality (PyObject_RichCompareBool). Keep this
-   separate from direct comparison: equal unboxed float bits need not compare equal,
-   and an optional scalar's box does not give that scalar Python object identity. */
-static int eqitem(I a, I b, const char *d) {
-  d = recdesc(d);
-  char c = d[*d == '?'];
-  if (c == 'U') return eqpair(a, b, d, d);
-  if (c == 'A') return dyn_eqitem((Dyn *)a, (Dyn *)b);
-  return (a == b && (c == 'L' || c == 'D' || c == 'T' || c == 'V' || c == 'S' || c == 'F')) || eqv(a, b, d);
-}
+/* what the walks ask of this file: an item of dynamic values compared as a container's, an Mpz
+   against a float without allocating, and EQ_PROBE (tools/eqprobe.c's count of comparisons) */
+I pys_rt_dyn_eqitem(Dyn *a, Dyn *b) { return dyn_eqitem(a, b); }
+static I mpz_cmp_float(Mpz *m, double d);
+I pys_rt_mpz_cmp_float(Mpz *m, double d) { return mpz_cmp_float(m, d); }
 #ifndef EQ_PROBE
 #define EQ_PROBE()
 #endif
-static int eqv(I a, I b, const char *d) {
-  d = recdesc(d);
-  EQ_PROBE();
-  switch (*d) {
-  case 'U': return eqpair(a, b, d, d);
-  case 'A': return pys_dyn_eq((Dyn *)a, (Dyn *)b);
-  case 'J': { opt_in(); Big x = jbig(a), y = jbig(b); return pys_big_cmp(x.lo, x.hi, y.lo, y.hi) == 0; }
-  case 'f': return dbl(a) == dbl(b);
-  case 's': return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;   /* (None in a looked-up key, see hval) */
-  case 'L': {   /* an __eq__ may change either list: as CPython's list_richcompare, re-read both
-                   lengths at every step, and once a list has no item left, compare them */
-    List *x = (List *)a, *y = (List *)b; I i = 0;
-    if (x->len != y->len) return 0;
-    while (i < x->len && i < y->len && list_item_eq(x, i, y, i, d + 1)) i++;
-    return (i >= x->len || i >= y->len) && x->len == y->len;
-  }
-  case 'D': {   /* (as CPython's dict_equal, with the hashes x keeps, where y's are of the same kind) */
-    Dict *x = (Dict *)a, *y = (Dict *)b; const char *dv = skip(d + 1);
-    int same = x->kind == y->kind || (x->kind > 1 && y->kind > 1 && !strcmp(kdesc(x->kind), kdesc(y->kind)));
-    if (x->len != y->len) return 0;
-    for (I e = 0; e < x->n; e++) {
-      if (!dlive(x, e)) continue;
-      I val = x->vals[e]; Mpz *xb = dbig(x, e), *xk = kbig(x, e);   /* (a key past 64 bits: dbfind) */
-      I f = xk ? dbfind(y, xk, x->hs[e], 0) : same ? dfind(y, x->keys[e], x->hs[e], 0) : entry(y, x->keys[e]);   /* (a key's __eq__ may empty x) */
-      if ((xk || same) && f >= 0) f = y->idx[f] - 1;
-      if (f < 0) return 0;
-      Mpz *yb = dbig(y, f);   /* (values past 64 bits: equal to their values only) */
-      if (xb || yb ? !(xb && yb && pys_mpz_cmp(xb, yb) == 0) : !eqitem(val, y->vals[f], dv)) return 0;
-    }
-    return 1;
-  }
-  case 'T': {
-    I *x = (I *)a, *y = (I *)b, n = d[1] - '0', wx[2], wy[2]; const char *e = d + 2;
-    if (!x || !y) return x == y;
-    for (I i = 0; i < n; i++, e = skip(e)) {
-      if (*e == 'J' && x[i] != INT64_MIN && y[i] != INT64_MIN) { if (x[i] != y[i]) return 0; continue; }   /* (promoting ints that fit: their slots) */
-      if (!eqitem(titem(x, n, i, e, wx), titem(y, n, i, e, wy), e)) return 0;
-    }
-    return 1;
-  }
-  case 'V': {   /* as CPython's tuplerichcompare: the items both have, then the lengths (lists
-                   test lengths first; tuples do not, so an object item's __eq__ runs anyway) */
-    VTuple *x = (VTuple *)a, *y = (VTuple *)b; I i = 0;
-    if (x == y) return 1;
-    if (!x || !y) return x == y;
-    while (i < x->len && i < y->len && ((x->ids && y->ids && x->ids[i + 1] && x->ids[i + 1] == y->ids[i + 1]) || eqitem(x->a[i], y->a[i], d + 1))) i++;
-    return i >= x->len && i >= y->len;
-  }
-  case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, 4);   /* (a set equals a frozenset of its elements) */
-  case 'O': case 'H': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */
-  case 'P': case 'C': case 'Y': return a == b;
-  case '?': return a && b ? eqv(unbox(a, d + 1), unbox(b, d + 1), d + 1) : a == b;   /* None equals only None */
-  case 'E': return pys_exc_id((Exc *)a) == pys_exc_id((Exc *)b);
-  }
-  return a == b;
-}
-typedef struct { I value; const char *desc; int edge; } EqValue;
-static EqValue eqresolve(I v, const char *d) {
-  /* Each operand has its own layout: an optional number is a one-slot box,
-     a union is a tag/payload box, and a concrete container is its original pointer.
-     edge: whether a recursive alias's edge (R) led here */
-  int edge = 0;
-  while (*d == '?' || *d == 'U' || *d == 'R') {
-    if (*d == 'R') { d = recdesc(d); edge = 1; continue; }
-    if (*d == '?') { if (!v) return (EqValue){0, "n", edge}; v = unbox(v, ++d); }
-    else { if (!v) return (EqValue){0, "n", edge}; I *box = (I *)v; d = utype(box[0], d); v = box[1]; }   /* (None: a union key's, #1452) */
-  }
-  return (EqValue){v, d, edge};
-}
-static int big_eq(Mpz *m, I b, const char *y) {   /* the int m past 64 bits == value b of descriptor y */
-  EqValue r = eqresolve(b, y);
-  return *r.desc == 'f' && mpz_cmp_float(m, dbl(r.value)) == 0;   /* (no 64-bit int or bool equals it) */
-}
-static int same_desc(const char *x, const char *y) {
-  size_t n = (size_t)(skip(x) - x);
-  return n == (size_t)(skip(y) - y) && !memcmp(x, y, n);
-}
-static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
-  /* Only closed builtin value trees reach this path (the compiler rejects user
-     callbacks), and objects that compare by identity (P: a union key's member).
-     Never decode b with x: equal Python types may have different native element
-     layouts, including nested unions and boxed optionals. */
-  EQ_PROBE();
-  EqValue ax = eqresolve(a, x), by = eqresolve(b, y);
-  a = ax.value; x = ax.desc; b = by.value; y = by.desc;
-  int tx = *x == 'T' || *x == 'V', ty = *y == 'T' || *y == 'V';
-  /* The original container's identity survives separate union boxes. Besides
-     matching Python, this keeps a shared DAG from expanding into its logical tree.
-     Scalar boxes deliberately confer no numeric identity (notably for NaNs). */
-  if (a == b && (*x == *y || (tx && ty)) && (*x == 'L' || *x == 'D' || tx)) return 1;
-  /* Recursive values can form cycles after parsing. Distinct cycles raise, as
-     Python does, while shared descendants retain the identity shortcut above.
-     depth counts the recursive alias edges followed, as repr_depth's does, and is
-     checked before any leaf is compared, so the 513th edge raises whatever it leads
-     to; a local depth argument survives native unwinding without mutable state. */
-  if (ax.edge || by.edge) {
-    if (depth >= 512) rec_deep("RecursionError: maximum recursion depth exceeded in comparison");
-    depth++;
-  }
-  if (*x == 'n' || *y == 'n') return *x == *y;
-  if ((*x == 'J' || *y == 'J') && opt_in()) {   /* a promoting int (jbig) and a number, exactly; another type equals it never */
-    Big p = jbig(*x == 'J' ? a : b); I v = *x == 'J' ? b : a; const char *e = *x == 'J' ? y : x;
-    if (*e == 'J') { Big q = jbig(v); return pys_big_cmp(p.lo, p.hi, q.lo, q.hi) == 0; }
-    if (*e == 'f') return (p.hi ? mpz_cmp_float(p.hi, dbl(v)) : pys_cmp_if(p.lo, dbl(v))) == 0;   /* (allocating nothing) */
-    return (*e == 'i' || *e == 'b') && !p.hi && p.lo == v;
-  }
-  int nx = *x == 'i' || *x == 'b', ny = *y == 'i' || *y == 'b';
-  if (nx && ny) return a == b;
-  if (nx && *y == 'f') return pys_cmp_if(a, dbl(b)) == 0;
-  if (*x == 'f' && ny) return pys_cmp_if(b, dbl(a)) == 0;
-  if (*x != *y && !(tx && ty)) return 0;
-  if (*x == 'f') return dbl(a) == dbl(b);
-  if (*x == 's') return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;
-  if (*x == 'P') return a == b;   /* (objects of union keys' classes, which compare by identity: #1452) */
-  if (*x == 'L') {
-    List *p = (List *)a, *q = (List *)b;
-    if (p->len != q->len) return 0;
-    for (I i = 0; i < p->len; i++) {
-      Mpz *m = lbig(p, i), *n = lbig(q, i);   /* (ints past 64 bits: BIGIDS) */
-      if (m || n) { if (m && n ? pys_mpz_cmp(m, n) != 0 : !big_eq(m ? m : n, m ? q->a[i] : p->a[i], m ? y + 1 : x + 1)) return 0; continue; }
-      if (!list_same_item(p, i, q, i) && !eqpair_depth(p->a[i], q->a[i], x + 1, y + 1, depth)) return 0;
-    }
-    return 1;
-  }
-  if (*x == 'D') {
-    Dict *p = (Dict *)a, *q = (Dict *)b; const char *kx = x + 1, *ky = y + 1;
-    const char *vx = skip(kx), *vy = skip(ky);
-    if (p->len != q->len) return 0;
-    int lookup = same_desc(kx, ky) || ((*kx == 'i' || *kx == 'b') && (*ky == 'i' || *ky == 'b'));
-    for (I i = 0; i < p->n; i++) {
-      if (!dlive(p, i)) continue;
-      I j = -1; Mpz *pk = kbig(p, i);
-      if (pk) { j = dbfind(q, pk, p->hs[i], 0); if (j >= 0) j = q->idx[j] - 1; }   /* (a key past 64 bits equals such a key only) */
-      else if (lookup) j = entry(q, p->keys[i]);
-      else for (I k = 0; k < q->n; k++) if (dlive(q, k) && !kbig(q, k) && eqpair_depth(p->keys[i], q->keys[k], kx, ky, depth)) { j = k; break; }
-      if (j < 0) return 0;
-      Mpz *m = dbig(p, i), *n = dbig(q, j);   /* (values past 64 bits: dbig) */
-      if (m || n) { if (m && n ? pys_mpz_cmp(m, n) != 0 : !big_eq(m ? m : n, m ? q->vals[j] : p->vals[i], m ? vy : vx)) return 0; continue; }
-      if (!eqpair_depth(p->vals[i], q->vals[j], vx, vy, depth)) return 0;
-    }
-    return 1;
-  }
-  if (tx) {
-    if (!a || !b) return a == b;
-    I nx = *x == 'T' ? x[1] - '0' : ((VTuple *)a)->len, ny = *y == 'T' ? y[1] - '0' : ((VTuple *)b)->len;
-    if (nx != ny) return 0;
-    I *p = *x == 'T' ? (I *)a : ((VTuple *)a)->a, *q = *y == 'T' ? (I *)b : ((VTuple *)b)->a, wx[2], wy[2];
-    const char *ex = x + (*x == 'T' ? 2 : 1), *ey = y + (*y == 'T' ? 2 : 1);
-    for (I i = 0; i < nx; i++) {
-      if (*x == 'V' && *y == 'V' && ((VTuple *)a)->ids && ((VTuple *)b)->ids && ((VTuple *)a)->ids[i + 1] && ((VTuple *)a)->ids[i + 1] == ((VTuple *)b)->ids[i + 1]) continue;
-      if (!eqpair_depth(*x == 'T' ? titem(p, nx, i, ex, wx) : p[i], *y == 'T' ? titem(q, ny, i, ey, wy) : q[i], ex, ey, depth)) return 0;
-      if (*x == 'T') ex = skip(ex);
-      if (*y == 'T') ey = skip(ey);
-    }
-    return 1;
-  }
-  __builtin_unreachable();   /* the compiler permits only the builtin value descriptors above */
-}
-static int eqpair(I a, I b, const char *x, const char *y) { return eqpair_depth(a, b, x, y, 0); }
-/* a == b of two strs (descriptor "s", which the compiler passes for every str == str and
-   str != str) is eqv's answer for 's', taken without its descriptor walk */
-I pys_eq(I a, I b, Str *d) {
-  if (d->s[0] == 's') return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;
-  return eqv(a, b, d->s);
-}
-I pys_eq_pair(I a, I b, Str *x, Str *y) { return eqpair(a, b, x->s, y->s); }
-/* a OP b for op 0..3 = < <= > >=, as CPython compares: sequences find the first pair of
-   items that are not equal (identity, then ==) and apply OP to that pair only, else compare
-   lengths; objects go through the program's rich comparison (reflection, TypeError) */
+void pys_rt_eq_probe(void) { EQ_PROBE(); }
 static int cmpop(I c, I op) { return op == 0 ? c < 0 : op == 1 ? c <= 0 : op == 2 ? c > 0 : c >= 0; }
 static const char *tyname(char d);
-static const char *vtyname(I v, const char *d) { return tyname(*d == 'U' ? *eqresolve(v, d).desc : *d); }   /* v's (a union's: its member's) */
-static int opv(I a, I b, const char *d, I op) {
-  switch (*d) {
-  case 'f': { double x = dbl(a), y = dbl(b); return op == 0 ? x < y : op == 1 ? x <= y : op == 2 ? x > y : x >= y; }
-  case 's': return cmpop(pys_str_cmp((Str *)a, (Str *)b), op);
-  case 'L': {
-    List *x = (List *)a, *y = (List *)b; I i = 0;
-    while (i < x->len && i < y->len && list_item_eq(x, i, y, i, d + 1)) i++;
-    if (i < x->len && i < y->len && (lbig(x, i) || lbig(y, i))) {   /* (an int past 64 bits: BIGIDS) */
-      Big p = litem(x, i), q = litem(y, i); return cmpop(pys_big_cmp(p.lo, p.hi, q.lo, q.hi), op);
-    }
-    if (i < x->len && i < y->len) return opv(x->a[i], y->a[i], d + 1, op);
-    return cmpop((x->len > y->len) - (x->len < y->len), op);
+/* opv's TypeError where no ordering holds, with the text CPython gives it: the operands' descriptor
+   letters (n: None), or the exceptions ea and eb; op 0..3 for < <= > >= */
+_Noreturn NOMERGE __attribute__((cold)) void pys_rt_order_error(I op, I ca, I cb, Exc *ea, Exc *eb) {
+  const char *o = op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=";
+  if (ea) {
+    int m, n; const char *x = exc_name(ea, &m), *y = exc_name(eb, &n);
+    failf("TypeError: '%s' not supported between instances of '%.*s' and '%.*s'", o, m, x, n, y);
   }
-  case 'J': { opt_in(); Big x = jbig(a), y = jbig(b); return cmpop(pys_big_cmp(x.lo, x.hi, y.lo, y.hi), op); }
-  case 'T': {
-    I *x = (I *)a, *y = (I *)b, n = d[1] - '0', wx[2], wy[2]; const char *e = d + 2;
-    for (I i = 0; i < n; i++, e = skip(e)) {
-      if (*e == 'J' && x[i] != INT64_MIN && y[i] != INT64_MIN) {   /* (as eqv's) */
-        if (x[i] != y[i]) return cmpop((x[i] > y[i]) - (x[i] < y[i]), op);
-        continue;
-      }
-      I p = titem(x, n, i, e, wx), q = titem(y, n, i, e, wy);
-      if (!eqitem(p, q, e)) return opv(p, q, e, op);
-    }
-    return cmpop(0, op);
-  }
-  case 'V': {
-    VTuple *x = (VTuple *)a, *y = (VTuple *)b; I i = 0;
-    if (x == y) return cmpop(0, op);
-    while (i < x->len && i < y->len && ((x->ids && y->ids && x->ids[i + 1] && x->ids[i + 1] == y->ids[i + 1]) || eqitem(x->a[i], y->a[i], d + 1))) i++;
-    if (i < x->len && i < y->len) return opv(x->a[i], y->a[i], d + 1, op);
-    return cmpop((x->len > y->len) - (x->len < y->len), op);
-  }
-  case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, op) != 0;   /* subsets */
-  case 'O': return pys_obj_cmp(ocls(d + 1), op, a, b) != 0;
-  case 'A': return pys_dyn_cmp((Dyn *)a, (Dyn *)b, op);
-  case 'K': return opv(((I *)a)[0], ((I *)b)[0], d + 1, op);   /* key='s records {key, value}: their keys */
-  case 'U': {   /* numbers of a union (the compiler orders no other): an int and a float exactly, as CPython */
-    EqValue x = eqresolve(a, d), y = eqresolve(b, d);
-    int nx = *x.desc != 'f', ny = *y.desc != 'f';
-    if (nx && ny) return cmpop((x.value > y.value) - (x.value < y.value), op);
-    if (!nx && !ny) return opv(x.value, y.value, "f", op);
-    I c = nx ? pys_cmp_if(x.value, dbl(y.value)) : pys_cmp_if(y.value, dbl(x.value));
-    return c != 2 && cmpop(nx ? c : -c, op);   /* (2: a NaN, for which no ordering holds) */
-  }
-  case 'D': failf("TypeError: '%s' not supported between instances of 'dict' and 'dict'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
-  case '?':
-    if (a && b) return opv(unbox(a, d + 1), unbox(b, d + 1), d + 1, op);
-    failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=",
-          a ? vtyname(a, d + 1) : "NoneType", b ? vtyname(b, d + 1) : "NoneType");
-  case 'C': case 'Y': failf("TypeError: '%s' not supported between instances of 'type' and 'type'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
-  case 'E': {
-    int m, n; const char *x = exc_name((Exc *)a, &m), *y = exc_name((Exc *)b, &n);
-    failf("TypeError: '%s' not supported between instances of '%.*s' and '%.*s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=", m, x, n, y);
-  }
-  }
-  return cmpop((a > b) - (a < b), op);
+  failf("TypeError: '%s' not supported between instances of '%s' and '%s'", o,
+        ca == 'n' ? "NoneType" : tyname((char)ca), cb == 'n' ? "NoneType" : tyname((char)cb));
 }
-I pys_cmpop(I a, I b, Str *d, I op) { return opv(a, b, d->s, op); }
 
 void pys_unpack_check(I have, I want) {
   char b[96];
@@ -3543,10 +3145,9 @@ List *pys_list_add(List *a, List *b);
 void pys_list_imul(List *l, I n);               /* xs *= n, in place */
 List *pys_list_mul(List *a, I n);               /* xs * n */
 /* The searches of a list are runtime.py's: slots compared as they are where the items are ints,
-   bools or strs and the list has no companion, else through pys_rt_list_item_eq, item by item
-   (an __eq__ may change the list) */
+   bools or strs and the list has no companion, else item by item through its eqitem (an __eq__
+   may change the list) */
 I pys_list_find(List *l, I v, Str *d);
-I pys_rt_list_item_eq(List *l, I i, I v, Str *d) { return !lbig(l, i) && eqitem(l->a[i], v, d->s); }
 I pys_list_find_pair(List *l, I v, Str *d, Str *vd) {
   for (I i = 0; i < l->len; i++) { Mpz *m = lbig(l, i); if (m ? big_eq(m, v, vd->s) : eqpair(l->a[i], v, d->s, vd->s)) return i; }
   return -1;
@@ -5965,9 +5566,9 @@ static void eput(EBuf *o, const char *s, I n) {
   }
 }
 static void erepr(EBuf *o, const char *k, const char *s, I n) {   /* k, then repr() of the string s[0, n) */
-  char q = rquote(s, n), t[12];
+  char q = (char)pys_rt_rquote(s, n), t[12];
   eput(o, k, strlen(k)); eput(o, &q, 1);
-  for (I i = 0, m; i < n; i += m) eput(o, t, resc(t, s + i, n - i, q, &m));
+  for (I i = 0, m; i < n; i += m) { I r = pys_rt_char_repr(t, s + i, n - i, q); eput(o, t, r & 255); m = r >> 8; }
   eput(o, &q, 1);
 }
 static void report(File *f, int e) {

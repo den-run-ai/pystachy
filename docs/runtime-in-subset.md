@@ -254,11 +254,13 @@ conservative scan sees it in a local as it sees a C pointer.
 | `get(p, "R.f")`, `set(p, "R.f", v)` | The word field `f` of record `R` at `p`. |
 | `getp(p, "R.f")`, `setp(p, "R.f", q)` | The address field `f` of record `R` at `p`. |
 | `field(p, "R.f")`, `sizeof("R")` | A field's address, and a record's size in bytes. |
+| `local("R")`, `words(n)` | A record, or `n` array words (a literal from 1 to 16), in the function's frame: C's `Buf b` and `I w[2]`. Unset until written; the collector scans them as it scans C's locals. |
 | `cpy(d, s, n)`, `move(d, s, n)` | `memcpy` and `memmove` of `n` bytes. |
 | `fill(p, c, n)`, `cmp(p, q, n)` | `memset`, and `memcmp`'s sign as an int. |
 
 A record is one of `runtime.c`'s structs, listed with its fields in `RTRECORDS`
-(`specs.py`): `Str`, `List`, `VTuple`, `Dict` and `Set`. The compiler addresses a field
+(`specs.py`): `Str`, `List`, `VTuple`, `Dict`, `Set`, the text `Buf` that `repr` grows, a
+dynamic value's `Dyn` and `DynType`, and a class's reflection record `ReflRec`. The compiler addresses a field
 through the record's LLVM type, so the target's layout places it; wasm32's four-byte
 pointers need no second spelling. `tools/check_runtime.py` compares each record with the
 struct that clang compiles. A field holds a word or an address, and reading one as the
@@ -287,6 +289,9 @@ with `wrap_add`, `wrap_sub` and `wrap_mul`. `@_rt.cold` keeps a slow path out of
 that hash a key are: copied into every use in a program's AOT build, they made
 executables larger for no speed. `@_rt.inline` gives each caller its own copy, which
 takes the caller's constant arguments.
+
+`ord()` of a one-character ASCII literal is its code, a constant: the walks below compare
+a descriptor's bytes with `ord("L")` and its kin.
 
 A function with a result whose loops only a `return` leaves ends in a `return` that is
 never reached. Without it the compiler raises for the missing result, and that raise
@@ -374,6 +379,30 @@ array of that dict is then atomic, through growth and `clear()`, as are the valu
 its copies (`dict.copy()`, `dict(d)`) and `list(d.values())`. `dict.fromkeys` and an open
 empty dict that a template returns are made scanned. Key arrays keep their own rule: those
 of int keys are atomic. `tests/programs/runtime/gc_dict_values.py` and `make dictprobe` cover dict values.
+
+## Repr, equality and ordering by descriptor
+
+The compiler describes a value's static type with a descriptor, a str of letters (`L` a
+list, `Ds` a dict of str keys, `T2if` a tuple, `?i` an optional int, `U2:1:i2:s` a tagged
+union, `R4:` an edge back to an enclosing descriptor). `repr()`, `==` and the orderings of
+a value whose code the compiler does not specialize walk it by its descriptor, and those
+walks are `runtime.py`'s: `pys_repr`, `pys_eq`, `pys_eq_pair` (two descriptors of one
+value, a union's member against an int) and `pys_cmpop`. They follow CPython's
+comparisons item by item: identity before `__eq__` in a container, the first unequal
+pair decides an ordering, a length is read again after each item's `__eq__`. A recursive
+alias's 513th edge raises `RecursionError`, as `runtime.c`'s walks did.
+
+`repr` grows its text in a `Buf` in its caller's frame (`_rt.local`), whose bytes double;
+`runtime.c`'s messages pass their own. A str's repr copies each run of printable
+characters at once, and escapes the others as CPython's `unicode_repr` does.
+
+`runtime.c` keeps what the walks call: the marks of the reprs under way, which an unwind
+clears; the program's own `__eq__`, ordering and `__repr__`; exceptions and dynamic
+values; an `Mpz`'s digits and comparison with a float; a float's text; the table of
+printable characters; and the errors whose text it formats without allocating. Its own
+walks, the hashes of keys, dynamic values and the sort, step through a descriptor with
+`runtime.py`'s `pys_rt_skip` and compare through `pys_rt_eqv`, `pys_rt_eqitem` and
+`pys_rt_opv`.
 
 <a id="building-and-caching"></a>
 ## Build and cache
@@ -473,6 +502,14 @@ values. After each operation the entries must be CPython's items in CPython's or
 every live entry must be on the probes of its hash, and holes and the entries past
 the last must hold nothing that the collector would keep.
 
+The walks run on values of random types laid out as `runtime.c` lays them out: lists,
+dicts, sets, both kinds of tuple with promoting ints among their items, optional boxes,
+unions and objects whose `__eq__`, ordering and `__repr__` are the program's. `repr` must
+give CPython's text, `==` and the orderings CPython's answer or error, and `==` of the same
+values under two descriptors (a union for an int, a counted tuple for a fixed one) the
+answer for one. A recursive alias's 512th edge must pass and its 513th raise, and every
+repr must end the marks it made.
+
 The model's own checks are tested by faults made on purpose, and by seeded bugs in
 the moved code, each of which the test's run finds
 (`tools/test_rtcheck_memory.py`).
@@ -511,11 +548,11 @@ container code move; the table gives the state and the order.
 | Exception unwinding and tracebacks | 860 | Stays: the Itanium ABI's tables and personality, and the line tables that a traceback reads. |
 | I/O, processes, time, `select`, `errno`, temporary directories | 2,340 | Stays: system calls and libc streams. Buffering policy and text decoding can move later. |
 | Unicode and other constant tables | 1,390 | Stay as data; `runtime.py` reads them through pure helpers. |
-| Lists | 720 | Next: the identity companion's entry points, `min`/`max`, then the sort. |
+| Lists and tuples | 840 | Next: the identity companion's entry points, counted tuples, `min`/`max`, then the sort. |
 | Strings | 620 | Slices, indexed text access and its hints, `chr`/`ord`, float text. Float formatting and parsing stay with libc. |
-| Keys by descriptor: their hashes, equality and probes | 460 | With the walks. The tables of sets and dicts, and their entry points, are `runtime.py`'s. |
-| Generic `repr`, equality and ordering | 750 | Next: walks of a value by its type descriptor. |
-| Dynamic values | 1,230 | After the walks: boxes, dispatch and the `Any` operators. |
+| Keys by descriptor: their hashes, equality and probes | 460 | Next: the walks they call are `runtime.py`'s. The tables of sets and dicts, and their entry points, are too. |
+| Descriptor walks' services | 230 | Stays: the marks of reprs under way, boxes, reflection records and the errors formatted without allocating. The walks are `runtime.py`'s. |
+| Dynamic values | 1,230 | After the keys: boxes, dispatch and the `Any` operators. |
 | Promoting ints and `math` | 930 | Last: needs `mpz/` beside it. libm wrappers keep their LLVM-specific guards. |
 
 Each step adds the records it needs to `RTRECORDS` and removes the accessors that
@@ -526,9 +563,9 @@ decides its place in the order:
 |---|---|
 | The checks moved with the code | The identity companion's entry points: `check_lean_companion.py` pins their text, and `test_runtime_list_identity.py` their cost, in `runtime.c`. |
 | The address of a static | Text indexing (its position hints and the one-byte strs), the sentinels, dynamic values (each builtin type's descriptor and the small ints' boxes). Accessor functions stand in today. |
-| A record in a local | The sort's merge state, and the buffer that `repr` and error messages grow. |
 | A word read at any alignment | The byte scans that test eight or 32 bytes at a time. |
 
 A result of two words, which promoting ints return (a 64-bit part and an `Mpz`), runtime
-mode has: the dict and set entry points that return one are `runtime.py`'s. Named integer
+mode has: the dict and set entry points that return one are `runtime.py`'s. So it has a
+record in a function's frame, which the sort's merge state needs next. Named integer
 constants at module level would also replace the repeated literals.

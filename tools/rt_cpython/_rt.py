@@ -32,7 +32,7 @@ def inline(f):
 
 
 MACHINE = ("nil", "ptr", "addr", "ref", "as_str", "word", "put", "byte_at", "put_byte", "i32_at", "put_i32", "at",
-           "offset", "get", "set", "getp", "setp", "field", "sizeof", "move", "cpy", "fill", "cmp")
+           "offset", "get", "set", "getp", "setp", "field", "sizeof", "move", "cpy", "fill", "cmp", "local", "words")
 
 
 def _machine(name):
@@ -135,6 +135,8 @@ def same(a, i, b, j, n):
 
 
 def find_byte(s, c, st, en):
+    if isinstance(s, Str):  # (a str in the heap: its bytes)
+        s = s.text()
     if not 0 <= st <= en <= len(s):
         raise IndexError("search out of range")
     if not 0 <= c <= 255:

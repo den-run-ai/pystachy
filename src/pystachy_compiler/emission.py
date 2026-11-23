@@ -662,7 +662,7 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
         self.err(f"_rt.{name}() takes ({sig[0].replace(',', ', ').replace('ref', 'a reference').replace(RTPTR, '_rt.Ptr')}), not ({', '.join([typestr(v.t) for v in vals])})")
     a = [v.v for v in vals]
     if name in ("nil", "ptr", "addr", "ref", "as_str", "word", "put", "byte_at", "put_byte", "i32_at", "put_i32", "at", "offset",
-                "get", "set", "getp", "setp", "field", "sizeof", "move", "cpy", "fill", "cmp"):
+                "get", "set", "getp", "setp", "field", "sizeof", "move", "cpy", "fill", "cmp", "local", "words"):
         return machine_primitive(self, name, vals)
     # (a str's length and bytes are tagged, and the length bounded, in runtime.py's module, which
     # defines the metadata: lib/_pystachy_bytearray.py's module has the same operations untagged)
@@ -846,6 +846,28 @@ def machine_primitive(self, name: str, vals: list[Val]) -> Val:
         return none
     if name == "cmp":
         return Val(self.scalar_cast("sext", Val(self.rt("memcmp", "i32", [f"ptr {a[0]}", f"ptr {a[1]}", f"i64 {a[2]}"]), "%i32"), "int"), "int")
+    if name == "local" or name == "words":
+        # storage in this function's frame, as runtime.c's local struct (Buf b) or array (I w[2]):
+        # n words that the function's entry block allocates, a stack tuple's (lowered to an alloca
+        # of [n x i64]), its contents unset. Its address may go to the functions this one calls,
+        # and the collector's scan of the native stack reads its words as it reads C's locals.
+        # A record's fields are words or pointers, so n words hold one on any target
+        n = 0
+        if name == "words":
+            n = int(a[0]) if a[0].isdigit() else 0
+            if n < 1 or n > 16:
+                self.err("_rt.words() takes the count of words, from 1 to 16, as an int literal")
+        else:
+            if not a[0].startswith("@rec.") or a[0][5:] not in RTRECORDS:
+                self.err("_rt.local() takes a record of the runtime (RTRECORDS) as a str literal")
+            n = len(RTRECORDS[a[0][5:]].split())
+        t = self.ctype("tuple", ["int"] * n)
+        self.n += 1
+        i = Ins("slot", t, "")
+        i.k = 2
+        i.r = one_num(self.n)
+        self.slot(i)
+        return self.cast(Val(f"%stk.{self.n}", t), RTPTR, "raw")
     # the others name a record of runtime.c's, or one of its fields, by a literal
     lit = a[0] if name == "sizeof" else a[1]
     if not lit.startswith("@rec."):
