@@ -2,9 +2,10 @@
 ; them not None (ircheck.optional_reads, UnionProof.check_some). Each function without an
 ; expected error verifies; tools/test_typed_ir_text.py removes their tests to see them fail.
 
-module {
-  class Node tagged fields=[" class":int name:opt[str]]
-  class Other tagged fields=[" class":int label:opt[str]]
+module version=1 {
+  class Node tag=1 fields=[" class":int name:opt[str]]
+  class Other tag=2 fields=[" class":int label:opt[str]]
+  class Holder tag=3 fields=[" class":int node:Node]
 }
 
 function @a_read_without_a_test(s: opt[str]) -> int {
@@ -246,4 +247,48 @@ L7:
   ret(int %t9)
 L8:
   ret(int -1)
+}
+
+function @an_old_objects_test_proves_nothing_of_the_slots_new_object(n: Node, m: Node, c: bool) -> int {
+  %x.1 = slot name=x : Node
+entry:
+  mem.store(&Node %x.1, Node %a0)
+  %t2 = mem.load(&Node %x.1) : Node
+  mem.store(&Node %x.1, Node %a1)
+  cbr(bool %a2) -> L3, L4
+L3:
+  br -> L5
+L4:
+  br -> L5
+L5:
+  %t6 = field.addr index=1 (Node %t2) : &opt[str]
+  %t7 = mem.load(&opt[str] %t6) : opt[str]
+  %t8 = ptr.cmp == (opt[str] %t7, None null) : bool
+  cbr(bool %t8) -> L9, L10
+L9:
+  ret(int 0)
+L10:
+  %t11 = mem.load(&Node %x.1) : Node
+  %t12 = field.addr index=1 (Node %t11) : &opt[str]
+  %t13 = mem.load(&opt[str] %t12) : opt[str]
+  ; expected-error {{rt operand 0 reads %t13 as str without a proof that it is not None}}
+  %t14 = rt entry=text.len (str %t13) : int
+  ret(int %t14)
+}
+
+function @a_field_of_an_object_read_from_a_field(h: Holder) -> int {
+entry:
+  %t1 = field.addr index=1 (Holder %a0) : &Node
+  %t2 = mem.load(&Node %t1) : Node
+  %t3 = field.addr index=1 (Node %t2) : &opt[str]
+  %t4 = mem.load(&opt[str] %t3) : opt[str]
+  %t5 = ptr.cmp == (opt[str] %t4, None null) : bool
+  cbr(bool %t5) -> L6, L7
+L6:
+  ret(int 0)
+L7:
+  %t8 = field.addr index=1 (Node %t2) : &opt[str]
+  %t9 = mem.load(&opt[str] %t8) : opt[str]
+  %t10 = rt entry=text.len (str %t9) : int
+  ret(int %t10)
 }

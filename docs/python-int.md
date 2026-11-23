@@ -164,7 +164,10 @@ positions and counts stay 64-bit.
 Methods of a generic class specialized for ints read their containers with
 `bigints.read_policy`. Class templates with unannotated `__init__` parameters and
 generic functions keep their own module's policy; each call binds the argument's
-actual type.
+actual type. The root of a [template hierarchy](language/typing.md#subclasses-of-class-templates)
+follows the generic-class rule instead, also for a tuple's items (`*args`): `Shape("s", 3)` and
+a subclass whose `super().__init__("s", size)` passes a parameter annotated `int` share one
+specialization and so one hierarchy ([test](../tests/programs/classes/template_subclass_bigint.py)).
 
 ### Callable boundaries
 

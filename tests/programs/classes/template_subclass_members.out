@@ -1,0 +1,9 @@
+item:a item 3 ['a', 'item']
+box:b box 1 ['b', 'box']
+crate<crate:c> crate 100 ['lid', 'c', 'crate']
+box:a box 9 ['a', 'box']
+50 False True True 2
+a c
+3 item box crate 0
+crate<crate:c> ['item:a', 'box:a', 'box:b', 'crate<crate:c>']
+[exit 0]

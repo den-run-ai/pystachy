@@ -1,0 +1,9 @@
+cat says ... False False True
+cat says ... False False True
+rex says WOOF True False True
+max says woof True False True
+bit says yip woof True True True
+corgi says WOOF True False True
+True 0 2 bit
+8 x WOOF True
+[exit 0]

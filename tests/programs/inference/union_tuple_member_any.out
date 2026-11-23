@@ -1,0 +1,4 @@
+(7, 'seven') (7, 'seven') True True 2
+[7, (7, 'seven')] seven
+8 False
+[exit 0]

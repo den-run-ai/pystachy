@@ -105,17 +105,21 @@ remain in the parser's identity-tracking import closure.
 
 When `pathlib`'s comment was removed, each remaining comment was also removed alone and the
 programs that import its module were run (JIT). The first diagnostic names the contract the
-module still needs, which its row above describes.
+module still needs, which its row above describes. The `logging` and `threading` rows were
+measured again once subclasses of class templates, also those whose own `__init__` is a template,
+and template-typed fields of declaration-time specializations were supported (#962);
+`threading`'s programs are those that import it, `logging`, `subprocess` or
+`concurrent.futures`.
 
 | Module | Programs failing | First diagnostic |
 |---|---|---|
 | `tomllib._re` | 1 of 8 | `comparing closed union values requires narrowing`: a consumer tests `is` on the `int \| float` result, and only tracked identity answers that for two numbers |
 | `tomllib._types` | 7 of 8 | `make_safe_parse_float() returns both` `float` and its wrapper function |
 | `tomllib._parser` | 7 of 8 | `NestedDict`: `typing.Any is only supported in the parameter and return annotations` (its field holds any parsed value) |
-| `logging` | 5 of 5 | `inheritance with generic class templates`: `StrFormatStyle` and `Logger` inherit fields that the constructor's arguments type |
+| `logging` | 5 of 5 | `_make_style() returns both StrFormatStyle[str, None] and StringTemplateStyle[str, None, Template]`: the styles' objects begin as two specializations of `PercentStyle`, which one result cannot hold; `lib_logging.py` first meets `Logger`, a class template whose base `Filterer` is not one, outside the [template hierarchy subset](language/typing.md#subclasses-of-class-templates) |
 | `_pystachy_percent` | 5 of 30 | `_Formatter`: `typing.Any is only supported in the parameter and return annotations` (its fields hold the argument pack) |
 | `inspect` | 12 of 12 | `cannot infer the type of '_VOID_PARAMETERS'`: a list of `Parameter` objects, whose default and annotation type the class |
-| `threading` | 2 of 16 | `inheritance with generic class templates`: `Semaphore` holds a `Condition`, whose lock types its field, and a program subclasses `Thread`, whose target and arguments type its fields |
+| `threading` | 7 of 26 | `Condition`: `typing.Any is only supported in the parameter and return annotations`, its field that holds the supplied lock, where `Semaphore`'s `_cond` is made; without it, `cannot infer the type of '_active'`: `dict[int, "Thread"]` names a class template, and one registry cannot hold threads of two specializations |
 | `json_repair.py` | 15 of 18 | `repair_json() returns both` a `(value, log)` tuple and a value |
 | `json_parser.py` | 18 of 18 | `JSONParser`: `typing.Any is only supported in the parameter and return annotations` |
 
