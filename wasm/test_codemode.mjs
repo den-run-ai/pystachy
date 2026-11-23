@@ -160,10 +160,12 @@ test("direct exceptions, object dispatch and key layouts match CPython", async t
         if (error.code === "ENOENT") return "";
         throw error;
       });
-      // CPython recordings keep the last stderr line. Check both ignored callbacks in full.
+      // CPython recordings keep the last stderr line. Check both ignored callbacks in full,
+      // and the rest without a traceback (tests/run.sh's untraced; see the traceback test below).
       const prefixError = name === "lib_atexit" ?
         "Exception ignored in atexit callback:\nSystemExit: 3\nException ignored in atexit callback:\n" : "";
-      assert.equal(await readFile(err, "utf8"), prefixError + expectedError);
+      const untraced = (await readFile(err, "utf8")).replace(/^Traceback \(most recent call last\):\n(?: {2}.*\n)*/gm, "");
+      assert.equal(untraced, prefixError + expectedError);
     });
   }
 });
@@ -227,4 +229,76 @@ test("the direct JSON codec reaches the recorded nesting limit on the default No
   const status = await run(await readFile(`${prefix}.py`, "utf8"), { stdout: output.fd });
   assert.equal(await readFile(join(dir, "out"), "utf8") + `[exit ${status}]\n`,
     await readFile(`${prefix}.out`, "utf8"));
+});
+
+// tools/test_source_lines.py's executables, directly emitted: the same tracebacks, each frame
+// found from the engine's stack (runtime.c, run.mjs) and the module's pystachy.lines section
+const traced = `import sys
+
+
+def divide(a: int, b: int, c: int) -> int:
+    x = a // b
+    y = a // c
+    return x + y
+
+
+def lookup(d: dict[str, int], k: str) -> int:
+    return d[k]
+
+
+def down(n: int) -> int:
+    return down(n + 1) + 1
+
+
+def chain(k: str) -> int:
+    try:
+        return lookup({"a": 1}, k)
+    finally:
+        print("finally")
+
+
+if sys.argv[1] == "divide":
+    print(divide(6, 2, 3))
+    print(divide(6, 2, 0))
+elif sys.argv[1] == "lookup":
+    print(lookup({"a": 1}, "b"))
+elif sys.argv[1] == "down":
+    print(down(0))
+else:
+    print(chain("b"))
+`;
+
+test("uncaught errors in direct programs print CPython's tracebacks", async t => {
+  const dir = await mkdtemp(join(tmpdir(), "pystachy-traceback-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const cases = {
+    divide: [[[27, "<module>", "print(divide(6, 2, 0))"], [6, "divide", "y = a // c"]],
+      "ZeroDivisionError: integer division or modulo by zero"],
+    lookup: [[[29, "<module>", 'print(lookup({"a": 1}, "b"))'], [11, "lookup", "return d[k]"]], "KeyError: 'b'"],
+    down: [[[31, "<module>", "print(down(0))"], ...Array(3).fill([15, "down", "return down(n + 1) + 1"])],
+      "RecursionError: maximum recursion depth exceeded"],
+    chain: [[[33, "<module>", 'print(chain("b"))'], [20, "chain", 'return lookup({"a": 1}, k)'],
+      [11, "lookup", "return d[k]"]], "KeyError: 'b'"],
+  };
+  for (const [name, text] of [["try", traced], ["plain", traced.replace("    try:\n", '    if k == "":\n').replace("    finally:\n", "    else:\n")]]) {
+    const path = join(dir, `${name}.py`), wasm = join(dir, `${name}.wasm`);
+    await writeFile(path, text);
+    const build = spawnSync("wasm/build.sh", ["direct", path, wasm], { encoding: "utf8" });
+    assert.equal(build.status, 0, build.stderr);
+    for (const [arg, [frames, last]] of Object.entries(cases)) {
+      if (name === "plain" && arg === "chain") continue;
+      const run = spawnSync(process.execPath, ["--no-warnings", "wasm/run.mjs", wasm, arg], { encoding: "utf8" });
+      const expected = ["Traceback (most recent call last):"];
+      for (const [line, fn, source] of frames) expected.push(`  File "${path}", line ${line}, in ${fn}`, `    ${source}`);
+      if (arg === "down") expected.push("  [Previous line repeated 996 more times]");
+      assert.equal(run.status, 1, run.stderr);
+      assert.equal(run.stderr, [...expected, last, ""].join("\n"), `${name} ${arg}`);
+    }
+  }
+  // a code mode snippet has no file whose lines it could show
+  const err = await open(join(dir, "err"), "w");
+  t.after(() => err.close());
+  const snippet = "def f(x: int) -> int:\n    return 10 // x\n\nprint(f(0))\n";
+  assert.equal(await createCodeMode({ fallback: false })(snippet, { stderr: err.fd }), 1);
+  assert.equal(await readFile(join(dir, "err"), "utf8"), 'Traceback (most recent call last):\n  File "<codemode>.py", line 4, in <module>\n  File "<codemode>.py", line 2, in f\nZeroDivisionError: integer division or modulo by zero\n');
 });

@@ -66,6 +66,32 @@ def emit(text):
     return bytes(T.Emitter(T.parse(text)).module())
 
 
+def lines_section(module):
+    # (files, function names, rows) of a module's pystachy.lines section (Emitter.lines_section)
+    at = module.index(b"\x0epystachy.lines") + 15
+
+    def word():
+        nonlocal at
+        at += 4
+        return int.from_bytes(module[at - 4:at], "little")
+
+    def strings():
+        nonlocal at
+        out = []
+        for _ in range(word()):
+            n = word()
+            out.append(module[at:at + n].decode())
+            assert module[at + n] == 0
+            at += n + 1
+        return out
+
+    assert word() == 1
+    files = strings()
+    names = strings()
+    rows = [[word() for _ in range(4)] for _ in range(word())]
+    return files, names, rows
+
+
 class TirWasm(unittest.TestCase):
     def test_object_dispatch_metadata_uses_ids_and_quoted_names(self):
         module = T.parse('module complete objects=["odd: name":1 C:0] compared=[C] hashed=["odd: name"] {\n'
@@ -304,6 +330,59 @@ entry:
                 # (list.get and list.clear collect only as they raise; the allocation's frame is empty)
                 self.assertEqual([i.keep for i in main.blocks[0].code], kept)
                 self.assertEqual(emitter.rooted, {"@make", "@main.init"})   # (both may allocate and return)
+
+    def test_lines_section_names_each_call_at_its_module_offset(self):
+        # runtime.c's tracebacks find a frame's line by the module offset of its call (V8's
+        # positions), through compact locals' rewrite and guest roots' frames alike
+        # (make: a chain of 140 values, whose locals compaction renumbers below 128, shortening
+        # their indices; main: three blocks, whose block headers its prologue writes)
+        chain = "".join(f"  %t{k + 1} = scalar.bin add (int %t{k}, int 1) : int\n" for k in range(140))
+        text = """module complete {
+}
+function @make(n: int) -> list[int] {
+entry:
+  rt entry=recursion.enter : int
+  %t0 = scalar.bin add (int %a0, int 1) : int
+""" + chain + """  %t141 = rt entry=list.new_atomic (int %t140) : list[int]
+  ret (list[int] %t141)
+}
+function @main.init() -> None kind=block {
+entry:
+  %t0 = call callee=@make (int 1) : list[int]
+  br -> second
+second:
+  %t1 = call callee=@make (int 2) : list[int]
+  rt entry=list.clear (list[int] %t0) : None
+  br -> third
+third:
+  rt entry=list.clear (list[int] %t1) : None
+  ret
+}
+"""
+        for roots in (False, True):
+            with self.subTest(roots=roots):
+                m = T.parse(text)
+                m.files = ["/a/main.py", "/a/lib.py"]
+                for fn in m.funcs:
+                    fn.pyname = {"@make": "Maker.make", "@main.init": "<module>"}[fn.name]
+                    fn.line = 3
+                    code = [i for b in fn.blocks for i in b.code]
+                    for n, i in enumerate(code):
+                        i.line = (1 if fn.name == "@make" else 0) * T.LINES + 10 + n
+                out = bytes(T.Emitter(m, False, roots).module())
+                files, names, rows = lines_section(out)
+                self.assertEqual(files, m.files)
+                self.assertEqual(sorted(names), ["<module>", "Maker.make"])
+                self.assertEqual(rows, sorted(rows))
+                for offset, fn, file, line in rows:
+                    self.assertIn(out[offset], (0x10, 0x11), hex(offset))   # each a call's opcode
+                    self.assertEqual(file, 1 if names[fn] == "Maker.make" else 0)
+                    self.assertGreaterEqual(line, 10)
+                # main's two calls of make and two of list.clear; make's allocation and its
+                # recursion limit's error call (in the prologue's line, or its entry check's)
+                main_rows = [r for r in rows if names[r[1]] == "<module>"]
+                self.assertEqual([r[3] for r in main_rows], [10, 12, 13, 15])
+                self.assertIn(10 + 142, [r[3] for r in rows if names[r[1]] == "Maker.make"])
 
     def test_global_root_slots_are_pointer_typed_and_relocated(self):
         decls = "  global @n type=int\n  global @items type=list[int]\n  root @items"

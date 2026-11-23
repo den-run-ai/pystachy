@@ -29,6 +29,7 @@ import os
 import struct
 import sys
 
+from src.pystachy_compiler.diagnostics import LINES
 from src.pystachy_compiler.machine_ir import WORD_READS
 from src.pystachy_compiler.specs import CONTAINER_HEADERS, GENDONE, GENNAME, GENNEW, GENRET, GENSTATE, GENVAL, OP_TEMPS, RTSYM, RUNTIME
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, generator_slots, is_tuple, lt, rtll, rtsig, rtsym, tslots
@@ -98,6 +99,7 @@ class Inst:
         self.targets: list[str] = []
         self.t = ""
         self.keep: list[str] = []   # the values a frame keeps during its call (Emitter.spill_sets)
+        self.line = 0  # its source line, as diagnostics.LINES numbers lines (0: unknown)
 
     def is_invoke(self) -> bool:
         return len(self.targets) != 0 and self.op in ("rt", "call", "icall", "init", "gen.resume")
@@ -122,6 +124,8 @@ class Func:
         self.frame_bytes = 0
         self.blocks: list[Block] = []
         self.cold: dict[str, str] = {}
+        self.line = 0  # its def's line, which its prologue's calls report
+        self.pyname = ""  # its Python name, which a traceback shows ("": none of its frames)
 
     def block_indices(self) -> dict[str, int]:
         labels: dict[str, int] = {}
@@ -289,6 +293,7 @@ class Module:
         self.builtkinds: dict[str, str] = {}
         self.funcs: list[Func] = []
         self.plain_generators: dict[str, int] = {}
+        self.files: list[str] = []  # the source files that a line's index names (lines section)
 
     def set_object_tables(self, objects: dict[str, int], compared: dict[str, bool], hashed: dict[str, bool]) -> None:
         # Descriptors hold the numeric ID, independent of declaration or attribute order.
@@ -678,6 +683,12 @@ def name_bytes(out: bytearray, s: str) -> None:
     out.extend(b)
 
 
+def word(out: bytearray, v: int) -> None:
+    # a little-endian 32-bit word
+    for k in range(4):
+        out.append((v >> (8 * k)) & 0xFF)
+
+
 def section(out: bytearray, sid: int, body: bytearray) -> None:
     out.append(sid)
     uleb(out, len(body))
@@ -951,7 +962,12 @@ def generator_functions(m: Module, targets: dict[str, str], handles: set[str]) -
             slot = "@wasm.resume.address." + fn.name
             targets[slot] = resume.name
             handles.add(fn.ret)
-            functions.append(split_generator(fn, resume, slot, m))
+            constructor = split_generator(fn, resume, slot, m)
+            constructor.line = fn.line
+            resume.line = fn.line
+            constructor.pyname = fn.pyname
+            resume.pyname = fn.pyname
+            functions.append(constructor)
             functions.append(resume)
         else:
             functions.append(fn)
@@ -1028,6 +1044,10 @@ class Emitter:
         self.dispatch_local = -1
         # per function
         self.fn = Func("")
+        self.line = 0                   # the line of the instruction being emitted
+        self.site_at: list[int] = []    # its calls' offsets in self.code, at self.site_line's lines
+        self.site_line: list[int] = []
+        self.sites: list[list[int]] = []  # each body's calls: offset in the body, line, ...
         self.locals: dict[str, int] = {}
         self.ltypes: list[int] = []
         self.compact_locals = False
@@ -1364,6 +1384,13 @@ class Emitter:
     def op(self, b: int) -> None:
         self.code.append(b)
 
+    def call_op(self, b: int) -> None:
+        # a call (b) whose offset a traceback's frame may name: noted with the current line
+        if self.line > 0:
+            self.site_at.append(len(self.code))
+            self.site_line.append(self.line)
+        self.code.append(b)
+
     def local_op(self, opcode: int, k: int) -> None:
         self.code.append(opcode)
         if self.remap:
@@ -1630,6 +1657,7 @@ class Emitter:
         if self.late:
             late = [(name, self.ltypes[self.locals[name]], self.locals[name] in self.refs)
                     for name in self.late if name in self.locals]
+            self.sites.pop()
             out = self.emit_function(fn, late)
             if self.late:
                 raise Refused(f"guest root {self.late[0]} without a definition in {fn.name}")
@@ -1645,6 +1673,9 @@ class Emitter:
         self.compact_locals = False
         self.ltypes = []
         self.code = bytearray()
+        self.site_at = []
+        self.site_line = []
+        self.line = 0
         self.depth_local = -1
         # (a parameter of type None is not passed, as lowering's IFn.ps: its uses read a null local)
         for j in range(len(fn.ptypes)):
@@ -1698,15 +1729,29 @@ class Emitter:
                     self.inst(i)
         packed = self.ltypes
         blocks = self.code
+        calls = self.site_at
         if self.compact_locals:
             self.remap, packed = register_colors(fn, self.bindex, self.locals, self.ltypes)
             blocks = bytearray()
             at = 0
+            moved: list[int] = []
+            k = 0
             for site in self.local_sites:
+                while k < len(calls) and calls[k] < site[0]:
+                    moved.append(calls[k] + len(blocks) - at)
+                    k += 1
                 blocks.extend(self.code[at:site[0]])
                 uleb(blocks, self.remap[site[2]])
                 at = site[1]
+            while k < len(calls):
+                moved.append(calls[k] + len(blocks) - at)
+                k += 1
             blocks.extend(self.code[at:])
+            calls = moved
+        lines = self.site_line
+        self.site_at = []
+        self.site_line = []
+        self.line = fn.line  # the prologue's calls: a recursion limit's
         self.code = bytearray()
         if fn.name == "@main.init" and "@g.atexit$_hook" in self.m.globals:
             self.call_import(self.runtime("exit_hook"), [Operand("%ptr", "@g.atexit$_hook")])
@@ -1732,6 +1777,7 @@ class Emitter:
                 uleb(self.code, j)
             uleb(self.code, 0)
             self.op(0x0B)
+        prologue = len(self.code)
         self.code.extend(blocks)
         if self.dispatch_local >= 0:
             self.op(0x0B)
@@ -1756,7 +1802,20 @@ class Emitter:
         body.extend(self.code)
         out = bytearray()
         uleb(out, len(body))
+        head = len(out) + len(body) - len(self.code)
         out.extend(body)
+        # each call's offset in out, and its line: the prologue's, then the blocks'
+        sites: list[int] = []
+        if fn.pyname != "":
+            for k in range(len(self.site_at)):
+                sites.append(head + self.site_at[k])
+                sites.append(self.site_line[k])
+            for k in range(len(calls)):
+                sites.append(head + prologue + calls[k])
+                sites.append(lines[k])
+        self.sites.append(sites)
+        self.site_at = []
+        self.site_line = []
         self.remap = []
         self.compact_locals = False
         return out
@@ -1820,7 +1879,7 @@ class Emitter:
             raise Refused(f"call of {imp.sym} with {len(args)} arguments")
         for j in range(len(args)):
             self.push(args[j], imp.ll[j + 1])
-        self.op(0x10)
+        self.call_op(0x10)
         uleb(self.code, self.fnindex[imp.sym])
 
     def invoke(self, i: Inst) -> None:
@@ -1871,6 +1930,7 @@ class Emitter:
         self.push(a, "ptr")
 
     def inst(self, i: Inst) -> None:
+        self.line = i.line
         size = self.spill(i)
         self.operation(i)
         self.release(size)
@@ -1916,14 +1976,14 @@ class Emitter:
                 params = [wasm_type(value_ll(a.t)) for a in args if a.t != "None"]
                 results: list[int] = [] if i.t == "None" else [wasm_type(value_ll(i.t))]
                 self.push(i.args[0], "ptr")
-                self.op(0x11)  # call_indirect expects the index after the arguments
+                self.call_op(0x11)  # call_indirect expects the index after the arguments
                 uleb(self.code, self.types.of(params, results))
                 uleb(self.code, 0)
             else:
                 callee = i.fields.get("callee", "")
                 if callee not in self.fnindex:
                     raise Refused(f"call of {callee}")
-                self.op(0x10)
+                self.call_op(0x10)
                 uleb(self.code, self.fnindex[callee])
             if i.t != "None" and i.t != "":
                 if len(i.res) == 0:
@@ -1942,14 +2002,14 @@ class Emitter:
             else:
                 self.push(i.args[0], "ptr")
                 self.mem(0x28, 2, (promise_words(self.m) + 1) * 8)
-                self.op(0x11)  # call_indirect (frame) using this instance's producer
+                self.call_op(0x11)  # call_indirect (frame) using this instance's producer
                 uleb(self.code, self.types.of([I32], []))
                 uleb(self.code, 0)
         elif op == "init":
             callee = "@init." + i.fields.get("module", "")
             if callee not in self.fnindex:
                 raise Refused(f"module init {callee}")
-            self.op(0x10)
+            self.call_op(0x10)
             uleb(self.code, self.fnindex[callee])
         elif op == "cast":
             # (a cast reads its operand at another type of the same LLVM type: no instruction)
@@ -2138,7 +2198,7 @@ class Emitter:
                 raise Refused(f"allocation of {i.t}")
             imp = self.alloc_import()
             self.i64c(size)
-            self.op(0x10)
+            self.call_op(0x10)
             uleb(self.code, self.fnindex[imp.sym])
             self.set(self.local(i.res[0], I32))
         elif op == "tuple.load" or op == "tuple.store":
@@ -2156,7 +2216,7 @@ class Emitter:
             p = self.local(i.res[0], I32)
             imp = self.alloc_import()
             self.i64c(8 * (len(i.args) + 2))
-            self.op(0x10)
+            self.call_op(0x10)
             uleb(self.code, self.fnindex[imp.sym])
             self.set(p)
             self.get(p)
@@ -2219,7 +2279,7 @@ class Emitter:
             self.op(0x59)  # (i64.ge_s)
             self.op(0x04)
             self.op(VOID)
-            self.op(0x10)
+            self.call_op(0x10)
             uleb(self.code, self.fnindex[self.runtime("recursion.error").sym])
             self.op(0x00)
             self.op(0x0B)
@@ -2516,7 +2576,7 @@ class Emitter:
         self.i32c(offset)
         self.op(0x6A)
         self.i32c(count)
-        self.op(0x10)
+        self.call_op(0x10)
         uleb(self.code, self.fnindex[sym])
 
     def initializer(self) -> bytearray:
@@ -2531,7 +2591,7 @@ class Emitter:
             self.register_table("pys_wasi_set_global_roots", self.root_table, len(self.m.roots))
         if self.guest_roots:
             # Tell the reactor that this module's frames hold its references: it collects only then.
-            self.op(0x10)
+            self.call_op(0x10)
             uleb(self.code, self.fnindex["pys_wasi_set_guest_roots"])
         self.op(0x0B)
         out = bytearray()
@@ -2641,8 +2701,13 @@ class Emitter:
             section(out, 9, elements)
         code = bytearray()
         uleb(code, len(bodies))
+        starts: list[int] = []
         for b in bodies:
+            starts.append(len(code))
             code.extend(b)
+        size = bytearray()
+        uleb(size, len(code))
+        base = len(out) + 1 + len(size)  # the code section's contents, in the module
         section(out, 10, code)
         data = bytearray()
         uleb(data, 1)
@@ -2667,6 +2732,50 @@ class Emitter:
             marker = bytearray()
             name_bytes(marker, "pystachy.eh")
             section(out, 0, marker)
+        lines = self.lines_section(base, starts)
+        if len(lines) > 0:
+            section(out, 0, lines)
+        return out
+
+    def lines_section(self, base: int, starts: list[int]) -> bytearray:
+        # pystachy.lines: what a traceback reads (runtime.c) of the frames its host finds, whose
+        # offsets in the module are their calls'. Little-endian words: the version (1), the files
+        # (a count, then each one's length, its UTF-8 and a NUL), the functions' Python names (as the
+        # files), then rows sorted by offset: offset, function, file, line. A line's file index past
+        # the last file names the last. Empty where no call has a line or no file is known.
+        names: list[str] = []
+        rows: list[list[int]] = []
+        for j in range(len(self.funcs)):
+            sites = self.sites[j]
+            if len(sites) == 0:
+                continue
+            fn = len(names)
+            names.append(self.funcs[j].pyname)
+            for k in range(0, len(sites), 2):
+                line = sites[k + 1]
+                rows.append([base + starts[j] + sites[k], fn, min(line // LINES, len(self.m.files) - 1), line % LINES])
+        if len(rows) == 0 or len(self.m.files) == 0:
+            return bytearray()
+        rows.sort()
+        out = bytearray()
+        name_bytes(out, "pystachy.lines")
+        word(out, 1)
+        word(out, len(self.m.files))
+        for f in self.m.files:
+            text = f.encode()
+            word(out, len(text))
+            out.extend(text)
+            out.append(0)
+        word(out, len(names))
+        for n in names:
+            text = n.encode()
+            word(out, len(text))
+            out.extend(text)
+            out.append(0)
+        word(out, len(rows))
+        for r in rows:
+            for v in r:
+                word(out, v)
         return out
 
 

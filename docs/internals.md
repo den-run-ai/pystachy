@@ -373,6 +373,12 @@ frames below its handler. The runtime and the compiler's wrappers have no lines 
 frames. Chained exceptions' tracebacks, CPython's `~^` markers, JIT code, macOS and
 `PYSTACHY_DEBUG_LINES=0` print the last line alone.
 
+A directly emitted WebAssembly program has no return addresses or DWARF. Its Node host reads
+the engine's stack instead: a raise of a new exception asks it to keep the stack, and the
+report asks for the program's frames, each as the module offset of its call. The emitter's
+`pystachy.lines` section maps those offsets to lines and functions ([wasm/README.md](../wasm/README.md)).
+LLVM-built WebAssembly commands and the Wasmtime host print the last line alone.
+
 Handlers match exception classes and rethrow unmatched exceptions. `finally` and `with`
 cleanup run on the relevant normal and exceptional exits. Nested `finally` handling avoids
 exponential duplication. The C runtime is compiled with exception support in both tiers.
