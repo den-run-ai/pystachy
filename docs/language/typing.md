@@ -1677,7 +1677,10 @@ An annotated `NamedTuple` class supports defaults, methods, unpacking, constant 
 iteration, length, comparisons with tuples, `hash()` (its fields' tuple's), `_make()` (of an
 iterable with as many items as it has fields, else CPython's `TypeError`), `_replace()`, `_fields`
 and `_asdict()` when all fields share a type. Only construction can assign its fields. There is
-no functional `NamedTuple("Name", ...)` form, slicing, or a NamedTuple without fields.
+no functional `NamedTuple("Name", ...)` form, slicing, or a NamedTuple without fields. A class
+that defines `__eq__` but not `__ne__` keeps tuple's `!=`, which compares a tuple and declines
+another value, as an `IntEnum`'s, `IntFlag`'s or `StrEnum`'s keeps int's or str's
+([test](../../tests/programs/classes/ne_builtin_base.py)).
 
 `collections.namedtuple()` makes such a class at compile time: a module's top-level
 `NAME = namedtuple(typename, field_names, *, rename=False, defaults=None, module=None)` with
