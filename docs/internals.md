@@ -551,6 +551,12 @@ The default user-function inlining threshold is 20,000 lines of generated IR; la
 skip that pass. The scalar recursion-accounting helpers remain inlined, including with
 `PYSTACHY_JIT_INLINE=0`; the recursion entry follows the user-function threshold (see
 below). The precompiled runtime is not inlined into JIT code.
+A program within the threshold also gets loop passes after the cleanup (the driver's
+`JIT_LOOPS`). A range loop's step exits on overflow, although the loop's own test already bounds
+it: correlated propagation removes that exit, SCCP and `simplifycfg` fold what it leaves,
+`loop-rotate` then rotates the loop, and LICM hoists what each iteration reloaded, such as a list's
+items pointer. `PYSTACHY_JIT_OPT=0` skips them. A larger program skips them too: on a module of
+63,000 lines they took about 0.1 s more at each launch.
 
 ### The JIT runner
 
@@ -740,7 +746,7 @@ including 4 KiB and 64 KiB pages, and runs deep recursion in JIT and AOT under a
 errors and recovery under finite and unlimited host limits, with program GC stress.
 
 `PYSTACHY_JIT_OPT=2` runs LLVM's `-O2` pipeline over the program's module in place of the JIT
-tier's cleanup (inlining, `mem2reg`, `instcombine` and `simplifycfg`): loop optimizations,
+tier's cleanup (inlining, `mem2reg`, `instcombine`, `simplifycfg` and the loop passes above): loop optimizations,
 vectorization and an inliner without the `PYSTACHY_JIT_INLINE` budget, as an AOT build gets, but
 over the program alone, since this tier still calls the precompiled runtime. Optimizing costs time
 at each launch that only a program whose loops run long enough repays, so the default stays `1`
@@ -990,7 +996,7 @@ are required before promotion. `make verify` keeps the standard tier.
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
 | `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper; `0` disables it (the scalar recursion helpers remain inlined) |
-| `PYSTACHY_JIT_OPT=1\|2` | `1` (default) runs the JIT tier's cleanup over the program; `2` runs LLVM's `-O2` pipeline in its place, which takes longer at each launch (no `PYSTACHY_JIT_INLINE` budget applies) |
+| `PYSTACHY_JIT_OPT=0\|1\|2` | `1` (default) runs the JIT tier's cleanup over the program, then loop passes where the program is within the `PYSTACHY_JIT_INLINE` threshold; `0` runs the cleanup alone; `2` runs LLVM's `-O2` pipeline in its place, which takes longer at each launch (no `PYSTACHY_JIT_INLINE` budget applies) |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` generates the program's code at `-O0`: the JIT runner's `-O0`, or `llc -O0` for `lli`'s ORC to link; `2` (default) keeps ORC's level |
 | `PYSTACHY_JIT_LAUNCHER=auto\|lli` | What runs `pystachy run`'s programs: `auto` (default), Pystachy's [JIT runner](#the-jit-runner) where it can be built, else `lli`; `lli` always `lli` |
 | `PYSTACHY_PROGRAM_CACHE=0` | Disable the default Linux native [program cache](program-cache.md); unset, empty or `1` enables it where supported. Its [settings](program-cache.md#settings) section lists the variables that key or bypass it |
