@@ -211,6 +211,25 @@ class GenericStateTests(unittest.TestCase):
         # keys or function signatures. This does not bound distinct/deep keys.
         self.assertEqual(retained[0], retained[1])
 
+    def test_closure_fallthrough_keeps_one_instance_per_argument_type(self):
+        source = """
+        def run() -> None:
+            def checked(n):
+                if n > 0:
+                    return n
+            def concrete(n):
+                if n > 0:
+                    return n
+            print(checked(1) + 1, checked(0) is None, checked(1.0) is not None)
+            print(concrete(1) + 1)
+        run()
+        """
+        status, _, messages, generations = self.compile(source)
+        self.assertEqual(status, 0, messages)
+        closures = {c.name: list(c.f.insts.values()) for c in generations[-1].closures}
+        self.assertCountEqual([f.ret for f in closures["checked"]], ["opt[int]", "opt[float]"])
+        self.assertEqual([f.ret for f in closures["concrete"]], ["int"])
+
     def test_dormant_template_and_unselected_branch_stay_lazy(self):
         source = '''\
         from typing import Generic, TypeVar

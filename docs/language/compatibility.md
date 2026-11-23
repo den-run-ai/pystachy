@@ -178,7 +178,7 @@ applies. Bytes case methods remain ASCII-only.
   creates separate bound-method objects.
 - **Missing return:** a value-returning function reaching its end raises
   `RuntimeError`. Supported optional returns and templates returning objects or
-  optional values return `None`; see [typing](typing.md#function-and-method-templates).
+  optional values return `None`, as do [nested helpers in supported nullable contexts](typing.md#function-and-method-templates).
 - **Operators on `None`:** an optional left operand whose class defines an
   arithmetic/bitwise operator raises `TypeError` when it is `None`, even if
   CPython would call the right operand's reflected method.

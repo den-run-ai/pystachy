@@ -64,6 +64,8 @@ class FnInfo:
         self.bad = ""  # why a template cannot be compiled (it is an error only if a call needs it)
         self.infer = False  # a template's function: its first return statement decides its return type
         self.rctx = ""  # a caller's result context, only for fresh return displays and forwarding calls
+        self.none_calls: dict[str, bool] | None = None  # direct calls tested against None in this function's body
+        self.checked_fallthrough = False  # the inferred result is nullable and other callers expect its concrete type
         self.rsoft = False  # a comparison hint retains the original result-inference policy
         self.rlocals: list[str] = []  # proven straight-line aliases forwarding a fresh result
         self.noret = False  # a template's function that has no return and cannot end (it raises, or loops)
@@ -148,6 +150,7 @@ class Closure:
     def __init__(self, f: FnInfo, name: str, qual: str):
         self.f = f  # its function: a template whose first parameter (.env) is the env
         self.name = name  # its __name__: the def's name, or <lambda>
+        self.observe_fallthrough = False  # the enclosing scope tests this named helper's result against None
         self.qual = qual  # its __qualname__: outer.<locals>.name
         # the __name__ and __qualname__ that functools.wraps() gives it ("": its own), or why
         # they are not known as Pystachy compiles (wunknown), where reading them is an error;

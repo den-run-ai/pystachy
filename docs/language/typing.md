@@ -1067,8 +1067,13 @@ A parameter passed as `None` can be reinitialized with a statically determined t
 including `if value is None: value = default` when the specialization resolves that branch.
 Assignments that require incompatible types across runtime branches or loops are rejected.
 A template returning objects or optional values returns `None`
-when it falls through; a template that always raises can use the result type expected by
-its caller.
+when it falls through. When the enclosing function tests a named nested helper's
+call directly with `is None` or `is not None`, the helper can also return an
+implicit `None` to that test. This covers inferred strings, bytes, and ordinary
+unboxed numbers. A recursive helper whose return type is already in use keeps
+its existing contract. Other uses still require a concrete result on that path.
+Annotate the helper's return type to use its nullable result across all callers.
+A template that always raises can use the result type expected by its caller.
 
 Ordinary methods with unannotated parameters, `*args` or `**kwargs` also specialize, excluding
 `self` or `cls`. A parameter annotated `object` is such a parameter too, as in

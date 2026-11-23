@@ -6065,7 +6065,11 @@ def gen_compare(self, n: Node) -> Val:
             # frozenset constant (see set_display)
             return self.cmp2(ops[0], a, self.set_display(n.kids[1], "", True))
         self.soft = n.kids[1]  # (a display there may hold what may be None where a holds none)
-        return self.cmp2(ops[0], a, self.expr(n.kids[1], w, resultsoft=True))
+        if rhs.kind == "call" and n.kids[0].kind == "None" and (ops[0] == "is" or ops[0] == "is not"):
+            self.cmpnode = rhs
+        right = self.expr(rhs, w, resultsoft=True)
+        self.cmpnode = self.nokey
+        return self.cmp2(ops[0], a, right)
     l3 = self.label()
     ph = Ins("phi", "bool", "")
     r = a
