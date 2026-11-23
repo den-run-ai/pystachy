@@ -430,6 +430,53 @@ require("node:assert/strict").equal(view.getBigInt64(64, true), 42n);
             emit(text.replace("int %t3) -> work, again", "int %t3) -> work"))
 
     @unittest.skipUnless(shutil.which("node"), "node runs the module")
+    def test_memmove_is_a_bulk_copy_and_c_ints_compare(self):
+        # bytearray slices move bytes with llvm.memmove and compare them with memcmp's C int
+        text = """module complete {
+  global @a type=int
+  global @b type=int
+  global @result type=int
+  runtime memmove
+  runtime memcmp
+}
+function @main.init() -> None kind=block {
+entry:
+  mem.store (&int @a, int 4242)
+  rt entry=memmove (&int @b, &int @a, int 8, %i1 false) : None
+  %t0 = rt entry=memcmp (&int @a, &int @b, int 8) : %i32
+  %t1 = scalar.cmp eq (%i32 %t0, %i32 0) : bool
+  %t2 = scalar.cmp slt (%i32 %t0, %i32 1) : bool
+  %t3 = select (bool %t1, bool %t2, bool false) : bool
+  %t4 = num.cast (bool %t3) : int
+  %t5 = mem.load (&int @b) : int
+  %t6 = scalar.bin add (int %t4, int %t5) : int
+  mem.store (&int @result, int %t6)
+  ret
+}
+"""
+        script = """
+const assert = require("node:assert/strict");
+const mod = new WebAssembly.Module(require("node:fs").readFileSync(process.argv[1]));
+assert.deepEqual(WebAssembly.Module.imports(mod).filter(i => i.kind === "function").map(i => i.name), ["pys_wasi_memcmp"]);
+const memory = new WebAssembly.Memory({ initial: 1 });
+const view = new DataView(memory.buffer);
+const memcmp = (a, b, n) => {
+  for (let k = 0; k < Number(n); k++) {
+    const d = view.getUint8(a + k) - view.getUint8(b + k);
+    if (d !== 0) return d;
+  }
+  return 0;
+};
+new WebAssembly.Instance(mod, { env: { memory, data: 64 }, rt: { pys_recursion_state: 0, pys_wasi_memcmp: memcmp } }).exports.init();
+assert.equal(view.getBigInt64(Number(process.argv[2]), true), 4243n);
+"""
+        emitter = T.Emitter(T.parse(text))
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "memmove.wasm"
+            path.write_bytes(bytes(emitter.module()))
+            subprocess.run(["node", "-e", script, str(path), str(64 + emitter.addr["@result"])], check=True, timeout=10)
+
+    @unittest.skipUnless(shutil.which("node"), "node runs the module")
     def test_tuple_frames_share_and_restore_the_runtime_stack(self):
         program = """module complete {
 }

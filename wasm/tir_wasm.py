@@ -42,6 +42,11 @@ VOID = 0x40
 # The reactor handles the other recursion operations. In particular, a failed
 # resume must finish the generator before raising on depth or stack exhaustion.
 INLINE_RECURSION = ("recursion.depth", "recursion.restore", "recursion.enter")
+# runtime entries the emitter writes as instructions: no import, no call, no collection
+INLINE_RT = ("fabs", "memmove")
+# icmp predicates on i32 operands as Wasm opcodes
+I32_CMP = {"eq": 0x46, "ne": 0x47, "slt": 0x48, "ult": 0x49, "sgt": 0x4A, "ugt": 0x4B,
+           "sle": 0x4C, "ule": 0x4D, "sge": 0x4E, "uge": 0x4F}
 # typed-IR value types that never hold a reference (guest roots leave them out)
 SCALARS = ("int", "bool", "float")
 # Runtime entries that may collect only on their way to raising, never and then return: a function
@@ -1259,7 +1264,7 @@ class Emitter:
                         key = i.fields.get("entry", "")
                         if key in INLINE_RECURSION:
                             a = a or key == "recursion.enter"
-                        elif key != "fabs":
+                        elif key not in INLINE_RT:
                             a = True
                             r = r or self.rt_key(i) not in RETURNS_UNCOLLECTED
                     elif i.op in ("icall", "gen.resume", "alloc.fixed", "vtuple.make"):
@@ -1322,7 +1327,7 @@ class Emitter:
                         self.recursion = True
                         if i.fields["entry"] == "recursion.enter":
                             self.runtime("recursion.error")
-                    elif i.op == "rt" and i.fields.get("entry", "") != "fabs":
+                    elif i.op == "rt" and i.fields.get("entry", "") not in INLINE_RT:
                         self.runtime(self.rt_key(i))
                     elif i.op == "alloc.fixed" or i.op == "vtuple.make":
                         self.alloc_import()
@@ -1522,7 +1527,7 @@ class Emitter:
         invoke = i.is_invoke()
         if i.op == "rt":
             key = i.fields.get("entry", "")
-            if key in INLINE_RECURSION or key == "fabs":
+            if key in INLINE_RECURSION or key in INLINE_RT:
                 return False
             return invoke or self.rt_key(i) not in RETURNS_UNCOLLECTED
         if i.op in ("call", "init"):
@@ -1888,6 +1893,14 @@ class Emitter:
                 self.push(i.args[0], "double")
                 self.op(0x99)  # (f64.abs)
                 self.result(i, 0, "float")
+                return
+            if key == "memmove":
+                # memmove(dst, src, n, volatile): Wasm's bulk copy also allows overlap
+                self.push(i.args[0], "ptr")
+                self.push(i.args[1], "ptr")
+                self.push(i.args[2], "i64")
+                self.op(0xA7)  # (i32.wrap_i64)
+                self.code.extend(b"\xfc\x0a\x00\x00")  # (memory.copy 0 0)
                 return
             imp = self.runtime(self.rt_key(i))
             args = i.args
@@ -2403,6 +2416,8 @@ class Emitter:
             self.op(int_cmp(ucmp[o], True))
         elif (ll == "i1" or ll == "ptr") and (o == "eq" or o == "ne"):
             self.op(0x46 if o == "eq" else 0x47)
+        elif ll == "i32" and o in I32_CMP:
+            self.op(I32_CMP[o])  # a C int, such as memcmp's result
         elif ll == "double" and o in FCMP_OPS:
             self.op(FCMP_OPS[o])
         else:
