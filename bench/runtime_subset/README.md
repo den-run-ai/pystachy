@@ -548,3 +548,68 @@ A first version of this code was 20% slower than the C code for `dict-get` in AO
 entry point hashed the key and then looked it up through two inlined functions, and each
 tested the key kind: LLVM kept both tests and the paths between them. Each kind of key now
 hashes and calls its own probe in one function, as `runtime.c`'s `dhfind` did.
+
+## Descriptor walks
+
+`repr()`, `==` and the orderings of a value that the compiler describes by its type
+descriptor moved next: the walks of lists, dicts, sets, tuples, optional values and unions.
+Their workload is [`walks.py`](walks.py):
+
+| Case | Default iterations | Work measured |
+|---|---:|---|
+| `walk-repr-ints` | 800,000 | `repr` of a list of 64 ints |
+| `walk-repr-strs` | 750,000 | `repr` of a list of 64 strs, some with a quote |
+| `walk-repr-floats` | 250,000 | `repr` of a list of 64 floats |
+| `walk-repr-nested` | 250,000 | `repr` of a dict of 16 lists of 4 tuples of an int and a str |
+| `walk-eq-tuples` | 800,000 | `==` of two lists of 64 tuples, equal at every other iteration |
+| `walk-eq-dicts` | 600,000 | `==` of two equal dicts of 16 lists of 16 ints |
+| `walk-sort-tuples` | 50,000 | `sorted()` of 256 tuples of an int and a str |
+| `walk-in-tuples` | 1,000,000 | `in` of a tuple in a list of 128 tuples |
+| `walk-order-lists` | 6,000,000 | `<` of two lists of 32 ints that differ in their last item |
+
+```sh
+taskset -c "$BENCH_CPU" python3.13 bench/runtime_subset/compare.py \
+  --before "$BENCH_BASELINE" --after . --pairs 7 \
+  --cases walk-repr-ints walk-repr-strs walk-repr-floats walk-repr-nested walk-eq-tuples \
+          walk-eq-dicts walk-sort-tuples walk-in-tuples walk-order-lists dict-tuple set-tuple \
+          list-find list-in list-remove \
+  --json /tmp/walks.json
+```
+
+The [recorded report](walks.json) compares
+`4cc273c688d63eb7f936c6106dcf9ff39baa82e1`, whose walks are `runtime.c`'s, with
+`cd2f8ea55b208ecd6496c59b05fe896b95c6373b`, both with freshly built compilers, on the same
+host, CPython and LLVM as the dicts' report. The run was pinned to CPU 2 and the load average
+was 0.61 when it began. Each workload produced the CPython checksum in both modes.
+
+| Case | AOT after / C | JIT after / C | AOT ns per iteration, C to after |
+|---|---:|---:|---:|
+| `walk-repr-ints` | 0.360 | 0.357 | 2526 to 935 |
+| `walk-repr-strs` | 0.721 | 0.670 | 1523 to 1092 |
+| `walk-repr-floats` | 1.013 | 1.015 | 3784 to 3781 |
+| `walk-repr-nested` | 0.511 | 0.508 | 5476 to 2798 |
+| `walk-eq-tuples` | 0.696 | 0.666 | 1080 to 752 |
+| `walk-eq-dicts` | 0.623 | 0.517 | 1232 to 788 |
+| `walk-sort-tuples` | 0.802 | 0.890 | 17362 to 14052 |
+| `walk-in-tuples` | 0.976 | 0.917 | 891 to 852 |
+| `walk-order-lists` | 0.502 | 0.438 | 132.8 to 66.4 |
+| `dict-tuple` | 1.015 | 0.972 | 15.8 to 16.1 |
+| `set-tuple` | 0.934 | 0.950 | 20.2 to 18.6 |
+| `list-find` | 0.874 | 0.939 | 57.8 to 50.6 |
+| `list-in` | 1.016 | 1.018 | 36.7 to 37.5 |
+| `list-remove` | 0.881 | 1.036 | 24.2 to 21.5 |
+
+Ratios are medians of 7 alternating pairs; single pairs range from 0.331 to 1.131. A list's
+`repr` writes an int's digits into its text where the C code formatted each with
+`snprintf`, and copies a str's printable runs at once. A container's item that is an int, a
+bool or a str is compared without a call of the generic comparison, and a tuple's walk steps
+past such an item's descriptor inline: lists and tuples compare 2 to 56% faster. A float's
+`repr` is the same `pys_str_float` call in both. `dict-tuple`, `set-tuple` and the list
+searches (whose items are ints, compared by their slots) are controls that the walks reach
+only through a key's or an item's comparison; they are within 4% of the C code or faster.
+
+A first version of this code compared lists and tuples 4 to 24% slower than the C code,
+at fewer instructions than it: `eqitem` called `eqv` for every item, and a tuple's walk
+called `pys_rt_skip` for every item's descriptor, where the C code had inlined `skip`.
+Inlined into the list searches, the item comparison also made a search of a `list[int]` by
+its slots 7% slower under the JIT; it is a function of its own again, as in `runtime.c`.
