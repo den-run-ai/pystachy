@@ -55,8 +55,9 @@ SCALARS = ("int", "bool", "float")
 # whose other calls cannot either needs no guest roots (rooted_functions). wasm/check_no_collect.py,
 # which wasm/build.sh runtime-wasm runs, proves each against runtime.wasm's code.
 RETURNS_UNCOLLECTED = (
-    "ceil", "exc.handled", "exc.in", "exc.restore", "try_mark", "f2i", "fdiv", "ffloordiv", "floor", "floordiv", "fmod", "fpow", "idiv", "mod", "ord", "pow",
+    "ceil", "exc.in", "f2i", "fdiv", "ffloordiv", "floor", "floordiv", "fmod", "fpow", "idiv", "mod", "ord", "pow",
     "powmod", "round", "round_int", "shl", "shr",
+    "exc.handled", "exc.restore", "try_mark",
     "dict.key", "dict.next", "dict.val", "list.clear", "list.del", "list.get", "list.pop", "list.reverse",
     "list.set", "range.has", "range.len", "set.key", "set.next", "vtuple.get",
     "str.contains", "str.count", "str.endswith", "str.find", "str.index", "str.rfind", "str.rindex",

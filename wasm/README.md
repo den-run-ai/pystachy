@@ -246,8 +246,9 @@ covers a 2,000-container round trip and catching `RecursionError` on deeper inpu
   frames from typed IR liveness, leaving out `int`, `bool` and `float` values, and a word's
   address, a promise or a cast whose base is kept too or is a parameter: the collector moves
   nothing and finds an object from any pointer into it. It counts a runtime call as
-  collecting and returning unless `tir_wasm.py`'s `RETURNS_UNCOLLECTED` names it. `check_no_collect.py` checks that list against the code of each `runtime.wasm`
-  the build links. The reactor registers the program's global pointer slots.
+  collecting and returning unless `tir_wasm.py`'s `RETURNS_UNCOLLECTED` names it.
+  `check_no_collect.py` checks that list against the code of each `runtime.wasm` the build
+  links. The reactor registers the program's global pointer slots.
   The collector scans the stack up to `__stack_high`. `runtime.c` collects only in a module
   the pass rewrote and, under the reactor, only when the program's start function reports
   its roots: `WASM_GUEST_ROOTS=0` emits a program without them, which runs without collection.
