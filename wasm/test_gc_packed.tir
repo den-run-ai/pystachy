@@ -1,0 +1,16 @@
+module complete {
+}
+function @make() -> %slot {
+entry:
+  %t0 = rt entry=list.new_atomic (int 10003) : list[int]
+  %t1 = slot.pack (list[int] %t0) : %slot
+  ret (%slot %t1)
+}
+function @main.init() -> None kind=block {
+entry:
+  %t0 = call callee=@make : %slot
+  rt entry=gc_collect : None
+  %t1 = slot.unpack (%slot %t0) : list[int]
+  rt entry=list.clear (list[int] %t1) : None
+  ret
+}

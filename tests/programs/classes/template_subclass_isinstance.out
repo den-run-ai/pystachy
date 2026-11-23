@@ -1,0 +1,9 @@
+n True False False False False
+l True True False False True
+b True False True False True
+d True True False True True
+True True False False
+True False True
+True True False True
+Leaf Branch Deep Node
+[exit 0]
