@@ -342,8 +342,8 @@ The pinned link keeps this result tied to the source used for the timings.
 
 ## List and str operations
 
-The list header and item array code, and `str` concatenation and repetition, moved from
-`runtime.c` to `runtime.py` on its [machine-memory primitives](../../docs/runtime-in-subset.md#machine-memory).
+The list header and item array code, the list searches, and `str` concatenation and
+repetition moved from `runtime.c` to `runtime.py` on its [machine-memory primitives](../../docs/runtime-in-subset.md#machine-memory).
 Their workload is [`lists.py`](lists.py), which `compare.py` selects for these cases:
 
 | Case | Default iterations | Work measured |
@@ -362,6 +362,12 @@ Their workload is [`lists.py`](lists.py), which `compare.py` selects for these c
 | `list-add` | 6,000,000 | `+` of two lists of 128 ints and of two of 256 strs |
 | `list-mul` | 8,000,000 | `*` of 128 ints by 3, and `*=` of 16 zeros by 2 |
 | `list-set-slice` | 15,000,000 | two slice assignments that shrink and grow the list, and a slice deletion |
+| `list-in` | 10,000,000 | `in` on 128 ints, every other query present |
+| `list-in-str` | 4,000,000 | `in` on 32 strs, half of the queries present |
+| `list-find` | 5,000,000 | `index` and `count` of an int among 128 |
+| `list-remove` | 8,000,000 | `remove` of one of the first 64 of 128 ints, and an append |
+| `list-range` | 10,000,000 | `list(range(a, a + 40, 3))` |
+| `list-bytes` | 8,000,000 | `list()` of 96 bytes |
 | `str-add` | 60,000,000 | `+` of two of 256 short strs |
 | `str-cat` | 30,000,000 | an f-string of three strs and two separators |
 | `str-mul` | 20,000,000 | a short str times 7, plus a one-byte str times 0 to 15 |
@@ -371,43 +377,52 @@ taskset -c "$BENCH_CPU" python3.13 bench/runtime_subset/compare.py \
   --before "$BENCH_BASELINE" --after . --pairs 7 \
   --cases list-append list-append-str list-short list-stack list-pop-front list-insert \
           list-slice list-slice-step list-extend list-reverse list-index list-add list-mul \
-          list-set-slice str-add str-cat str-mul \
+          list-set-slice list-in list-in-str list-find list-remove list-range list-bytes \
+          str-add str-cat str-mul \
   --json /tmp/lists.json
 ```
 
 The [recorded report](lists.json) compares
 `4998521d28413c6e32506105f836b6db9afeb1d7` with
-`57b0b8b97e789d62d403db1e223d3831ce96f72c`, both from clean checkouts with freshly
+`15d25badf0fc3dffe9ce5a6397e1681396ea3499`, both from clean checkouts with freshly
 built compilers, on a Linux x86-64 host of four Intel Xeon cores with CPython 3.13.16 and
-LLVM 18.1.3. The run was pinned to CPU 2 and the load average was 0.35 when it began.
+LLVM 18.1.3. The run was pinned to CPU 2 and the load average was 0.71 when it began.
 Each workload produced the CPython checksum in both modes.
 
 | Case | AOT after / C | JIT after / C | AOT ns per iteration, C to after |
 |---|---:|---:|---:|
-| `list-append` | 0.999 | 1.035 | 1.34 to 1.34 |
-| `list-append-str` | 1.019 | 0.980 | 3.17 to 3.23 |
-| `list-short` | 1.008 | 0.947 | 8.38 to 8.42 |
-| `list-stack` | 1.006 | 0.974 | 7.69 to 7.63 |
-| `list-pop-front` | 0.975 | 0.982 | 11.07 to 10.80 |
-| `list-insert` | 0.967 | 1.011 | 9.32 to 8.87 |
-| `list-slice` | 1.003 | 1.001 | 24.10 to 23.93 |
-| `list-slice-step` | 0.853 | 1.061 | 31.08 to 26.02 |
-| `list-extend` | 1.014 | 1.096 | 99.53 to 100.39 |
-| `list-reverse` | 1.010 | 0.872 | 137 to 136 |
-| `list-index` | 0.994 | 1.023 | 2.99 to 2.95 |
-| `list-add` | 1.014 | 0.959 | 446 to 457 |
-| `list-mul` | 1.034 | 0.990 | 206 to 211 |
-| `list-set-slice` | 0.918 | 0.953 | 67.09 to 61.31 |
-| `str-add` | 0.981 | 0.959 | 14.55 to 14.27 |
-| `str-cat` | 1.020 | 1.018 | 29.11 to 29.48 |
-| `str-mul` | 1.009 | 1.018 | 51.37 to 51.53 |
+| `list-append` | 0.998 | 1.047 | 1.35 to 1.35 |
+| `list-append-str` | 0.945 | 0.949 | 5.08 to 4.76 |
+| `list-short` | 1.005 | 0.936 | 10.56 to 10.77 |
+| `list-stack` | 1.014 | 0.844 | 7.61 to 7.80 |
+| `list-pop-front` | 0.980 | 0.980 | 11.00 to 10.78 |
+| `list-insert` | 1.004 | 0.990 | 9.32 to 9.35 |
+| `list-slice` | 1.005 | 0.990 | 24.25 to 24.05 |
+| `list-slice-step` | 0.887 | 0.869 | 35.96 to 31.90 |
+| `list-extend` | 1.000 | 1.000 | 98.32 to 98.40 |
+| `list-reverse` | 1.044 | 0.963 | 122 to 130 |
+| `list-index` | 1.004 | 1.036 | 3.02 to 3.05 |
+| `list-add` | 1.000 | 0.931 | 364 to 382 |
+| `list-mul` | 1.034 | 0.977 | 307 to 298 |
+| `list-set-slice` | 0.844 | 0.950 | 76.00 to 64.70 |
+| `list-in` | 0.988 | 0.971 | 37.20 to 37.05 |
+| `list-in-str` | 0.924 | 0.952 | 42.49 to 39.22 |
+| `list-find` | 1.011 | 1.002 | 50.48 to 50.98 |
+| `list-remove` | 0.966 | 0.981 | 24.47 to 23.63 |
+| `list-range` | 1.001 | 1.012 | 24.23 to 25.13 |
+| `list-bytes` | 0.975 | 1.041 | 114 to 112 |
+| `str-add` | 0.975 | 0.956 | 14.46 to 14.07 |
+| `str-cat` | 0.969 | 1.032 | 32.34 to 31.28 |
+| `str-mul` | 0.997 | 1.009 | 51.64 to 51.68 |
 
-Ratios are medians of 7 alternating pairs. Single pairs range from 0.790 to 1.447, widest
-in the cases that allocate in every iteration, where collections fall differently from
-run to run. In AOT, where LLVM inlines these functions into the program, every case is
-within 4% of the C code or faster. Under the JIT, which calls them, the medians range
-from 0.87 to 1.10. The AOT executable of the workload is 154,384 bytes before and 159,056
-after.
+Ratios are medians of 7 alternating pairs. Single pairs range from 0.755 to 1.389: the host
+was shared, and one side's times for a case that allocates in every iteration differ by up
+to half between pairs. An earlier recording of the same commits, taken while the host was
+busier, is not kept: its medians moved by up to 16% in four cases, each of which measured
+within 2% when run again alone. In AOT, where LLVM inlines these functions into the
+program, every case is within 5% of the C code or faster. Under the JIT, which calls them,
+the medians range from 0.84 to 1.05. The AOT executable of the workload is 163,824 bytes
+before and 168,680 after.
 
 The first version of this code was up to 20% slower under the JIT. It kept a list's
 length in a local across the call that grows the list; `runtime.c` reads the field again
