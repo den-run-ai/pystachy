@@ -7461,8 +7461,12 @@ def eqitem(a: int, b: int, d: _rt.Ptr) -> bool:
     d = recdesc(d)
     c = _rt.byte_at(d, 0)
     if c == ord("i") or c == ord("b"):
-        return a == b  # (eqv's answer for an int or a bool, and for a str below, without its call)
+        # (eqv's answer for an int or a bool, and for a str below, without its call: a comparison
+        # all the same, which EQ_PROBE counts, as eqv counts its own)
+        pys_rt_eq_probe()
+        return a == b
     if c == ord("s"):
+        pys_rt_eq_probe()
         return str_item_eq(a, b)
     if c == ord("?"):
         c = _rt.byte_at(d, 1)
