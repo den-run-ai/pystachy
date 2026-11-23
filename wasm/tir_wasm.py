@@ -1031,6 +1031,16 @@ class Emitter:
         self.handler_stack = -1
         self.frame_local = -1
         self.dispatch_local = -1
+        # structured control flow (Emitter.structure): each block's reverse postorder position,
+        # whether it is a loop header or a merge node, its dominator tree children, and the
+        # enclosing constructs a branch can name (kind 0: opaque, 1: a loop, 2: a block before a node)
+        self.structured = False
+        self.tree_pos: list[int] = []
+        self.tree_header: list[bool] = []
+        self.tree_merge: list[bool] = []
+        self.tree_children: list[list[int]] = []
+        self.ctx_kind: list[int] = []
+        self.ctx_node: list[int] = []
         # per function
         self.fn = Func("")
         self.locals: dict[str, int] = {}
@@ -1672,10 +1682,10 @@ class Emitter:
         self.phis = {}
         # Finalization marks functions whose activations can recur with recursion.enter.
         # Compact only those frames, so ordinary one-shot calls keep the short lowering path.
+        # SSA values share locals where their lifetimes do not meet (register_colors): fewer locals for
+        # V8's baseline compiler, which runs a long call's loops, and smaller frames for recursion
         if fn.blocks:
-            for i in fn.blocks[0].code:
-                if i.op == "rt" and i.fields.get("entry", "") == "recursion.enter":
-                    self.compact_locals = True
+            self.compact_locals = True
         for b in fn.blocks:
             for i in b.code:
                 if i.op != "phi" and i.targets and i is not b.code[-1]:
@@ -1689,18 +1699,19 @@ class Emitter:
                         self.phis[b.label] = []
                     self.phis[b.label].append(i)
         n = len(fn.blocks)
-        # Forward edges branch out of nested blocks. Only a backedge needs a
-        # dispatcher: emit the body first so goto can request one on demand.
         self.dispatch_local = -1
-        for j in range(n):
-            if j > 0:
-                self.op(0x0B)
-            self.cur = j
-            for i in fn.blocks[j].code:
-                if i.is_invoke():
-                    self.invoke(i)
-                else:
-                    self.inst(i)
+        self.structured = self.structure(fn)
+        if self.structured:
+            self.ctx_kind = []
+            self.ctx_node = []
+            self.do_tree(0)
+        else:
+            # Forward edges branch out of nested blocks. Only a backedge needs a
+            # dispatcher: emit the body first so goto can request one on demand.
+            for j in range(n):
+                if j > 0:
+                    self.op(0x0B)
+                self.emit_block(j)
         packed = self.ltypes
         blocks = self.code
         if self.compact_locals:
@@ -1724,7 +1735,7 @@ class Emitter:
         if self.dispatch_local >= 0:
             self.op(0x03)
             self.op(VOID)
-        for j in range(1, n):
+        for j in range(1, n if not self.structured else 1):
             self.op(0x02)
             self.op(VOID)
         if self.dispatch_local >= 0:
@@ -1792,6 +1803,163 @@ class Emitter:
         self.op(0x24)  # global.set rt.__stack_pointer
         uleb(self.code, 2)
 
+    def emit_block(self, j: int) -> None:
+        self.cur = j
+        for i in self.fn.blocks[j].code:
+            if i.is_invoke():
+                self.invoke(i)
+            else:
+                self.inst(i)
+
+    def structure(self, fn: Func) -> bool:
+        # Structured control flow (Ramsey, "Beyond Relooper", ICFP 2022). For a reducible CFG,
+        # blocks follow the dominator tree: a loop header opens a loop that its back edges
+        # continue; a node with two or more forward edges into it (a merge node) follows a block
+        # that they leave; any other node's code is placed at its one forward edge. False where an
+        # edge leaves mid-block or the CFG is irreducible (a generator's resume points): goto's
+        # dispatcher then serves its back edges.
+        n = len(fn.blocks)
+        if n == 0:
+            return False
+        succ: list[list[int]] = []
+        for j in range(n):
+            out: list[int] = []
+            code = fn.blocks[j].code
+            for k in range(len(code)):
+                i = code[k]
+                if i.op == "phi" or (len(i.targets) == 0 and i.op != "check"):
+                    continue
+                if k != len(code) - 1:
+                    return False
+                if i.op == "check":
+                    key = i.fields.get("key", "") or i.fields.get("message", "")
+                    if key not in fn.cold or fn.cold[key] not in self.bindex:
+                        return False
+                    out.append(self.bindex[fn.cold[key]])
+                for t in i.targets:
+                    if t not in self.bindex:
+                        return False
+                    out.append(self.bindex[t])
+            succ.append(out)
+        # reverse postorder from the entry
+        seen = [False] * n
+        nxt = [0] * n
+        post: list[int] = []
+        stack = [0]
+        seen[0] = True
+        while len(stack) > 0:
+            u = stack[len(stack) - 1]
+            if nxt[u] < len(succ[u]):
+                v = succ[u][nxt[u]]
+                nxt[u] += 1
+                if not seen[v]:
+                    seen[v] = True
+                    stack.append(v)
+            else:
+                post.append(u)
+                stack.pop()
+        rpo: list[int] = []
+        for k in range(len(post) - 1, -1, -1):
+            rpo.append(post[k])
+        pos = [-1] * n
+        for k in range(len(rpo)):
+            pos[rpo[k]] = k
+        preds: list[list[int]] = [[] for _ in range(n)]
+        for u in rpo:
+            for v in succ[u]:
+                preds[v].append(u)
+        # immediate dominators (Cooper, Harvey and Kennedy's iteration)
+        idom = [-1] * n
+        idom[0] = 0
+        changed = True
+        while changed:
+            changed = False
+            for k in range(1, len(rpo)):
+                u = rpo[k]
+                new = -1
+                for p in preds[u]:
+                    if idom[p] < 0:
+                        continue
+                    if new < 0:
+                        new = p
+                        continue
+                    a = p
+                    b = new
+                    while a != b:
+                        while pos[a] > pos[b]:
+                            a = idom[a]
+                        while pos[b] > pos[a]:
+                            b = idom[b]
+                    new = a
+                if new != idom[u]:
+                    idom[u] = new
+                    changed = True
+        header = [False] * n
+        forward = [0] * n
+        for u in rpo:
+            for v in succ[u]:
+                if pos[v] <= pos[u]:
+                    w = u
+                    while w != v and w != 0:
+                        w = idom[w]
+                    if w != v:
+                        return False  # a loop entered other than through its header
+                    header[v] = True
+                else:
+                    forward[v] += 1
+        children: list[list[int]] = [[] for _ in range(n)]
+        for k in range(1, len(rpo)):
+            children[idom[rpo[k]]].append(rpo[k])
+        self.tree_pos = pos
+        self.tree_header = header
+        self.tree_merge = [forward[v] >= 2 for v in range(n)]
+        self.tree_children = children
+        return True
+
+    def do_tree(self, x: int) -> None:
+        # x's code within the blocks that its merge-node children follow, the latest outermost
+        merges: list[list[int]] = []
+        for c in self.tree_children[x]:
+            if self.tree_merge[c]:
+                merges.append([self.tree_pos[c], c])
+        merges.sort()
+        nodes: list[int] = []
+        for k in range(len(merges) - 1, -1, -1):
+            nodes.append(merges[k][1])
+        if self.tree_header[x]:
+            self.op(0x03)
+            self.op(VOID)
+            self.ctx_kind.append(1)
+            self.ctx_node.append(x)
+            self.node_within(x, nodes, 0)
+            self.ctx_kind.pop()
+            self.ctx_node.pop()
+            self.op(0x0B)
+        else:
+            self.node_within(x, nodes, 0)
+
+    def node_within(self, x: int, nodes: list[int], k: int) -> None:
+        if k == len(nodes):
+            self.emit_block(x)
+            return
+        self.op(0x02)
+        self.op(VOID)
+        self.ctx_kind.append(2)
+        self.ctx_node.append(nodes[k])
+        self.node_within(x, nodes, k + 1)
+        self.ctx_kind.pop()
+        self.ctx_node.pop()
+        self.op(0x0B)
+        self.do_tree(nodes[k])
+
+    def br_to(self, kind: int, node: int, extra_depth: int) -> None:
+        for k in range(len(self.ctx_kind) - 1, -1, -1):
+            if self.ctx_kind[k] == kind and self.ctx_node[k] == node:
+                self.op(0x0C)
+                uleb(self.code, len(self.ctx_kind) - 1 - k + extra_depth)
+                return
+        raise Refused(f"no enclosing construct for {self.fn.blocks[node].label} in {self.fn.name}")
+
     def goto(self, label: str, extra_depth: int) -> None:
         # from block self.cur, to label: its phis' values (all read, then all set), then a br
         if label not in self.bindex:
@@ -1806,6 +1974,23 @@ class Emitter:
             self.push(p.args[k], value_ll(p.t))
         for j in range(len(phis) - 1, -1, -1):
             self.set(self.locals[phis[j].res[0]])
+        if self.structured:
+            if self.tree_pos[target] <= self.tree_pos[self.cur]:
+                self.br_to(1, target, extra_depth)  # a back edge: continue its loop
+            elif self.tree_merge[target]:
+                self.br_to(2, target, extra_depth)  # leave the block that the node follows
+            else:
+                # this is the node's one forward edge, from its immediate dominator: its code is here
+                for _ in range(extra_depth):
+                    self.ctx_kind.append(0)
+                    self.ctx_node.append(-1)
+                here_block = self.cur
+                self.do_tree(target)
+                self.cur = here_block
+                for _ in range(extra_depth):
+                    self.ctx_kind.pop()
+                    self.ctx_node.pop()
+            return
         n = len(self.fn.blocks)
         if target == self.cur + 1 and extra_depth == 0:
             return  # the successor follows immediately after this block
@@ -1892,6 +2077,24 @@ class Emitter:
             if key == "fabs":
                 self.push(i.args[0], "double")
                 self.op(0x99)  # (f64.abs)
+                self.result(i, 0, "float")
+                return
+            if key == "fdiv" or key == "m.sqrt":
+                # the IEEE 754 instruction, calling the runtime only where Python raises: for a zero
+                # divisor (ZeroDivisionError) or a number below zero (a math domain error)
+                imp = self.runtime(key)
+                self.push(i.args[-1], "double")
+                self.op(0x44)
+                self.code.extend(float_bytes("0.0"))
+                self.op(0x61 if key == "fdiv" else 0x63)  # (f64.eq, f64.lt)
+                self.op(0x04)
+                self.op(F64)
+                self.call_import(imp, i.args)
+                self.op(0x05)
+                for a in i.args:
+                    self.push(a, "double")
+                self.op(0xA3 if key == "fdiv" else 0x9F)  # (f64.div, f64.sqrt)
+                self.op(0x0B)
                 self.result(i, 0, "float")
                 return
             if key == "memmove":
