@@ -658,7 +658,8 @@ remain independent. Pip downloads are cached by the pinned dependency files.
 The separate full-run qualification job reuses that run's x86-64 bundle and runs
 `python3 tools/check_bootstrap_tier.py build/ci-bootstrap`.
 It forces the production Make recipe to rebuild with an O1 temporary compiler and an O2 final
-compiler, using the same checkout and a private runtime cache. All three compiler and all three
+compiler, using the same checkout and a private runtime cache, with `PYSTACHY_DEBUG_LINES=0` because
+the bundle's `ir` stages have no line tables. All three compiler and all three
 runtime witnesses must match the standard bundle byte for byte; no path normalization is used.
 The check revalidates source, toolchain and run identity after the build and requires the standard
 bundle and verification report to remain unchanged. Consumers continue using the standard O2
