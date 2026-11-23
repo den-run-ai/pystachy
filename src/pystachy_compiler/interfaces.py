@@ -18,7 +18,7 @@ from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, EMPTYFS, OBJECTC, RANGEC, SPECSHOW, is_excname
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.utils import clone, elem, gelem, identity_abi, is_callable, is_clsval, is_dict, is_fset, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_union, is_vtuple, lt, numeric_identity, selem, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import clone, elem, gelem, identity_abi, is_callable, is_clsval, is_dict, is_fset, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_union, is_vtuple, lib_file, lt, numeric_identity, selem, targs, tname, typestr, umembers, unopt
 
 # the intrinsic that an interface method's body calls: its table entry (iface_call)
 IFACE_CALL = "__pystachy_iface__"
@@ -936,7 +936,8 @@ def eq_family(self, t: str, op: str) -> str:
 
 def user_method(self, c: str, m: str) -> bool:
     # does class c, or a class it derives from (its template's, for a specialization), define
-    # method m (not one the compiler writes for a dataclass)
+    # method m (not one the compiler writes for a dataclass, nor one of lib/ that declines what
+    # it does not take: lib_declines)
     seen: dict[str, bool] = {}
     todo = [c]
     while len(todo) > 0:
@@ -946,9 +947,18 @@ def user_method(self, c: str, m: str) -> bool:
         seen[x] = True
         ci = self.classes[x]
         if m in ci.methods and not ci.methods[m].synthetic:
-            return True
+            return not lib_declines(self, ci.methods[m])
         todo.extend([ci.base, ci.origin] + ci.roles)
     return False
+
+
+def lib_declines(self, f: FnInfo) -> bool:
+    # is f a comparison method of a class of lib/ annotated to take one type (range's, a deque's,
+    # a date's, a timedelta's, a weak reference's): it stands for a method of CPython's type, which
+    # returns NotImplemented for a value of another type, so that the other operand's method, else
+    # identity, answers (as cmp_pick skips it)
+    t = f.ptypes[1] if len(f.ptypes) == 2 else ""
+    return lib_file(f.node.line, self.libdir) and t != "" and t != "dyn" and not self.is_object(t)
 
 
 def user_cmp(self, c: str, op: str) -> bool:
@@ -1016,8 +1026,8 @@ def eq_note(self, tab: ITab, op: str, e: Node) -> str:
             if m in ci.methods and not ci.methods[m].synthetic:
                 f = ci.methods[m]
                 t = f.ptypes[1] if len(f.ptypes) == 2 else ""
-                if t == "" or self.is_object(t) or t == "dyn" or t == ts[1]:
-                    return ""
+                if t == "" or self.is_object(t) or t == "dyn" or t == ts[1] or lib_file(f.node.line, self.libdir):
+                    return ""  # (and a method of lib/, which the program cannot annotate)
                 return f"{short(c)}.{m}() takes only {typestr(t)}, where CPython calls it with any value that a value of {typestr(tab.iface)} holds: annotate its parameter object and narrow it with isinstance()"
         c = ci.base
     return ""

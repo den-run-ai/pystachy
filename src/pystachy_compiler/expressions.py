@@ -4823,6 +4823,8 @@ def gen_cmp_cands(self, op: str, at: str, bt: str) -> list[list[str]]:
                 continue
             if m in ms and ms[m].cls == COMPLEXC and rt != COMPLEXC and (rt == "None" or rt in self.classes) and not self.enum_intlike(rt):
                 continue  # (complex declines a foreign object; int-like enums compare by payload)
+            if m in ms and (op == "==" or op == "!=") and (rt == "None" or rt in self.classes) and lib_file(ms[m].node.line, self.libdir) and self.cmp_method(lt, m, rt) == "":
+                continue  # (as in cmp_pick: a library class's method declines what it does not take)
             if m in ms and self.enum_scalar(lt, rt) and lib_source(ms[m].node.line, self.libdir, "enum.py"):
                 out.append([sides[i], "@scalar", ""])
                 continue  # (inherited scalar slots do not call a custom __eq__ for __ne__)
@@ -4902,6 +4904,11 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
                 continue  # (what @dataclass writes returns NotImplemented for an object of another class)
             if m in ms and ms[m].cls == COMPLEXC and rt != COMPLEXC and (rt == "None" or rt in self.classes) and not self.enum_intlike(rt):
                 continue  # (complex declines a foreign object; int-like enums compare by payload)
+            if m in ms and (op == "==" or op == "!=") and (rt == "None" or rt in self.classes) and lib_file(ms[m].node.line, self.libdir) and self.cmp_method(lt, m, rt) == "":
+                # (a library class's __eq__ or __ne__ that cannot take an object of another class,
+                # or None, stands for a CPython type's, which returns NotImplemented for it (range's,
+                # a deque's, a date's): the other operand's method, else identity, answers)
+                continue
             if m in ms and self.enum_scalar(lt, rt) and lib_source(ms[m].node.line, self.libdir, "enum.py"):
                 return [sides[i], "@scalar", ""]
             if m in ms and lib_source(ms[m].node.line, self.libdir, "enum.py") and (rt == "None" or (rt in self.classes and not self.derives(rt, ms[m].cls) and not (self.enum_intlike(ms[m].cls) and self.enum_intlike(rt)))):

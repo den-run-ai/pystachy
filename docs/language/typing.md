@@ -1130,7 +1130,10 @@ a protocol's value above, each by its value's type
   values of builtin types of two kinds (a number and a str, a list and a tuple) unequal, and any
   two values of `object` whatever they hold: where neither type's comparison takes the other (a
   range and a bool, a generator and a list, a dataclass and an exception) and no method of the
-  program decides, as CPython by identity, `False` (`True` for `!=`). Where an object's class
+  program decides, as CPython by identity, `False` (`True` for `!=`); a library type whose
+  comparison takes only its own kind (a range, a deque, a date, a time, a timedelta) declines
+  another value, an IntEnum's member too, as CPython's does
+  ([test](../../tests/programs/classes/object_eq_library.py)). Where an object's class
   defines or inherits the method CPython calls, `__eq__` (`__ne__` for `!=`), only that method
   answers, reflected where the other operand's type declines
   ([test](../../tests/programs/classes/object_eq_pairs.py),
