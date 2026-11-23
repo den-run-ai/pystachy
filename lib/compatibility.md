@@ -986,7 +986,11 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   [strings](../tests/programs/classes/cmp_notimplemented_strenum_scalar.py)). The builtin
   fallback uses the member's original scalar value. Reassigning `_value_` is qualified only
   for these comparison paths; inherited hashing and other methods still use the changed
-  attribute and can differ from CPython after such a reassignment.
+  attribute and can differ from CPython after such a reassignment. An ordering with a value that
+  int or str has none with (a list, an object of a class deriving from list, a str beside an
+  `IntEnum`) raises CPython's `TypeError`, naming the operator as written and the operands in
+  source order, in either operand order
+  ([test](../tests/programs/library/lib_enum_ordering_other.py)).
 - `sys.exit()` and `SystemExit` take the member of an `IntEnum` or `IntFlag` class, or of a class
   of `int` and `Enum`, as CPython takes its `int`: the value is the exit status, and nothing is
   written to stderr ([test](../tests/programs/exceptions/exit_enum_member_caught.py)).

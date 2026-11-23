@@ -1,0 +1,27 @@
+list < Level TypeError '<' not supported between instances of 'list' and 'Level'
+list <= Level TypeError '<=' not supported between instances of 'list' and 'Level'
+list > Level TypeError '>' not supported between instances of 'list' and 'Level'
+list >= Level TypeError '>=' not supported between instances of 'list' and 'Level'
+Level < list TypeError '<' not supported between instances of 'Level' and 'list'
+Level >= list TypeError '>=' not supported between instances of 'Level' and 'list'
+str < Level TypeError '<' not supported between instances of 'str' and 'Level'
+str <= Level TypeError '<=' not supported between instances of 'str' and 'Level'
+str > Level TypeError '>' not supported between instances of 'str' and 'Level'
+str >= Level TypeError '>=' not supported between instances of 'str' and 'Level'
+Level > str TypeError '>' not supported between instances of 'Level' and 'str'
+list < Bits TypeError '<' not supported between instances of 'list' and 'Bits'
+list >= Bits TypeError '>=' not supported between instances of 'list' and 'Bits'
+str > Bits TypeError '>' not supported between instances of 'str' and 'Bits'
+Bits < list TypeError '<' not supported between instances of 'Bits' and 'list'
+list < Color TypeError '<' not supported between instances of 'list' and 'Color'
+int >= Color TypeError '>=' not supported between instances of 'int' and 'Color'
+Color < list TypeError '<' not supported between instances of 'Color' and 'list'
+Color > int TypeError '>' not supported between instances of 'Color' and 'int'
+Level < Level True
+int < Level True
+float >= Level True
+Level < Bits False
+str < Color True
+None < Level TypeError '<' not supported between instances of 'NoneType' and 'Level'
+Level < None TypeError '<' not supported between instances of 'Level' and 'NoneType'
+[exit 0]
