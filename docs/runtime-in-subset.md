@@ -459,15 +459,23 @@ container code move; the table gives the state and the order.
 | Unicode and other constant tables | 1,390 | Stay as data; `runtime.py` reads them through pure helpers. |
 | Lists | 720 | Next: the identity companion's entry points, `min`/`max`, then the sort. |
 | Strings | 620 | Slices, indexed text access and its hints, `chr`/`ord`, float text. Float formatting and parsing stay with libc. |
-| Sets and hashing | 120 | After lists: hashing by descriptor, then the table. |
+| Sets and hashing | 500 | After lists: hashing by descriptor, then the table (380 lines, which sit after the dynamic values in the file). |
 | Dicts | 690 | After sets: the compact ordered table, views and iteration. |
 | Generic `repr`, equality and ordering | 760 | With dicts: walks of a value by its type descriptor. |
-| Dynamic values | 1,550 | After the walks: boxes, dispatch and the `Any` operators. |
+| Dynamic values | 1,170 | After the walks: boxes, dispatch and the `Any` operators. |
 | Promoting ints and `math` | 930 | Last: needs `mpz/` beside it. libm wrappers keep their LLVM-specific guards. |
 
 Each step adds the records it needs to `RTRECORDS` and removes the accessors that
-`runtime.c` then no longer has to export. Two things would make the remaining steps
-cheaper:
+`runtime.c` then no longer has to export. What a section still needs from runtime mode
+decides its place in the order:
 
-- Named integer constants at module level in runtime mode, in place of repeated literals.
-- Read access to the runtime's static data, which today goes through accessor functions.
+| Needs | For |
+|---|---|
+| Nothing new | Sets and dicts: their tables are words and 32-bit words, and key equality and hashing can stay calls into `runtime.c` until the walks move. The probes' counters need a call that the checks can count. |
+| The checks moved with the code | The identity companion's entry points: `check_lean_companion.py` pins their text, and `test_runtime_list_identity.py` their cost, in `runtime.c`. |
+| The address of a static | Text indexing (its position hints and the one-byte strs), the sentinels, dynamic values (each builtin type's descriptor and the small ints' boxes). Accessor functions stand in today. |
+| A record in a local | The sort's merge state, and the buffer that `repr` and error messages grow. |
+| A result of two words | Promoting ints, which return a 64-bit part and an `Mpz`. |
+| A word read at any alignment | The byte scans that test eight or 32 bytes at a time. |
+
+Named integer constants at module level would also replace the repeated literals.
