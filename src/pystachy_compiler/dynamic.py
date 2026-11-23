@@ -26,7 +26,7 @@ from src.pystachy_compiler.symbols import ClassInfo, FnInfo
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
 from src.pystachy_compiler.reflection import hook_of
-from src.pystachy_compiler.specs import BIG, BYTEARRAYC, COMPLEXC, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
+from src.pystachy_compiler.specs import BIG, BYTEARRAYC, COMPLEXC, GLUE, HASATTR, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, made_var, mentions, mk
 from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_clsval, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, lib_source, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
@@ -3913,6 +3913,8 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         return dunder in ci.methods or "__index__" in ci.methods
     if key.startswith("iop"):
         return ("__i" + dunder[2:]) in ci.methods or dunder in ci.methods
+    if key.startswith("hasattr."):
+        return True  # (every class answers, also where its objects lack the attribute)
     return dunder in ci.methods
 
 
@@ -3992,6 +3994,28 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
             dyn_round_arm(self, f, fm, x, args)
             self.place(nodigits)
         dyn_round_arm(self, f, fm, x, [])
+        return
+    if key.startswith("hasattr."):
+        # (as hasattr() of a typed object of the class answers, which may run a property's getter or
+        # its __getattr__; optional, as update's case is)
+        attempt = f"protocol:{x.t}.hasattr.{dunder}"
+        if attempt in self.xnot:
+            self.raise_("NotImplementedError", self.sconst(f"hasattr() of '{dunder}' on a {short(x.t)} through Any is not supported: it cannot be compiled for its class"))
+            return
+        self.xtry = attempt
+        self.dyn_return(f, self.refl_hasattr_lit(x, dunder, True))
+        self.xtry = ""
+        return
+    if key == "update":
+        # (optional, as an iteration protocol's case is: a class whose keys() and [] do not compile
+        # for this makes no program fail to compile, and raises where it is merged)
+        attempt = f"protocol:{x.t}.keys"
+        if attempt in self.xnot:
+            self.raise_("TypeError", self.sconst(f"dict.update() of a {short(x.t)} through Any is not supported: its keys() and [] cannot be compiled for it"))
+            return
+        self.xtry = attempt
+        dyn_merge_arm(self, f, x, args[0])
+        self.xtry = ""
         return
     if key in ["iter", "next", "nextvalue", "reversed"]:
         protocol_method = "__iter__" if key == "iter" else "__reversed__" if key == "reversed" else "__next__"
@@ -4946,6 +4970,34 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
         self.ret_(Val("3", "int"))
         return
     o = ps[0]
+    if key.startswith("hasattr."):
+        # a builtin type's answer, by its attributes in CPython 3.13 (builtin_has); a function's, a
+        # class's, an iterator's or a generator's NotImplementedError: Pystachy does not list theirs
+        a = key[8:]
+        kinds = ["None", "bool", "int", "float", "str", "list[dyn]", "list[int]", "dict[dyn,dyn]", "vtuple[dyn]"]
+        known = self.label()
+        other = self.label()
+        self.cbr(self.dyn_test(o, kinds), known, other)
+        self.place(known)
+        self.ret_(Val(self.dyn_test(o, [bt for bt in kinds if builtin_has(bt, a)]), "bool"))
+        self.place(other)
+        msg = self.concat([Val(self.sconst(f"hasattr() of '{a}' on a "), "str"), self.dyn_type_name(o), Val(self.sconst(" through Any is not supported"), "str")])
+        self.raise_("NotImplementedError", msg.v)
+        return
+    if key == "update":
+        # (another dict's items, or pairs, by the box's type: runtime.c's pys_dyn_update)
+        self.rt("pys_dyn_update", "void", [f"ptr {ps[1].v}", f"ptr {o.v}"])
+        self.ret_(Val("null", "None"))
+        return
+    if key == "iop10":
+        # A dict's |= is its update(), which takes a mapping object by its keys() (gen_dyn_update)
+        merge = self.label()
+        other = self.label()
+        self.cbr(self.dyn_test(o, ["dict[dyn,dyn]"]), merge, other)
+        self.place(merge)
+        self.dyn_update(self.dyn_payload(o, "dict[dyn,dyn]"), ps[1])
+        self.ret_(o)
+        self.place(other)
     if key.startswith("op") or key.startswith("iop"):
         n = key[2:] if key.startswith("op") else key[3:]
         fn = "pys_dyn_binop" if key.startswith("op") else "pys_dyn_inplace"
@@ -5095,8 +5147,63 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
     else:
         # an attribute or method no boxed value of this type has: AttributeError, naming its type
         a = key[4:] if key.startswith("get.") or key.startswith("set.") else key[key.find(".") + 1 : key.rfind(".")]
+        if key.startswith("get."):
+            dyn_builtin_attr(self, o, a)
         msg = self.concat([Val(self.sconst("'"), "str"), self.dyn_type_name(o), Val(self.sconst(f"' object has no attribute '{a}'"), "str")])
         self.raise_("AttributeError", msg.v)
+
+
+def gen_dyn_hasattr(self, v: Val, a: str) -> Val:
+    # hasattr(v, "a") of an Any value v: its class's answer, as hasattr() of a typed object of that
+    # class gives it (a field's flag, a property's getter, its __getattr__: dyn_arm), and a builtin
+    # type's by CPython 3.13's attributes (builtin_has); a value of another kind, a function's or a
+    # class's, raises NotImplementedError (dyn_fallback). A name that is no identifier's stays
+    # unsupported, as before
+    if not attr_name(a):
+        self.err(f"hasattr() of '{a}' on a {tname(v.t)} is not supported")
+    return self.dyn_call(self.dyn_dispatcher("hasattr." + a, [DYN], "bool", a), [v])
+
+
+def attr_name(a: str) -> bool:
+    # is a an identifier's name, as the key of a dispatcher holds one (hasattr.<a>)
+    if a == "" or ("0" <= a[0] and a[0] <= "9"):
+        return False
+    for c in a:
+        if not (c == "_" or ("a" <= c and c <= "z") or ("A" <= c and c <= "Z") or ("0" <= c and c <= "9")):
+            return False
+    return True
+
+
+def builtin_has(bt: str, a: str) -> bool:
+    # does a value of the builtin type whose box's static type is bt have attribute a, as CPython
+    # 3.13's has it (HASATTR, as Gen.has answers hasattr() of a typed value)
+    if a in HASATTR["any"].split():
+        return True
+    if bt == "None":
+        return a == "__bool__"
+    return a in HASATTR["list" if is_list(bt) else "dict" if is_dict(bt) else "tuple" if is_vtuple(bt) else "int" if bt == "bool" else bt].split()
+
+
+def dyn_builtin_attr(self, o: Val, a: str) -> None:
+    # o.a for a box of a number: its real, imag, numerator and denominator, as CPython gives them
+    # (an int's real and numerator, and a float's real, are the number itself), where getattr()'s
+    # default would otherwise answer for a name CPython has. A box of another type goes on
+    for bt in ["bool", "int", "float"]:
+        if not (a in ["real", "imag"] or (bt != "float" and a in ["numerator", "denominator"])):
+            continue
+        hit = self.label()
+        nxt = self.label()
+        self.cbr(self.dyn_test(o, [bt]), hit, nxt)
+        self.place(hit)
+        if bt != "float" and (a == "imag" or a == "denominator"):
+            self.ret_(self.dyn_box(Val("0" if a == "imag" else "1", "int")))
+        elif bt == "int":
+            self.ret_(o)
+        elif bt == "bool":
+            self.ret_(self.dyn_box(self.as_int(self.dyn_payload(o, "bool"))))
+        else:
+            self.ret_(o if a == "real" else self.dyn_box(Val(fbits("0.0"), "float")))
+        self.place(nxt)
 
 
 def dyn_iteration_hooks(self) -> None:
@@ -5162,6 +5269,57 @@ def gen_dyn_dispatchers(self) -> bool:
                 del self.compiled[f.ll]
             self.function(f, [mk("dynbody", key, self.dynlines[key], [])])
     return True
+
+
+def gen_dyn_tuple(self, v: Val) -> Val:
+    # tuple(v) of an Any value v: the tuple v holds itself, as CPython's tuple() of a tuple is that
+    # tuple, else a new tuple of the items list() takes from v (its errors too)
+    same = self.label()
+    other = self.label()
+    end = self.label()
+    self.cbr(self.dyn_test(v, ["vtuple[dyn]"]), same, other)
+    self.place(same)
+    held_tuple = self.dyn_payload(v, "vtuple[dyn]")
+    kept = self.cur
+    self.br(end)
+    self.place(other)
+    items = self.as_list(v, "tuple")
+    made = Val(self.rt("pys_vtuple_new", "ptr", [f"ptr {items.v}"]), "vtuple[dyn]")
+    built = self.cur
+    self.br(end)
+    self.place(end)
+    ph = Ins("phi", "vtuple[dyn]", "")
+    self.incoming(ph, held_tuple.v, kept)
+    self.incoming(ph, made.v, built)
+    return Val(self.phi(ph), "vtuple[dyn]")
+
+
+def gen_dyn_update(self, d: Val, x: Val) -> None:
+    # d.update(x), d |= x and dict(x) of a dict of Any values d and an Any value x, as CPython's
+    # dict_update_arg merges x: a dict's items; an object's whose class has keys, by its keys()
+    # and its [] (dyn_merge_arm, PyDict_Merge's of a mapping); else the pairs its iteration gives
+    # (dyn_fallback: runtime.c's pys_dyn_update)
+    self.dyn_call(self.dyn_dispatcher("update", [DYN, "dict[dyn,dyn]"], "None", "keys"), [x, d])
+
+
+def dyn_merge_arm(self, f: FnInfo, x: Val, d: Val) -> None:
+    # update's case of the object x, whose class has keys: the keys() it gives, as a list (where
+    # it is no list, its iteration's items, all taken before the first item is read), then
+    # d[k] = x[k] for each in turn, as PyDict_Merge does for a mapping that is no dict; a class
+    # without __getitem__ raises CPython's TypeError for the first key
+    line = self.line
+    keys = self.expr(mk("call", "", line, [mk("attr", "keys", line, [self.vnode(x)])]), "")
+    if not is_list(keys.t):
+        keys = self.as_list(keys, "dict.update")
+    if "__getitem__" not in self.classes[x.t].methods:
+        nonempty = self.num_cmp("!=", Val(self.list_len(keys), "int"), Val("0", "int")).v
+        self.guard(nonempty, f"TypeError: '{self.refl_type_name(x.t, '__name__')}' object is not subscriptable")
+        self.dyn_return(f, Val("null", "None"))
+        return
+    k = made_var("__key", line)
+    body = [mk("assign", "", line, [mk("index", "", line, [self.vnode(d), k]), mk("index", "", line, [self.vnode(x), k])])]
+    self.hidden_loop(mk("for", "", line, [k, self.vnode(keys), mk("block", "", line, body)]), ["__key"], ["__key"])
+    self.dyn_return(f, Val("null", "None"))
 
 
 def gen_dyn_builtin(self, name: str, vals: list[Val]) -> Val:

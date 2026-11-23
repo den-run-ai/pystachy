@@ -1,0 +1,13 @@
+(1, 2) 2 tuple
+('a', 'b') 2 tuple
+('k', 'j') 2 tuple
+(3, 4) 2 tuple
+iter
+(0, 1, 2) 3 tuple
+('g', 'h') 2 tuple
+() 0 tuple
+TypeError 'int' object is not iterable
+TypeError 'NoneType' object is not iterable
+True True
+True True
+[exit 0]

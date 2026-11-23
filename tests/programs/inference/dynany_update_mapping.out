@@ -1,0 +1,35 @@
+keys
+getitem ab
+getitem cd
+{'ab': 1, 'cd': 2}
+Lazy.keys
+yield ab
+yield cd
+Lazy.getitem ab
+Lazy.getitem cd
+{'ab': 'AB', 'cd': 'CD'}
+{'k': 1}
+{'ab': 3}
+{'p': 1, 'q': 2}
+keys
+getitem ab
+{'z': 0, 'ab': 1}
+keys
+getitem ab
+{'ab': 4}
+Lazy.keys
+yield ab
+yield cd
+Lazy.getitem ab
+Lazy.getitem cd
+{'ab': 'AB', 'cd': 'CD'}
+{'a': 1}
+{'a': 1, 'b': 2}
+{'p': 1, 'q': 2}
+{}
+TypeError 'KeysOnly' object is not subscriptable
+TypeError 'int' object is not iterable
+TypeError 'NoneType' object is not iterable
+ValueError dictionary update sequence element #0 has length 3; 2 is required
+True False True
+[exit 0]

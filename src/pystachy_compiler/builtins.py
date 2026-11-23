@@ -562,6 +562,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         v = self.unwrap(self.consume(args[0], self.ctype("list", [targs(unopt(want))[0]]) if is_vtuple(unopt(want)) else "", resultsoft=resultsoft), "TypeError: 'NoneType' object is not iterable")
         if is_vtuple(v.t) or is_tuple(v.t):
             return self.coerce(v, want) if is_vtuple(unopt(want)) else v
+        if v.t == "dyn":
+            return self.dyn_tuple(v)  # (the tuple it holds itself, else its items: dynamic.py)
         if v.t == "str":
             v = Val(self.rt("pys_str_list", "ptr", [f"ptr {v.v}"]), "list[str]")
         if is_gen(v.t):
@@ -690,6 +692,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if name == "hasattr" and len(args) == 2 and args[1].kind == "str":
         # decided by the static type of the object (for an object: is it None)
         hv = self.expr(args[0], "")
+        if hv.t == "dyn":
+            return self.dyn_hasattr(hv, args[1].s)  # (by the value's type as the program runs: dynamic.py)
         if unopt(hv.t) in self.classes and self.classes[unopt(hv.t)].mod in GLUE:
             self.refl_supported(unopt(hv.t), "hasattr()")  # (pyobj.Object's names are not its twin's)
         if self.refl_prop_in(hv.t, args[1].s) or hook_of(self, hv.t) != 0 or (self.reference_union(hv.t) and "file" not in umembers(unopt(hv.t))):
@@ -1378,6 +1382,12 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return Val(self.rt("pys_powmod", "i64", [f"i64 {pm[0]}", f"i64 {pm[1]}", f"i64 {pm[2]}"]), "int")
     elif name == "dict" and (is_list(t) or is_vtuple(t) or is_tuple(t)):
         return self.dict_pairs(self.as_list(v, name) if not is_list(t) else v, want)
+    elif name == "dict" and t == "dyn" and len(vals) == 1 and len(kws) == 0:
+        # an Any value's items, merged into a new dict as dict.update() merges them, since CPython's
+        # dict(x) is its dict_update_arg: a dict's, a mapping object's by its keys(), else pairs
+        made = self.expr(mk("dict", "", self.line, []), "dict[dyn,dyn]")
+        self.dyn_update(made, v)
+        return made
     elif name == "dict" and is_dict(t):
         # not d.copy(): dict(d) merges d into an empty dict, whose table can differ (runtime.c),
         # comparing keys hashed by their class (key_fx)
@@ -3451,8 +3461,8 @@ def gen_update(self, o: Val, args: list[Node]) -> Val:
     if is_opt(x.t):
         x = self.unwrap(x, "TypeError: 'NoneType' object is not iterable")
     if x.t == "dyn" and o.t == "dict[dyn,dyn]":
-        # (another dict's items, or pairs, by the box's type: runtime.c's pys_dyn_update)
-        self.rt("pys_dyn_update", "void", [f"ptr {o.v}", f"ptr {x.v}"])
+        # (another dict's items, a mapping object's by its keys(), or pairs: dynamic.py)
+        self.dyn_update(o, x)
         x = Val("", "")
     if x.t == "int" or x.t == "float" or x.t == "bool" or x.t == "None":
         self.err(f"'{tname(x.t)}' object is not iterable")  # (CPython's TypeError)
