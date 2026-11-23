@@ -1152,7 +1152,8 @@ five-minute limit and retain JSON reports for seven days, including failed or
 incomplete runs; only reports with `result: pass` and all expected modes
 establish successful validation. The three primary platforms also install the
 compiler with pip and uv from the exact GitHub commit and verify JIT/AOT outside the checkout
-(`tools/compiler_install_smoke.py`). The [Packages workflow](../.github/workflows/packages.yml)
+(`tools/compiler_install_smoke.py`); a Debian 12 container without LLVM does the same on each
+Linux architecture with the downloaded [minimal toolchain](llvm-toolchain.md#download). The [Packages workflow](../.github/workflows/packages.yml)
 builds the example and ports source wheels and runs them under CPython, JIT and AOT
 (`tools/package_smoke.py`) on `main` and manual dispatch. Full CI's separate qualification
 job runs release unit tests and native archive smoke after the O1 bootstrap comparison,
