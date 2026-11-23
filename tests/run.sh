@@ -71,7 +71,7 @@ fi
 export PYSTACHY_IRCHECK="${PYSTACHY_IRCHECK:-1}"
 JOBS=${PYSTACHY_JOBS:-$( (nproc || getconf _NPROCESSORS_ONLN) 2> /dev/null)}
 case $JOBS in '' | *[!0-9]* | 0) JOBS=1 ;; esac
-XENV=${PYSTACHY_GC_STRESS_PROGRAM:+env PYSTACHY_GC_STRESS=$PYSTACHY_GC_STRESS_PROGRAM}  # (an AOT program's)
+XENV=${PYSTACHY_GC_STRESS_PROGRAM:+env PYSTACHY_GC_STRESS=$PYSTACHY_GC_STRESS_PROGRAM}  # (an AOT or Wasm program's)
 TIMES=${PYSTACHY_CASE_TIMES:-}
 if [ -n "$TIMES" ]; then
   case $(date +%s%N) in
@@ -104,7 +104,7 @@ program() { # tests/programs/AREA/NAME.py, its sidecars B.in, B.out... (B: the p
       (PYSTACHY_PATH=$mp $PYS run "$1" a1 a2 < "$in" <&$si >&$o 2>&$se; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
     elif [ $mode = wasm ] || [ $mode = wasm-tir ]; then
       PYSTACHY_PATH=$mp PYSTACHY=$PYS wasm/build.sh "$([ $mode = wasm ] && echo program || echo tir)" "$1" "$T/$n.exe.wasm" 2> "$T/$n.build" &&
-        ($WASMRUN "$T/$n.exe.wasm" a1 a2 < "$in" <&$si >&$o 2>&$se; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
+        ($XENV $WASMRUN "$T/$n.exe.wasm" a1 a2 < "$in" <&$si >&$o 2>&$se; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
     else
       PYSTACHY_PATH=$mp $PYS build "$1" -o "$T/$n.exe" 2> "$T/$n.build" &&
         ($XENV "$T/$n.exe" a1 a2 < "$in" <&$si >&$o 2>&$se; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
@@ -133,7 +133,7 @@ deviation() { # tests/deviations/NAME.py
     if [ $mode = jit ]; then
       ($PYS run "$1" a1 a2 < /dev/null 2>&1; echo "[exit $?]") > "$T/dev.$n.$mode"
     elif [ $mode = wasm ] || [ $mode = wasm-tir ]; then
-      { PYSTACHY=$PYS wasm/build.sh "$([ $mode = wasm ] && echo program || echo tir)" "$1" "$T/dev.$n.exe.wasm" 2>&1 && $WASMRUN "$T/dev.$n.exe.wasm" a1 a2 < /dev/null 2>&1; echo "[exit $?]"; } > "$T/dev.$n.$mode"
+      { PYSTACHY=$PYS wasm/build.sh "$([ $mode = wasm ] && echo program || echo tir)" "$1" "$T/dev.$n.exe.wasm" 2>&1 && $XENV $WASMRUN "$T/dev.$n.exe.wasm" a1 a2 < /dev/null 2>&1; echo "[exit $?]"; } > "$T/dev.$n.$mode"
     else
       { $PYS build "$1" -o "$T/dev.$n.exe" 2>&1 && $XENV "$T/dev.$n.exe" a1 a2 < /dev/null 2>&1; echo "[exit $?]"; } > "$T/dev.$n.$mode"
     fi

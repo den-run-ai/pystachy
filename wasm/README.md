@@ -26,6 +26,7 @@ the embedding process's V8 flags alone.
 `wasm/build.sh program` runs `pystachy ir`, adapts the IR to wasm32 (`wasm32_ir.py`),
 compiles it with `clang --target=wasm32-wasi -O2` and links it with `wasm-ld` against the
 runtime. The link treats a signature mismatch as an error, because a mismatched call traps.
+`spill_roots.py` then rewrites the linked command so the collector can find its references.
 
 ## Without LLVM: the typed IR emitter
 
@@ -203,11 +204,17 @@ covers a 2,000-container round trip and catching `RecursionError` on deeper inpu
 
 ## What differs from a native build
 
-- **The collector is off.** The conservative stack scan cannot see WebAssembly locals, so
-  `runtime.c` disables collection under WASI. Mid-run collection needs roots for live
-  guest and runtime locals, plus a table of program globals in the direct reactor.
-  The shared heap tracer scans complete four-byte pointer words on wasm32.
-  The engine caps memory (4 GiB for wasm32).
+- **The collector runs only in LLVM/WASI commands.** It scans the stack conservatively,
+  but WebAssembly keeps values in locals and on the operand stack, where no scan reaches.
+  Around each call that may reach the collector, `spill_roots.py`'s rewrite reserves a frame
+  on the linear-memory stack. The frame holds the `i32` and `i64` locals live after the call,
+  and such values beneath its arguments. A callee that collects only on its way to an
+  exception or exit, as `pys_fail` does, needs only what a catch reads. The collector scans
+  that stack up to `__stack_high`. `runtime.c` turns collection on only in a module the pass
+  rewrote, so `runtime.wasm` and directly emitted programs keep it off. Their mid-run
+  collection also needs a table of the program's globals.
+  The shared heap tracer scans complete four-byte pointer words on wasm32. Freed memory is
+  reused, never returned: linear memory cannot shrink. The engine caps it (4 GiB for wasm32).
 - **LLVM/WASI commands use WebAssembly exception handling.** The adapter lowers native
   landing pads to Wasm catches for Pystachy's exception payload. Python handlers, cleanup
   and uncaught reporting use the shared runtime. WASI errno numbers can differ from Linux,
@@ -235,6 +242,7 @@ covers a 2,000-container round trip and catching `RecursionError` on deeper inpu
 | `tir_wasm.py` | Typed IR module text to a WebAssembly module, without LLVM |
 | `reactor.c` | `runtime.wasm`'s entry: arguments, `pys_init`, the program's code, `pys_finish` |
 | `wasm32_ir.py` | Adapts constants, command entry, exception landing pads and libc calls to wasm32 |
+| `spill_roots.py` | Stores references held in a linked command's locals where the collector's stack scan finds them |
 | `command_eh.c` | Transfers exception payloads to LLVM/WASI command handlers and resumes uncaught reporting |
 | `wasi_stubs.c` | Missing POSIX functions, unwinder stubs, working directory |
 | `include/` | Headers that `wasi-libc` lacks (`dlfcn.h`, `pthread.h`, `pwd.h`, `sys/wait.h`) and declarations `runtime.c` needs (`pystachy_wasi.h`) |

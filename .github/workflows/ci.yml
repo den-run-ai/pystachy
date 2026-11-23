@@ -187,6 +187,24 @@ jobs:
           done
           # Include a user-defined exception whose uncaught __str__ also raises.
           tests/run.sh "$PYSTACHY" wasm tests/programs/exceptions/exc_class_strfail.py
+          # Collection in LLVM/WASI commands (wasm/spill_roots.py): weak references and
+          # gc.collect(), then a collection at every allocation. Built without the spills, every
+          # stressed case must fail, or the stress could not tell a lost reference.
+          tests/run.sh "$PYSTACHY" wasm tests/programs/library/lib_gc_collect.py \
+            tests/programs/library/lib_weakref_*.py tests/programs/runtime/rt_list_vacated.py \
+            tests/programs/upstream/upstream_weakref.py
+          stress_cases=(tests/programs/classes/inheritance_secondary_properties.py
+                        tests/programs/containers/container_identity_in.py
+                        tests/programs/exceptions/exc_recursion_unwind.py
+                        tests/programs/generators/gen_cm_gc.py tests/programs/language/walrus_unbound.py
+                        tests/programs/library/lib_enum_init.py tests/programs/strings/bytes_codecs.py
+                        tests/programs/runtime/rt_ascii_edges.py tests/programs/reflection/type_alias_values.py
+                        tests/programs/numbers/python_int_any_storage.py)
+          PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh "$PYSTACHY" wasm "${stress_cases[@]}" \
+            tests/programs/apps/example_nanogpt_training.py tests/programs/upstream/upstream_textwrap_layout.py
+          control=$(mktemp)
+          WASM_SPILL_CONTROL=1 PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh "$PYSTACHY" wasm "${stress_cases[@]}" > "$control" || true
+          [ "$(tail -1 "$control")" = "0 passed, ${#stress_cases[@]} failed" ] || { cat "$control"; exit 1; }
 
       # These hosted/native controls run sequentially after a short GC JIT group.
       # PRs use the second native JIT worker below; neither placement adds a job.
