@@ -369,9 +369,9 @@ def fuzz_list_search():
     for _ in range(N):
         HEAP.reset()
         C.setup()
-        how = R.choice(["i", "b", "s", "x", "companion"])
-        C.opt = int(how == "companion")
-        d = HEAP.as_str(HEAP.new_str({"companion": b"i", "x": b"O000"}.get(how, how.encode()), 2))
+        how = R.choice(["i", "b", "s", "x", "companion", "big"])
+        C.opt = int(how in ("companion", "big"))
+        d = HEAP.as_str(HEAP.new_str({"companion": b"i", "big": b"i", "x": b"O000"}.get(how, how.encode()), 2))
         if how == "s":
             pool = [None, "", "a", "b", "ab", "abc"]
             values = [R.choice(pool) for _ in range(R.randrange(9))]
@@ -380,8 +380,12 @@ def fuzz_list_search():
             xw = 0 if x is None else HEAP.new_str(x.encode(), 0)
             l = rt.pys_list_new(len(words))
         else:
-            values = [R.randrange(2) if how == "b" else R.choice([0, 1, 2, 3, -1, none, MAXI]) for _ in range(R.randrange(9))]
+            values = [R.randrange(2) if how == "b" else R.choice([0, 1, 2, 3, -1, none, MAXI] + ([1 << 64, -(1 << 70)] if how == "big" else [])) for _ in range(R.randrange(9))]
             x = xw = R.choice([0, 1, 2, 3, -1, none, MAXI, 9])
+            if how == "x" and values and R.randrange(3) == 0:
+                # (x only last: the __eq__ that finds it may then take it away, as the item it found)
+                x = xw = values[-1]
+                values = [v for v in values[:-1] if v != x] + [x]
             words = values
             if how == "x":
                 # (objects of a class of the program's, here of these ints, whose __eq__ the heap
@@ -390,7 +394,12 @@ def fuzz_list_search():
                 xw = C.new_obj(x)
             l = (rt.pys_list_new if how == "x" else rt.pys_list_new_atomic)(len(words))
         for w in words:
-            rt.pys_list_append(l, w)
+            if -(1 << 63) <= w < (1 << 63):
+                rt.pys_list_append(l, w)
+            else:
+                # (an int past 64 bits, in the promoting ints' companion: its slot holds -2**63,
+                # which no search by slots may take for it)
+                rt.pys_list_append_big(l, HEAP.P(C.new_mpz(w)))
         if how == "companion":
             C.pys_list_identity(l, 1)
         ref = list(values)
@@ -441,6 +450,8 @@ def fuzz_list_search():
             left = [w.v if generic else w for w in ref]
             if generic:
                 have = [C.objs[w] for w in have]
+            if how == "big":
+                have = [C.mpz[rt.pys_list_big_at(l, i).addr] if rt.pys_list_big_at(l, i).addr else w for i, w in enumerate(have)]
             if how == "s":
                 have = [None if w == 0 else C.text(w) for w in have]
             if have != left:

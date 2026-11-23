@@ -1279,7 +1279,7 @@ def gen_to_str(self, v: Val) -> Val:
     if t == "exctype":
         return Val(self.rt("pys_exc_type", "ptr", [f"ptr {v.v}"]), "str")
     if is_clsval(unopt(t)):
-        # (an ordinary class's class object, or None: runtime.c's repr of its record, <class 'M.Q'>)
+        # (an ordinary class's class object, or None: runtime.py's repr of its record, <class 'M.Q'>)
         return Val(self.rt("pys_repr", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(t, 'repr'))}"]), "str")
     if t == "opt[exc]" or t == "opt[exctype]":
         # (an __exit__'s exception, or its class: str(e), or "None")
@@ -1472,7 +1472,7 @@ def gen_repr(self, v: Val) -> Val:
     if v.t == BIGOPT:
         return self.big_opt_str(v)  # (None, or a promoting int: bigints.py)
     if is_tuple(v.t) and BIG in v.t and big_tree(v.t):
-        # (of promoting ints, whose items runtime.c's repr reads: desc's J)
+        # (of promoting ints, whose items runtime.py's repr reads: desc's J)
         return Val(self.rt("pys_repr", "ptr", ["i64 " + self.to_slot(v, True), f"ptr {self.sconst(self.desc(v.t, 'repr'))}"]), "str")
     if is_tuple(v.t) and BIG in v.t:
         return self.big_tuple_repr(v)  # (of promoting ints, item by item: bigints.py)
