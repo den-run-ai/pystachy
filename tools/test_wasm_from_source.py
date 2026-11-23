@@ -19,6 +19,21 @@ def source_command(*args, stdin=None, cwd=ROOT, eh="legacy"):
                           cwd=cwd, env=env, input=stdin, capture_output=True, timeout=30)
 
 
+def without_lines(module):
+    # the module without its last section, pystachy.lines, which only the source path writes: typed
+    # IR text carries no source lines (#1719)
+    name = b"\x0epystachy.lines"
+    at = module.rfind(name)
+    if at < 0:
+        return module, False
+    start = at - 1
+    while module[start - 1] & 0x80:    # (the section's size, a LEB128 before the name)
+        start -= 1
+    start -= 1
+    assert module[start] == 0, "a custom section"
+    return module[:start], True
+
+
 class WasmSourceTests(unittest.TestCase):
     def test_direct_and_printed_ir_are_byte_identical(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -36,7 +51,9 @@ class WasmSourceTests(unittest.TestCase):
                     expected = bytes(Emitter(parse(printed), False, True).module())
                     result = source_command(program, "-")
                     self.assertEqual(result.returncode, 0, result.stderr)
-                    self.assertEqual(result.stdout, expected)
+                    module, lines = without_lines(result.stdout)
+                    self.assertTrue(lines)
+                    self.assertEqual(module, expected)
 
     def test_standard_and_legacy_handlers_from_source_and_text(self):
         program = ROOT / "tests/programs/exceptions/exc_raise.py"
@@ -49,7 +66,7 @@ class WasmSourceTests(unittest.TestCase):
                 expected = bytes(Emitter(parse(printed), encoding == "standard", True).module())
                 result = source_command(program, "-", eh=encoding)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(result.stdout, expected)
+                self.assertEqual(without_lines(result.stdout)[0], expected)
                 outputs.append(expected)
             self.assertNotEqual(*outputs)
             invalid = source_command(program, "-", "-", eh="invalid")

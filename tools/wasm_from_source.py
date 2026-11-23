@@ -22,6 +22,7 @@ def instruction(i: Ins) -> Inst:
     out.args = [Operand(v.t, v.v) for v in i.a]
     out.targets = i.b
     out.t = i.t
+    out.line = i.line
     # OPS is also the text printer's schema for Ins.s, .k and .x. Emitter
     # operands never refer to its private lowering temporaries by name.
     for field in OPS[i.op].split("|")[4].split():
@@ -40,11 +41,22 @@ def instruction(i: Ins) -> Inst:
     return out
 
 
+def source_path(path: str) -> str:
+    # as a traceback names a file: its directory joined to it (runtime.c's dw_path), unless it
+    # names no file (source from stdin)
+    if path.startswith("<"):
+        return path
+    path = os.path.normpath(path)
+    return path if os.path.isabs(path) else os.path.join(os.getcwd(), path)
+
+
 def function(fn: IFn, closed: bool, exceptions: bool) -> Func:
     f = fn.f
     if fn.ps != [j for j in range(len(f.ptypes)) if f.ptypes[j] != "None"]:
         raise Refused(f"parameter ABI of {f.ll}")
     out = Func(f.ll)
+    out.line = f.node.line
+    out.pyname = diagnostics.shown(f.name)
     out.coroutine = fn.coro
     out.ptypes = f.ptypes
     out.ret = f.ret
@@ -86,6 +98,11 @@ def wasm_module(gen: Gen) -> Module:
         raise Refused("module declaration extern")
     m = Module()
     m.attrs["complete"] = ""
+    # each line's file, as LLVM line tables name it (source_lines.SourceLines.file): an index past
+    # the files' is the main program's. WASM_LINES=0: none, so no pystachy.lines section, and an
+    # uncaught error's last line alone, without the cost of keeping each raise's stack
+    if os.getenv("WASM_LINES") != "0":
+        m.files = [source_path(f) for f in diagnostics.FILES] + [source_path(diagnostics.SRC)]
     if gen.gproto:
         m.attrs["protocol"] = ""
     if gen.eh:

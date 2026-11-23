@@ -30,6 +30,54 @@ function reader(section) {
   };
 }
 
+// runtime.c's tracebacks: the engine's stack, which only the host can read. trace keeps the stack
+// of a raise; frames gives the kept one's, or the current stack's, program frames, innermost
+// first, each as its call's offset in the program's module (the frames whose module is not the
+// one calling these imports); lines copies the program's pystachy.lines section (tir_wasm.py).
+function traceImports(program, getMemory) {
+  const [lines] = WebAssembly.Module.customSections(program, "pystachy.lines");
+  let kept;
+  function capture() {
+    const limit = Error.stackTraceLimit;
+    const holder = {};
+    Error.stackTraceLimit = 5000; // (the runtime keeps 4,096 frames, as on native builds)
+    try {
+      Error.captureStackTrace(holder, capture);
+    } finally {
+      Error.stackTraceLimit = limit;
+    }
+    return holder; // (V8 formats holder.stack when it is first read)
+  }
+  function offsets(holder) {
+    const prepare = Error.prepareStackTrace;
+    let sites;
+    Error.prepareStackTrace = (_, callSites) => callSites;
+    try {
+      sites = holder.stack;
+    } finally {
+      Error.prepareStackTrace = prepare;
+    }
+    const wasm = sites.filter((site) => site.getFileName()?.startsWith("wasm:"));
+    const caller = wasm[0]?.getFileName();
+    return wasm.filter((site) => site.getFileName() !== caller).map((site) => site.getPosition());
+  }
+  return {
+    trace() {
+      if (lines !== undefined) kept = capture();
+    },
+    frames(fromKept, at, max) {
+      const found = offsets(fromKept && kept !== undefined ? kept : capture()).slice(0, max >>> 0);
+      new Uint32Array(getMemory().buffer, at >>> 0, found.length).set(found);
+      return found.length;
+    },
+    lines(to, size) {
+      if (lines === undefined) return 0;
+      if (to !== 0 && size >>> 0 === lines.byteLength) new Uint8Array(getMemory().buffer, to >>> 0, size >>> 0).set(new Uint8Array(lines));
+      return lines.byteLength;
+    },
+  };
+}
+
 function missingDispatcher(name) {
   return () => { throw new Error(`${name}: the program has no such dispatcher`); };
 }
@@ -94,6 +142,7 @@ function runner(runtimeSource, cli) {
       const command = new WebAssembly.Instance(module, {
         ...imports,
         codemode: toolImports(tools, () => command.exports.memory),
+        pystachy: traceImports(module, () => command.exports.memory),
       });
       try {
         return wasi.start(command);
@@ -124,6 +173,7 @@ function runner(runtimeSource, cli) {
     const runtime = new WebAssembly.Instance(runtimeModule, {
       ...imports,
       codemode: toolImports(tools, () => runtime.exports.memory),
+      pystachy: traceImports(module, () => runtime.exports.memory),
       program: {
         raise(pointer) {
           if (reportUnwind) reportUnwind = false;

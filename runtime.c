@@ -8788,6 +8788,41 @@ Exc *pys_exc_begin(void *ue, I mark) { /* a landing starts: put right what the r
    passes (tb_frame), which the frames past the handler's continue when the same exception is
    raised again: the handler's own frame keeps the line where the exception reached it, as
    CPython's traceback does. */
+#if (defined(__linux__) && defined(__LP64__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__) || defined(__wasi__)
+static void tb_source(const char *path, uint64_t line) {   /* that line of the file, stripped, as CPython shows it */
+  FILE *f = fopen(path, "r");
+  char *s = 0;
+  size_t cap = 0;
+  ssize_t len;
+  if (!f) return;
+  for (uint64_t i = 1; (len = getline(&s, &cap, f)) >= 0; i++)
+    if (i == line) {
+      char *p = s, *e = s + len;
+      while (p < e && isspace((unsigned char)*p)) p++;
+      while (e > p && isspace((unsigned char)e[-1])) e--;
+      if (e > p) { fputs("    ", stderr); fwrite(p, 1, (size_t)(e - p), stderr); fputc('\n', stderr); }
+      break;
+    }
+  free(s);
+  fclose(f);
+}
+typedef struct { char path[4096]; uint64_t line; const char *name; long count; int any; } Shown;   /* the last frame */
+static void tb_repeated(const Shown *s) {   /* CPython's recursion cutoff: a frame's fourth and later repetitions */
+  if (s->count > 3) fprintf(stderr, "  [Previous line repeated %ld more time%s]\n", s->count - 3, s->count > 4 ? "s" : "");
+}
+static void tb_show(Shown *s, const char *path, uint64_t line, const char *name) {
+  if (strcmp(path, s->path) || line != s->line || strcmp(name, s->name)) {
+    tb_repeated(s);
+    snprintf(s->path, sizeof s->path, "%s", path); s->line = line; s->name = name; s->count = 0;
+  }
+  if (++s->count > 3) return;
+  if (!s->any) fputs("Traceback (most recent call last):\n", stderr);
+  s->any = 1;
+  const char *own = strrchr(name, '.');   /* its own name, as CPython's co_name, not the qualified one */
+  fprintf(stderr, "  File \"%s\", line %llu, in %s\n", path, (unsigned long long)line, own ? own + 1 : name);
+  tb_source(path, line);
+}
+#endif
 #if defined(__linux__) && defined(__LP64__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 enum { TBMAX = 4096 };                 /* the frames kept, the innermost (a RecursionError has about 1,000) */
 static uintptr_t tb_ip[TBMAX];         /* their return addresses, less one (in the call), innermost first */
@@ -9073,39 +9108,6 @@ static void tb_image(Image *m) {       /* the executable's segments, where the k
   for (int i = 0; m->ph && i < m->n; i++)
     if (m->ph[i].p_type == PT_PHDR) m->bias = (uintptr_t)m->ph - m->ph[i].p_vaddr;   /* (none: not position-independent) */
 }
-static void tb_source(const char *path, uint64_t line) {   /* that line of the file, stripped, as CPython shows it */
-  FILE *f = fopen(path, "r");
-  char *s = 0;
-  size_t cap = 0;
-  ssize_t len;
-  if (!f) return;
-  for (uint64_t i = 1; (len = getline(&s, &cap, f)) >= 0; i++)
-    if (i == line) {
-      char *p = s, *e = s + len;
-      while (p < e && isspace((unsigned char)*p)) p++;
-      while (e > p && isspace((unsigned char)e[-1])) e--;
-      if (e > p) { fputs("    ", stderr); fwrite(p, 1, (size_t)(e - p), stderr); fputc('\n', stderr); }
-      break;
-    }
-  free(s);
-  fclose(f);
-}
-typedef struct { char path[4096]; uint64_t line; const char *name; long count; int any; } Shown;   /* the last frame */
-static void tb_repeated(const Shown *s) {   /* CPython's recursion cutoff: a frame's fourth and later repetitions */
-  if (s->count > 3) fprintf(stderr, "  [Previous line repeated %ld more time%s]\n", s->count - 3, s->count > 4 ? "s" : "");
-}
-static void tb_show(Shown *s, const char *path, uint64_t line, const char *name) {
-  if (strcmp(path, s->path) || line != s->line || strcmp(name, s->name)) {
-    tb_repeated(s);
-    snprintf(s->path, sizeof s->path, "%s", path); s->line = line; s->name = name; s->count = 0;
-  }
-  if (++s->count > 3) return;
-  if (!s->any) fputs("Traceback (most recent call last):\n", stderr);
-  s->any = 1;
-  const char *own = strrchr(name, '.');   /* its own name, as CPython's co_name, not the qualified one */
-  fprintf(stderr, "  File \"%s\", line %llu, in %s\n", path, (unsigned long long)line, own ? own + 1 : name);
-  tb_source(path, line);
-}
 static void traceback(Exc *e) {        /* "Traceback (most recent call last):" and e's frames (a program without
                                           try or with: the frames now), where line tables give some */
   Shown shown = {0}, held = {0};       /* (held: the frame before it is shown, the innermost one perhaps never) */
@@ -9140,6 +9142,72 @@ static void traceback(Exc *e) {        /* "Traceback (most recent call last):" a
   }
   if (have && !drop) tb_show(&shown, held.path, held.line, held.name);   /* (drop: a RecursionError's entry check) */
   tb_repeated(&shown);
+}
+#elif defined(__wasi__)
+/* (WebAssembly code has no return addresses to read: its host reads the engine's stack. tb_begin
+   asks it to keep the stack of e's raise; traceback reads that stack, or the stack now for an
+   exception that no raise kept: the program's frames, innermost first, each as the offset in the
+   program's module of its call, which the module's pystachy.lines section maps to a line
+   (tir_wasm.py's lines_section). A host or a module without them shows the last line alone.) */
+enum { TBMAX = 4096 };
+__attribute__((import_module("pystachy"), import_name("trace"))) void host_trace(void);
+__attribute__((import_module("pystachy"), import_name("frames"))) int host_frames(int kept, uint32_t *at, int max);
+__attribute__((import_module("pystachy"), import_name("lines"))) uint32_t host_lines(uint8_t *to, uint32_t size);
+static uint32_t tb_at[TBMAX];
+static int tb_drop;
+static void tb_frame(struct _Unwind_Context *ctx) { (void)ctx; }
+static void tb_begin(Exc *e) {
+  if (e != xr.tb) { xr.tb = e; tb_drop = tb_entry; tb_entry = 0; host_trace(); }
+}
+static uint32_t tb_word(const uint8_t **p, const uint8_t *e) {   /* a little-endian word (0 past the end) */
+  uint32_t v = 0;
+  if (e - *p < 4) { *p = e; return 0; }
+  memcpy(&v, *p, 4); *p += 4;
+  return v;
+}
+static const char **tb_strings(const uint8_t **p, const uint8_t *e, uint32_t *n) {   /* a count, then
+                                       each string's length, its bytes and a NUL: pointers to them */
+  *n = tb_word(p, e);
+  const char **v = *n <= (uint32_t)(e - *p) ? malloc((*n + 1) * sizeof *v) : 0;
+  for (uint32_t i = 0; v && i < *n; i++) {
+    uint32_t len = tb_word(p, e);
+    if (len >= (uint32_t)(e - *p) || (*p)[len]) { free(v); return 0; }
+    v[i] = (const char *)*p; *p += len + 1;
+  }
+  return v;
+}
+static void traceback(Exc *e) {
+  int kept = e && e == xr.tb, drop = kept ? tb_drop : tb_entry, have = 0;
+  uint32_t size = host_lines(0, 0), nfiles = 0, nnames = 0, nrows = 0;
+  if (!size) return;
+  int n = host_frames(kept, tb_at, TBMAX);
+  uint8_t *b = n > 0 ? malloc(size) : 0;
+  const char **files = 0, **names = 0;
+  if (b && host_lines(b, size) == size) {
+    const uint8_t *p = b, *end = b + size, *rows;
+    if (tb_word(&p, end) == 1 && (files = tb_strings(&p, end, &nfiles)) && (names = tb_strings(&p, end, &nnames))) {
+      nrows = tb_word(&p, end);
+      rows = p;
+      if (nrows > (uint32_t)(end - p) / 16) nrows = 0;
+      Shown shown = {0}, held = {0};     /* (as the DWARF reader's: the innermost frame shown last, if at all) */
+      for (int i = n - 1; i >= 0; i--) {
+        uint32_t lo = 0, hi = nrows, r[4];
+        while (lo < hi) {              /* the row of this frame's call */
+          uint32_t mid = lo + (hi - lo) / 2, at;
+          memcpy(&at, rows + 16 * mid, 4);
+          if (at < tb_at[i]) lo = mid + 1; else hi = mid;
+        }
+        if (lo == nrows) continue;
+        memcpy(r, rows + 16 * lo, 16);
+        if (r[0] != tb_at[i] || r[1] >= nnames || r[2] >= nfiles || !r[3] || !strncmp(names[r[1]], "<generated", 10)) continue;
+        if (have) tb_show(&shown, held.path, held.line, held.name);
+        snprintf(held.path, sizeof held.path, "%s", files[r[2]]); held.line = r[3]; held.name = names[r[1]]; have = 1;
+      }
+      if (have && !drop) tb_show(&shown, held.path, held.line, held.name);
+      tb_repeated(&shown);
+    }
+  }
+  free(files); free(names); free(b);
 }
 #else                                  /* (elsewhere: the last line alone) */
 static void tb_frame(struct _Unwind_Context *ctx) { (void)ctx; }

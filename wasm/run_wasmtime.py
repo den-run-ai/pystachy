@@ -215,6 +215,12 @@ class Runner:
             linker.define_func("wasi_snapshot_preview1", "proc_exit", wt.FuncType([wt.ValType.i32()], []), proc_exit)
             linker.allow_shadowing = False
             install_tools(linker, tools or {})
+            # runtime.c's tracebacks ask the host for the engine's stack, which wasmtime-py does not
+            # give a host function: an uncaught error shows its last line alone
+            i32 = wt.ValType.i32()
+            linker.define_func("pystachy", "trace", wt.FuncType([], []), lambda: None)
+            linker.define_func("pystachy", "frames", wt.FuncType([i32] * 3, [i32]), lambda *_: 0)
+            linker.define_func("pystachy", "lines", wt.FuncType([i32] * 2, [i32]), lambda *_: 0)
             try:
                 if program.data_size is None:
                     command = linker.instantiate(store, program.module)

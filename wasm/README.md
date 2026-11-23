@@ -254,6 +254,16 @@ covers a 2,000-container round trip and catching `RecursionError` on deeper inpu
   runtime. WASI errno numbers can differ from Linux,
   including which subclass a numeric `OSError` constructs. For example, both Wasm routes
   report missing files with WASI errno 44, while Linux reports errno 2.
+- **Tracebacks come from the engine's stack.** Wasm code has no return addresses or DWARF to
+  read. When a new exception is first raised, the runtime asks its host to keep the stack
+  (`pystachy.trace`); its report asks for the program's frames (`pystachy.frames`), each as the
+  module offset of its call. The emitter's `pystachy.lines` section maps those offsets to each
+  frame's file, line and function. Keeping the stack costs each raise of a new exception
+  about 2 µs, plus about 0.08 µs a frame: 100,000 raises caught twelve frames deep took
+  0.55 s instead of 0.18 s (natively 0.12 s; CPython 0.15 s). `WASM_LINES=0` omits the section
+  and that cost. The Node host gives directly emitted programs CPython's traceback; a code mode
+  snippet has no file, so its frames show no source lines. LLVM-built commands, whose code has no such table, and the
+  Wasmtime host, whose Python API gives a host function no stack, print the last line alone.
 - **No processes, signals, users or dynamic loading.** `wasi_stubs.c` defines those calls to
   fail with `ENOSYS`, so the runtime raises the matching `OSError`.
 - **Filesystem access depends on the runner.** The CLI preopens `/` and passes Node's working
