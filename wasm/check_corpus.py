@@ -1,10 +1,11 @@
 """Compare the corpus in tests/run.sh's Wasm modes with wasm/known_differences.txt (wasm/README.md).
 
-usage: python3 wasm/check_corpus.py [--compiler CMD] [--modes "wasm wasm-tir"] [--log FILE] [PROGRAM...]
+usage: python3 wasm/check_corpus.py [--compiler CMD] [--modes "wasm wasm-tir"] [--log FILE]
+                                  [--shard I/N | PROGRAM...]
 
 Runs tests/run.sh CMD MODES PROGRAM... (default: ./pystachy, both modes and every
-tests/programs/AREA/*.py) and reads its FAIL lines; with --log, reads the report that such a run
-already wrote. Exits 1 when a program differs from CPython in a mode that known_differences.txt
+tests/programs/AREA/*.py, or with --shard the programs of tools/shard_cases.sh's shard I of N) and
+reads its FAIL lines; with --log, reads the report that such a run already wrote. Exits 1 when a program differs from CPython in a mode that known_differences.txt
 does not name for it. Entries whose programs now match are listed, and the exit status stays 0,
 so a fix can land before its entry goes. Exits 2 when the list is malformed or names a program the
 corpus lacks, or when there is no report.
@@ -58,17 +59,29 @@ def corpus() -> list:
     return sorted(os.path.relpath(p, ROOT) for p in glob.glob(os.path.join(ROOT, "tests", "programs", "*", "*.py")))
 
 
+def shard(spec: str) -> list:
+    # the programs among tools/shard_cases.sh's cases of shard I/N (the N shards partition the corpus)
+    out = subprocess.run(["sh", "tools/shard_cases.sh", spec], cwd=ROOT, stdout=subprocess.PIPE, text=True, check=True)
+    return sorted(p for p in out.stdout.split("\n") if p.startswith("tests/programs/") and p.endswith(".py"))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--compiler", default="./pystachy")
     ap.add_argument("--modes", default=" ".join(MODES))
     ap.add_argument("--log", help="a tests/run.sh report of these programs and modes")
+    ap.add_argument("--shard", help="I/N: the programs of tools/shard_cases.sh's shard I of N")
     ap.add_argument("programs", nargs="*")
     args = ap.parse_args()
     modes = args.modes.split()
     if not modes or any(m not in MODES for m in modes):
         ap.error(f"--modes takes {' and '.join(MODES)}")
-    programs = args.programs or corpus()
+    if args.shard and args.programs:
+        ap.error("--shard takes no programs")
+    try:
+        programs = args.programs or (shard(args.shard) if args.shard else corpus())
+    except subprocess.CalledProcessError:
+        return 2
     try:
         expected = known(open(KNOWN, encoding="utf-8").read())
     except ValueError as e:

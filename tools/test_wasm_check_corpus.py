@@ -31,6 +31,11 @@ class CheckCorpus(unittest.TestCase):
         corpus = {Path(p).stem for p in C.corpus()}
         self.assertEqual(sorted({name for name, _ in expected} - corpus), [])
 
+    def test_shards_partition_the_programs(self):
+        shards = [C.shard(f"{i}/6") for i in range(6)]
+        self.assertEqual(sorted(p for s in shards for p in s), C.corpus())
+        self.assertTrue(all(shards))
+
 
 if __name__ == "__main__":
     unittest.main()
