@@ -487,3 +487,64 @@ they call for an element's equality. What differs is where the code lands. The l
 inner loop starts on a 64-byte boundary in the C build and 48 bytes past one in this
 build, and the insertion's the other way round. The AOT executable of the workload is
 169,912 bytes before and 169,840 after.
+
+## Dicts
+
+A dict's table moved after the sets': the entries and their index, the probes of int and
+str keys, insertion, deletion, the rebuilds, `popitem`, the copies and merges, the views
+and a loop's steps. Their workload is [`dicts.py`](dicts.py):
+
+| Case | Default iterations | Work measured |
+|---|---:|---|
+| `dict-set` | 100,000,000 | stores into a dict of ints that is cleared every 4,096 keys |
+| `dict-get` | 150,000,000 | `get` on 1,024 int keys, half of the queries present |
+| `dict-get-large` | 60,000,000 | `in` and `[]` on 1,048,576 int keys, at random |
+| `dict-str` | 60,000,000 | a word count: `get` and a store per str key |
+| `dict-tuple` | 30,000,000 | `in` and a store of a pair of ints, which `runtime.c` still hashes and compares |
+| `dict-churn` | 40,000,000 | a store and a `del` among 1,024 int keys, whose holes make the table rebuild |
+| `dict-iterate` | 600,000 | a loop over the items of 1,024 int keys |
+| `dict-copy` | 200,000 | `copy`, `update` and `dict()` of dicts of 192 int keys |
+| `dict-pop` | 150,000 | `dict()` of 192 items, `pop` of 32, then `popitem` until it is empty |
+| `dict-columns` | 300,000 | `list()` of the keys and of the values of 1,024 items |
+| `dict-setdefault` | 60,000,000 | `setdefault` of 256 str keys, the dict cleared every 2,048 |
+
+```sh
+taskset -c "$BENCH_CPU" python3.13 bench/runtime_subset/compare.py \
+  --before "$BENCH_BASELINE" --after . --pairs 7 \
+  --cases dict-set dict-get dict-get-large dict-str dict-tuple dict-churn dict-iterate \
+          dict-copy dict-pop dict-columns dict-setdefault \
+  --json /tmp/dicts.json
+```
+
+The [recorded report](dicts.json) compares
+`e124b71e1ef13dde1afad24bb747bb1621285262` with
+`11de952a4803d6dd62af3781f45ccb82299a06f9`, both from clean checkouts with freshly
+built compilers, on the same host, CPython and LLVM as the lists' report. The run was
+pinned to CPU 2 and the load average was 0.20 when it began. Each workload produced the
+CPython checksum in both modes.
+
+| Case | AOT after / C | JIT after / C | AOT ns per iteration, C to after |
+|---|---:|---:|---:|
+| `dict-set` | 0.992 | 0.986 | 15.08 to 15.07 |
+| `dict-get` | 0.965 | 0.827 | 4.38 to 4.26 |
+| `dict-get-large` | 0.878 | 0.939 | 26.79 to 23.51 |
+| `dict-str` | 0.968 | 0.968 | 10.28 to 10.21 |
+| `dict-tuple` | 1.004 | 1.008 | 16.47 to 16.60 |
+| `dict-churn` | 0.920 | 0.937 | 22.45 to 20.66 |
+| `dict-iterate` | 0.998 | 1.018 | 955 to 954 |
+| `dict-copy` | 0.943 | 0.977 | 2691 to 2655 |
+| `dict-pop` | 0.995 | 0.983 | 2128 to 2099 |
+| `dict-columns` | 0.891 | 0.844 | 2855 to 2497 |
+| `dict-setdefault` | 0.982 | 1.135 | 7.20 to 7.00 |
+
+Ratios are medians of 7 alternating pairs; single pairs range from 0.636 to 1.194. In AOT
+every case is within 0.4% of the C code or faster. Under the JIT all but one are within
+2% or faster; `dict-setdefault` is 13.5% slower, and timed again alone 0.45 s against
+0.51 s, although the runtime that the JIT links has the same calls for it as the C one
+and the same str probe, instruction for instruction but for two loads that it hoists.
+The AOT executable of the workload is 178,416 bytes before and 178,880 after.
+
+A first version of this code was 20% slower than the C code for `dict-get` in AOT. Each
+entry point hashed the key and then looked it up through two inlined functions, and each
+tested the key kind: LLVM kept both tests and the paths between them. Each kind of key now
+hashes and calls its own probe in one function, as `runtime.c`'s `dhfind` did.
