@@ -6926,6 +6926,16 @@ def pys_rt_skip(d: _rt.Ptr) -> _rt.Ptr:
     return d
 
 
+@_rt.inline
+@_rt.unchecked
+def desc_next(d: _rt.Ptr) -> _rt.Ptr:
+    # the bytes past the part at d: a one-letter part's here, which a tuple's items mostly are
+    c = _rt.byte_at(d, 0)
+    if c == ord("i") or c == ord("s") or c == ord("f") or c == ord("b") or c == ord("J"):
+        return _rt.offset(d, 1)
+    return pys_rt_skip(d)
+
+
 @_rt.unchecked
 def recdesc(d: _rt.Ptr) -> _rt.Ptr:
     # where an edge leads: the descriptor that its count of bytes back begins
@@ -7448,7 +7458,13 @@ def eqitem(a: int, b: int, d: _rt.Ptr) -> bool:
     # from direct comparison: equal unboxed float bits need not compare equal, and an optional
     # scalar's box gives that scalar no Python object identity
     d = recdesc(d)
-    c = _rt.byte_at(d, 1 if _rt.byte_at(d, 0) == ord("?") else 0)
+    c = _rt.byte_at(d, 0)
+    if c == ord("i") or c == ord("b"):
+        return a == b  # (eqv's answer for an int or a bool, and for a str below, without its call)
+    if c == ord("s"):
+        return str_item_eq(a, b)
+    if c == ord("?"):
+        c = _rt.byte_at(d, 1)
     if c == ord("U"):
         return eqpair_walk(a, b, d, d, 0)
     if c == ord("A"):
@@ -7510,7 +7526,7 @@ def eqv(a: int, b: int, d: _rt.Ptr) -> bool:
                     return False
             elif not eqitem(tuple_item(x, n, i, e, wx), tuple_item(y, n, i, e, wy), e):
                 return False
-            e = pys_rt_skip(e)
+            e = desc_next(e)
             i += 1
         return True
     if c == ord("V"):
@@ -7734,9 +7750,9 @@ def eqpair_walk(a: int, b: int, x: _rt.Ptr, y: _rt.Ptr, depth: int) -> bool:
                 if not eqpair_walk(tuple_item(p, cnt, i, ex, wx) if xt else _rt.word(p, i), tuple_item(q, cnt, i, ey, wy) if yt else _rt.word(q, i), ex, ey, depth):
                     return False
             if xt:
-                ex = pys_rt_skip(ex)
+                ex = desc_next(ex)
             if yt:
-                ey = pys_rt_skip(ey)
+                ey = desc_next(ey)
             i += 1
         return True
     return False  # (not reached: the compiler permits only the builtin value descriptors above)
@@ -7853,6 +7869,22 @@ def type_letter(v: int, d: _rt.Ptr) -> int:
 
 
 @_rt.unchecked
+def list_order(x: _rt.Ptr, y: _rt.Ptr, e: _rt.Ptr, op: int) -> bool:
+    # x OP y of lists of item descriptor e: the first pair of items that are not equal decides
+    i = 0
+    while i < _rt.get(x, "List.len") and i < _rt.get(y, "List.len") and list_item_eq(x, i, y, i, e):
+        i += 1
+    if i < _rt.get(x, "List.len") and i < _rt.get(y, "List.len"):
+        mx = pys_rt_lbig(x, i)
+        my = pys_rt_lbig(y, i)
+        if not _rt.null(mx) or not _rt.null(my):
+            # (an int past 64 bits)
+            return cmpop(pys_big_cmp(0 if not _rt.null(mx) else _rt.word(_rt.getp(x, "List.a"), i), mx, 0 if not _rt.null(my) else _rt.word(_rt.getp(y, "List.a"), i), my), op)
+        return opv(_rt.word(_rt.getp(x, "List.a"), i), _rt.word(_rt.getp(y, "List.a"), i), e, op)
+    return cmpop(sign(_rt.get(x, "List.len"), _rt.get(y, "List.len")), op)
+
+
+@_rt.unchecked
 def opv(a: int, b: int, d: _rt.Ptr, op: int) -> bool:
     # a OP b of descriptor d, op 0..3 for < <= > >=, as CPython compares: sequences find the
     # first pair of items that are not equal (identity, then ==) and apply OP to that pair only,
@@ -7865,19 +7897,7 @@ def opv(a: int, b: int, d: _rt.Ptr, op: int) -> bool:
     if c == ord("s"):
         return cmpop(pys_str_cmp(_rt.as_str(_rt.ptr(a)), _rt.as_str(_rt.ptr(b))), op)
     if c == ord("L"):
-        x = _rt.ptr(a)
-        y = _rt.ptr(b)
-        i = 0
-        while i < _rt.get(x, "List.len") and i < _rt.get(y, "List.len") and list_item_eq(x, i, y, i, e):
-            i += 1
-        if i < _rt.get(x, "List.len") and i < _rt.get(y, "List.len"):
-            mx = pys_rt_lbig(x, i)
-            my = pys_rt_lbig(y, i)
-            if not _rt.null(mx) or not _rt.null(my):
-                # (an int past 64 bits)
-                return cmpop(pys_big_cmp(0 if not _rt.null(mx) else _rt.word(_rt.getp(x, "List.a"), i), mx, 0 if not _rt.null(my) else _rt.word(_rt.getp(y, "List.a"), i), my), op)
-            return opv(_rt.word(_rt.getp(x, "List.a"), i), _rt.word(_rt.getp(y, "List.a"), i), e, op)
-        return cmpop(sign(_rt.get(x, "List.len"), _rt.get(y, "List.len")), op)
+        return list_order(_rt.ptr(a), _rt.ptr(b), e, op)
     if c == ord("J"):
         pys_rt_opt_in()
         return cmpop(pys_big_cmp(jbig_lo(a), jbig_hi(a), jbig_lo(b), jbig_hi(b)), op)
@@ -7899,7 +7919,7 @@ def opv(a: int, b: int, d: _rt.Ptr, op: int) -> bool:
                 q = tuple_item(y, n, i, e, wy)
                 if not eqitem(p, q, e):
                     return opv(p, q, e, op)
-            e = pys_rt_skip(e)
+            e = desc_next(e)
             i += 1
         return cmpop(0, op)
     if c == ord("V"):
