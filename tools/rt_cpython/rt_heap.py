@@ -87,7 +87,7 @@ def signed(x):
 
 
 class Heap:
-    LIMIT = 3000000
+    LIMIT = 1000000
 
     def __init__(self, records):
         self.records = {name: spec.split() for name, spec in records.items()}

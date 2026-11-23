@@ -576,8 +576,9 @@ def fuzz_sets():
     global fails, cases
     none = -(1 << 63)
     prime = (1 << 61) - 1
-    for mode in ("int", "str", "obj", "big"):
-        for round in range(max(1, N // 25)):
+    # (each round goes through every mode, so that a fault of any mode shows in the first rounds)
+    for round in range(max(1, N // 25)):
+        for mode in ("int", "str", "obj", "big"):
             HEAP.reset()
             C.setup()
             C.opt = int(mode == "big")
@@ -906,8 +907,8 @@ def fuzz_dicts():
     # lookup has no CPython to compare with here: the storage must stay sound
     global fails, cases
     none = -(1 << 63)
-    for mode in ("int", "str", "str!", "obj", "big"):
-        for round in range(max(1, N // 25)):
+    for round in range(max(1, N // 25)):
+        for mode in ("int", "str", "str!", "obj", "big"):
             HEAP.reset()
             C.setup()
             C.opt = int(mode == "big")

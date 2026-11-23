@@ -659,12 +659,38 @@ def cycle(graph, start, inner):
                     todo.append(m)
         return None
 
-    for y in sorted(inner):
-        there = path(start, y)
-        back = path(y, start) if there else None
-        if there and back:
-            return there + back[1:]
+    def reach(g, a):
+        # the nodes that one or more edges of g lead to from a
+        seen = set()
+        todo = list(g.get(a, ()))
+        while todo:
+            n = todo.pop()
+            if n not in seen:
+                seen.add(n)
+                todo.extend(g.get(n, ()))
+        return seen
+
+    # (only a node of inner that start reaches and that reaches start can be on such a path: two
+    # walks find them all, where a search for each node of inner made the check quadratic in the
+    # runtime's size; the first of them in order is the one a search of each would have found)
+    there = reach(graph, start) & inner
+    if not there:
+        return None
+    if _REVERSED[0] is not graph:
+        rev = {}
+        for n, ms in graph.items():
+            for m in ms:
+                rev.setdefault(m, set()).add(n)
+        _REVERSED[:] = [graph, rev]
+    for y in sorted(there & reach(_REVERSED[1], start)):
+        to = path(start, y)
+        back = path(y, start)
+        if to and back:
+            return to + back[1:]
     return None
+
+
+_REVERSED = [None, {}]  # (the graph that cycle last reversed, and its reverse: one per check)
 
 
 # a cycle through a node of inner: found, the shortest way there and back; none without one
