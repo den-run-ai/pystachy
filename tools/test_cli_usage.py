@@ -6,6 +6,7 @@ reach the program unchanged.
 """
 import os
 from pathlib import Path
+import struct
 import subprocess
 import sys
 import tempfile
@@ -14,6 +15,20 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 COMPILER = os.environ.get("PYSTACHY_TEST_COMPILER", "")
 LLVM = os.environ.get("PYSTACHY_TEST_LLVM", "")
+
+
+def elf_sections(data):
+    """Return the section names of a 64-bit little-endian ELF executable."""
+    assert data[:6] == b"\x7fELF\x02\x01", "expected a 64-bit little-endian ELF executable"
+    (table,) = struct.unpack_from("<Q", data, 0x28)
+    size, count, names = struct.unpack_from("<HHH", data, 0x3A)
+    (strings,) = struct.unpack_from("<Q", data, table + names * size + 0x18)
+    found = set()
+    for index in range(count):
+        (name,) = struct.unpack_from("<I", data, table + index * size)
+        start = strings + name
+        found.add(data[start:data.index(b"\0", start)])
+    return found
 
 
 class CommandLine(unittest.TestCase):
@@ -187,8 +202,13 @@ class CommandLine(unittest.TestCase):
         self.assertNotEqual(build("o0", "-O0")[1], default)
         self.assertEqual(build("o1", "-O1", extra={"PYSTACHY_AOT_OPT": "0"})[1],
                          build("o1env", extra={"PYSTACHY_AOT_OPT": "1"})[1])
-        self.assertIn(b".debug_line", build("lines", "-g")[1])
-        self.assertNotIn(b".debug_line", default)
+        # A build gives the program line tables unless PYSTACHY_DEBUG_LINES=0; -g sets 1 for one build.
+        # (Every executable holds the string ".debug_line": the traceback reader looks the section up.)
+        lines = build("lines", "-g", extra={"PYSTACHY_DEBUG_LINES": "0"})[1]
+        self.assertEqual(lines, build("linesenv", extra={"PYSTACHY_DEBUG_LINES": "1"})[1])
+        self.assertIn(b".debug_line", elf_sections(lines))
+        self.assertIn(b".debug_line", elf_sections(default))
+        self.assertNotIn(b".debug_line", elf_sections(build("nolines", extra={"PYSTACHY_DEBUG_LINES": "0"})[1]))
         warned, _ = build("o3", "-O3")
         self.assertEqual(warned, "pystachy build: warning: ignoring argument '-O3'\n")
         build("-g")  # -o's value, not the option
