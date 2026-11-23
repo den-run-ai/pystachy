@@ -1386,7 +1386,6 @@ from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.builtin_bases import (
     gen_bbase as builtin_bases_bbase,
     gen_bbuiltin as builtin_bases_bbuiltin,
-    gen_bcalled as builtin_bases_bcalled,
     gen_bcompared as builtin_bases_bcompared,
     gen_bdecay as builtin_bases_bdecay,
     gen_bearly as builtin_bases_bearly,
@@ -5934,9 +5933,6 @@ class Gen:
 
     def bcompared(self, op: str, a: Val, b: Val) -> list[Val]:
         return builtin_bases_bcompared(self, op, a, b)
-
-    def bcalled(self, op: str, t: str, side: int) -> bool:
-        return builtin_bases_bcalled(self, op, t, side)
 
     def bstored(self, t: str, key: Node, vt: str) -> None:
         builtin_bases_bstored(self, t, key, vt)

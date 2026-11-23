@@ -158,35 +158,7 @@ def gen_bcompared(self, op: str, a: Val, b: Val) -> list[Val]:
         return [a, b]
     if self.bkind(a.t) == "" and BCMP[op][1] in self.classes[b.t].methods:
         return [a, b]
-    ka = self.bkind(a.t)
-    kb = self.bkind(b.t)
-    if ka == "" and self.bcalled(op, a.t, 0):
-        # (the left operand's method, which the program defines, takes the right one: the object
-        # itself, whose class isinstance() and type() tell there, not its container)
-        return [a, b]
-    if ka != "" and kb != ka and not (is_list(b.t) if ka == "list" else is_dict(b.t)) and self.bcalled(op, b.t, 1):
-        # (the left operand's container declines a right operand that is no such container, and
-        # the right one's method then takes the left one: the object itself. A right operand of
-        # the container's kind, an object of another class deriving from it too, is compared
-        # by the container, which does not decline it)
-        return [a, b]
     return [self.bdecay(a, []), self.bdecay(b, [])]
-
-
-def gen_bcalled(self, op: str, t: str, side: int) -> bool:
-    # does comparison op (of BCMP) call a method that the program defines for an operand of
-    # type t, its left one (side 0) or its right one (side 1, the reflected method): the method
-    # of an object's class, written in the program (not a dataclass's generated one, which
-    # declines an object of another class unread). A class deriving from a builtin container
-    # keeps the container's method for each operator it does not define; any other class's
-    # != inverts its __eq__ where it defines no __ne__
-    if t not in self.classes:
-        return False
-    ms = self.classes[t].methods
-    m = BCMP[op][side]
-    if m in ms and not ms[m].synthetic:
-        return True
-    return op == "!=" and self.bkind(t) == "" and "__eq__" in ms and not ms["__eq__"].synthetic
 
 
 def gen_bfound(self, t: str, b: str) -> None:
