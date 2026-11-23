@@ -168,6 +168,12 @@ def gen_ann(self, n: Node) -> str:
     # the type annotation n denotes, or "!" and why Pystachy does not support it (typeof's error,
     # which a declaration in an imported module defers to where the program uses it)
     k = n.kind
+    if k == "boundtype":
+        return n.s  # a saved lexical annotation's already-resolved native type
+    if k == "ifacetype":
+        # Iterator[X] or Iterable[X] in a Protocol's method: the stored interface (interfaces.py)
+        t = self.ann(n.kids[0])
+        return t if t.startswith("!") else self.iface_of(n.s, [t])
     if k == "None":
         return "None"
     if k == "str":
@@ -193,6 +199,11 @@ def gen_ann(self, n: Node) -> str:
             return s
         if s == "type":
             return "type[object]"  # (the class object of any ordinary class: class_values.py)
+        if s == "object" and not self.bound(s):
+            # (a variable's, a field's, a container's items', a result's: any value, held behind a
+            # table of its type's operations, interfaces.py; a parameter's makes a template,
+            # declare_fn)
+            return self.object_iface()
         if s == "range" and RANGEC in self.classes:
             return RANGEC  # (the class of range objects, lib/_pystachy_range.py)
         if s == "complex" and COMPLEXC in self.classes:
@@ -253,6 +264,8 @@ def gen_ann(self, n: Node) -> str:
         return "type[" + n.kids[1].s + "]"
     elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s in self.taliases:
         return self.alias_ann(n)
+    elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s in self.ifgeneric:
+        return self.iface_spec(n.kids[0].s, n.kids[1])  # (P[X] of a generic Protocol: interfaces.py)
     elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s in self.tparams:
         return self.generic_ann(n.kids[0].s, n.kids[1])
     elif k == "index" and (n.kids[0].kind == "name" or n.kids[0].kind == "attr") and self.ann(n.kids[0]) in self.galias:
@@ -464,7 +477,45 @@ def gen_tvar(self, s: str) -> str:
     # what type variable s is bound to where an annotation names it, or "": in a specialization
     # of a generic class (its fields and methods), what the call that made the object bound
     c = self.selfcls if self.selfcls != "" else self.curfn.cls
-    return self.classes[c].tvars.get(s, "") if c in self.classes else ""
+    if c in self.classes and s in self.classes[c].tvars:
+        return self.classes[c].tvars[s]
+    return self.fn_typevar(self.curfn, s) if self.selfcls == "" else ""
+
+
+def gen_bound_annotation(self, n: Node, bindings: dict[str, str], cls: str, head: bool = False) -> Node:
+    # Substitute into a private annotation tree, without changing the declaration
+    # shared by other specializations or borrowing the caller's annotation scope.
+    a = self.parse_expr(n.s) if n.kind == "str" else n
+    if a.kind == "name" and a.s in bindings:
+        return mk("boundtype", bindings[a.s], a.line, [])
+    if (a.kind == "name" or a.kind == "attr") and self.typing_ref(a) == "Self":
+        return mk("boundtype", cls if cls != "" else "!typing.Self is only supported in a class, for its methods and fields", a.line, [])
+    if not head and a.kind == "name" and cls in self.classes and self.classes[cls].origin == a.s:
+        return mk("boundtype", cls, a.line, [])  # bare own generic class, like Self
+    return mk(a.kind, a.s, a.line, [self.bound_annotation(a.kids[i], bindings, cls, a.kind == "index" and i == 0) for i in range(len(a.kids))])
+
+
+def gen_lexical_ann(self, n: Node, f: FnInfo) -> str:
+    names: list[str] = []
+    name = self.typevar_in([n], names)
+    while name != "":
+        names.append(name)
+        name = self.typevar_in([n], names)
+    bindings: dict[str, str] = {}
+    for name in names:
+        t = self.fn_typevar(f, name)
+        if t == "":
+            return ""
+        bindings[name] = t
+    cls = ""
+    scope: FnInfo | None = f
+    while scope is not None:
+        if scope.cls != "":
+            cls = scope.cls
+            break
+        scope = scope.tvouter
+    t = self.ann(self.bound_annotation(n, bindings, cls))
+    return "" if t.startswith("!") else t
 
 def gen_self_type(self) -> str:
     # typing.Self: the class of the method or field it annotates (there is no inheritance)
@@ -1589,6 +1640,18 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         # def f(x: T) with T = TypeVar("T"): what mentions a TypeVar is left unannotated, as in
         # def f[T](x: T) (a template); also *args: *Ts
         self.tv_plan(f, ps, d.kids[1], tvs)
+        skip = 1 if f.deco == "classmethod" and len(ps) > 0 and ps[0].kind == "param" else 0
+        f.tvparams = [clone(p) for p in ps[skip:]]
+        f.tvresult = clone(d.kids[1])
+        for p in f.tvparams:
+            if p.kids[0].kind == "noann" and len(p.kids[0].kids) > 0:
+                p.kids[0] = p.kids[0].kids[0]
+        if f.tvresult.kind == "noann" and len(f.tvresult.kids) > 0:
+            f.tvresult = f.tvresult.kids[0]
+        name = tv
+        while name != "":
+            f.tvnames.append(name)
+            name = self.typevar_in([p.kids[0] for p in ps] + [d.kids[1]], tvs + f.tvnames)
         for p in ps:
             if self.typevar_in([p.kids[0]], tvs) != "":
                 p.kids[0] = mk("noann", "", d.line, [])
@@ -3676,7 +3739,7 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
             self.err(f"'{short(o.t)}' object has no attribute '{name}' (of an exception object, only the fields of its class are supported; str(e) and repr(e) are)")
         if o.t in self.nts and name == "__doc__":
             self.err(f"reading the __doc__ of NamedTuple {short(o.t)} is not supported (Pystachy keeps no docstrings of classes)")
-        self.err(f"'{shown(o.t)}' object has no attribute '{name}'" + self.nested_hint(o.t, name) + self.tmpl_hint(o.t, name))
+        self.err(f"'{shown(o.t)}' object has no attribute '{name}'" + self.nested_hint(o.t, name) + self.tmpl_hint(o.t, name) + self.object_note([o.t]))
     extra = " and no __dict__ for setting new attributes" if store else ""
     if self.rolex != o.v and self.role_field(o.t, name):
         # (the object may be a combining class's, whose layout holds the attribute elsewhere:

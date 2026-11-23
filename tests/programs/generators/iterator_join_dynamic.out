@@ -1,0 +1,7 @@
+False True generator [[1], [0]]
+list_iterator {'list': [5], 'gen': [0, 10]}
+1
+[0, 10]
+[7, 8] [0, 10, 20]
+[0, 10]
+[exit 0]

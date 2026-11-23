@@ -281,6 +281,7 @@ def gen_refl_concrete(self, t: str) -> list[str]:
     # the exact types a value of static type t may have, but None: its class and the classes
     # derived from it in a hierarchy, each member of a union (expanded alike), or t itself
     t = unopt(t)
+    self.iface_reflect(t, "reflection")  # (an interface's: its objects' classes are the run time's)
     if is_union(t):
         out: list[str] = []
         for m in umembers(t):
@@ -593,6 +594,8 @@ def gen_refl_type_attr(self, x: Node, what: str) -> Val:
     # type decides it, else the name in the record of its exact class (refl_class_of)
     v = self.expr(x, "")
     known = self.knownobj(x)
+    if self.is_object(v.t) or self.is_view(v.t):
+        return self.object_type_attr(self.to_object(v), what)  # (its object's type's: interfaces.py)
     if v.t == "dyn" and what == "__qualname__":
         return self.dyn_call(self.dyn_dispatcher("qualname", ["dyn"], "str", "__qualname__"), [v])
     if v.t == "dyn" and what == "__name__":
@@ -1301,6 +1304,7 @@ def gen_refl_supported(self, c: str, what: str) -> None:
     # the classes whose names reflection knows: the program's ordinary classes and dataclasses
     if c not in self.classes:
         return
+    self.iface_reflect(c, what)
     ci = self.classes[c]
     why = ""
     if ci.exc != "":

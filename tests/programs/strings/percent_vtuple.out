@@ -1,0 +1,15 @@
+1+2
+TypeError: not enough arguments for format string
+TypeError: not all arguments converted during string formatting
+TypeError: not enough arguments for format string
+<a>
+TypeError: not all arguments converted during string formatting
+TypeError: not enough arguments for format string
+plain
+TypeError: not all arguments converted during string formatting
+1 2
+TypeError: not enough arguments for format string
+TypeError: not enough arguments for format string
+4-5
+  1.2|2   |3.5
+[exit 0]

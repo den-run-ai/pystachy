@@ -24,7 +24,8 @@ unsupported forms, see [compatibility](compatibility.md).
 | `type[object]`, `type` | The class object of any class: an ordinary class of the program or a builtin class |
 | `TextIO` | Text files |
 | `IO[str]` | Native text files and, when imported, the shipped `io.StringIO` |
-| `Generator[Y, S, R]`; `Iterator[T]` or `Iterable[T]` as a generator function's return | Generator objects that yield `Y` (any generator function's) and take `S` from `send()`; see [generators](semantics.md#generators). Elsewhere `Iterator[T]` and `Iterable[T]` type nothing ([iterators](semantics.md#iterators)) |
+| `Generator[Y, S, R]`; `Iterator[T]` or `Iterable[T]` as a generator function's return | Generator objects that yield `Y` (any generator function's) and take `S` from `send()`; see [generators](semantics.md#generators). Elsewhere `Iterator[T]` and `Iterable[T]` type nothing ([iterators](semantics.md#iterators)), but in a protocol's methods |
+| `typing.Protocol` classes | Objects of any class that defines the protocol's methods ([stored interfaces](#protocols-and-stored-interfaces)) |
 
 A `bytes` value comes from a literal (`b"\x00ab"`, `rb"..."`), `bytes()` (empty, `bytes(n)` zero
 bytes, `bytes(xs)` of ints, also of a `range()`, `map()` or generator expression, `bytes(b)`,
@@ -538,7 +539,14 @@ exception behavior. Each operand evaluates once, left to right, before dispatch;
 `None` raises `TypeError`. Results remain `int` or `float` according to the actual
 operands; when both are possible the result is `int | float`, including when all
 current calls happen to pass integers. Declare that result bound explicitly in
-returns and mutable storage. Power and bitwise operations still require narrowing.
+returns and mutable storage. Power and bitwise operations still require narrowing, but a
+`bool | int` (as `isinstance(x, int)` narrows a value of [`object`](#object) to) is the int it
+is wherever CPython reads a bool as its int and the result is an `int` either way: an index, a
+slice bound, a repetition count, `range()`, `hex()`, `oct()`, `bin()`, `%d` and `%x`, a builtin
+method's index or count, `**`, `<<` and `>>`, and `&`, `|` and `^` with an `int`
+([test](../../tests/programs/classes/object_storage_bool_int.py)). A variable, a parameter or a
+field of type `int` takes no `bool | int`, which would hold the bool itself: `int(x)` converts
+it ([error test](../../tests/errors/classes/object_storage_int_param.py)).
 A union that also holds a str, a list or a dict takes the same operators by each
 pair of member types ([operations on closed unions](#operations-on-closed-unions)).
 
@@ -1025,6 +1033,245 @@ In a module that opts in to [promoting ints](../python-int.md#storage-boundaries
 whose result would join an object with a promoting int is rejected, as its other closed unions
 with one are; `sum()` of objects is not affected.
 
+## Protocols and stored interfaces
+
+A class whose base is `typing.Protocol` (or `Protocol[T, ...]`) is a stored interface.
+A variable, field, parameter, result or container item annotated with it holds an object
+of any class that defines the protocol's methods; the class does not name the protocol.
+Unrelated classes then share one list, field and compiled consumer:
+
+```python
+class Shape(Protocol):
+    def area(self) -> float: ...
+
+class Square:
+    def __init__(self, side: float) -> None:
+        self.side = side
+
+    def area(self) -> float:
+        return self.side * self.side
+
+shapes: list[Shape] = [Square(2.0), Circle(1.0)]  # Circle defines area() too
+print(sum(s.area() for s in shapes))
+```
+
+A protocol's methods and properties need annotated parameters and results: calls through
+the protocol pass and return these types for every implementation. Its body holds methods,
+properties, a docstring, `pass` and `...`; `@runtime_checkable` and `@abstractmethod` are
+accepted. Attribute members (`name: str`), `*args` and `**kwargs`, `__init__`, protocol
+inheritance and naming a protocol as a base (`class Square(Shape)`) are not supported. Such a
+protocol is an error where it is declared in the main program, and where the program uses it
+in an imported module.
+
+As in CPython, converting a value checks nothing: an implementation needs only the methods
+that the program calls through the protocol. A called method that its class lacks, or whose
+result does not convert to the protocol's result type, is a compilation error at the
+conversion. `Protocol[T]` names one interface for each binding, so `Cell[int]` and `Cell[str]`
+are distinct types. In a protocol's methods, `Iterator[X]` and `Iterable[X]` annotate stored
+interfaces too: a `def __iter__(self) -> Iterator[int]` accepts lists, tuples, ranges,
+dictionaries, sets, generators and objects with `__iter__` alike
+([test](../../tests/programs/classes/protocol_iterable.py)).
+
+A protocol's value is its object, whose class only the run time knows: these operations run
+as the object's class runs them, each by an entry of the object's table that compiles the
+operation for its implementation.
+
+- `is` and `is not` compare the objects;
+- `str()`, `repr()`, printing, f-strings, `format()` and truth tests use the object's
+  `__str__`, `__repr__`, `__format__` and `__bool__` (or `__len__`);
+- `==` and `!=` with a value of any type compare the object as CPython does: its class's
+  method, then the other operand's reflected one, then identity, where a class defines no
+  `__eq__` (a protocol's value on the other side is its object in turn);
+- `hash()` is the object's, also inside a tuple, with CPython's `TypeError` for an
+  unhashable class;
+- `isinstance(x, C)` with classes of the program (or a tuple of them) tests the object's class,
+  and narrows a local, a parameter or an attribute to `C` where it holds, as an `if` or an early
+  `return` narrows a union ([test](../../tests/programs/classes/protocol_narrowing.py)); the
+  builtin types that [`object`](#object) lists test the object's type too;
+- `callable(x)` is the object's class's answer (`__call__`), `False` for `None`.
+
+A value that is `None` stays `None`, and each operation then is `None`'s. Any two
+implementations may meet at run time, so `==` and `!=` are compiled for each pair of them, as
+[objects of two classes compare](semantics.md#object-protocols): plain classes, dataclasses,
+NamedTuples and builtin values need nothing
+([tests](../../tests/programs/classes/protocol_equality_pairs.py),
+[records](../../tests/programs/classes/protocol_equality_records.py)). Where neither
+implementation's comparison takes the other (an exception class and a dataclass, an enum and a
+NamedTuple) and neither defines `__eq__`, CPython's identity answers, `False` (`True` for
+`!=`), and a class's `__eq__` that takes `object` is called, reflected where the other declines
+([test](../../tests/programs/classes/protocol_eq_implementers.py)). An implementation whose
+`__eq__` is annotated to take only its own class (`other: "Money"`), which CPython would call
+with any object, rejects the comparison of the protocol's values: annotate `other: object` and
+test it with `isinstance()`. So does an implementation of a library class that has no method
+for another implementation.
+Orderings, dict keys and set elements, searches and sorts of containers of protocol values
+(`in` a list, `count()`, `index()`, `sort()`, `min()`, `max()`), `id()`, `type()` and other
+reflection, `isinstance()` with another type and class patterns are compilation errors.
+A protocol's value stored as [`object`](#object), or given to a dynamic `Any` value, is its
+object, as if the object had been stored ([test](../../tests/programs/classes/protocol_as_object.py),
+[`Any`](../../tests/programs/classes/protocol_as_any.py)); converting one protocol's value to
+another protocol, and an `Any` value to a protocol's, is not supported. A union's value converts
+once narrowed to one class; functions and `Callable`
+values are not implementations (annotate a callback with `Callable[[A], R]` rather than a
+protocol with `__call__`).
+
+Protocol-annotated parameters take protocol values: a call with a `Square` converts it. To
+specialize a function for each argument's class instead, leave the parameter unannotated or
+annotate it with a `TypeVar` whose bound is the protocol's name as a string.
+
+Where iterators of distinct types with one item type meet, and no other join applies, the
+location holds the stored interface `Iterator[T]`, which programs did not compile before: a
+list or dict display, a conditional expression, a function's returns, or a variable or field
+assigned more than once (`self.it = iter(xs)`, then `self.it = gen()`), also where an
+`Iterator[T]` annotation names it. `next()`, `iter()`, loops and the other consumers advance
+the object itself ([tests](../../tests/programs/generators/iterator_join_display.py)).
+Iterators of one type keep that type, and those of a class and its subclass meet as the base
+class ([test](../../tests/programs/generators/iterator_join_base.py)). A list that `append()`
+fills takes its first item's type, as for other types: annotate its items with a protocol to
+hold several kinds. In a module that opts in to [promoting ints](../python-int.md), iterators
+of ints and of promoting ints meet as `Iterator[int]` of promoting ints
+([test](../../tests/programs/generators/iterator_join_python_int.py)). In one that opts in to
+[dynamic `Any`](../dynamic-any.md), a list or dict display keeps its `Any` items, and the
+other locations hold `Iterator[T]`
+([test](../../tests/programs/generators/iterator_join_dynamic.py)).
+
+A protocol value is a pointer to an immutable 16-byte box of a method table and the object,
+so a conversion allocates one box. The program has one constant table for each pair of
+implementation type and protocol; a call loads the table's entry and calls it indirectly with
+the object. Entries are compiled only for operations that the program calls, the comparisons,
+hashes, formats and class tests above among them ([internals](../internals.md#interface-values)).
+
+### `object`
+
+`object` annotates a stored value of any type: a variable, a field, a module or class attribute,
+a container's items (`list[object]`, `dict[str, object]`, `tuple[object, ...]`, `*args: object`,
+`**kwargs: object`) and a result. A parameter annotated `object` still makes a
+[template](#function-and-method-templates), which each call specializes for its argument's type;
+`object | None`, `Optional[object]` and a union with `object` are `object`.
+
+```python
+def pick(i: int) -> object:
+    return [42, "text", None][i]
+
+values: list[object] = [1, 2.5, True, "s", b"b", [1], Point(0, 0), int, None]
+```
+
+It is the stored interface that every type implements, with no method of its own: a value of
+`object` holds the value it was given, not a copy, so a list stored as `object` and changed
+through its typed name shows the change. Numbers, strs, bytes, containers, objects of the
+program's classes, class objects (an exception class's too), exceptions, `None`, `Any` values and
+values of a protocol (their object) can be values of `object`; functions, bound methods, lambdas
+and other `Callable` values cannot
+([error test](../../tests/errors/classes/object_storage_function.py)). An exception class prints,
+compares and hashes as a class object does
+([test](../../tests/programs/classes/object_exception_classes.py)), but `isinstance(x, type)`
+does not narrow a value of `object` that may hold one
+([error test](../../tests/errors/classes/object_storage_exception_class.py)).
+A list, dict or set display stored as `object` that is empty, or whose items no
+one type or union holds, holds values of `object` (a dict's keys are strs where it has none)
+([test](../../tests/programs/classes/object_displays.py)); in a module that opts in to
+[dynamic `Any`](../dynamic-any.md), an empty list or dict display holds `Any` values, as its
+displays of items of no one type do ([test](../../tests/programs/classes/object_storage_empty_dynamic.py)).
+An exception narrows with a builtin
+exception class to `BaseException`, or with one of the program's to its object, and can then be
+raised ([test](../../tests/programs/classes/object_exceptions.py)). Its operations are those of
+a protocol's value above, each by its value's type
+([tests](../../tests/programs/classes/object_storage_values.py)):
+
+- `str()`, `repr()`, printing, f-strings, `format()`, `%s`, `%r` and `%a`, and truth tests;
+- `==` and `!=` with a value of any type: numbers by their values (`1 == 1.0`, `True == 1`),
+  values of builtin types of two kinds (a number and a str, a list and a tuple) unequal, and any
+  two values of `object` whatever they hold: where neither type's comparison takes the other (a
+  range and a bool, a generator and a list, a dataclass and an exception) and no method of the
+  program decides, as CPython by identity, `False` (`True` for `!=`); a library type whose
+  comparison takes only its own kind (a range, a deque, a date, a time, a timedelta) declines
+  another value, an IntEnum's member too, as CPython's does
+  ([test](../../tests/programs/classes/object_eq_library.py)). Where an object's class
+  defines or inherits the method CPython calls, `__eq__` (`__ne__` for `!=`), only that method
+  answers, reflected where the other operand's type declines
+  ([test](../../tests/programs/classes/object_eq_pairs.py),
+  [classes](../../tests/programs/classes/object_eq_own_methods.py)); for `!=` a class without
+  `__ne__` inverts its `__eq__`, but a list's or dict's subclass, a NamedTuple, an `IntEnum`, an
+  `IntFlag` and a `StrEnum` keep their builtin type's `__ne__`, which declines another kind of
+  value ([test](../../tests/programs/classes/object_eq_builtin_ne.py)). Such a method annotated to
+  take only its own class rejects the program where a value of `object` of another type may meet
+  it, also in a list's or dict's subclass: annotate its parameter `object` and narrow it with
+  `isinstance()` ([error test](../../tests/errors/classes/object_eq_strict.py),
+  [list](../../tests/errors/classes/object_eq_list_own.py));
+- `hash()`, alike for equal numbers;
+- `is` and `is not`: `None` is only `None`; an object, a str, a container or a class object is
+  itself; a number is an equal number of its type, a float by its bits, as in PyPy, which is
+  CPython's answer for a number stored from another value, a small int, a bool and a module's
+  equal constants ([test](../../tests/programs/classes/object_storage_identity.py)), and not for
+  equal numbers computed apart ([deviation](../../tests/deviations/object_number_identity.py));
+- `type(x).__name__`, `__qualname__` and `__module__`, and `callable(x)`;
+- `isinstance(x, C)` with the program's classes and the builtin types `int`, `float`, `bool`,
+  `str`, `bytes`, `list`, `dict`, `tuple`, `set`, `frozenset`, `type`, `complex` and `range` (or
+  a tuple of them), which narrows `x` as an `if`, an early `return`, a `continue` or a `while`
+  narrows a union: to the class, to `bool`, `float`, `str`, `bytes`, `complex`, `range` or
+  `type[object]` ([`complex` and `range`](../../tests/programs/classes/object_complex_range.py)),
+  and to `int | bool` for `int`, whose test a bool passes, keeping its own `repr()`
+  ([test](../../tests/programs/classes/object_storage_narrow.py)), which indexes, counts and
+  shifts as its int ([`bool | int`](#closed-scalar-unions)); where an `int` variable or
+  parameter takes it, `not isinstance(x, bool)` narrows that to `int`, or `int(x)` converts it
+  ([test](../../tests/programs/classes/object_storage_int.py)). As for a union, a test narrows a
+  function's variable, not a module's, which the error says
+  ([error test](../../tests/errors/classes/object_module_narrow.py)).
+
+A test of a container type narrows `x` to a read-only view of the container it holds, whose
+items' types are not known: `list` or `tuple` (or both) to `Sequence[object]`, `set` or
+`frozenset` to `AbstractSet[object]`, and `dict` to `Mapping[object, object]`
+([test](../../tests/programs/classes/object_views.py),
+[`Any` containers](../../tests/programs/classes/object_views_dynamic.py)). A view takes the
+operations of `object` and `len()`, iteration (`list(x)` too) and `in`; a sequence's `x[i]`,
+`index()` and `count()`; a mapping's `x[key]`, `get()`, `keys()`, `values()` and `items()`. Each
+item is a value of `object`, and the errors are CPython's (`IndexError`, `ValueError`,
+`KeyError`, and `TypeError` for an unhashable key). A look-up finds the item that is the value
+looked for or equal to it, whatever its type: `1.0` and `True` find a dict's key `1`. The view
+is the container itself, whose changes through its own name it shows, and a value of `object`
+again where one is expected; a change through the view (`append()`, `x[k] = v`, `del x[i]`) is
+a compilation error ([error test](../../tests/errors/classes/object_view_append.py)), as are
+slices and sorts.
+
+One rule decides what a value that `isinstance()` has not narrowed takes besides: an operation
+whose result has one type whatever the value holds is answered by the type it holds, with
+CPython's `TypeError` where that type lacks it (as for `None`): `len()`, `int()`, `float()`, and
+`%d`, `%x`, `%f`, `%c` and the other numeric conversions of `%` formatting, where a tuple held is
+the arguments and a dict the mapping, as CPython takes them when it runs
+([tests](../../tests/programs/classes/object_conversions.py),
+[`%` arguments](../../tests/programs/classes/object_percent_args.py)). An operation whose result's
+type depends on what is held needs `isinstance()` first (or an `Any` value): arithmetic,
+attributes and methods, calls, indexing, iteration, orderings, the other builtins, `type(x)` as a
+value and `id()` are compilation errors that say so
+([error tests](../../tests/errors/classes/object_storage_arith.py)).
+
+Lists, tuples and dicts of values of `object` (also nested in other containers) compare as
+CPython's do, item by item, each pair by identity, then `==` of what it holds: `==` and `!=`
+with containers of any item types, `in`, `index()` and `count()`, and a dataclass's `==` of
+such a field ([test](../../tests/programs/classes/object_containers_eq.py)). Each pair of
+container types compiles one function that does so. Values of `object` are not dict keys or set
+elements, and sorts, `min()` and `max()` of them are compilation errors.
+
+A promoting int of a module that opts in to [promoting ints](../python-int.md) is held as it is
+([test](../../tests/programs/numbers/python_int_object_storage.py)). There, `isinstance(x, int)`
+narrows nothing, as a bool passes it; in a module that does not opt in, narrowing a value that
+may hold a promoting int to `int` is a compilation error
+([error test](../../tests/errors/classes/object_storage_big_narrow.py)). In a module that opts in
+to [dynamic `Any`](../dynamic-any.md), `object` means the same, and its values become `Any`
+values and back where either is expected
+([tests](../../tests/programs/classes/object_storage_from_dynamic.py),
+[the other way](../../tests/programs/classes/object_storage_to_dynamic.py)). Once the program
+makes a value of `object` an `Any` value, or compares one with an `Any` value, each type it
+stores as `object` must be able to become one: a `bytes` value or a dict of typed items stored as
+`object` is then a compilation error.
+
+A value of `object` is a protocol value's box: a number in it is held by the immutable box of its
+`T | None`, which a conversion allocates where the number has none, and `None` is a null box. A
+view is the same box, read through entries of its table that each type stored as `object` has
+for the view's operations (one that holds no such container raises `SystemError`, which its
+type test keeps unreached); a dict's look-up through a view compares keys one by one, but a
+`str` key of a `dict[str, V]`.
+
 ## Function and method templates
 
 A module-level function with an unannotated parameter is a template, compiled once for
@@ -1089,6 +1336,26 @@ evaluates without error there: classes, type aliases, other TypeVars, typing's t
 subscripts and `|` of them, `None`, constants and strings (a string bound is a forward
 reference). The names they read must be bound by then. A variable or a class's attribute there is
 rejected, as are the errors CPython raises: `List[Union]`, `Set[int, str]`, a tuple as a bound.
+When a local annotation or an otherwise-unbound stored callable needs a type
+variable, the compiler can match a specialization's argument types to its saved
+annotations. It retains consistent bindings for local annotations and nested
+functions. For example, `def adapt(source: Iterable[T])` can define an
+`advance() -> T` closure and store it as `Callable[[], T]`. The source still
+specializes on its concrete representation. Matching does not enforce the erased
+outer parameter or return annotations; an explicit local or stored-callable
+annotation establishes its own contract. Conflicting or unavailable bindings do
+not supply a type for such a contract. Bindings belong to each specialization and
+are captured where a nested function is defined, independently of its later caller.
+
+An explicit destination can also guide a fresh generic result. If a factory
+declares `-> Wrapper[T]` and its caller requests `Wrapper[int]`, that result
+context can reach a returned constructor or forwarding call, including a simple
+local chain that retains a fresh result. The context is part of the function's
+specialization key. Argument bindings keep their concrete types, and returning
+an existing object keeps its established representation. This matters when a
+stored callback's interface has a different integer representation from its
+source; see [promoting integer callable boundaries](../python-int.md#callable-boundaries).
+
 A PEP 695 function's `**P` and `*Ts` are such type parameters too, also in its nested defs:
 `def logged[**P, R](fn: Callable[P, R]) -> Callable[P, R]` may return a nested
 `def wrapper(*args: P.args, **kwargs: P.kwargs) -> R` that forwards them (also with
@@ -1319,6 +1586,10 @@ When a class stores functions, an explicit `Callable` annotation lets different 
 with the same signature share a specialization. This also works for
 `Callable[[A, B], Result]` where `Result` is a class template: the actual returned specialization
 determines the callable's result type.
+
+The [stored interface tutorial](../../examples/typed_iterator/README.md) compares this
+with [protocols](#protocols-and-stored-interfaces): explicit `Callable` adapters specialize
+for each source, while a typed field or list retains a shared wrapper with its own identity.
 
 ### Subclasses of class templates
 

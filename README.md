@@ -184,6 +184,7 @@ packages that need CPython at runtime.
 | Example | What it shows |
 |---|---|
 | [Event router](https://github.com/den-run-ai/pystachy/blob/main/examples/route/README.md) | Route logs and traces using pattern matching and memoization. |
+| [Stored typed interfaces](https://github.com/den-run-ai/pystachy/blob/main/examples/typed_iterator/README.md) | Share iterator, iterable and lookup consumers through `Protocol` interfaces or explicit callable adapters. |
 | [JSON repair](https://github.com/den-run-ai/pystachy/blob/main/examples/json_repair/README.md) | Repair malformed JSON through a native CLI or a CPython extension. |
 | [Byte BPE](https://github.com/den-run-ai/pystachy/blob/main/examples/byte_bpe/README.md) | Train a byte tokenizer and encode/decode Unicode text natively. |
 | [Coding agent](https://github.com/den-run-ai/pystachy/blob/main/examples/agent/README.md) | Run a typed tool loop and edit files from a native executable. |

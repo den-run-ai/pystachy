@@ -1,0 +1,11 @@
+[1, 2, 3] True True
+[{'a': 1, 'b': 2}, []] True
+[5, 'five', [], None] {'k': 2.5, 'n': None} None
+[9] True (1, 'x') 5
+[True, 3] True
+None True
+first 3
+[[1, 'a'], [None, 2.5]]
+{'q': ['z', 'z']} True
+2000 666333 [1997] 1998 1999
+[exit 0]

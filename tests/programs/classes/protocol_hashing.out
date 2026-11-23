@@ -1,0 +1,15 @@
+Square.__hash__
+Square.__hash__
+Square.__hash__
+True True True
+Square.__hash__
+Square.__hash__
+True True
+Square.__hash__
+True True
+TypeError: unhashable type: 'Blob'
+Square.__hash__
+Square.__hash__
+True False True True True
+Placed(shape=Square(1.0), x=2) Placed(shape=Circle(1.0), x=2)
+[exit 0]

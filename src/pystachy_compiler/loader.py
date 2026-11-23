@@ -19,6 +19,7 @@ from src.pystachy_compiler.analysis import (
     del_line,
     declares,
     deferred_use,
+    defines,
     deleted,
     false_flag,
     sole_binding,
@@ -2614,6 +2615,74 @@ def ascii_ident(s: str) -> bool:
     return s != ""
 
 
+
+def protocol_iterates(body: Node) -> bool:
+    # does module body declare a Protocol class whose methods iterate (an __iter__ or __next__,
+    # or an Iterator or Iterable annotation): the tables of its interface call iter() of builtin
+    # containers, whose iterators lib's module makes (interfaces.py)
+    for st in body.kids:
+        if st.kind != "subclass" or not any([protocol_named(b) for b in st.kids[1:]]):
+            continue
+        if defines(st.kids[0], "__iter__") or defines(st.kids[0], "__next__") or mentions(st.kids[0], ["Iterator", "Iterable"]):
+            return True
+    return False
+
+
+def stores_object(n: Node) -> bool:
+    # does code n annotate a location that holds values of object (interfaces.py's OBJECT): a
+    # variable's, a field's or a result's annotation that names object, or a parameter's that
+    # names it within another type (list[object]) or of *args or **kwargs; not a parameter's
+    # object alone, which makes its function a template of each argument's own type
+    if n.kind == "annassign" and len(n.kids) > 1 and object_ann(n.kids[1]):
+        return True
+    if n.kind == "def" and len(n.kids) == 3:
+        if n.kids[1].kind != "noann" and object_ann(n.kids[1]):
+            return True
+        for p in n.kids[0].kids:
+            a = p.kids[0] if len(p.kids) > 0 else None
+            if a is not None and a.kind != "noann" and object_ann(a) and not (p.kind == "param" and a.kind == "name" and a.s == "object"):
+                return True
+    for k in n.kids:
+        if stores_object(k):
+            return True
+    return False
+
+
+def object_ann(a: Node) -> bool:
+    # does annotation a name object, a string annotation's text too
+    if a.kind != "str":
+        return mentions(a, ["object"])
+    at = a.s.find("object")
+    while at >= 0:
+        before = a.s[at - 1] if at > 0 else " "
+        after = a.s[at + 6] if at + 6 < len(a.s) else " "
+        if not (before.isalnum() or before == "_") and not (after.isalnum() or after == "_"):
+            return True
+        at = a.s.find("object", at + 1)
+    return False
+
+
+def container_tests(n: Node) -> bool:
+    # does code n call isinstance() with list, tuple, dict, set or frozenset in its second argument
+    # (also in a tuple there): one may narrow a value of object to a view of the container it
+    # holds, whose loops call iter() of that container in its table (interfaces.py's view_slot),
+    # where a module of the program stores values of object (stores_object)
+    if n.kind == "call" and len(n.kids) == 3 and n.kids[0].kind == "name" and n.kids[0].s == "isinstance":
+        for c in n.kids[2].kids if n.kids[2].kind == "tuple" else [n.kids[2]]:
+            if c.kind == "name" and c.s in ["list", "tuple", "dict", "set", "frozenset"]:
+                return True
+    for k in n.kids:
+        if container_tests(k):
+            return True
+    return False
+
+
+def protocol_named(b: Node) -> bool:
+    # does base b name Protocol, also subscripted (Protocol[T], typing.Protocol)
+    if b.kind == "index":
+        b = b.kids[0]
+    return (b.kind == "name" or b.kind == "attr") and b.s == "Protocol"
+
 class Loader:
     def __init__(self, dirs: list[str]):
         self.dirs = dirs  # the module search path
@@ -2712,8 +2781,8 @@ class Loader:
         self.starm: list[Mod] = []
         self.qdef = False  # is qstmts() in a function
         # the type parameters of the generic classes and defs (class C[T], def f[T]) it is in, by
-        # name: the names of their own that they are qualified to (<class's or def's name>$$T,
-        # unlike any other). A key prefixed by a space maps an original private spelling to its
+        # name: the names of their own that they are qualified to (class$$T or
+        # def$$source-location$$T, unlike any other). A key prefixed by a space maps an original private spelling to its
         # lexical name, only for quoted annotations; qexpr never consults these aliases.
         self.qren: dict[str, str] = {}
         self.sigtps: list[str] = []  # the type parameters of the def whose signature is being qualified, which qren names only in its body
@@ -2837,10 +2906,13 @@ class Loader:
             self.order = [self.order[-1]] + self.order[:-1]
             for x in users:
                 x.deps[COMPLEXS] = True
-        users = [x for x in self.order if module_reads(x.body, "iter")] if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods else []
+        objects = not self.rtmode and ITERS not in self.mods and len([x for x in self.order if stores_object(x.body)]) > 0
+        users = [x for x in self.order if module_reads(x.body, "iter") or protocol_iterates(x.body) or (objects and container_tests(x.body))] if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods else []
         if len(users) > 0:
             # iter() makes iterator objects of builtin containers: of lib's classes, whose module
-            # nothing imports (it imports nothing either, so it comes first)
+            # nothing imports (it imports nothing either, so it comes first). A Protocol that
+            # iterates calls it in its tables, and so does a view of a container that a value of
+            # object holds (interfaces.py)
             self.load(ITERS, self.dirs[-1] + "/" + ITERS + ".py", "")
             self.order = [self.order[-1]] + self.order[:-1]
             for x in users:
@@ -4018,8 +4090,8 @@ class Loader:
             return implicit
         if g.kind == "name":
             k = m.kinds.get(g.s, "")
-            return k == "b:typing.Generic" or k == "b:typing_extensions.Generic"
-        if g.kind == "attr" and g.s == "Generic" and g.kids[0].kind == "name":
+            return k in ["b:typing.Generic", "b:typing_extensions.Generic", "b:typing.Protocol", "b:typing_extensions.Protocol"]  # (Protocol[T] too)
+        if g.kind == "attr" and (g.s == "Generic" or g.s == "Protocol") and g.kids[0].kind == "name":
             k = m.kinds.get(g.kids[0].s, "")
             return k == "b:typing" or k == "b:typing_extensions"
         return False
@@ -6190,6 +6262,31 @@ class Loader:
         for k in n.kids:
             self.quoted_types(k)
 
+    def def_typevar(self, f: Node, name: str) -> str:
+        # The encoded line includes the module. Same-named nested definitions and
+        # methods have distinct bindings; short() still shows the source name.
+        return f.s + "$$" + str(f.line) + "$$" + name
+
+    def qfnann(self, m: Mod, n: Node, loc: dict[str, bool], f: Node, late: bool) -> None:
+        # A PEP 695 signature is kept below noann for generic inference. Its own
+        # parameters have the same identities as in the body; defaults still use
+        # the enclosing scope. Retain the qualified annotation for lexical bindings.
+        params = f.kids[2].s.split()
+        if len(params) == 0:
+            self.qann(m, n, loc, late)
+            return
+        ren = self.qren
+        self.qren = dict(ren)
+        annotation_loc = dict(loc)
+        for name in params:
+            self.qren[name] = self.def_typevar(f, name)
+            annotation_loc.pop(name, False)
+        source = f.tpsource.split()
+        for i in range(len(source)):
+            self.qren[" " + source[i]] = params[i]
+        self.qann(m, n.kids[0] if n.kind == "noann" and len(n.kids) > 0 else n, annotation_loc, late)
+        self.qren = ren
+
     def fragile_chk(self, m: Mod, x: str, loc: dict[str, bool]) -> str:
         # the check (Node.mchk) of a read of name x in m, where an import in a try statement binds
         # it: its flag, x and whether it is a function's (L) or module code's (G); "" elsewhere
@@ -6327,9 +6424,9 @@ class Loader:
                 outertps = self.sigtps
                 self.sigtps = st.kids[2].s.split()
                 for p in st.kids[0].kids:
-                    self.qann(m, p.kids[0], loc, late)
+                    self.qfnann(m, p.kids[0], loc, st, late)
                     self.qexpr(m, p.kids[1], loc)
-                self.qann(m, st.kids[1], loc, late)
+                self.qfnann(m, st.kids[1], loc, st, late)
                 self.sigtps = outertps
                 # (a def in a function sees that function's names too: those it does not bind itself
                 # are the enclosing function's, which a closure reads)
@@ -6387,7 +6484,7 @@ class Loader:
                     # (a generic def's type parameters, in its body as a generic class's are in its
                     # methods: CPython's TypeVars, not the module's or an enclosing function's
                     # names, which they hide)
-                    self.qren[nm] = st.s + "$$" + nm
+                    self.qren[nm] = self.def_typevar(st, nm)
                     m.deftps.append(self.qren[nm])
                     if nm not in own:
                         inner.pop(nm, False)

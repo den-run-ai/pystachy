@@ -83,6 +83,7 @@ PROGRAM = """
     idoff idfull idevent idsplit idtry idhint gendrops_counted genplain rdpass entries resumes_counted
     genargs earlycopies sentinelglobals globvalues globowners globalts pseq pcall pstamps plogk plogv pdry
     implicitgen iterabc clsany clsused clsbodies clsannfiles clsann bsubn bsub
+    ifaces itabs ifgeneric ifnodes ifmods ifmade ifspecs ifbad
 """.split()
 # Gen's fields that hold a module's state, one lowering's, or one operation's, which the operation
 # sets and then restores or clears: a nested compile that starts inside the operation sees them.

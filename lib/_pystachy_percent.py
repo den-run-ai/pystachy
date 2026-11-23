@@ -1,4 +1,3 @@
-# pystachy: dynamic-any
 """printf-style formatting of a format string that only the run time knows, for Pystachy.
 
 A subset implementation of CPython 3.13.16's PyUnicode_Format() (Objects/unicodeobject.c), which
@@ -6,15 +5,14 @@ A subset implementation of CPython 3.13.16's PyUnicode_Format() (Objects/unicode
 unicode_format_arg_parse(), unicode_format_arg_format() and unicode_format_arg_output() do, with
 CPython's errors in CPython's order. The compiler formats a literal format string itself; the
 library modules whose format strings are their callers' (logging's messages and Formatter
-formats, argparse's help and usage) call this function, with the arguments as dynamic `Any`
-values (docs/dynamic-any.md).
+formats) call this function, with the arguments as values of `object`
+(docs/language/typing.md#object), whatever they hold: a tuple's items, read through its view,
+are the arguments, and a dict's values by key.
 
-Limits: the arguments are `Any` values, so a list or dict of typed items cannot be one (the
-compiler says so where it is passed). Only a dict or a list counts as a mapping (CPython's
-PyMapping_Check() also takes any object with `__getitem__`), and only ints, bools and floats as
-numbers (CPython also converts objects with `__int__`, `__float__` or `__index__`).
+Limits: only a dict or a list counts as a mapping (CPython's PyMapping_Check() also takes any
+object with `__getitem__`), and only ints, bools and floats as numbers (CPython also converts
+objects with `__int__`, `__float__` or `__index__`).
 """
-from typing import Any
 
 __all__ = ["percent_format"]
 
@@ -31,36 +29,38 @@ _INT_MAX = 2147483647
 class _Formatter:
     # PyUnicode_Format()'s state (struct unicode_formatter_t): its arguments, and, of a conversion
     # (struct unicode_format_arg_t), its flags, width, precision and whether it has a sign
-    def __init__(self, fmt: str, args: Any) -> None:
+    def __init__(self, fmt: str, args: object) -> None:
         self.fmt = fmt
         self.pos = 0
-        self.args: Any = args
-        if isinstance(args, tuple):
-            self.arglen = len(args)
+        a: object = args
+        self.args: object = a
+        if isinstance(a, tuple):
+            self.arglen = len(a)
             self.argidx = 0
         else:
             self.arglen = -1
             self.argidx = -2
-        self.mapping: Any = args
+        self.mapping: object = a
         # (PyMapping_Check(), but for a tuple or a str: here a dict or a list)
-        self.has_mapping: bool = isinstance(args, dict) or isinstance(args, list)
+        self.has_mapping: bool = isinstance(a, dict) or isinstance(a, list)
         self.flags = 0
         self.width = -1
         self.prec = -1
         self.sign = False
 
-    def next_arg(self) -> Any:
+    def next_arg(self) -> object:
         # unicode_format_getnextarg()
         argidx = self.argidx
         if argidx < self.arglen:
             self.argidx = argidx + 1
-            if self.arglen < 0:
-                return self.args
-            return self.args[argidx]
+            a = self.args
+            if self.arglen >= 0 and isinstance(a, tuple):
+                return a[argidx]
+            return a
         raise TypeError("not enough arguments for format string")
 
 
-def percent_format(fmt: str, args: Any) -> str:
+def percent_format(fmt: str, args: object) -> str:
     """Return fmt % args: CPython's printf-style formatting (PyUnicode_Format())."""
     ctx = _Formatter(fmt, args)
     out: list[str] = []
@@ -122,7 +122,8 @@ def _parse_arg(ctx: _Formatter) -> str:
         mapping = ctx.mapping
         if isinstance(mapping, list):
             raise TypeError("list indices must be integers or slices, not str")
-        ctx.args = mapping[key]
+        if isinstance(mapping, dict):
+            ctx.args = mapping[key]
         ctx.arglen = -1
         ctx.argidx = -2
     while ctx.pos < n:
@@ -142,9 +143,9 @@ def _parse_arg(ctx: _Formatter) -> str:
         ctx.pos += 1
     if ctx.pos < n and fmt[ctx.pos] == "*":
         v = ctx.next_arg()
-        if not isinstance(v, int):
+        if not _is_int(v):
             raise TypeError("* wants int")
-        w = _as_int(v)
+        w = int(v)
         if w < 0:
             ctx.flags |= _F_LJUST
             w = -w
@@ -164,9 +165,9 @@ def _parse_arg(ctx: _Formatter) -> str:
         ctx.pos += 1
         if ctx.pos < n and fmt[ctx.pos] == "*":
             v = ctx.next_arg()
-            if not isinstance(v, int):
+            if not _is_int(v):
                 raise TypeError("* wants int")
-            p = _as_int(v)
+            p = int(v)
             if p > _INT_MAX or p < -_INT_MAX - 1:
                 raise OverflowError("Python int too large to convert to C int")
             ctx.prec = p if p >= 0 else 0
@@ -189,12 +190,22 @@ def _parse_arg(ctx: _Formatter) -> str:
     return ch
 
 
-def _as_int(v: Any) -> int:
-    # an int or a bool's value as an int (an annotation that receives an Any bool takes no bool)
-    if isinstance(v, bool):
-        return 1 if v else 0
-    n: int = v
-    return n
+def _is_int(v: object) -> bool:
+    # is v an int (a bool too), tested apart from its readers, which read it as the value of
+    # object it is: one that holds an int past 64 bits stays one (int(), str(), format())
+    return isinstance(v, int)
+
+
+def _is_float(v: object) -> bool:
+    return isinstance(v, float)
+
+
+def _is_bool(v: object) -> bool:
+    return isinstance(v, bool)
+
+
+def _is_str(v: object) -> bool:
+    return isinstance(v, str)
 
 
 def _format_value(ctx: _Formatter, ch: str) -> str:
@@ -219,25 +230,23 @@ def _format_value(ctx: _Formatter, ch: str) -> str:
     raise ValueError(f"unsupported format character '{shown}' ({hex(c)}) at index {ctx.pos - 1}")
 
 
-def _format_long(ctx: _Formatter, v: Any, ch: str) -> str:
+def _format_long(ctx: _Formatter, v: object, ch: str) -> str:
     # mainformatlong() and _PyUnicode_FormatLong(): "-"? ("0x" | "0X" | "0o")? digit+, with at
     # least the precision's digits
-    if not isinstance(v, int) and not isinstance(v, float):
+    if not _is_int(v) and not _is_float(v):
         if ch == "o" or ch == "x" or ch == "X":
             raise TypeError(f"%{ch} format: an integer is required, not {type(v).__name__}")
         raise TypeError(f"%{ch} format: a real number is required, not {type(v).__name__}")
-    if isinstance(v, float):
+    if _is_float(v):
         if ch == "o" or ch == "x" or ch == "X":
             raise TypeError(f"%{ch} format: an integer is required, not float")
-        f: float = v
-        iv: Any = int(f)
-    elif isinstance(v, bool):
+        iv: object = int(v)
+    elif _is_bool(v):
         iv = 1 if v else 0
     else:
         iv = v
     # the digits of the signed value, less its "-": the magnitude of the least int, -(-2**63),
     # would not be an int of the range
-    neg = iv < 0
     if ch == "o":
         digits = format(iv, "o")
         prefix = "0o"
@@ -247,6 +256,7 @@ def _format_long(ctx: _Formatter, v: Any, ch: str) -> str:
     else:
         digits = str(iv)
         prefix = ""
+    neg = digits.startswith("-")
     if neg:
         digits = digits[1:]
     if ctx.prec > len(digits):
@@ -257,31 +267,34 @@ def _format_long(ctx: _Formatter, v: Any, ch: str) -> str:
     return s
 
 
-def _format_float(ctx: _Formatter, v: Any, ch: str) -> str:
+def _format_float(ctx: _Formatter, v: object, ch: str) -> str:
     # formatfloat(): PyFloat_AsDouble(), then PyOS_double_to_string(), which format() also runs
-    if isinstance(v, float):
-        x: float = v
-    elif isinstance(v, int):
-        x = float(_as_int(v)) if isinstance(v, bool) else float(v)
-    else:
+    if not _is_float(v) and not _is_int(v):
         raise TypeError(f"must be real number, not {type(v).__name__}")
+    x = float(v)
     prec = ctx.prec if ctx.prec >= 0 else 6
     return format(x, ("#" if ctx.flags & _F_ALT else "") + "." + str(prec) + ch)
 
 
-def _format_char(v: Any) -> str:
-    # formatchar(): a str of one character, or an int that is a code point
-    if isinstance(v, str):
-        if len(v) == 1:
-            return v
+def _format_char(v: object) -> str:
+    # formatchar(): a str of one character, or an int that is a code point (its digits first,
+    # which tell one past the code points' range without an int past 64 bits)
+    if _is_str(v):
+        s = str(v)
+        if len(s) == 1:
+            return s
         raise TypeError("%c requires int or char")
-    if not isinstance(v, int):
+    if not _is_int(v):
         raise TypeError("%c requires int or char")
-    if isinstance(v, bool):
+    if _is_bool(v):
         return chr(1 if v else 0)
-    if v < 0 or v > 0x10FFFF:
+    digits = str(v)
+    if len(digits) > 8:
         raise OverflowError("%c arg not in range(0x110000)")
-    return chr(_as_int(v))
+    c = int(digits)
+    if c < 0 or c > 0x10FFFF:
+        raise OverflowError("%c arg not in range(0x110000)")
+    return chr(c)
 
 
 def _output(ctx: _Formatter, ch: str, s: str) -> str:

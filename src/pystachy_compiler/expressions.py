@@ -9,7 +9,7 @@ from src.pystachy_compiler.dynamic import boxed_list_items, comparison_builtin, 
 from src.pystachy_compiler.frames import FmtArgs, IterArg
 from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname, one_num
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
-from src.pystachy_compiler.names import ENUMCLASSES, NESTED, own_name, short
+from src.pystachy_compiler.names import ENUMCLASSES, MAPVIEW, NESTED, SEQVIEW, own_name, short
 from src.pystachy_compiler.patterns import pattern_expr, pattern_static
 from src.pystachy_compiler.reflection import VARS_USES, has_hook, hook_missing, hook_of, hook_read, hook_reads, refl_annotated, refl_body, refl_fold, refl_reflective
 from src.pystachy_compiler.specs import (
@@ -155,6 +155,10 @@ def gen_narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
             nt = self.dyn_narrow_type(n.kids[2], truth)  # (its box's payload, read as that type: dynamic.py)
             if nt != "":
                 out[nm] = nt
+        elif truth and self.is_iface(t):
+            nt = self.iface_narrow(n.kids[2], t)  # (its object, which the test proved of that class: interfaces.py)
+            if nt != "":
+                out[nm] = nt
         elif truth and t in self.classes and self.classes[t].tag > 0 and n.kids[2].kind == "name" and n.kids[2].s in self.classes and (self.derives(n.kids[2].s, t) or n.kids[2].s in self.classes[t].overlaps):
             # The runtime class check proved this pointer has the derived layout. Keep
             # the declared storage type, and refine only reads on this control-flow path.
@@ -230,7 +234,7 @@ def gen_narrowable(self, name: str) -> bool:
     # a local (or parameter) of an optional type, union, or ordinary class: a global or field
     # may change in a call, and so may a variable that a closure assigns (nonlocal)
     t = self.ltype.get(name, "")
-    return (is_opt(t) or is_union(t) or t == "dyn" or (t in self.classes and self.classes[t].tag > 0)) and not self.is_global(name) and name not in self.nlw
+    return (is_opt(t) or is_union(t) or t == "dyn" or (t in self.classes and self.classes[t].tag > 0) or self.is_iface(t)) and not self.is_global(name) and name not in self.nlw
 
 def gen_narrow_by(self, test: Node, truth: bool) -> dict[str, str]:
     # narrowed becomes a copy narrowed by test being truth; the state before is returned
@@ -523,6 +527,10 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return -1  # (its box's type decides: dynamic.py)
     if t == BIG:
         t = "int"  # (a promoting int is an int)
+    if c.kind == "name" and c.s in self.ifaces:
+        self.err(f"isinstance() with Protocol {short(c.s)} is not supported (CPython checks a @runtime_checkable protocol's methods by name only when the program runs)")
+    if self.is_iface(unopt(t)):
+        return 1 if "object" in self.iface_classes(c) else -1  # (its object's class decides: iface_isinst)
     if c.kind == "binop" and c.s == "|":
         # (a union, where None is NoneType; None | None raises, and so does a tuple in it)
         if not self.puretype(c, False):
@@ -1548,7 +1556,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 v = self.big_tuple_narrow(v)  # (an item holds 64-bit ints, and is typed so: bigints.py)
             if et == "" and v.t != "None":
                 et = v.t
-            jt = v.t if jt == "" else self.join(jt, v.t) or "-"  # (the items' types together)
+            # (the items' types together; distinct iterators: their Iterator[T], interfaces.py, made
+            # only where the display has no expected item type, which would make its join unused,
+            # and in a module that does not compile Any dynamically, whose items stay Any values)
+            jt = v.t if jt == "" else self.join(jt, v.t) or (self.iter_join(jt, v.t) if not given and not self.dyn_policy(n.line) else "") or "-"
             items.append(v)
         if (returnctx or resultsoft) and given and len([v for v in items if not self.widens(v.t, et) and not self.boxes(v.t, et) and not (is_fn(v.t) and is_callable(unopt(et)))]) > 0:
             # A comparison's expected type is only a hint. Keep the display's
@@ -1558,8 +1569,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             for v in items:
                 if et == "" and v.t != "None":
                     et = v.t
-        if not given and (is_opt(jt) or is_tuple(jt) or is_clsval(jt)):
-            et = jt  # None among strings (or T | None among T): T | None (also as tuple items); class objects: of a base class in common
+        if not given and (is_opt(jt) or is_tuple(jt) or is_clsval(jt) or self.is_iface(jt)):
+            et = jt  # None among strings (or T | None among T): T | None (also as tuple items); class objects: of a base class in common; distinct iterators: their Iterator[T]
         if not given and self.class_join(et, jt, "") != "":
             et = jt  # (objects of classes of one hierarchy: of their nearest common base)
         if not given and jt == "-" and self.dyn_policy(n.line) and not self.dyn_callables([v.t for v in items]):
@@ -1567,6 +1578,13 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if given and soft:
             for v in items:
                 et = self.wider(et, v.t) or et
+        if not given and self.is_object(want) and self.dyn_policy(n.line) and (et == "" or et == "None"):
+            et = "dyn"  # (an empty display stored as object, in a module that compiles Any so: of dynamic values)
+        if not given and self.is_object(want) and not self.dyn_policy(n.line) and (et == "" or et == "None" or (jt == "-" and union_hint(self, [v.t for v in items]) == "")):
+            # (a display stored as object, empty or of items that no one type or union holds: a list
+            # of values of object, which no other name changes, read through its view: interfaces.py)
+            et = self.object_iface()
+            given = True
         if et == "" or et == "None":
             self.err(f"cannot infer the type of {'an empty list' if len(items) == 0 else 'a list of None'}; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)")
         for v in items if not is_list(want) and et in self.classes else items[:0]:
@@ -1643,7 +1661,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 b = self.big_tuple_narrow(b)
             if kv[1] == "" and b.t != "None":
                 kv[1] = b.t
-            jt = b.t if jt == "" else self.join(jt, b.t) or "-"
+            jt = b.t if jt == "" else self.join(jt, b.t) or (self.iter_join(jt, b.t) if not given and not self.dyn_policy(n.line) else "") or "-"  # (as a list's)
             kj = a.t if kj == "" else self.join(kj, a.t) or "-"
             ks.append(a)
             vs.append(b)
@@ -1656,8 +1674,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             for v in vs:
                 if kv[1] == "" and v.t != "None":
                     kv[1] = v.t
-        if not given and (is_opt(jt) or is_tuple(jt) or is_vtuple(jt) or is_clsval(jt)):
-            kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items; tuples of other lengths: tuple[T, ...]); class objects: of a base class in common
+        if not given and (is_opt(jt) or is_tuple(jt) or is_vtuple(jt) or is_clsval(jt) or self.is_iface(jt)):
+            kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items; tuples of other lengths: tuple[T, ...]); class objects: of a base class in common; distinct iterators: their Iterator[T]
         if not given and self.class_join(kv[1], jt, "") != "":
             kv[1] = jt  # (objects of classes of one hierarchy: of their nearest common base)
         if not kgiven and is_clsval(kj):
@@ -1670,6 +1688,13 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 vh = self.list_hint_type(vh, b.t) if vh != "" else ""
             if vh != "":
                 kv[1] = vh  # (values of mixed scalar types: of their union, as if annotated)
+        if not given and self.is_object(want) and self.dyn_policy(n.line) and (len(ks) == 0 or kv[1] == ""):
+            kv = ["dyn", "dyn"]  # (an empty display stored as object, in a module that compiles Any so: of dynamic values)
+        if not given and self.is_object(want) and not self.dyn_policy(n.line) and (len(ks) == 0 or kv[1] == "" or (jt == "-" and union_hint(self, [b.t for b in vs]) == "")):
+            # (a display stored as object, empty or of values that no one type or union holds: a
+            # dict of values of object, read through its view, and of str keys where it has none)
+            kv = [kv[0] if kv[0] != "" else "str", self.object_iface()]
+            given = True
         if not kgiven and is_tuple(kj):
             kv[0] = self.none_items(kj)
         if self.dyn_policy(n.line) and ((not given and jt == "-" and not self.dyn_callables([b.t for b in vs])) or (not kgiven and kj == "-")):
@@ -2003,11 +2028,15 @@ def gen_percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
             items.append(self.expr(x, ""))
     else:
         v = self.expr(rhs, "")
+        if self.is_object(v.t) or self.is_view(v.t):
+            return self.percent_object(fmt, v)  # (a tuple's items, a dict or the value, as it holds)
         if self.nt_wide(v):
             return self.percent_opt(fmt, v)  # (None, or its fields as they are: nt_wide)
         v = self.ntup(v)  # (a NamedTuple is a tuple: its fields are the arguments)
-        if is_tuple(unopt(v.t)) and is_opt(v.t):
+        if (is_tuple(unopt(v.t)) or is_vtuple(unopt(v.t))) and is_opt(v.t):
             return self.percent_opt(fmt, v)
+        if is_vtuple(v.t):
+            return self.pformat(fmt, [], False, [], v)  # (its items, as many as it has: pformat)
         if is_tuple(v.t):
             for i in range(len(targs(v.t))):
                 items.append(self.tget(v, i))
@@ -2073,9 +2102,9 @@ def gen_percent_opt(self, fmt: str, v: Val) -> Val:
     self.place(l2)
     tv = self.ntup(v, True) if v.t in self.nts else Val(v.v, unopt(v.t))
     items: list[Val] = []
-    for i in range(len(targs(tv.t))):
+    for i in range(len(targs(tv.t)) if not is_vtuple(tv.t) else 0):
         items.append(self.tget(tv, i))
-    b = self.pformat(fmt, items, False, [])
+    b = self.pformat(fmt, items, False, [], tv if is_vtuple(tv.t) else None)
     if not self.term:
         self.incoming(ph, b.v, self.cur)
     self.br(l3)
@@ -2085,13 +2114,77 @@ def gen_percent_opt(self, fmt: str, v: Val) -> Val:
         return Val(self.sconst(""), "str")
     return Val(self.phi(ph), "str")
 
-def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]) -> Val:
+def union_hint(self, ts: list[str]) -> str:
+    # the union of display items' types ts that list_hint_type makes of mixed scalar types, as
+    # a list or dict display takes it, or "" where none holds them (or there are none)
+    if len(ts) == 0:
+        return ""
+    hint = ts[0]
+    for t in ts[1:]:
+        hint = self.list_hint_type(hint, t) if hint != "" else ""
+    return hint
+
+
+def gen_percent_object(self, fmt: str, v: Val) -> Val:
+    # "format" % x, x a value of object (or a view), as CPython takes x when it runs: the items of
+    # a tuple it holds are the arguments (read through its view), a dict it holds is the mapping
+    # of a format whose conversions name keys or that has none, and any other value is the one
+    # argument. A format that names keys raises CPython's TypeError for a value but a dict, a list
+    # or bytes, which CPython reads as mappings too (with str keys, which they do not take), and
+    # one that has no conversion gives itself for them
+    o = self.to_object(v)
+    keyed = "%(" in fmt.replace("%%", "")
+    bare = "%" not in fmt.replace("%%", "")
+    line = self.line
+    end = self.label()
+    ph = Ins("phi", "str", "")
+    for c in ["tuple", "dict", "list", "bytes"]:
+        if (c == "list" or c == "bytes") and not keyed and not bare:
+            continue
+        yes = self.label()
+        no = self.label()
+        self.cbr(self.iface_isinst(o, mk("name", c, line, [])).v, yes, no)
+        self.place(yes)
+        if c == "tuple" and keyed:
+            r = self.fmt_error("format requires a mapping")
+        elif c == "tuple":
+            r = self.pformat(fmt, [], False, [], self.cast(o, self.iface_of(SEQVIEW, []), "view"))
+        elif c == "dict" and (keyed or bare):
+            r = self.percent_map(fmt, self.cast(o, self.iface_of(MAPVIEW, []), "view"))
+        elif c == "dict":
+            r = self.pformat(fmt, [o], False, [])  # (a mapping that no conversion names is an argument)
+        elif keyed:
+            r = self.fmt_error(f"{'list' if c == 'list' else 'byte'} indices must be integers or slices, not str")
+        else:
+            r = Val(self.sconst(fmt.replace("%%", "%")), "str")
+        if not self.term:
+            self.incoming(ph, r.v, self.cur)
+            self.br(end)
+        self.place(no)
+    r = self.fmt_error("format requires a mapping") if keyed else self.pformat(fmt, [o], False, [])
+    if not self.term:
+        self.incoming(ph, r.v, self.cur)
+        self.br(end)
+    self.place(end)
+    if len(ph.a) == 0:
+        self.unreachable()
+        return Val(self.sconst(""), "str")
+    return Val(self.phi(ph), "str")
+
+
+def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node], vt: Val | None = None) -> Val:
     # fmt % items; rtnone: a None among them that a conversion cannot take raises when it runs
     # (it is a tuple's place, see percent_opt), as CPython's error; lazy: the items' expressions
-    # instead, each evaluated as its conversion comes (an f-string's order: percent)
+    # instead, each evaluated as its conversion comes (an f-string's order: percent); vt: a tuple
+    # of any length (tuple[T, ...]) instead, whose items are the arguments: as CPython checks a
+    # tuple's, each conversion checks that one is left when it comes, and the end that none is
     parts: list[Val] = []
     lit: list[str] = []
     count = len(lazy) if len(lazy) > 0 else len(items)
+    # (vt may be a view of the tuple that a value of object holds: its len() and items, which
+    # are values of object, percent_object)
+    seq = vt is not None and self.is_view(vt.t)
+    vn = (self.builtin("len", [self.vnode(vt)], "") if seq else Val(self.mload('int', vt.v), "int")) if vt is not None else Val("0", "int")
     used = 0
     i = 0
     while i < len(fmt):
@@ -2129,9 +2222,13 @@ def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]
             self.err("% formatting with a * width or precision is not supported")
         if t not in "sradiuxXoeEfFgGc":
             self.err(f"unsupported format character '{t}' ({ord(t):#x}) at index {i - 1}")
-        if used >= count:
+        if vt is not None:
+            self.guard(self.scalar_cmp("sle", vn, Val(str(used), "int")), "TypeError: not enough arguments for format string")
+            v = self.expr(mk("index", "", self.line, [self.vnode(vt), mk("int", str(used), self.line, [])]), "") if seq else self.vtuple_item(vt, Val(str(used), "int"))
+        elif used >= count:
             return self.fmt_error("not enough arguments for format string")
-        v = self.expr(lazy[used], "") if len(lazy) > 0 else items[used]
+        else:
+            v = self.expr(lazy[used], "") if len(lazy) > 0 else items[used]
         used += 1
         if len(lit) > 0:
             parts.append(Val(self.sconst("".join(lit)), "str"))
@@ -2141,7 +2238,9 @@ def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]
         if is_sopt(v.t) and t not in "sra":
             v = self.unwrap(v, "TypeError: " + self.nonefmt(t))
         parts.append(self.conversion(v, flags, width, prec, t))
-    if used < count:
+    if vt is not None:
+        self.guard(self.scalar_cmp("sgt", vn, Val(str(used), "int")), "TypeError: not all arguments converted during string formatting")
+    elif used < count:
         return self.fmt_error("not all arguments converted during string formatting")
     if len(lit) > 0:
         parts.append(Val(self.sconst("".join(lit)), "str"))
@@ -2538,6 +2637,9 @@ def gen_conversion(self, v: Val, flags: str, width: str, prec: str, t: str) -> V
         if width == "" and prec == "":
             return sv
         return self.format_(sv, mk("str", ("<" if "-" in flags else ">") + width + prec, self.line, []))
+    if self.is_object(v.t) or self.is_view(v.t):
+        v = self.object_convert(v, "%" + t)  # (the number, or %c's character, of the type it holds: interfaces.py)
+    v = self.bool_int(v)  # (a bool | int as the int it is: conversions.py)
     if v.t in self.classes and t != "c":
         # A number's conversion asks an object for it: %d for its __int__(), else its
         # __index__(); %x, %X and %o for its __index__(); %e, %f and %g for its __float__(), else
@@ -2580,11 +2682,11 @@ def gen_conversion(self, v: Val, flags: str, width: str, prec: str, t: str) -> V
             v = Val(self.rt("pys_f2i", "i64", [f"double {v.v}"]), "int")  # %d truncates a float, as int() does
         v = v if v.t == BIG else self.as_int(v)  # (a promoting int's own digits: format_)
         if v.t != "int" and v.t != BIG:
-            self.err(f"%{t} format: {'a real number' if t in 'diu' else 'an integer'} is required, not {tname(v.t)}")
+            self.err(f"%{t} format: {'a real number' if t in 'diu' else 'an integer'} is required, not {tname(v.t)}" + self.object_note([v.t]))
         return self.format_(v, mk("str", spec + ("d" if t == "i" or t == "u" else t), self.line, []))
     v = self.as_float(v if v.t == BIG else self.as_int(v))
     if v.t != "float":
-        self.err(f"must be real number, not {tname(v.t)}")
+        self.err(f"must be real number, not {tname(v.t)}" + self.object_note([v.t]))
     return self.format_(v, mk("str", spec + (prec if prec != "" else ".6") + t, self.line, []))
 
 def gen_format_(self, v: Val, spec: Node) -> Val:
@@ -2600,6 +2702,10 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
         # and runtime.c's formatting of a number or a str for another (TypeError for other values)
         sv = Val(self.sconst(""), "str") if empty else self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
         return self.dyn_format(v, sv)
+    if self.is_iface(v.t):
+        # (its object's class's __format__, or str() for an empty spec: interfaces.py)
+        sv = Val(self.sconst(""), "str") if empty else self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
+        return self.iface_format(v, sv)
     if v.t in self.classes and self.classes[v.t].tag > 0:
         cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, v.t)]
         if any(["__format__" in c.methods for c in cs]):
@@ -2757,7 +2863,7 @@ def gen_slice_bound(self, x: Node, dvs: list[Val], fold: bool = False) -> str:
     # goes to dvs, and its place, ?<index>, to slice_dyn, which converts it
     if x.kind == "omit":
         return "-9223372036854775808"
-    bv = self.expr(x, "int")
+    bv = self.bool_int(self.expr(x, "int"))  # (a bool | int as the int it is: conversions.py)
     if bv.t == "None":
         return "-9223372036854775808"
     if fold and bv.t == "bool" and (bv.v == "true" or bv.v == "false"):
@@ -3759,7 +3865,7 @@ def gen_argtype(self, t: str, m: str, j: int, missing: str) -> str:
     # argument is evaluated for that type); missing: the error where t does not define m
     ms = self.classes[t].methods
     if m not in ms:
-        self.err(missing)
+        self.err(missing + self.object_note([t]))
     if ms[m].bad != "":
         self.err(ms[m].bad)  # (an imported module's method that cannot be compiled)
     return ms[m].ptypes[j] if j < len(ms[m].ptypes) else ""
@@ -3807,7 +3913,7 @@ def gen_obj_iterator(self, v: Val, none: str, missing: str, name: str = "__iter_
     if name not in ms and "__getitem__" in ms:
         self.err(f"iterating over {short(v.t)} by its __getitem__ is not supported (CPython calls __getitem__(0), __getitem__(1), ... until IndexError): define __iter__")
     if name not in ms:
-        self.err(missing)
+        self.err(missing + self.object_note([v.t]))
     f = ms[name]
     if f.bad != "":
         self.err(f.bad)  # (an imported module's generator __iter__: its own error, not its type's)
@@ -4092,6 +4198,8 @@ def boolop_type(self, op: str, at: str, bt: str, want: str = "") -> str:
         rt = "dyn"  # (either operand, the other boxed where it reaches the join: dynamic.py)
     if not self.term and at != bt and self.join(at, bt) == BIG:
         rt = BIG  # (an int and a promoting int: either one, as a promoting int)
+    if not self.term and self.view_join(at, bt) != "":
+        rt = self.view_join(at, bt)  # (a view and another value: a value of object, interfaces.py)
     return rt
 
 
@@ -4121,8 +4229,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
         a = left_operand(self, n.kids[1], want, resultsoft, [])
     else:
         a = self.expr(n.kids[1], want, resultsoft=resultsoft)
-    if is_vtuple(unopt(want)) or want == "dyn" or (is_aset(unopt(want)) and (self.widens(a.t, want) or a.t == EMPTYFS)):
-        a = self.coerce(a, want)  # (construct the requested representation in its arm: a box, dynamic.py; a set or a frozenset as the AbstractSet wanted)
+    if is_vtuple(unopt(want)) or want == "dyn" or self.is_object(want) or (is_aset(unopt(want)) and (self.widens(a.t, want) or a.t == EMPTYFS)):
+        a = self.coerce(a, want)  # (construct the requested representation in its arm: a box, dynamic.py, or a value of object, interfaces.py; a set or a frozenset as the AbstractSet wanted)
     keep = kept is not None and is_union(unopt(want)) and a.t in ["int", "float", "bool", "str", BIG]
     if not keep and ((is_fn(a.t) and is_callable(unopt(want))) or is_union(unopt(want))):
         a = self.coerce(a, want)  # (a function where a Callable is expected: made one in its arm)
@@ -4145,7 +4253,7 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
     else:
         b = self.expr(n.kids[2], wb, resultsoft=resultsoft)
     self.branch -= 1
-    if is_vtuple(unopt(want)) or want == "dyn" or (is_aset(unopt(want)) and (self.widens(b.t, want) or b.t == EMPTYFS)):
+    if is_vtuple(unopt(want)) or want == "dyn" or self.is_object(want) or (is_aset(unopt(want)) and (self.widens(b.t, want) or b.t == EMPTYFS)):
         b = self.coerce(b, want)
     # (an operand's arms of one type, or an int and a promoting int, which join below: no union is made)
     same = keep and (b.t == a.t or self.join(a.t, b.t) == BIG)
@@ -4175,6 +4283,10 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
         t = self.join(a.t, b.t)  # (tuples of other lengths: a runtime-length tuple, each made in its arm)
     if e1 != "" and e2 != "" and self.class_join(a.t, b.t, want) != "":
         t = self.class_join(a.t, b.t, want)  # (objects of two classes of one hierarchy: of their base)
+    if e1 != "" and e2 != "" and a.t != b.t and want == "" and self.is_iface(self.iter_join(a.t, b.t)):
+        t = self.iter_join(a.t, b.t)  # (distinct iterators: each boxed in its arm as their Iterator[T], interfaces.py)
+    if e1 != "" and e2 != "" and self.view_join(a.t, b.t) != "":
+        t = self.view_join(a.t, b.t)  # (a view and another value: a value of object, each made in its arm)
     ph = Ins("phi", t, "")
     if e1 != "":
         a = self.convert_at(a, t, e1)  # (an int as an int | None: its box, made there)
@@ -4356,7 +4468,7 @@ def gen_unary(self, n: Node) -> Val:
         return r
     if v.infer_from != "":
         self.err(f"cannot infer what {v.infer_from}() returns: its recursive return type is unresolved; annotate its return type")
-    self.err(f"bad operand type for unary {op}: '{tname(v.t)}'")
+    self.err(f"bad operand type for unary {op}: '{tname(v.t)}'" + self.object_note([v.t]))
     return v
 
 def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
@@ -4763,6 +4875,8 @@ def gen_cmp_cands(self, op: str, at: str, bt: str) -> list[list[str]]:
                 continue
             if m in ms and ms[m].cls == COMPLEXC and rt != COMPLEXC and (rt == "None" or rt in self.classes) and not self.enum_intlike(rt):
                 continue  # (complex declines a foreign object; int-like enums compare by payload)
+            if m in ms and (op == "==" or op == "!=") and (rt == "None" or rt in self.classes) and lib_file(ms[m].node.line, self.libdir) and self.cmp_method(lt, m, rt) == "":
+                continue  # (as in cmp_pick: a library class's method declines what it does not take)
             if m in ms and self.enum_scalar(lt, rt) and lib_source(ms[m].node.line, self.libdir, "enum.py"):
                 out.append([sides[i], "@scalar", ""])
                 continue  # (inherited scalar slots do not call a custom __eq__ for __ne__)
@@ -4842,6 +4956,11 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
                 continue  # (what @dataclass writes returns NotImplemented for an object of another class)
             if m in ms and ms[m].cls == COMPLEXC and rt != COMPLEXC and (rt == "None" or rt in self.classes) and not self.enum_intlike(rt):
                 continue  # (complex declines a foreign object; int-like enums compare by payload)
+            if m in ms and (op == "==" or op == "!=") and (rt == "None" or rt in self.classes) and lib_file(ms[m].node.line, self.libdir) and self.cmp_method(lt, m, rt) == "":
+                # (a library class's __eq__ or __ne__ that cannot take an object of another class,
+                # or None, stands for a CPython type's, which returns NotImplemented for it (range's,
+                # a deque's, a date's): the other operand's method, else identity, answers)
+                continue
             if m in ms and self.enum_scalar(lt, rt) and lib_source(ms[m].node.line, self.libdir, "enum.py"):
                 return [sides[i], "@scalar", ""]
             if m in ms and lib_source(ms[m].node.line, self.libdir, "enum.py") and (rt == "None" or (rt in self.classes and not self.derives(rt, ms[m].cls) and not (self.enum_intlike(ms[m].cls) and self.enum_intlike(rt)))):
@@ -5806,14 +5925,15 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
     # CPython's TypeError, at compile time
     an = tname(a.t)
     bn = tname(b.t)
+    note = self.object_note([a.t, b.t])
     if op == "+" and (a.t == "str" or is_list(a.t) or is_tuple(a.t)):
-        self.err(f'can only concatenate {an} (not "{bn}") to {an}')
+        self.err(f'can only concatenate {an} (not "{bn}") to {an}' + note)
     if op == "+" and a.t == "bytes":
-        self.err(f"can't concat {bn} to bytes")
+        self.err(f"can't concat {bn} to bytes" + note)
     sq = a.t == "str" or a.t == "bytes" or is_list(a.t) or is_tuple(a.t)
     if op == "*" and (sq or b.t == "str" or b.t == "bytes" or is_list(b.t) or is_tuple(b.t)):
-        self.err(f"can't multiply sequence by non-int of type '{bn if sq else an}'")
-    self.err(f"unsupported operand type(s) for {shown if shown != '' else '** or pow()' if op == '**' else op}: '{an}' and '{bn}'")
+        self.err(f"can't multiply sequence by non-int of type '{bn if sq else an}'" + note)
+    self.err(f"unsupported operand type(s) for {shown if shown != '' else '** or pow()' if op == '**' else op}: '{an}' and '{bn}'" + note)
     return a
 
 def gen_complex_value(self, re: Val, im: Val) -> Val:
@@ -6129,6 +6249,16 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, 
     # where it is, and on in a new block where it is not; False if no branch can reach hit.
     # lenient (a member of a union of classes, titem_union): objects compare as inherit_cmp's
     # lenient comparison compares them, which no method that cannot take the other makes an error
+    if self.is_object(unopt(item.t)) or self.is_object(unopt(a.t)) or self.is_view(unopt(item.t)) or self.is_view(unopt(a.t)):
+        # (a value of object: the same object, then ==, by its table's entries, interfaces.py)
+        for op in ["is", "=="]:
+            c = self.cmp2(op, item, a)
+            nx = self.label()
+            if ph is not None:
+                self.incoming(ph, value, self.cur)
+            self.cbr(c.v, hit, nx)
+            self.place(nx)
+        return True
     if item.t != "dyn" and a.t != "dyn" and (self.reference_union(item.t) or self.reference_union(a.t)):
         return self.titem_union(item, a, hit, ph, value)
     if item.t != "dyn" and a.t != "dyn" and not is_union(unopt(item.t)) and not is_union(unopt(a.t)):
@@ -6416,6 +6546,15 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":
             return dc
+    if (self.is_iface(a.t) or self.is_iface(b.t)) and op != "in" and op != "not in":
+        return self.iface_cmp(op, a, b)  # (a value of an interface: its object's identity, interfaces.py)
+    if (op == "==" or op == "!=") and not is_opt(a.t) and not is_opt(b.t) and (self.holds_object(a.t) or self.holds_object(b.t)):
+        ce = self.container_eq(op, a, b)  # (containers of values of an interface, item by item: interfaces.py)
+        if ce.t != "":
+            return ce
+    if (op == "in" or op == "not in") and (is_list(b.t) or is_vtuple(b.t)) and not is_opt(a.t) and (self.holds_object(a.t) or self.holds_object(b.t)):
+        found = self.container_find("find", a, b)  # (item is x or item == x, as CPython searches: interfaces.py)
+        return self.num_cmp(">=" if op == "in" else "<", found, Val("0", "int"))
     if op in ["==", "!=", "<", "<=", ">", ">="] and (self.object_union(a.t) or self.object_union(b.t)):
         # A union that holds objects beside scalars: its member's own comparison, an object's by
         # its methods, selected by the tag before any rule below takes the box for an operand of
@@ -6492,6 +6631,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         return self.optcmp(op, a, b) if is_opt(a.t) or is_opt(b.t) else self.ucmp(op, a, b)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and (self.isnum(unopt(a.t)) or unopt(a.t) == BIG) and (self.isnum(unopt(b.t)) or unopt(b.t) == BIG):
         return self.optcmp(op, a, b)  # (an int | None of a module that opts in: None, or its promoting int)
+    if (a.t == BIG or b.t == BIG) and (is_sopt(a.t) or is_sopt(b.t)) and (op in ORDOP or op == "==" or op == "!="):
+        # (a promoting int and a 64-bit int, float or bool | None: None, or its number compared
+        # with the promoting int as it is, which may not fit 64 bits)
+        return self.optcmp(op, a, b)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and a.t != "None" and b.t != "None":
         # (with another type, an int | None of a module that opts in compares as the 64-bit int | None
         # it holds: bigints.py)
@@ -6708,6 +6851,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         o = b.t if unopt(a.t) == "exctype" else a.t
         if unopt(o) == "exctype" or o == "None":
             return self.ptr_cmp(op, a, b)
+        if o in self.classes and self.classes[o].exc == "":
+            # (an object of a class of the program: type's __eq__ declines it, so that CPython calls
+            # the object's method, else compares them by identity, as with a value of a builtin type)
+            return self.inherit_cmp(op, a, b)
         if o in self.classes or is_union(unopt(o)):
             self.err(f"comparing an exception class with {typestr(o)} is not supported")
         return Val("false" if op == "==" else "true", "bool")
@@ -6944,6 +7091,14 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         # (an object of a class of the program and another such object or a value of a builtin
         # type, which no rule above compares: as an object of a class with subclasses is compared)
         return self.inherit_cmp(op, a, b)
+    if eq and not is_opt(a.t) and not is_opt(b.t) and is_list(a.t) and is_list(b.t) and any(elem(t) in self.classes for t in [a.t, b.t]) and all(elem(t) not in self.nts and elem(t) != "dyn" and not is_union(unopt(elem(t))) and not elem(t).startswith("rec[") and not self.is_iface(elem(t)) for t in [a.t, b.t]):
+        # (lists of objects of a class of the program and of another type, which no one descriptor
+        # compares, as values of object hold them: item by item, as containers of values of object
+        # are, interfaces.py; the objects of a NamedTuple, which compare as tuples, Any values and
+        # unions keep the error below)
+        ce = self.container_eq(op, a, b)
+        if ce.t != "":
+            return ce
     x = "an exception" if a.t == "exc" else "object" if a.t == OBJECTC else "int" if a.t == BIG else "bytearray" if a.t == BYTEARRAYC else a.t
     y = "an exception" if b.t == "exc" else "object" if b.t == OBJECTC else "int" if b.t == BIG else "bytearray" if b.t == BYTEARRAYC else b.t
     self.err(f"cannot compare {x} {op} {y}")

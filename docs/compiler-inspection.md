@@ -150,6 +150,37 @@ These are cache keys, so repeated identical calls appear once. Identities are
 local to each attempt. On failure, the map contains only completed selections
 and the diagnostic context gives the rejected request when available.
 
+### Stored callable interfaces
+
+`attempts[].callable_boundary` separates a stored callable's signature from the
+concrete functions that implement it. `adapters` records the compiler's adapter
+cache: source representation, callable signature, parameter and result
+representations, and generated symbol. `fields` records each class's callable
+fields, including optional callable fields. Several adapters can share one field
+signature without making separate wrapper layouts or consumer bodies. `interfaces`
+records each [protocol](language/typing.md#protocols-and-stored-interfaces)'s operations
+and those that calls use; `tables` records each implementation type's table and the
+adapter compiled for each used operation.
+
+Its `footprints.before` and `footprints.after` count `icall` instructions per
+function across the complete compilation graph; `--function` does not filter
+these observations. They use the same stage boundaries as the typed snapshots,
+including in `--typed-after-only` mode. Counts are static call sites, not the
+number of calls executed, allocations, memory use or dispatch time.
+
+Each selected function snapshot also records
+`specialization.type_bindings`: the compiler's resolved lexical type-variable
+bindings demanded by that instance or captured closure. An empty map means no recorded
+binding; it does not mean that the function takes dynamic values.
+
+A failed attempt can reserve an adapter before finishing its body. Only a
+completed footprint establishes that its listed symbols reached that stage;
+unavailable footprints have `totals: null`. Source-provenance failures downgrade
+completed footprints to partial. These observations do not independently verify
+method compatibility, closure lifetime or collector correctness. The existing
+[Lean checks](../tools/lean_boundary/README.md) have their own stated assumptions
+and require full, unfiltered snapshots for whole-program coverage.
+
 ## Annotated source
 
 `tools/annotate_ir.py` shows a program as Cython's annotate view does: each source line,

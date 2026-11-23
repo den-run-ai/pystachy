@@ -1,0 +1,7 @@
+list 0 [] dict 0 {} None set 0 set() set 0 frozenset() tuple 0 ()
+list 5 [1, 'two', [3], None, (4, 'x')] dict 3 {'a': 1, 'b': 'two', 'c': [3]} None
+list 0 []
+dict 0 {} None
+list 2 [1, [2, 'x']]
+3 3 1
+[exit 0]

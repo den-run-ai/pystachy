@@ -1,0 +1,15 @@
+3 1 [2] True True False 1 1 True
+item 1
+item x
+item [2]
+4 5 [1, 'x', [2], 5]
+1 two two None True 2
+key k
+key 2
+pair k 1
+pair 2 two
+KeyError 'missing'
+2 2 (1, 2)
+titem 1
+titem 2
+[exit 0]

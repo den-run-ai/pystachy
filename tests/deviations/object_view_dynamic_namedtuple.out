@@ -1,0 +1,3 @@
+True True N(x=5, y='five')
+TypeError: object of type 'N' has no len()
+[exit 1]

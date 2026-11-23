@@ -1,0 +1,16 @@
+ListEq True True True True False False True True
+ListNe False False True True False False False False
+ListBoth True True True True False False False False
+DictEq True True True True False False True True
+DictNe False False True True False False False False
+DictBoth True True True True False False False False
+PairEq True True True True False False True True
+PairNe False False True True False False False False
+PairBoth True True True True False False False False
+Level True True True True False False False False
+Bits True True True True False False False False
+Color False False True True True True True True
+True True True True True True False True
+True True False False True
+True True False True
+[exit 0]

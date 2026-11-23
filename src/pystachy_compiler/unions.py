@@ -4,7 +4,7 @@ from src.pystachy_compiler.analysis import ann_target
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, where
 from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
-from src.pystachy_compiler.names import owner
+from src.pystachy_compiler.names import OBJECT, owner
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, FXBIT, NONEVAR, OPTTYPES, PYMETHODS
 from src.pystachy_compiler.utils import elem, has_method, is_callable, is_clsval, is_dict, is_fn, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, tname, typestr, umembers, unopt
@@ -422,6 +422,11 @@ def gen_union_type(self, ts: list[str]) -> str:
     none = False
     if "dyn" in ts:
         return "dyn"  # (Any | T: a dynamic value holds any of them)
+    views = [t for t in ts if self.is_view(t)]
+    if OBJECT in ts or (len(views) > 0 and len([t for t in ts if t != views[0] and t != "None"]) > 0):
+        # (object | T: a value of object holds any of them, interfaces.py; so does a view of the
+        # container that one holds, with any other type)
+        return OBJECT
     for t in ts:
         t = self.rec_type(t)
         if t == "None" or t == NONEVAR:
@@ -581,6 +586,8 @@ def gen_narrow_val(self, v: Val, nt: str) -> Val:
         return v
     if v.t == "dyn":
         return self.dyn_narrowed(v, nt)  # (a dynamic value's box, which a test proved holds an nt)
+    if self.is_iface(v.t) and (not self.is_iface(nt) or self.is_view(nt)):
+        return self.iface_narrowed(v, nt)  # (an interface's box, whose object a test proved an nt, or a view of it)
     if v.t in self.classes and nt in self.classes and (self.derives(nt, v.t) or nt in self.classes[v.t].overlaps):
         return Val(v.v, nt)
     if v.t in self.classes and is_union(nt) and len([m for m in umembers(nt) if m not in self.classes]) == 0:
@@ -988,6 +995,8 @@ def gen_narrows_path(self, n: Node, test: str, c: Node, truth: bool, out: dict[s
         nt = self.isinst_narrow(t, c, truth)
     elif truth and t in self.classes and self.classes[t].tag > 0 and c.kind == "name" and c.s in self.classes and (self.derives(c.s, t) or c.s in self.classes[t].overlaps):
         nt = c.s  # (the class its runtime class test proved: narrows)
+    elif truth and self.is_iface(t):
+        nt = self.iface_narrow(c, t)  # (an interface's object, of the class its test proved: interfaces.py)
     elif self.isinst(t, c) == (-2 if truth else -3):
         nt = unopt(t)
     if nt != "" and nt != t:
@@ -1074,9 +1083,13 @@ def gen_stable(self, s: str) -> str:
 
 def gen_fnkey(self, f: FnInfo) -> str:
     # function f's key for joins: its module, its def's line, its class and name and, for a
-    # template's instance, its argument types (see stable)
+    # template's instance, its argument types (see stable); for a function that the compiler
+    # writes, of which one line may have several (an interface's entries, the comparisons of
+    # containers of values of object: interfaces.py), the key it gives it
     k = f"{f.mod}:{f.node.line}:{self.stable(f.cls)}.{f.name}"
-    return k + "(" + self.stable(f.ikey) + ")" if f.inst else k
+    if f.inst:
+        return k + "(" + self.stable(f.ikey) + ")"
+    return k + "<" + self.stable(f.ikey) + ">" if f.ikey != "" else k
 
 
 def field_home(self, ci: ClassInfo, name: str) -> ClassInfo:
@@ -1201,12 +1214,14 @@ def gen_join_hint(self, t: str, vt: str) -> bool:
         body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
         if self.joinname in self.curfn.params or self.joinname in self.compvars:
             return False
-        ann = ann_target(body, self.joinname)
+        # (an annotation that types nothing, Iterator[T]'s, joins distinct iterators as if there
+        # were none: interfaces.py)
+        ann = ann_target(body, self.joinname) and not self.iface_widens(body, self.joinname, t, vt)
         key = f"{self.fnkey(self.curfn)}|{self.joinname}"
     elif self.joinkind == "global":
         if self.joinname in self.constflags or owner(self.joinname) not in self.inits:
             return False
-        ann = ann_target(self.inits[owner(self.joinname)].node.kids, self.joinname)
+        ann = ann_target(self.inits[owner(self.joinname)].node.kids, self.joinname) and not self.iface_widens(self.inits[owner(self.joinname)].node.kids, self.joinname, t, vt)
         key = f"global:{self.joinname}"
     elif self.joinkind == "field" or self.joinkind == "return" or ann:
         key = self.joinname
@@ -1273,6 +1288,10 @@ def gen_join_type(self, a: str, b: str) -> str:
         return self.ctype("vtuple", [e]) if e != "" and unopt(e) != BIG and self.vtuple_holds(e) else ""
     if a == b:
         return a
+    if (self.is_view(a) or self.is_view(b)) and self.object_impl(a) == "" and self.object_impl(b) == "":
+        # (a view of the container that a value of object holds, and any other value: a value of
+        # object, which holds both, interfaces.py)
+        return self.object_iface() if a != "None" and b != "None" else self.optional(a if b == "None" else b)
     if is_clsval(unopt(a)) or is_clsval(unopt(b)):
         # class objects: those of a class that both classes derive from; with another value, where
         # the module opts in to dynamic Any, an Any value (the class's box, which such a module's
@@ -1286,6 +1305,9 @@ def gen_join_type(self, a: str, b: str) -> str:
     if (a == BIG and b in ["bool", "float", "str"]) or (b == BIG and a in ["bool", "float", "str"]):
         # (with a bool, a float or a str, their union, which holds 64-bit ints, as in other modules)
         a, b = "int" if a == BIG else a, "int" if b == BIG else b
+    it = self.iter_join(a, b)
+    if it != "":
+        return it  # (distinct iterators of one item type: the interface Iterator[T], interfaces.py)
     j = self.union_type([a, b])
     return j if not j.startswith("!") and self.joinable(j) else ""
 

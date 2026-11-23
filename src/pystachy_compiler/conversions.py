@@ -109,12 +109,32 @@ def gen_as_int(self, v: Val) -> Val:
         return self.big_narrow(v)  # (a promoting int, where a 64-bit int is needed: bigints.py)
     return v
 
+def gen_bool_int(self, v: Val) -> Val:
+    # v, where it is a bool | int (a value of object that isinstance(x, int) narrowed, a union an
+    # annotation or a join made), as the int it is where an int is asked for: a bool's 0 or 1, by
+    # the union's tag, whose member each arm reads; any other v as it is
+    if not is_union(v.t) or sorted(umembers(v.t)) != ["bool", "int"]:
+        return v
+    yes = self.label()
+    no = self.label()
+    end = self.label()
+    ph = Ins("phi", "int", "")
+    self.cbr(self.utest(v, ["bool"], False), yes, no)
+    for m in ["bool", "int"]:
+        self.place(yes if m == "bool" else no)
+        r = self.as_int(self.uget(v, m))
+        self.incoming(ph, r.v, self.cur)
+        self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), "int")
+
 def gen_index_of(self, v: Val, none: str) -> Val:
     # operator.index() of an object, where CPython asks a subscript, a slice bound, a
     # repetition count or an argument of range(), hex(), oct(), bin() and %x for an integer:
     # its class's __index__(), which must return an int. Every operand is evaluated before it
-    # is called, and None raises none ("Kind: text"). Numbers pass unchanged. An Any value is
-    # asked as the program runs (dyn_index)
+    # is called, and None raises none ("Kind: text"). Numbers pass unchanged, a bool | int as the
+    # int it is (bool_int). An Any value is asked as the program runs (dyn_index)
+    v = self.bool_int(v)
     if v.t == "dyn":
         return self.dyn_index(v, none)
     if v.t not in self.classes or "__index__" not in self.classes[v.t].methods:
@@ -217,10 +237,16 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return Val("undef", t)
     if v.t == t:
         return v
+    if t == "dyn" and (self.is_object(v.t) or self.is_view(v.t)):
+        return self.object_dyn(self.to_object(v))  # (its object as an Any value: interfaces.py)
     if t == "dyn":
         # Any has its own integer representation. Preserve the promoting value
         # before the checked conversions into fixed-width storage below.
         return self.dyn_box(v)
+    if self.is_object(t) and v.t != "None":
+        # (a value of object, which holds a promoting int as it is: before the narrowings below,
+        # interfaces.py)
+        return self.to_object(v)
     if is_tuple(v.t) and BIG in v.t and is_vtuple(unopt(t)) and targs(unopt(t))[0] == "dyn":
         vals = [self.dyn_box(self.tget(v, i)) for i in range(len(targs(v.t)))]
         return Val(self.vtuple_make(vals, unopt(t)).v, t)
@@ -258,6 +284,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         captured = Val(v.v, v.t).identity(v)
         captured.idfrom = self.dyn_id_box(v).v
         v = captured
+    if v.t == "dyn" and self.is_iface(t):
+        self.err(f"an Any value as a value of {typestr(t)}, an interface, is not supported yet (its table is chosen by its static type)")
     if v.t == "dyn":
         return self.dyn_unbox(v, t, what)  # (out of it, where a concrete type is expected)
     if is_vtuple(unopt(t)) and is_tuple(v.t):
@@ -310,6 +338,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
     if self.reboxes(v.t, t):
         # a tuple with an int where t holds an int | None (also deeper): a new tuple, of boxes
         return self.tuple_([self.coerce(self.tget(v, i), targs(t)[i], what) for i in range(len(targs(t)))])
+    if self.is_iface(t) and v.t != "None":
+        return self.to_iface(v, t)  # (a value as one of an interface: its box, interfaces.py)
     if self.join_hint(t, v.t):
         return Val("undef", t)  # (a store a join drops: the next pass compiles it, see join_hint)
     if is_opt(v.t) and self.widens(unopt(v.t), t):
@@ -346,6 +376,16 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         # (builtin_bases.py: a list knows no class, so the object's would be lost there)
         kind = self.bkind(unopt(v.t))
         hint = f": an object of a class that derives from {kind} is not stored or passed as a {kind} yet, where it would lose its class (declare {short(unopt(v.t))} there, leave a parameter unannotated, or copy the items with {kind}(...))"
+    if self.is_object(v.t):
+        # (where ints promote, isinstance(x, int) narrows nothing: object_note says so)
+        mod = "; a test does not narrow a module's variable: test it in a function" if self.modlevel else ""  # (as object_note says)
+        hint = self.object_note([v.t]) if self.int_policy(self.line) else f" (narrow a value of object with isinstance() first, as `if isinstance(x, int):` narrows x to an int{mod})"
+    if self.is_view(v.t):
+        hint = self.object_note([v.t])
+    if is_union(v.t) and sorted(umembers(v.t)) == ["bool", "int"] and (t == "int" or t == BIG):
+        # (an index, a count, a shift and other operations take its int, bool_int; a variable, a
+        # parameter or a field would hold the bool as it is)
+        hint = " (a bool passes isinstance(x, int): int(x) is its int, and `not isinstance(x, bool)` narrows x to int)"
     self.err(f"expected {typestr(t)}, got {typestr(v.t)}{hint}")
     return v
 
@@ -443,6 +483,9 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         # of t) is an error here. The id has three digits or more, which runtime.c reads up to
         # the next descriptor's letter
         ms = self.classes[t].methods
+        if self.is_iface(t) and use != "repr":
+            # (a list's or tuple's search, comparison or sort of a protocol's values: interfaces.py)
+            self.err(f"comparing values of {typestr(t)} (in a list, tuple, in, count, index, sort, min or max) is not supported: the runtime's searches and sorts do not reach their objects' methods (compare them with == or 'is' in a loop)")
         for op in use.split():
             m = "__repr__" if op == "repr" else DUNDER[op]
             m = DUNDER[REFL[op]] if m not in ms and op in REFL else m

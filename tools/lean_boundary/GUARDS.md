@@ -311,12 +311,12 @@ rejection is an investigation target; it does not establish a compiler bug.
 
 ## Supported abstraction and boundaries
 
-The bounded CI selection exercises 61 inventoried union reads, 101 payload obligations, three
-proved union return domains, twenty-seven removed null checks, 151 field obligations and 136
+The bounded CI selection exercises 70 inventoried union reads, 113 payload obligations, three
+proved union return domains, twenty-seven removed null checks, 151 field obligations and 150
 collector-scanning obligations ([GC.md](GC.md)) in `examples/union_guards.py`,
 `examples/union_effects.py`, `examples/union_split.py`, `examples/union_memory.py`,
 `examples/union_defaults.py`, `examples/gc_arrays.py`, `examples/null_guards.py`,
-`examples/null_reloads.py` and `examples/field_init.py`.
+`examples/null_reloads.py`, `examples/field_init.py` and `examples/object_narrowing.py`.
 This small gate does not claim complete-corpus acceptance. Programs whose union values
 come from closure cells or from library initializers' defaults remain investigation targets
 (Typed union memory, below, covers fields, globals, containers and callees).
@@ -332,6 +332,11 @@ a box of float bits made with an int tag, `next()`'s None appended to a `list[in
 int payload formatted as a float are rejected; a split pair the inspection did not record, a
 tag store without its payload store, a box made of a tag and bits of different sources and a
 lookup's presence set where it missed are refused.
+[`test_lean_guard_object.py`](../test_lean_guard_object.py) corrupts `object_narrowing.py`,
+where `isinstance(x, int)` of a value of `object` makes its `int | bool` in the caller, of the
+bool or the int that an interface entry returns: a bool's bits boxed with the int member's tag,
+and the union taken from the entry's indirect call instead, whose tag only the entry's code
+knows, are rejected.
 
 Union domain facts come only from modeled private-slot copies (a store of `null` makes the
 slot null), literal-tag `ubox`/`ubox_opt` construction, split locals' virtual boxes and boxes

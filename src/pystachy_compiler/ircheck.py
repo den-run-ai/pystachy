@@ -4,6 +4,7 @@ from src.pystachy_compiler.class_proof import ClassProof
 from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_lists, int_program
 from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, merged_blocks, operand_kind, slot_register, tmpname, value_definitions
+from src.pystachy_compiler.names import OBJECT, VIEWSHOW
 from src.pystachy_compiler.scalar_ir import SCALAR_INTS
 from src.pystachy_compiler.structure import Structure
 from src.pystachy_compiler.symbols import ClassInfo
@@ -642,6 +643,8 @@ def cast_error(self, fn: IFn, i: Ins, objects: dict[str, bool], types: dict[str,
         ok = a == "%ptr" and class_union(self, t)
     elif i.s == "member":
         ok = i.a[0].v in objects and t in self.classes and len([m for m in umembers(a) if t == m or self.derives(t, m)]) > 0
+    elif i.s == "view":
+        ok = (a == OBJECT and t in VIEWSHOW) or (a in VIEWSHOW and t == OBJECT)
     else:
         ok = fn.f.mod == "_pystachy_copy" and ref_type(a) and ref_type(t) and (a == "str" or t == "str")
     return "" if ok else f"cast {i.s} of a {a} to a {t}, where a cast of kind {i.s} reads {CAST_KINDS[i.s]}"

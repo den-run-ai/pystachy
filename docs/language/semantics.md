@@ -300,6 +300,11 @@ class is a class of its own, generic in those type variables, as with `Generic[T
 `ABCMeta` makes it. Reflection of either's objects (`dir()`, `hasattr()` of the attributes
 `ABCMeta` and the base give it) is not supported
 ([test](../../tests/programs/classes/iterator_base.py)).
+Where iterators of distinct types with one item type meet in one location, and no other join
+applies (as a class's and its subclass's do: the base class), it holds the
+stored interface `Iterator[T]`, whose value is the iterator itself; a protocol's methods can
+also declare `Iterator[T]` and `Iterable[T]` values
+([stored interfaces](typing.md#protocols-and-stored-interfaces)).
 
 ## Generators
 
@@ -893,7 +898,9 @@ Additional inheritance, constructor and attribute restrictions are in
 
 An exception class, builtin or of the program, is a value: `k = KeyError`, a default
 (`category=UserWarning`), an argument, a field, an item of a list, tuple or set, a dict's key
-or value (`{KeyError: 1}`, `(text, category, lineno)`). `type[E]`, with `| None`, annotates it.
+or value (`{KeyError: 1}`, `(text, category, lineno)`). `type[E]`, with `| None`, annotates it,
+and a [value of `object`](typing.md#object) may hold it
+([test](../../tests/programs/classes/object_exception_classes.py)).
 Each class has one class object, so `is`, `==` and `hash()` compare and hash it by identity
 (`IOError is OSError`). `type(e)` of an exception, and the class an `__exit__` takes, are its
 class's class object. `type(e)` of an exception that is `None` is `NoneType`'s, which is

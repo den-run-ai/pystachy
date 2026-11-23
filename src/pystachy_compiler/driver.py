@@ -72,6 +72,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/callbacks.py',
     'src/pystachy_compiler/generators.py',
     'src/pystachy_compiler/gen.py',
+    'src/pystachy_compiler/interfaces.py',
     'src/pystachy_compiler/ir.py',
     'src/pystachy_compiler/ircheck.py',
     'src/pystachy_compiler/lexer.py',
@@ -166,6 +167,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
     # compile with (ClassBoxes), after which the program is compiled from the start, as if those
     # reads had never been typed.
     clsany: dict[int, bool] = {}
+    ifspecs: dict[str, list[str]] = {}  # (the interfaces of type arguments the passes made: interfaces.py)
     while True:
         attempt = timing_start()
         g = Gen()
@@ -179,6 +181,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
         g.xnot = xnot
         g.xwant = xwant
         g.hierarchies = hierarchies
+        g.ifspecs = ifspecs
         g.tlate = tlate
         g.final = passes >= JOINS
         g.idfull = idfull

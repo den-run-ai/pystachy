@@ -7,7 +7,7 @@ from src.pystachy_compiler.diagnostics import int_lists
 from src.pystachy_compiler.frames import IterArg, Reduce
 from src.pystachy_compiler.ir import Data, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.lexer import Lexer, codepoint, utf8len
-from src.pystachy_compiler.names import short
+from src.pystachy_compiler.names import OBJECT, short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.reflection import VARS_USES, hook_of
 from src.pystachy_compiler.bigints import held, narrow_type, search_type
@@ -331,6 +331,15 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.num_cmp('!=', Val(r, "int"), Val('0', "int")) if name.endswith("enter") else Val("null", "None")
     if name.startswith("__pys_dict_") or name.startswith("__pys_set_"):
         return self.walk(name, args)
+    if name == "__pys_exc_obj" and self.curfn.name == "<interface>" and len(args) == 1 and self.curfn.ret in self.classes:
+        # (an entry of object's table: the object of a class of the program that a caught exception
+        # raises, which isinstance() proved it holds, as an except clause binds it: interfaces.py)
+        caught = self.expr(args[0], "exc")
+        return Val(self.rt("pys_exc_obj", "ptr", [f"ptr {caught.v}"], t=self.curfn.ret), self.curfn.ret)
+    if name == "__pys_exc_user" and self.curfn.name == "<interface>" and len(args) == 1:
+        # (and the exception that such an object raises, as a builtin exception class's test
+        # narrows it to BaseException: interfaces.py)
+        return self.exc_of(self.expr(args[0], ""))
     if name.startswith("__pys_text_"):
         # The builtin string iterator keeps a byte cursor, just like for_seq. These are
         # internal primitives, so ordinary code cannot confuse byte and character offsets.
@@ -677,6 +686,11 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         v = self.expr(args[0], "")
         if v.t == "dyn":
             return self.dyn_call(self.dyn_dispatcher("callable", ["dyn"], "bool", ""), [v])
+        if self.callable_type(v.t) == -3:
+            # (a value of an interface whose protocol declares no __call__: its object's class
+            # tells, by its table's entry; None is not callable)
+            e = mk("call", "", self.line, [mk("name", "callable", self.line, []), mk("name", "_o", self.line, [])])
+            return self.iface_apply(v, "callable()", [], "bool", e, "callable()", [], "callable", v, v)
         ucalls = [m for m in umembers(unopt(v.t)) if is_callable(m)] if is_union(unopt(v.t)) else []
         if len(ucalls) > 0:
             # (a union that holds a Callable: its box's tag tells, and None is not callable)
@@ -792,6 +806,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.isinst_reads(args[1])
         if v.t == "dyn":
             return self.dyn_isinst(v, args[1])  # (by its box's type: dynamic.py)
+        if self.is_iface(unopt(v.t)):
+            return self.iface_isinst(v, args[1])  # (by its object's class: interfaces.py)
         if (v.t == "exc" or (v.t in self.classes and self.classes[v.t].exc != "")) and self.exc_classes(args[1]):
             return self.exc_isinst(v, args[1])
         if v.t == "opt[exc]" and self.exc_classes(args[1]):
@@ -1005,6 +1021,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         vals[0] = self.class_value_builtin(vals[0])  # (a builtin class named: its class object)
     if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id", "abs"]:
         return self.dyn_builtin(name, vals[0])  # (by its box's type: dynamic.py)
+    if len(vals) == 1 and len(kws) == 0 and (self.is_object(vals[0].t) or (self.is_view(vals[0].t) and name != "len")) and name in ["len", "int", "float"]:
+        return self.object_convert(vals[0], name)  # (by the type it holds, whatever it is: interfaces.py)
     if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):
         # A boxed accumulator accepts a wide start without narrowing it to int64.
         return self.dyn_sum(vals[0] if vals[0].t == "dyn" else self.as_list(vals[0], name), vals[1] if len(vals) == 2 else Val("0", "int"))
@@ -1212,6 +1230,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.rres(self.rt(spec[0], rtt(r), [self.rarg(v) for v in vals], "", r if spec[0] == "pys_getenv" else ""), r)
     if len(vals) == 0:
         self.err(f"unsupported call {name}()")
+    if (name == "hex" or name == "oct" or name == "bin") and len(vals) == 1:
+        vals[0] = self.bool_int(vals[0])  # (a bool | int as the int it is, which they ask for: conversions.py)
     v = vals[0]
     t = v.t
     if name == "abs" and len(vals) == 1 and t in self.classes and "__abs__" in self.classes[t].methods:
@@ -1392,7 +1412,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         # (CPython copies a mapping by its keys() and __getitem__, else the pairs it iterates over)
         self.err(f"dict() of an object ('{tname(t)}') is not supported: make the dict with a comprehension ({{k: v for k, v in x.items()}})")
     if t in self.classes and name in NONEARG:
-        self.err(NONEARG[name].replace("NoneType", tname(t)))  # (CPython's TypeError: its class has no __len__, __abs__, ...)
+        self.err(NONEARG[name].replace("NoneType", tname(t)) + self.object_note([t]))  # (CPython's TypeError: its class has no __len__, __abs__, ...)
     if is_gen(t) and name == "len":
         self.err("object of type 'generator' has no len()")
     if is_gen(t) and name == "dict":
@@ -1404,15 +1424,18 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     us = [j for j in range(len(vals)) if ((self.scalar_union(vals[j].t) or self.cx_union(vals[j].t)) and not is_opt(vals[j].t)) or self.object_union(vals[j].t)]
     if len(us) > 0 and len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) == 0:
         return self.usplit(name, vals, us[0], want)  # (each member's call: union splitting)
-    self.err(f"unsupported call {(asked if name.startswith('math.') else key).replace(RANGEC, 'range').replace(COMPLEXC, 'complex')}")
+    self.err(f"unsupported call {(asked if name.startswith('math.') else key).replace(RANGEC, 'range').replace(COMPLEXC, 'complex').replace(OBJECT, 'object')}" + self.object_note([x.t for x in vals]))
     return v
 
 def gen_callable_type(self, t: str) -> int:
     # callable(x) for x of static type t: 1 (a function or Callable), 0, -2 (an object whose
-    # class defines __call__: callable unless it is None), or -1 (a union that holds a Callable
-    # beside other values: its box's tag tells)
+    # class defines __call__: callable unless it is None), -1 (a union that holds a Callable
+    # beside other values: its box's tag tells), or -3 (a value of an interface that declares no
+    # __call__: its object's class tells, interfaces.py)
     if is_fn(t) or is_callable(t) or t == "exctype" or is_clsval(t):
         return 1  # (a class object too: a call makes an object of its class)
+    if self.is_iface(t) and "__call__" not in self.classes[t].methods:
+        return -3
     if is_union(unopt(t)) and len([m for m in umembers(unopt(t)) if is_callable(m)]) > 0:
         return -1
     if is_opt(t) and (is_callable(unopt(t)) or unopt(t) == "exctype" or is_clsval(unopt(t))):
@@ -2998,6 +3021,21 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     dropped = mc is not None and mc is self.stmtexpr and len(args) == 1 and len(mc.kids) == 2 and args[0] is mc.kids[1]
     if is_set(o.t):
         return self.smethod(o, m, args)
+    if (is_list(o.t) or is_vtuple(o.t)) and (m == "index" or m == "count") and len(args) == 1 and args[0].kind != "kw" and args[0].kind != "starred" and (self.holds_object(o.t) or (args[0].kind == "name" and self.whole == 0 and self.holds_object(self.static_type(args[0])))):
+        # (a search of values of an interface, or for one, a variable's: item is x or item == x,
+        # as CPython's, in a function compiled for their types, interfaces.py)
+        needle = self.expr(args[0], "")
+        found = self.container_find("find" if m == "index" else "count", needle, o)
+        if m == "count":
+            return found
+        absent = self.label()
+        present = self.label()
+        self.cbr(self.num_cmp("<", found, Val("0", "int")).v, absent, present)
+        self.place(absent)
+        missing = self.concat([self.repr(needle), Val(self.sconst(" is not in list"), "str")]) if is_list(o.t) else Val(self.sconst("tuple.index(x): x not in tuple"), "str")
+        self.raise_("ValueError", missing.v)
+        self.place(present)
+        return found
     if is_dict(o.t) and targs(o.t)[0] == "int" and m in ["get", "pop", "setdefault"]:
         dm = self.dict_any_method(o, m, args)
         if dm.t != "":
@@ -3277,7 +3315,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 i += 1
                 continue
             if p == "int":
-                v = self.as_int(v)  # an index or a count may be a bool, as in CPython
+                v = self.as_int(self.bool_int(v))  # an index or a count may be a bool, as in CPython (a bool | int too)
             if base == "dict" and i == 0 and v.t == BIG and self.dict_bigkey(o.t) and (m == "get" or m == "pop" or m == "setdefault"):
                 bigkey = v  # (its {lo, m}, which the runtime functions BKEY names take: bigints.py)
                 av += self.dict_key_args(v, "")

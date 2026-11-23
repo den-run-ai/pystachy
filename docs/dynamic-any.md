@@ -279,6 +279,20 @@ records current failures and their owning issues. These remain compatibility gap
 | Functions, bound methods, closures and `Callable` objects | Retain their function, receiver or environment. |
 | Unions of supported values | Box the member selected by the union's tag. |
 
+A value of a [protocol](language/typing.md#protocols-and-stored-interfaces) becomes an `Any`
+value through its object, as a value of `object` that holds it does
+(`tests/programs/classes/protocol_as_any.py`); an `Any` value does not become a protocol's
+value yet: the protocol's table is chosen from the static type it converts from. Typed protocol
+storage remains separate from dynamic `Any` storage. [Values of `object`](language/typing.md#object) cross both
+ways: the value one holds becomes an `Any` value as a value of its type does (`None` the `None`
+box), as does a view of the container one holds, and an `Any` value becomes one that holds its
+box, whose operations are `Any`'s (a view of an `Any` container reads it by them too)
+(`tests/programs/classes/object_storage_from_dynamic.py`,
+`tests/programs/classes/object_storage_to_dynamic.py`). A list or dict display of distinct
+iterators keeps `Any` items, as other mixed displays do; the other locations where they meet hold
+[`Iterator[T]`](language/typing.md#protocols-and-stored-interfaces) values
+(`tests/programs/generators/iterator_join_dynamic.py`).
+
 A concrete annotation receiving `Any` checks the box's runtime type before
 unboxing it; a union annotation accepts one of its members. A mismatch raises an
 error such as `TypeError: expected int, got str`. This differs intentionally from
@@ -1134,7 +1148,9 @@ can still need an explicit `list[Any]` destination.
   (`tests/programs/inference/dynany_namedtuple.py`), and `isinstance(x, tuple)` is true for it
   (`tests/programs/inference/dynany_isinstance_namedtuple.py`), but it is no sequence there: `len()`,
   indexing and iteration raise `TypeError`, and an object of another NamedTuple class compares
-  with it by identity (an ordering raises `TypeError`), where CPython compares their fields.
+  with it by identity (an ordering raises `TypeError`), where CPython compares their fields. A
+  value of `object` that holds such an `Any` value is no sequence either, also where a tuple test
+  narrowed it to a view (`tests/deviations/object_view_dynamic_namedtuple.py`).
 
 - A static or class method read through an object held in `Any` without a call raises `AttributeError`
   (typed code rejects a static method as a value at compile time), and so does a call of a

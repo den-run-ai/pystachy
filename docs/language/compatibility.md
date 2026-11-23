@@ -200,6 +200,32 @@ applies. Bytes case methods remain ASCII-only.
 - **Reflection text:** runtime-name `getattr()` prints substitute addresses for
   method wrappers, builtin methods and static methods; there are no corresponding
   Python type/function objects. See [reflection](semantics.md#reflection).
+- **Protocol values of generators and files:** `repr()`, `str()` or `format()` (also an
+  f-string) of a generator or file held by a [protocol](typing.md#protocols-and-stored-interfaces)
+  value, or by a value of [`object`](typing.md#object), raises `NotImplementedError`; CPython
+  prints its address. Pystachy prints neither type directly.
+- **Numbers stored as `object`:** `is` between a [value of `object`](typing.md#object) that
+  holds a number and another number compares their types and values (a float's bits), as PyPy
+  does. CPython agrees for a number stored from another value, small ints, bools and a module's
+  equal constants; equal numbers it computes apart are two objects there
+  ([deviation](../../tests/deviations/object_number_identity.py)). A search or comparison of
+  containers of values of `object` tests each pair so first, as CPython tests identity: a list
+  that holds a NaN equals another that holds a NaN of the same bits.
+- **Views of containers stored as `object`:** a [view's](typing.md#object) look-up finds a
+  dict's key, or a set's element, equal to the one looked for after hashing it as CPython does,
+  by comparing them one by one: a key of a class whose `__hash__` disagrees with its `__eq__` can
+  be found where CPython's hash table misses it. Its `keys()`, `values()` and `items()` are new
+  lists, as a dict's are. A NamedTuple's object that an `Any` value holds passes a tuple test,
+  but its view is no sequence, as the [`Any` value](../dynamic-any.md#deviations) is not: `len()`,
+  indexing and iteration raise `TypeError`
+  ([deviation](../../tests/deviations/object_view_dynamic_namedtuple.py)).
+- **Exceptions stored as `object`:** an exception object of a class of the program, and the
+  `BaseException` that an `except` clause of a builtin exception class binds when it is raised,
+  are two values here: a value of `object` that holds the one is neither `is` nor `==` one that
+  holds the other, where CPython has one object.
+- **`%` formatting of a value of `object`:** a format that names keys (`%(name)s`) reads a dict,
+  a list or bytes that the value holds as CPython does, but raises `TypeError: format requires a
+  mapping` for an object of a class with `__getitem__`, which CPython also reads as a mapping.
 
 ### Errors and control flow
 
@@ -680,7 +706,8 @@ See [optional operations and narrowing](typing.md#optional-values-and-narrowing)
 
 - Nullable keys/elements except user objects; tuple keys containing unsupported members
   such as floats, lists, NamedTuples or frozensets; NamedTuple or exception keys/elements;
-  hashing these types except NamedTuples and frozensets; classes with nonmethod `__hash__` /
+  hashing these types except NamedTuples, frozensets and exceptions (by identity, or their
+  class's `__hash__`); classes with nonmethod `__hash__` /
   `__eq__`; unions of classes as keys/elements where a member's classes define `__hash__` or
   `__eq__`, and such unions as tuple-key items or as the keys of dicts compared with `==`.
 - Bool stored as int, including set elements, dict keys, tuple-key members, `setdefault` and
@@ -695,9 +722,9 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
 [generic classes](typing.md#explicit-generic-classes).
 
 - **Type variables:** `ClassVar`, except `x: ClassVar[T] = value` in an ordinary module-level
-  class; `PathLike` outside a union with `str`; `TypeVar` outside template parameters
-  and returns, except bound class type variables; `TypeVarTuple` outside unpacking in tuple,
-  Callable or `*args`; unbound class type variables.
+  class; `PathLike` outside a union with `str`; unbound `TypeVar` in a local or
+  nested annotation (class and function-specialization bindings can supply it);
+  `TypeVarTuple` outside unpacking in tuple, Callable or `*args`; unbound class type variables.
 - **Generic classes:** `Generic[...]` alongside a base other than a generic base that takes its
   type variables; PEP 695 classes with bases, `ParamSpec` or multiple `TypeVarTuple`s; explicit
   `C[X]` with a `TypeVarTuple` or unannotated / variadic constructor parameters.
@@ -713,6 +740,27 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
   supported generic aliases, `Optional`, `Union`, `Callable`, `Tuple`, `Literal`, `Annotated`
   and single-type forms. Invalid forms (such as `Generic[T]` / `Concatenate[...]`) and invalid
   string expressions in `type` statements fail even when unused.
+- **Protocols:** attribute members, `*args` or `**kwargs`, `__init__`, protocol
+  inheritance, a protocol as a class's base, unannotated method parameters or results,
+  `TypeVarTuple` parameters; orderings, dict keys, set elements, list searches and sorts,
+  `id()`, `type()` and reflection of protocol values, `isinstance()` of one with a type that is
+  neither a class of the program nor one of the builtin types `object` lists, and `==` or `!=`
+  where two implementations' classes do not compare; conversions between protocols and to or
+  from dynamic `Any`; a closed union's, function's or `Callable`'s value as an implementation.
+  See [stored interfaces](typing.md#protocols-and-stored-interfaces).
+- **`object` values:** any operation of a [value of `object`](typing.md#object) but `str()`,
+  `repr()`, `format()`, truth, `==`, `!=`, `is`, `hash()`, `type(x).__name__`, `callable()`
+  and `isinstance()` until `isinstance()` narrows it (the message says so), which a test of a
+  container type does to a read-only view, and in a module that opts in to promoting ints a test
+  of `int` does not; values of `object` as dict keys or set elements, or in a list or tuple that
+  the runtime searches, sorts or compares; functions, bound methods, lambdas and other `Callable`
+  values as values of `object`, and `isinstance(x, type)` narrowing one that may hold an
+  exception class; `==` of two values of `object` where the method CPython calls is annotated to
+  take only its own class, or two of the stored types do not compare (a list of one class and of
+  another); with
+  dynamic `Any`, a stored type that cannot become an `Any` value once a value of `object` meets
+  one; and, in a module that does not opt in to promoting ints, narrowing to `int` a value that
+  may hold a promoting int ([error tests](../../tests/errors/classes/object_storage_arith.py)).
 - **Dynamic `Any`:** typed mutable containers other than the supported native `list[int]`
   boundary becoming `Any`, unimplemented prototype operations,
   runtime `**` expansion of native dictionaries with non-str keys, or None-first storage

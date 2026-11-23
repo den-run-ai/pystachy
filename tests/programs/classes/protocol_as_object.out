@@ -1,0 +1,12 @@
+P 1 P1 P(1) P(1) True True False True True
+P 1 P1 P 1 P1 True True
+Q 2 Q2 P(2) P(2) True True False True True
+Q 2 Q2 Q 2 Q2 True True
+D 3 D3 D(a=3) D(a=3) True True False True True
+D 3 D3 D 3 D3 True True
+Oops Oops bad bad Oops('bad') True True False True True
+Oops Oops bad Oops Oops bad True True
+True True True True True
+True True False 1 False
+True True None
+[exit 0]

@@ -1,0 +1,9 @@
+1 two None [1, 'two', None, Item('x')]
+Item('x') True True Item x
+[1, 'two', None, Item('x'), 5, 'six'] ['int 2', "other 'two'", 'other None', 'Item x', 'int 6', "other 'six'"]
+int 8 True True
+10
+two True TWO two!
+True True
+7 True True int
+[exit 0]

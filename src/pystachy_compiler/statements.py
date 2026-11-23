@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BREV, BSTORE
 from src.pystachy_compiler.utils import identity_abi, identity_default, is_union, umembers
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.diagnostics import NeedSliceEH, shown
 from src.pystachy_compiler.frames import Exit, IterArg, SeqStart, StopCatch
 from src.pystachy_compiler.ir import Blk, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
@@ -632,7 +632,7 @@ def gen_with_cm(self, m: Val, it: Node, body: list[Node]) -> None:
     c = m.t
     ms = self.classes[c].methods
     if "__enter__" not in ms:
-        self.err(f"'{tname(c)}' object does not support the context manager protocol")
+        self.err(f"'{tname(c)}' object does not support the context manager protocol" + self.object_note([c]))
     if "__exit__" not in ms:
         self.err(f"'{tname(c)}' object does not support the context manager protocol (missed __exit__ method)")
     f = ms["__exit__"]
@@ -965,7 +965,7 @@ def gen_stmt_main(self, n: Node) -> None:
                 self.reopt(j)  # a template's function returns T and None (or T | None): T | None
             # (a promoting int, or an int | None, where it returns a union that holds a 64-bit int, as of
             # a bool and an int, is narrowed into it: coerce, bigints.py)
-            if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret) and not self.boxes(v.t, self.ret) and not (self.ret == "int+" and v.t == "int") and not ((v.t == "int+" or v.t == BIGOPT) and self.uboxes("int", self.ret)):
+            if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret) and not self.boxes(v.t, self.ret) and not (self.ret == "int+" and v.t == "int") and not ((v.t == "int+" or v.t == BIGOPT) and self.uboxes("int", self.ret)) and not (self.is_iface(self.ret) and self.iter_join(self.ret, v.t) == self.ret):
                 if v.t == "None":
                     self.err(self.nonemix(self.curfn, self.ret))
                 if v.t != "dyn" or not self.dyn_widen("", self.ret):  # (an Any value: compiled again returning Any)
@@ -2069,7 +2069,7 @@ def gen_ival(self, n: Node, none: str = "", index: bool = True, recv: Val | None
     # an int | None that is None raises none ("Kind: text"). With index, an object gives its
     # __index__() (enumerate()'s start too), which the sequence recv asks for: one that is None
     # raises recvnone before the call
-    v = self.expr(n, "int")
+    v = self.bool_int(self.expr(n, "int"))  # (a bool | int as the int it is: conversions.py)
     if is_sopt(v.t) and none != "":
         v = self.unwrap(v, none)
     if index and (v.t == "dyn" or (v.t in self.classes and "__index__" in self.classes[v.t].methods)):
@@ -2426,6 +2426,8 @@ def gen_stop_catch(self) -> StopCatch:
     # a handler for the StopIteration that ends the items of the iterator objects a loop (or
     # next(it, default)) takes: the try's mark and the exception being handled are taken now,
     # before the first __next__ call (next_in); stop_landing places its landing block
+    if not self.eh and len(self.ifaces) > 0:
+        raise NeedSliceEH()  # (an interface's iterator, which needs_eh cannot see: interfaces.py)
     if not self.eh:
         self.err("internal error: an iterator's __next__ needs exception handling (needs_eh)")
     mark = Val(self.rt("pys_try_mark", "i64", []), "int")

@@ -127,6 +127,7 @@ class InspectionTests(unittest.TestCase):
         self.assertEqual((report["settings"]["captures"], reference["settings"]["captures"]), ("typed-after", "all"))
         self.assertEqual([stage["status"] for stage in report["stages"]], ["skipped", "completed", "completed"])
         self.assertEqual(report["attempts"][-1]["dynamic_boundary"], reference["attempts"][-1]["dynamic_boundary"])
+        self.assertEqual(report["attempts"][-1]["callable_boundary"], reference["attempts"][-1]["callable_boundary"])
         self.assertEqual(report["attempts"][-1]["pipeline"], reference["attempts"][-1]["pipeline"])
 
     def test_guard_evidence_keeps_nullcheck_inputs_but_typed_after_only_records_no_passes(self):
@@ -585,6 +586,207 @@ print(kernel(3))
         self.assertEqual(set(report["pass_contracts"]), {"charslots", "listget", "listguard", "dictfuse", "unionslots", "nullcheck"})
         self.assertIn("read-effect-bounds", report["pass_contracts"]["unionslots"]["invalidates"])
 
+    def test_stored_typed_iterators_share_one_concrete_consumer(self):
+        # The corpus exercises unrelated sources through the same stored interface;
+        # passing outputs alone would not establish that their consumer shares code.
+        program = ROOT / "tests/programs/apps/example_typed_iterator.py"
+        env = self.env | {"PYSTACHY_PATH": str(ROOT / "examples/typed_iterator")}
+        completed, destination = self.inspect(
+            program, args=("--typed-after-only", "--function", "drain"), env=env,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        report = self.report(destination)
+        self.assertEqual(report["status"], "ok")
+        snapshot = self.snapshot(destination, "typed-after")
+        consumer = self.named_function(snapshot, "drain")
+        self.assertEqual(len(consumer["parameters"]), 1)
+        parameter = consumer["parameters"][0]
+        self.assertEqual(parameter["type"], "TypedIterator[int]")
+        self.assertEqual(consumer["return_representation"], "list[int]")
+        attempt = report["attempts"][-1]
+        self.assertEqual(attempt["status"], "completed")
+        specializations = attempt["class_specializations"]
+        wrapper = specializations[parameter["representation"]]
+        self.assertEqual(list(wrapper["bindings"].values()), ["int"])
+        self.assertEqual(wrapper["fields"], {"_advance": "callable[int]"})
+        matching = [identity for identity, cls in specializations.items()
+                    if cls["template"] == wrapper["template"] and cls["bindings"] == wrapper["bindings"]]
+        self.assertEqual(matching, [parameter["representation"]])
+        boundary = attempt["dynamic_boundary"]
+        self.assertFalse(boundary["dynamic_any_enabled"])
+        self.assertEqual(boundary["tracked_modules"], [])
+        for footprint in boundary["footprints"].values():
+            self.assertEqual(footprint["status"], "completed")
+            self.assertGreater(footprint["totals"]["functions"], len(snapshot["functions"]))
+            self.assertEqual(footprint["totals"]["dynamic_operations"], {})
+            self.assertEqual(footprint["totals"]["dynamic_runtime_calls"], {})
+
+    def test_protocol_values_share_one_consumer_through_tables(self):
+        # Two unrelated classes reach one consumer through Shape's tables; only the
+        # operations that calls through the protocol use have compiled entries.
+        program = ROOT / "tests/programs/classes/protocol_mixed.py"
+        completed, destination = self.inspect(program, args=("--typed-after-only", "--function", "largest"))
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        report = self.report(destination)
+        self.assertEqual(report["status"], "ok")
+        snapshot = self.snapshot(destination, "typed-after")
+        consumer = self.named_function(snapshot, "largest")
+        self.assertEqual(consumer["parameters"][0]["representation"], "list[Shape]")
+        callables = report["attempts"][-1]["callable_boundary"]
+        shape = callables["interfaces"]["Shape"]
+        self.assertEqual(shape["operations"], ["area", "scaled", "label", "__repr__", "__str__", "__bool__"])
+        self.assertCountEqual(shape["called"], ["area", "scaled", "label"])
+        tables = [table for table in callables["tables"] if table["interface"] == "Shape"]
+        self.assertCountEqual([table["implementation"] for table in tables], ["Square", "Circle"])
+        for table in tables:
+            self.assertCountEqual(table["entries"], shape["called"])
+        for footprint in callables["footprints"].values():
+            self.assertEqual(footprint["status"], "completed")
+            self.assertGreater(footprint["totals"]["indirect_calls"], 0)
+
+    def test_typed_displays_of_distinct_iterators_make_no_interface(self):
+        # A file and a StringIO are iterators of str, but an annotated reference-union display
+        # holds them as the union: no Iterator[str] interface or table may appear (irsame).
+        program = ROOT / "tests/programs/inference/reference_union_streams.py"
+        completed, destination = self.inspect(program, args=("--typed-after-only", "--function", "consume"))
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        callables = self.report(destination)["attempts"][-1]["callable_boundary"]
+        self.assertEqual(callables["interfaces"], {})
+        self.assertEqual(callables["tables"], [])
+
+    def test_callable_inventory_separates_sources_from_shared_signatures(self):
+        program = self.source('''
+from typing import Callable
+class Access:
+    def __init__(self, read: Callable[[], int], write: Callable[[int], None]) -> None:
+        self._read: Callable[[], int] = read
+        self._write: Callable[[int], None] = write
+    def read(self) -> int:
+        return self._read()
+    def write(self, value: int) -> None:
+        self._write(value)
+class Left:
+    def __init__(self, value: int) -> None:
+        self.value = value
+    def read(self) -> int:
+        return self.value
+    def write(self, value: int) -> None:
+        self.value = value
+class Right:
+    def __init__(self, values: list[int]) -> None:
+        self.values = values
+    def read(self) -> int:
+        return self.values[0]
+    def write(self, value: int) -> None:
+        self.values[0] = value
+def adapt(source) -> Access:
+    return Access(source.read, source.write)
+def consume(source: Access) -> int:
+    source.write(source.read() + 1)
+    return source.read()
+print(consume(adapt(Left(4))), consume(adapt(Right([8]))), consume(adapt(Left(10))))
+''')
+        ordinary = self.ordinary_ir(program)
+        completed, destination = self.inspect(program, args=("--typed-after-only", "--function", "consume"))
+        self.assertEqual(ordinary.returncode, 0, ordinary.stderr)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual((destination / "llvm.ll").read_bytes(), ordinary.stdout)
+        snapshot = self.snapshot(destination, "typed-after")
+        consumer = self.named_function(snapshot, "consume")
+        self.assertEqual(consumer["parameters"][0]["representation"], "Access")
+        callables = self.report(destination)["attempts"][-1]["callable_boundary"]
+        self.assertEqual(callables["fields"], {"Access": {"_read": "callable[int]", "_write": "callable[None,int]"}})
+        self.assertEqual(len(callables["adapters"]), 4)
+        signatures = {}
+        for adapter in callables["adapters"]:
+            signatures.setdefault(adapter["signature"], []).append(adapter)
+        self.assertEqual(set(signatures), {"callable[int]", "callable[None,int]"})
+        for signature, result, parameters in (("callable[int]", "int", []), ("callable[None,int]", "None", ["int"])):
+            adapters = signatures[signature]
+            self.assertEqual(len(adapters), 2)
+            self.assertEqual(len({adapter["source_representation"] for adapter in adapters}), 2)
+            self.assertTrue(all(adapter["result"] == result and adapter["parameters"] == parameters for adapter in adapters))
+        for footprint in callables["footprints"].values():
+            self.assertEqual(footprint["status"], "completed")
+            self.assertGreater(footprint["totals"]["functions"], len(snapshot["functions"]))
+            self.assertEqual(footprint["totals"]["indirect_calls"], 2)
+            self.assertEqual(footprint["totals"]["indirect_calls"],
+                             sum(function["indirect_calls"] for function in footprint["functions"].values()))
+            self.assertTrue(all(adapter["symbol"] in footprint["functions"] for adapter in callables["adapters"]))
+        full, full_destination = self.inspect(program, output="unfiltered", args=("--typed-after-only",))
+        self.assertEqual(full.returncode, 0, full.stderr)
+        self.assertEqual(callables, self.report(full_destination)["attempts"][-1]["callable_boundary"])
+
+    def test_rejected_callable_adapter_has_no_completed_call_footprint(self):
+        program = self.source("from typing import Callable\n"
+                              "def bad() -> str:\n    return 'wrong result'\n"
+                              "value: Callable[[], int] = bad\nprint(value())\n")
+        completed, destination = self.inspect(program)
+        self.assertEqual(completed.returncode, 1, completed.stderr)
+        report = self.report(destination)
+        self.assertEqual(report["status"], "rejected")
+        callables = report["attempts"][-1]["callable_boundary"]
+        self.assertEqual(len(callables["adapters"]), 1)
+        self.assertEqual(callables["adapters"][0]["signature"], "callable[int]")
+        for footprint in callables["footprints"].values():
+            self.assertEqual(footprint, {"status": "unavailable", "functions": {}, "totals": None})
+
+    def test_generic_stored_interfaces_share_consumers_and_capture_type_bindings(self):
+        program = ROOT / "tests/programs/apps/example_typed_interfaces.py"
+        env = self.env | {"PYSTACHY_PATH": str(ROOT / "examples/typed_iterator")}
+        completed, destination = self.inspect(program, args=("--typed-after-only",), env=env)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        snapshot = self.snapshot(destination, "typed-after")
+        total = self.named_function(snapshot, "total")
+        lookup = self.named_function(snapshot, "read_keys")
+        self.assertEqual(total["parameters"][0]["type"], "TypedIterable[int]")
+        self.assertEqual(lookup["parameters"][0]["type"], "TypedLookup[int, str]")
+        self.assertEqual((total["return_representation"], lookup["return_representation"]), ("int", "list[str]"))
+        attempt = self.report(destination)["attempts"][-1]
+        specializations = attempt["class_specializations"]
+        for consumer in (total, lookup):
+            identity = consumer["parameters"][0]["representation"]
+            wrapper = specializations[identity]
+            same = [key for key, value in specializations.items()
+                    if value["template"] == wrapper["template"] and value["bindings"] == wrapper["bindings"]]
+            self.assertEqual(same, [identity])
+        fields = attempt["callable_boundary"]["fields"]
+        self.assertEqual(fields[lookup["parameters"][0]["representation"]],
+                         {"_read": "callable[str,int]", "_contains": "callable[bool,int]", "_size": "callable[int]"})
+        advances = [fn for fn in snapshot["functions"] if fn["name"].endswith("typed_iterator.<locals>.advance")]
+        self.assertTrue(advances)
+        self.assertTrue({"int", "str", "float", "Payload"} <= {fn["return_representation"] for fn in advances})
+        adapters = attempt["callable_boundary"]["adapters"]
+        readers = [adapter for adapter in adapters if adapter["signature"] == "callable[str,int]"]
+        self.assertEqual(len(readers), 2)
+        self.assertEqual(len({adapter["source_representation"] for adapter in readers}), 2)
+        self.assertFalse(attempt["dynamic_boundary"]["dynamic_any_enabled"])
+        for footprint in attempt["dynamic_boundary"]["footprints"].values():
+            self.assertEqual(footprint["status"], "completed")
+            self.assertEqual(footprint["totals"]["dynamic_operations"], {})
+            self.assertEqual(footprint["totals"]["dynamic_runtime_calls"], {})
+
+        # An explicit result context can supply the fixed signature without
+        # demanding lexical bindings. An unconstrained factory must still record T.
+        probe = self.source("from adapter import TypedIterator, typed_iterator\n"
+                            "def consume(source: TypedIterator[float]) -> float:\n"
+                            "    return next(source)\n"
+                            "contextual: TypedIterator[float] = typed_iterator((1.5,))\n"
+                            "inferred = typed_iterator(['bound'])\n"
+                            "print(consume(contextual), next(inferred))\n")
+        completed, destination = self.inspect(probe, output="binding-demand", args=("--typed-after-only",), env=env)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        snapshot = self.snapshot(destination, "typed-after")
+        advances = {fn["return_representation"]: fn for fn in snapshot["functions"]
+                    if fn["name"].endswith("typed_iterator.<locals>.advance")}
+        self.assertEqual(set(advances), {"float", "str"})
+        self.assertIn("str", advances["str"]["specialization"]["type_bindings"].values())
+        consume = self.named_function(snapshot, "consume")
+        self.assertEqual(consume["return_representation"], "float")
+        self.assertEqual(consume["parameters"][0]["type"], "TypedIterator[float]")
+        fields = self.report(destination)["attempts"][-1]["callable_boundary"]["fields"]
+        self.assertEqual(fields[consume["parameters"][0]["representation"]], {"_advance": "callable[float]"})
+
     def test_rejected_class_is_explained_without_publishing_its_tentative_key(self):
         program = self.source("class Kept:\n    def __init__(self, value):\n        self.value = value\n"
                               "class Broken:\n    def __init__(self, value):\n        self.value = missing\n"
@@ -863,9 +1065,10 @@ raise SystemExit(inspect_compiler.worker(argparse.Namespace(
             pipeline = attempt["pipeline"]
             self.assertEqual((pipeline["source_provenance"], pipeline["status"]), ("inconsistent", "partial"))
             self.assertTrue(all(stage["status"] != "completed" for stage in pipeline["stages"]))
-            boundary = attempt["dynamic_boundary"]
-            self.assertEqual(boundary["source_provenance"], "inconsistent")
-            self.assertTrue(all(footprint["status"] != "completed" for footprint in boundary["footprints"].values()))
+            for kind in ("dynamic_boundary", "callable_boundary"):
+                boundary = attempt[kind]
+                self.assertEqual(boundary["source_provenance"], "inconsistent")
+                self.assertTrue(all(footprint["status"] != "completed" for footprint in boundary["footprints"].values()))
 
     def test_crlf_source_hashes_distinguish_raw_bytes_from_consumed_text(self):
         program = self.source(LOOP)

@@ -184,6 +184,9 @@ inputs, unsupported APIs and observable differences from CPython. The
 [provenance reference](provenance.md) records upstream files and checks.
 The [porting checklist](../docs/porting.md) describes compiled upstream test
 coverage and the pinned `make port-check` checks for fnmatch and textwrap.
+The [stored-interface tutorial](../examples/typed_iterator/README.md) demonstrates
+`Protocol` interfaces and explicit generic adapters for retaining different
+implementations; these examples are not extra standard-library APIs.
 Builtin modules such as `sys`, `os` and `math` are documented in the
 [language guide](../docs/language.md#builtins-and-library-modules).
 
@@ -282,7 +285,8 @@ values (#779); programs do not import it. Its `_pystachy_json_int.py` helper pro
 overflowing integer tokens without promoting the shared scanner's indices.
 
 `_pystachy_percent.py` is printf-style formatting of a format string that only the run time
-knows, `fmt % args` as CPython's `PyUnicode_Format()` formats it, of `Any` values: `logging`
+knows, `fmt % args` as CPython's `PyUnicode_Format()` formats it, of values of
+[`object`](../docs/language/typing.md#object), without opting in to dynamic `Any`: `logging`
 formats its messages and `%`-style formats with it (the compiler formats a literal format string
 itself). `_pystachy_time.py` gives `time.strftime()` of `time.localtime()` (or `time.gmtime()`)
 of a time, through the C library, for `logging`'s `asctime`; Pystachy's `time` module has no

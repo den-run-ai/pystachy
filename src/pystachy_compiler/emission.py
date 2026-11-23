@@ -45,6 +45,11 @@ def gen_err(self, msg: str) -> None:
             # joins are found again where they are not its, see narrows)
             self.newhints = {}
         raise Rejoin()
+    if any(k.startswith("objeq:") for k in self.newx):
+        # (an error after a comparison of an interface's entry that did not compile, which the
+        # next pass answers as CPython's default does: what this pass compiles after it may be
+        # left of it, interfaces.eq_try)
+        raise Rejoin()
     if len(self.newhints) > 0 and not self.final:
         raise Rejoin()  # (an error after a join may come of the narrower type it widens: see Rejoin)
     if self.newlate:
@@ -844,8 +849,10 @@ def gen_convert_at(self, v: Val, t: str, label: str) -> Val:
 
 def gen_converts(self, a: str, b: str) -> bool:
     # does a value of type a take code to be one of type b (convert_in): also a runtime-length
-    # tuple whose items each become a box (coerce's pys_vtuple_box), which a join of tuples makes
-    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a)) or (b == "int+" and a == "int") or (is_vtuple(a) and is_vtuple(unopt(b)) and is_sopt(targs(unopt(b))[0]) and targs(a)[0] == unopt(targs(unopt(b))[0]))
+    # tuple whose items each become a box (coerce's pys_vtuple_box), which a join of tuples makes;
+    # and an object as a value of an interface, its box, also a view as a value of object, by a
+    # cast of its box (interfaces.py)
+    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a)) or (b == "int+" and a == "int") or (is_vtuple(a) and is_vtuple(unopt(b)) and is_sopt(targs(unopt(b))[0]) and targs(a)[0] == unopt(targs(unopt(b))[0])) or (self.is_iface(b) and a != b and a != "None" and not self.is_iface(a) and (self.object_impl(a) == "" if self.is_object(b) else self.iface_impl(a) == "")) or (self.is_view(a) and self.is_object(b))
 
 def gen_boxes(self, a: str, b: str) -> bool:
     # is a value of type a one of type b once boxed: an int as an int | None, a member as a

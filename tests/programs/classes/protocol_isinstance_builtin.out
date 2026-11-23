@@ -1,0 +1,7 @@
+str AB False False False
+list 2 False False False
+other 3 False False False
+other 1 True False False
+other 1 True False False
+other 0 False False True
+[exit 0]
