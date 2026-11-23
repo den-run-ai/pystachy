@@ -935,17 +935,28 @@ def lit_type(t: str) -> bool:
 
 
 def scalar_literal(n: Node | None) -> Node | None:
-    # n where it is a literal that a selector takes: True, False, None, a str, or an int that fits
-    # in 64 bits (negated or not: -0 is 0, whose truth is false); else None
+    # n where it is a literal that a selector takes: True, False, None, a str of ASCII characters
+    # (the compiler holds a str as its UTF-8 bytes, whose count const_of's len() would give), or an
+    # int that fits in 64 bits (negated or not: -0 is 0, whose truth is false); else None
     if n is None:
         return None
-    if n.kind == "True" or n.kind == "False" or n.kind == "None" or n.kind == "str":
+    if n.kind == "True" or n.kind == "False" or n.kind == "None":
         return n
+    if n.kind == "str":
+        return n if ascii_strs(n) else None
     if n.kind == "int" and int_fits(n.s):
         return n
     if n.kind == "unary" and n.s == "-" and len(n.kids) == 1 and n.kids[0].kind == "int" and int_fits("-" + n.kids[0].s):
         return n.kids[0] if n.kids[0].s == "0" else n
     return None
+
+
+def ascii_strs(n: Node) -> bool:
+    # are the str literals in expression n all of ASCII characters, whose len() const_of gives
+    # (it counts a str's UTF-8 bytes, as the compiler holds it)
+    if n.kind == "str" and not all([ord(ch) < 128 for ch in n.s]):
+        return False
+    return all([ascii_strs(k) for k in n.kids])
 
 
 def tested_names(n: Node, out: dict[str, bool]) -> None:
@@ -1025,7 +1036,10 @@ def gen_selector_args(self, f: FnInfo, npre: int, args: list[Node], lits: dict[s
         if a.kind == "starred" or a.kind == "dstar":
             return ""
         if a.kind == "kw":
-            if a.s in f.params:
+            # (a positional-only parameter's name, as *args's and **kwargs's, is a **kwargs key:
+            # its argument is no parameter's, as call_fn binds it)
+            k = f.params.index(a.s) if a.s in f.params else -1
+            if k >= f.posonly and k != f.vararg and k != f.kwarg:
                 given[a.s] = a.kids[0]
         else:
             if pos < len(f.params) and (f.vararg < 0 or pos < f.vararg):
@@ -1044,12 +1058,12 @@ def gen_selector_args(self, f: FnInfo, npre: int, args: list[Node], lits: dict[s
             continue
         if p in given:
             e = given[p]
-            c = scalar_literal(self.const_of(e, env, False))
+            c = scalar_literal(self.const_of(e, env, False)) if ascii_strs(e) else None
             if c is not None:
                 lits[p] = c
             elif e.kind == "name" and e.s in caller and e.s not in self.compvars:
                 fwd[p] = e.s
-        elif f.defaults[j].kind != "noann":
+        elif j < len(f.defaults) and f.defaults[j].kind != "noann" and ascii_strs(f.defaults[j]):
             c = scalar_literal(self.const_of(f.defaults[j], {}, False))
             if c is not None:
                 lits[p] = c
@@ -1096,7 +1110,7 @@ def gen_selector_fail(self, a: str, b: str, marks: dict[str, str]) -> str:
     if len(new) > 0:
         marks[key] = " ".join(have + new)
         return msg
-    missing = [p for p in have if p not in g.lits and p in g.params and lit_type(g.ptypes[g.params.index(p)])]
+    missing = [p for p in have if p not in g.lits and p in g.params and g.params.index(p) < len(g.ptypes) and lit_type(g.ptypes[g.params.index(p)])]
     if len(missing) == 0:
         return msg
     if g.selfrom != "" and all([p in g.selfwd for p in missing]):
@@ -1123,7 +1137,7 @@ def gen_selector_const(self, n: Node) -> Node | None:
     for p in self.curfn.lits:
         if p not in self.compvars:
             env[p] = self.curfn.lits[p]
-    if len(env) == 0 or not mentions(n, [p for p in env]):
+    if len(env) == 0 or not mentions(n, [p for p in env]) or not ascii_strs(n):
         return None
     if n.kind == "cmp" and (n.s == "is" or n.s == "is not") and len(n.kids) == 2:
         x = self.const_of(n.kids[0], env, False)

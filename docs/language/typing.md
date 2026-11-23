@@ -1218,8 +1218,9 @@ value, log = repair(" b ", logging=True)    # a tuple
 Such a parameter, a **selector**, is one that an `if`, `elif`, `while`, assertion or conditional
 expression of the body tests and that the body never binds again (by an assignment, `del`,
 an import or a nested function's `nonlocal`). Its argument is `True`, `False`, `None`, an
-`int` that fits in 64 bits or a `str`, given as a literal by position or keyword, or left to
-its literal default. The instance decides its tests of the selector: truth, `==`, `!=`, `<`,
+`int` that fits in 64 bits or a `str` of ASCII characters, given as a literal by position or
+keyword (a positional-only parameter's name as a keyword is a `**kwargs` key), or left to its
+literal default. The instance decides its tests of the selector: truth, `==`, `!=`, `<`,
 `<=`, `>`, `>=`, `in`, `not`, `and`, `or`, and `is` or `is not` with `None`, `True` or
 `False`. An optional parameter given a value holds only that value's type, so
 `if key is None: return xs` leaves `key` an `int` after it for the call `find(xs, 5)`. A call
