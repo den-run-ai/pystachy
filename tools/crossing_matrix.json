@@ -1,0 +1,1313 @@
+{
+ "cells": {
+  "any": {
+   "none": [
+    "yes",
+    {}
+   ],
+   "bool": [
+    "yes",
+    {}
+   ],
+   "int": [
+    "yes",
+    {}
+   ],
+   "float": [
+    "yes",
+    {}
+   ],
+   "complex": [
+    "yes",
+    {}
+   ],
+   "str": [
+    "yes",
+    {}
+   ],
+   "bytes": [
+    "no",
+    "store",
+    "a bytes value cannot become an Any value"
+   ],
+   "list": [
+    "yes",
+    {}
+   ],
+   "dict": [
+    "no",
+    "store",
+    "a dict[str,int] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a dict[Any, Any] from the start, or copy it)"
+   ],
+   "set": [
+    "no",
+    "store",
+    "a set[int] cannot become an Any value: Any values hold no sets yet (a list comprehension of its items can become one)"
+   ],
+   "frozenset": [
+    "no",
+    "store",
+    "a frozenset[int] cannot become an Any value: Any values hold no sets yet (a list comprehension of its items can become one)"
+   ],
+   "tuple": [
+    "yes",
+    {}
+   ],
+   "vartuple": [
+    "no",
+    "store",
+    "a tuple[int, ...] as an Any value is not supported yet"
+   ],
+   "range": [
+    "yes",
+    {}
+   ],
+   "instance": [
+    "yes",
+    {}
+   ],
+   "subclass": [
+    "yes",
+    {}
+   ],
+   "dataclass": [
+    "yes",
+    {}
+   ],
+   "namedtuple": [
+    "yes",
+    {}
+   ],
+   "enum": [
+    "yes",
+    {}
+   ],
+   "exception": [
+    "no",
+    "store",
+    "a BaseException value cannot become an Any value"
+   ],
+   "userexception": [
+    "no",
+    "store",
+    "an exception object (Oops) as Any is not supported yet"
+   ],
+   "template": [
+    "yes",
+    {}
+   ],
+   "class": [
+    "yes",
+    {}
+   ],
+   "function": [
+    "yes",
+    {}
+   ],
+   "boundmethod": [
+    "yes",
+    {}
+   ],
+   "lambda": [
+    "yes",
+    {}
+   ],
+   "generator": [
+    "yes",
+    {}
+   ]
+  },
+  "object": {
+   "none": [
+    "yes",
+    {}
+   ],
+   "bool": [
+    "yes",
+    {}
+   ],
+   "int": [
+    "yes",
+    {}
+   ],
+   "float": [
+    "yes",
+    {}
+   ],
+   "complex": [
+    "yes",
+    {}
+   ],
+   "str": [
+    "yes",
+    {}
+   ],
+   "bytes": [
+    "yes",
+    {}
+   ],
+   "list": [
+    "yes",
+    {}
+   ],
+   "dict": [
+    "yes",
+    {}
+   ],
+   "set": [
+    "yes",
+    {}
+   ],
+   "frozenset": [
+    "yes",
+    {}
+   ],
+   "tuple": [
+    "yes",
+    {}
+   ],
+   "vartuple": [
+    "yes",
+    {}
+   ],
+   "range": [
+    "yes",
+    {}
+   ],
+   "instance": [
+    "yes",
+    {}
+   ],
+   "subclass": [
+    "yes",
+    {}
+   ],
+   "dataclass": [
+    "yes",
+    {}
+   ],
+   "namedtuple": [
+    "yes",
+    {}
+   ],
+   "enum": [
+    "yes",
+    {}
+   ],
+   "exception": [
+    "yes",
+    {}
+   ],
+   "userexception": [
+    "yes",
+    {}
+   ],
+   "template": [
+    "yes",
+    {
+     "narrow": "'object' object has no method 'describe' (narrow a value of object with isinstance() to int, float, bool, str, bytes, list, tuple, dict, set, frozenset, type, complex, range or a class of the program first: it takes only str(), repr(), format(), hash(), len(), int(), float(), % formatting, ==, !=, is, isinstance() and a truth test otherwise)"
+    }
+   ],
+   "class": [
+    "yes",
+    {}
+   ],
+   "function": [
+    "no",
+    "store",
+    "expected object, got <function helper>: a function, bound method or lambda (a Callable value) as a value of object is not supported yet: call it, or store a <function helper> where one is expected"
+   ],
+   "boundmethod": [
+    "no",
+    "store",
+    "expected object, got <bound method P.get>: a function, bound method or lambda (a Callable value) as a value of object is not supported yet: call it, or store a <bound method P.get> where one is expected"
+   ],
+   "lambda": [
+    "no",
+    "store",
+    "expected object, got <function main.<locals>.<lambda> (/tmp/claude-0/-home-user-pystachy/a7265743-bfe4-58f2-b6fe-b09ee7c0f869/scratchpad/r16/mxwork/object__lambda.py:5)>: a function, bound method or lambda (a Callable value) as a value of object is not supported yet: call it, or store a <function main.<locals>.<lambda> (/tmp/claude-0/-home-user-pystachy/a7265743-bfe4-58f2-b6fe-b09ee7c0f869/scratchpad/r16/mxwork/object__lambda.py:5)> where one is expected"
+   ],
+   "generator": [
+    "yes",
+    {}
+   ]
+  },
+  "protocol": {
+   "instance": [
+    "yes",
+    {}
+   ],
+   "subclass": [
+    "yes",
+    {}
+   ],
+   "dataclass": [
+    "yes",
+    {}
+   ],
+   "namedtuple": [
+    "yes",
+    {}
+   ],
+   "enum": [
+    "yes",
+    {}
+   ],
+   "userexception": [
+    "yes",
+    {}
+   ],
+   "template": [
+    "yes",
+    {}
+   ]
+  },
+  "union": {
+   "none": [
+    "yes",
+    {
+     "identity": "'is' is only supported for objects and None"
+    }
+   ],
+   "bool": [
+    "yes",
+    {
+     "identity": "comparing closed union values requires narrowing with isinstance() first"
+    }
+   ],
+   "int": [
+    "yes",
+    {
+     "identity": "comparing closed union values requires narrowing with isinstance() first"
+    }
+   ],
+   "float": [
+    "yes",
+    {
+     "identity": "comparing closed union values requires narrowing with isinstance() first"
+    }
+   ],
+   "complex": [
+    "yes",
+    {
+     "identity": "comparing closed union values requires narrowing with isinstance() first"
+    }
+   ],
+   "str": [
+    "yes",
+    {
+     "identity": "comparing closed union values requires narrowing with isinstance() first"
+    }
+   ],
+   "bytes": [
+    "no",
+    "store",
+    "bytes in a closed union is not supported (use scalar, list/dict or native class/file types)"
+   ],
+   "list": [
+    "yes",
+    {
+     "identity": "comparing closed union values requires narrowing with isinstance() first"
+    }
+   ],
+   "dict": [
+    "yes",
+    {
+     "identity": "comparing closed union values requires narrowing with isinstance() first"
+    }
+   ],
+   "set": [
+    "no",
+    "store",
+    "set[int] in a closed union is not supported (use scalar, list/dict or native class/file types)"
+   ],
+   "frozenset": [
+    "no",
+    "store",
+    "frozenset[int] in a closed union is not supported (use scalar, list/dict or native class/file types)"
+   ],
+   "tuple": [
+    "yes",
+    {
+     "identity": "comparing closed union values requires narrowing with isinstance() first"
+    }
+   ],
+   "vartuple": [
+    "yes",
+    {
+     "identity": "comparing closed union values requires narrowing with isinstance() first"
+    }
+   ],
+   "range": [
+    "yes",
+    {
+     "identity": "comparing closed union values requires narrowing with isinstance() first"
+    }
+   ],
+   "instance": [
+    "yes",
+    {
+     "identity": "comparing closed union values requires narrowing with isinstance() first"
+    }
+   ],
+   "subclass": [
+    "yes",
+    {
+     "identity": "comparing closed union values requires narrowing with isinstance() first"
+    }
+   ],
+   "dataclass": [
+    "yes",
+    {
+     "identity": "comparing closed union values requires narrowing with isinstance() first"
+    }
+   ],
+   "namedtuple": [
+    "yes",
+    {
+     "identity": "comparing closed union values requires narrowing with isinstance() first"
+    }
+   ],
+   "enum": [
+    "yes",
+    {
+     "identity": "comparing closed union values requires narrowing with isinstance() first"
+    }
+   ],
+   "exception": [
+    "no",
+    "store",
+    "BaseException in a closed union is not supported (use scalar, list/dict or native class/file types)"
+   ],
+   "userexception": [
+    "no",
+    "store",
+    "Oops in a closed union is not supported (use scalar, list/dict or native class/file types)"
+   ]
+  },
+  "object_to_any": {
+   "none": [
+    "yes",
+    {}
+   ],
+   "bool": [
+    "yes",
+    {}
+   ],
+   "int": [
+    "yes",
+    {}
+   ],
+   "float": [
+    "yes",
+    {}
+   ],
+   "complex": [
+    "yes",
+    {}
+   ],
+   "str": [
+    "yes",
+    {}
+   ],
+   "bytes": [
+    "no",
+    "store",
+    "a bytes value cannot become an Any value (making the table of bytes as object (for Any), converted at /tmp/claude-0/-home-user-pystachy/a7265743-bfe4-58f2-b6fe-b09ee7c0f869/scratchpad/r16/mxwork/object_to_any__bytes.py:7)"
+   ],
+   "list": [
+    "yes",
+    {}
+   ],
+   "dict": [
+    "no",
+    "store",
+    "a dict[str,int] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a dict[Any, Any] from the start, or copy it) (making the table of dict[str,int] as object (for Any), converted at /tmp/claude-0/-home-user-pystachy/a7265743-bfe4-58f2-b6fe-b09ee7c0f869/scratchpad/r16/mxwork/object_to_any__dict.py:8)"
+   ],
+   "set": [
+    "no",
+    "store",
+    "a set[int] cannot become an Any value: Any values hold no sets yet (a list comprehension of its items can become one) (making the table of set[int] as object (for Any), converted at /tmp/claude-0/-home-user-pystachy/a7265743-bfe4-58f2-b6fe-b09ee7c0f869/scratchpad/r16/mxwork/object_to_any__set.py:8)"
+   ],
+   "frozenset": [
+    "no",
+    "store",
+    "a frozenset[int] cannot become an Any value: Any values hold no sets yet (a list comprehension of its items can become one) (making the table of frozenset[int] as object (for Any), converted at /tmp/claude-0/-home-user-pystachy/a7265743-bfe4-58f2-b6fe-b09ee7c0f869/scratchpad/r16/mxwork/object_to_any__frozenset.py:8)"
+   ],
+   "tuple": [
+    "yes",
+    {}
+   ],
+   "vartuple": [
+    "no",
+    "store",
+    "a tuple[int, ...] as an Any value is not supported yet (making the table of tuple[int, ...] as object (for Any), converted at /tmp/claude-0/-home-user-pystachy/a7265743-bfe4-58f2-b6fe-b09ee7c0f869/scratchpad/r16/mxwork/object_to_any__vartuple.py:8)"
+   ],
+   "range": [
+    "yes",
+    {}
+   ],
+   "instance": [
+    "yes",
+    {}
+   ],
+   "subclass": [
+    "yes",
+    {}
+   ],
+   "dataclass": [
+    "yes",
+    {}
+   ],
+   "namedtuple": [
+    "yes",
+    {}
+   ],
+   "enum": [
+    "yes",
+    {}
+   ],
+   "exception": [
+    "no",
+    "store",
+    "a BaseException value cannot become an Any value (making the table of BaseException as object (for Any), converted at /tmp/claude-0/-home-user-pystachy/a7265743-bfe4-58f2-b6fe-b09ee7c0f869/scratchpad/r16/mxwork/object_to_any__exception.py:7)"
+   ],
+   "userexception": [
+    "no",
+    "store",
+    "an exception object (Oops) as Any is not supported yet (making the table of Oops as object (for Any), converted at /tmp/claude-0/-home-user-pystachy/a7265743-bfe4-58f2-b6fe-b09ee7c0f869/scratchpad/r16/mxwork/object_to_any__userexception.py:11)"
+   ],
+   "template": [
+    "yes",
+    {}
+   ],
+   "class": [
+    "yes",
+    {}
+   ],
+   "function": [
+    "no",
+    "store",
+    "expected object, got <function helper>: a function, bound method or lambda (a Callable value) as a value of object is not supported yet: call it, or store a <function helper> where one is expected"
+   ],
+   "boundmethod": [
+    "no",
+    "store",
+    "expected object, got <bound method P.get>: a function, bound method or lambda (a Callable value) as a value of object is not supported yet: call it, or store a <bound method P.get> where one is expected"
+   ],
+   "lambda": [
+    "no",
+    "store",
+    "expected object, got <function main.<locals>.<lambda> (/tmp/claude-0/-home-user-pystachy/a7265743-bfe4-58f2-b6fe-b09ee7c0f869/scratchpad/r16/mxwork/object_to_any__lambda.py:7)>: a function, bound method or lambda (a Callable value) as a value of object is not supported yet: call it, or store a <function main.<locals>.<lambda> (/tmp/claude-0/-home-user-pystachy/a7265743-bfe4-58f2-b6fe-b09ee7c0f869/scratchpad/r16/mxwork/object_to_any__lambda.py:7)> where one is expected"
+   ],
+   "generator": [
+    "yes",
+    {}
+   ]
+  },
+  "any_to_object": {
+   "none": [
+    "yes",
+    {}
+   ],
+   "bool": [
+    "yes",
+    {}
+   ],
+   "int": [
+    "yes",
+    {}
+   ],
+   "float": [
+    "yes",
+    {}
+   ],
+   "complex": [
+    "yes",
+    {}
+   ],
+   "str": [
+    "yes",
+    {}
+   ],
+   "bytes": [
+    "no",
+    "store",
+    "a bytes value cannot become an Any value"
+   ],
+   "list": [
+    "yes",
+    {}
+   ],
+   "dict": [
+    "no",
+    "store",
+    "a dict[str,int] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a dict[Any, Any] from the start, or copy it)"
+   ],
+   "set": [
+    "no",
+    "store",
+    "a set[int] cannot become an Any value: Any values hold no sets yet (a list comprehension of its items can become one)"
+   ],
+   "frozenset": [
+    "no",
+    "store",
+    "a frozenset[int] cannot become an Any value: Any values hold no sets yet (a list comprehension of its items can become one)"
+   ],
+   "tuple": [
+    "yes",
+    {}
+   ],
+   "vartuple": [
+    "no",
+    "store",
+    "a tuple[int, ...] as an Any value is not supported yet"
+   ],
+   "range": [
+    "yes",
+    {}
+   ],
+   "instance": [
+    "yes",
+    {}
+   ],
+   "subclass": [
+    "yes",
+    {}
+   ],
+   "dataclass": [
+    "yes",
+    {}
+   ],
+   "namedtuple": [
+    "yes",
+    {}
+   ],
+   "enum": [
+    "yes",
+    {}
+   ],
+   "exception": [
+    "no",
+    "store",
+    "a BaseException value cannot become an Any value"
+   ],
+   "userexception": [
+    "no",
+    "store",
+    "an exception object (Oops) as Any is not supported yet"
+   ],
+   "template": [
+    "yes",
+    {
+     "narrow": "'object' object has no method 'describe' (narrow a value of object with isinstance() to int, float, bool, str, bytes, list, tuple, dict, set, frozenset, type, complex, range or a class of the program first: it takes only str(), repr(), format(), hash(), len(), int(), float(), % formatting, ==, !=, is, isinstance() and a truth test otherwise)"
+    }
+   ],
+   "class": [
+    "yes",
+    {}
+   ],
+   "function": [
+    "yes",
+    {}
+   ],
+   "boundmethod": [
+    "yes",
+    {}
+   ],
+   "lambda": [
+    "yes",
+    {}
+   ],
+   "generator": [
+    "yes",
+    {}
+   ]
+  },
+  "union_to_object": {
+   "none": [
+    "yes",
+    {}
+   ],
+   "bool": [
+    "yes",
+    {}
+   ],
+   "int": [
+    "yes",
+    {}
+   ],
+   "float": [
+    "yes",
+    {}
+   ],
+   "complex": [
+    "yes",
+    {}
+   ],
+   "str": [
+    "yes",
+    {}
+   ],
+   "bytes": [
+    "no",
+    "store",
+    "bytes in a closed union is not supported (use scalar, list/dict or native class/file types)"
+   ],
+   "list": [
+    "yes",
+    {}
+   ],
+   "dict": [
+    "yes",
+    {}
+   ],
+   "set": [
+    "no",
+    "store",
+    "set[int] in a closed union is not supported (use scalar, list/dict or native class/file types)"
+   ],
+   "frozenset": [
+    "no",
+    "store",
+    "frozenset[int] in a closed union is not supported (use scalar, list/dict or native class/file types)"
+   ],
+   "tuple": [
+    "yes",
+    {}
+   ],
+   "vartuple": [
+    "yes",
+    {}
+   ],
+   "range": [
+    "yes",
+    {}
+   ],
+   "instance": [
+    "yes",
+    {}
+   ],
+   "subclass": [
+    "yes",
+    {}
+   ],
+   "dataclass": [
+    "yes",
+    {}
+   ],
+   "namedtuple": [
+    "yes",
+    {}
+   ],
+   "enum": [
+    "yes",
+    {}
+   ],
+   "exception": [
+    "no",
+    "store",
+    "BaseException in a closed union is not supported (use scalar, list/dict or native class/file types)"
+   ],
+   "userexception": [
+    "no",
+    "store",
+    "Oops in a closed union is not supported (use scalar, list/dict or native class/file types)"
+   ]
+  },
+  "union_to_any": {
+   "none": [
+    "yes",
+    {}
+   ],
+   "bool": [
+    "yes",
+    {}
+   ],
+   "int": [
+    "yes",
+    {}
+   ],
+   "float": [
+    "yes",
+    {}
+   ],
+   "complex": [
+    "yes",
+    {}
+   ],
+   "str": [
+    "yes",
+    {}
+   ],
+   "bytes": [
+    "no",
+    "store",
+    "bytes in a closed union is not supported (use scalar, list/dict or native class/file types)"
+   ],
+   "list": [
+    "yes",
+    {}
+   ],
+   "dict": [
+    "no",
+    "convert",
+    "a dict[str,int] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a dict[Any, Any] from the start, or copy it)"
+   ],
+   "set": [
+    "no",
+    "store",
+    "set[int] in a closed union is not supported (use scalar, list/dict or native class/file types)"
+   ],
+   "frozenset": [
+    "no",
+    "store",
+    "frozenset[int] in a closed union is not supported (use scalar, list/dict or native class/file types)"
+   ],
+   "tuple": [
+    "yes",
+    {}
+   ],
+   "vartuple": [
+    "no",
+    "convert",
+    "a tuple[int, ...] as an Any value is not supported yet"
+   ],
+   "range": [
+    "yes",
+    {}
+   ],
+   "instance": [
+    "yes",
+    {}
+   ],
+   "subclass": [
+    "yes",
+    {}
+   ],
+   "dataclass": [
+    "yes",
+    {}
+   ],
+   "namedtuple": [
+    "yes",
+    {}
+   ],
+   "enum": [
+    "yes",
+    {}
+   ],
+   "exception": [
+    "no",
+    "store",
+    "BaseException in a closed union is not supported (use scalar, list/dict or native class/file types)"
+   ],
+   "userexception": [
+    "no",
+    "store",
+    "Oops in a closed union is not supported (use scalar, list/dict or native class/file types)"
+   ]
+  },
+  "protocol_to_object": {
+   "instance": [
+    "yes",
+    {}
+   ],
+   "subclass": [
+    "yes",
+    {}
+   ],
+   "dataclass": [
+    "yes",
+    {}
+   ],
+   "namedtuple": [
+    "yes",
+    {}
+   ],
+   "enum": [
+    "yes",
+    {}
+   ],
+   "userexception": [
+    "yes",
+    {}
+   ],
+   "template": [
+    "yes",
+    {
+     "narrow": "'object' object has no method 'describe' (narrow a value of object with isinstance() to int, float, bool, str, bytes, list, tuple, dict, set, frozenset, type, complex, range or a class of the program first: it takes only str(), repr(), format(), hash(), len(), int(), float(), % formatting, ==, !=, is, isinstance() and a truth test otherwise)"
+    }
+   ]
+  },
+  "protocol_to_any": {
+   "instance": [
+    "yes",
+    {}
+   ],
+   "subclass": [
+    "yes",
+    {}
+   ],
+   "dataclass": [
+    "yes",
+    {}
+   ],
+   "namedtuple": [
+    "yes",
+    {}
+   ],
+   "enum": [
+    "yes",
+    {}
+   ],
+   "userexception": [
+    "no",
+    "store",
+    "an exception object (Oops) as Any is not supported yet (making the table of Oops as object (for Any), converted at /tmp/claude-0/-home-user-pystachy/a7265743-bfe4-58f2-b6fe-b09ee7c0f869/scratchpad/r16/mxwork/protocol_to_any__userexception.py:16)"
+   ],
+   "template": [
+    "yes",
+    {}
+   ]
+  }
+ },
+ "limits": {
+  "cannot become an Any value": {
+   "aspect": "store",
+   "cells": [
+    "any__bytes",
+    "any__exception",
+    "object_to_any__bytes",
+    "object_to_any__exception",
+    "any_to_object__bytes",
+    "any_to_object__exception"
+   ]
+  },
+  "cannot become an Any value: its items are typed, and Any's containers hold Any items": {
+   "aspect": "store",
+   "cells": [
+    "any__dict",
+    "object_to_any__dict",
+    "any_to_object__dict",
+    "union_to_any__dict"
+   ]
+  },
+  "cannot become an Any value: Any values hold no sets yet": {
+   "aspect": "store",
+   "cells": [
+    "any__set",
+    "any__frozenset",
+    "object_to_any__set",
+    "object_to_any__frozenset",
+    "any_to_object__set",
+    "any_to_object__frozenset"
+   ]
+  },
+  "as an Any value is not supported yet": {
+   "aspect": "store",
+   "cells": [
+    "any__vartuple",
+    "object_to_any__vartuple",
+    "any_to_object__vartuple",
+    "union_to_any__vartuple"
+   ]
+  },
+  "an exception object as Any is not supported yet": {
+   "aspect": "store",
+   "cells": [
+    "any__userexception",
+    "object_to_any__userexception",
+    "any_to_object__userexception",
+    "protocol_to_any__userexception"
+   ]
+  },
+  "'object' object has no method": {
+   "aspect": "narrow",
+   "cells": [
+    "object__template",
+    "any_to_object__template",
+    "protocol_to_object__template"
+   ]
+  },
+  "a function, bound method or lambda": {
+   "aspect": "store",
+   "cells": [
+    "object__function",
+    "object__boundmethod",
+    "object__lambda",
+    "object_to_any__function",
+    "object_to_any__boundmethod",
+    "object_to_any__lambda"
+   ]
+  },
+  "'is' is only supported for objects and None": {
+   "aspect": "identity",
+   "cells": [
+    "union__none"
+   ]
+  },
+  "comparing closed union values requires narrowing with isinstance() first": {
+   "aspect": "identity",
+   "cells": [
+    "union__bool",
+    "union__int",
+    "union__float",
+    "union__complex",
+    "union__str",
+    "union__list",
+    "union__dict",
+    "union__tuple",
+    "union__vartuple",
+    "union__range",
+    "union__instance",
+    "union__subclass",
+    "union__dataclass",
+    "union__namedtuple",
+    "union__enum"
+   ]
+  },
+  "in a closed union is not supported": {
+   "aspect": "store",
+   "cells": [
+    "union__bytes",
+    "union__set",
+    "union__frozenset",
+    "union__exception",
+    "union__userexception",
+    "union_to_object__bytes",
+    "union_to_object__set",
+    "union_to_object__frozenset",
+    "union_to_object__exception",
+    "union_to_object__userexception",
+    "union_to_any__bytes",
+    "union_to_any__set",
+    "union_to_any__frozenset",
+    "union_to_any__exception",
+    "union_to_any__userexception"
+   ]
+  }
+ },
+ "tests": {
+  "tests/errors/inference/crossing_any_bytes.py": [
+   "any__bytes",
+   "store",
+   "cannot become an Any value"
+  ],
+  "tests/errors/inference/crossing_any_dict.py": [
+   "any__dict",
+   "store",
+   "cannot become an Any value: its items are typed, and Any's containers hold Any items"
+  ],
+  "tests/errors/inference/crossing_any_set.py": [
+   "any__set",
+   "store",
+   "cannot become an Any value: Any values hold no sets yet"
+  ],
+  "tests/errors/inference/crossing_any_frozenset.py": [
+   "any__frozenset",
+   "store",
+   "cannot become an Any value: Any values hold no sets yet"
+  ],
+  "tests/errors/inference/crossing_any_vartuple.py": [
+   "any__vartuple",
+   "store",
+   "as an Any value is not supported yet"
+  ],
+  "tests/errors/inference/crossing_any_exception.py": [
+   "any__exception",
+   "store",
+   "cannot become an Any value"
+  ],
+  "tests/errors/inference/crossing_any_userexception.py": [
+   "any__userexception",
+   "store",
+   "an exception object (Oops) as Any is not supported yet"
+  ],
+  "tests/errors/inference/crossing_object_template_narrow.py": [
+   "object__template",
+   "narrow",
+   "'object' object has no method"
+  ],
+  "tests/errors/inference/crossing_object_function.py": [
+   "object__function",
+   "store",
+   "a function, bound method or lambda"
+  ],
+  "tests/errors/inference/crossing_object_boundmethod.py": [
+   "object__boundmethod",
+   "store",
+   "a function, bound method or lambda"
+  ],
+  "tests/errors/inference/crossing_object_lambda.py": [
+   "object__lambda",
+   "store",
+   "a function, bound method or lambda"
+  ],
+  "tests/errors/inference/crossing_union_none_identity.py": [
+   "union__none",
+   "identity",
+   "'is' is only supported for objects and None"
+  ],
+  "tests/errors/inference/crossing_union_bool_identity.py": [
+   "union__bool",
+   "identity",
+   "comparing closed union values requires narrowing with isinstance() first"
+  ],
+  "tests/errors/inference/crossing_union_int_identity.py": [
+   "union__int",
+   "identity",
+   "comparing closed union values requires narrowing with isinstance() first"
+  ],
+  "tests/errors/inference/crossing_union_float_identity.py": [
+   "union__float",
+   "identity",
+   "comparing closed union values requires narrowing with isinstance() first"
+  ],
+  "tests/errors/inference/crossing_union_complex_identity.py": [
+   "union__complex",
+   "identity",
+   "comparing closed union values requires narrowing with isinstance() first"
+  ],
+  "tests/errors/inference/crossing_union_str_identity.py": [
+   "union__str",
+   "identity",
+   "comparing closed union values requires narrowing with isinstance() first"
+  ],
+  "tests/errors/inference/crossing_union_bytes.py": [
+   "union__bytes",
+   "store",
+   "in a closed union is not supported"
+  ],
+  "tests/errors/inference/crossing_union_list_identity.py": [
+   "union__list",
+   "identity",
+   "comparing closed union values requires narrowing with isinstance() first"
+  ],
+  "tests/errors/inference/crossing_union_dict_identity.py": [
+   "union__dict",
+   "identity",
+   "comparing closed union values requires narrowing with isinstance() first"
+  ],
+  "tests/errors/inference/crossing_union_set.py": [
+   "union__set",
+   "store",
+   "in a closed union is not supported"
+  ],
+  "tests/errors/inference/crossing_union_frozenset.py": [
+   "union__frozenset",
+   "store",
+   "in a closed union is not supported"
+  ],
+  "tests/errors/inference/crossing_union_tuple_identity.py": [
+   "union__tuple",
+   "identity",
+   "comparing closed union values requires narrowing with isinstance() first"
+  ],
+  "tests/errors/inference/crossing_union_vartuple_identity.py": [
+   "union__vartuple",
+   "identity",
+   "comparing closed union values requires narrowing with isinstance() first"
+  ],
+  "tests/errors/inference/crossing_union_range_identity.py": [
+   "union__range",
+   "identity",
+   "comparing closed union values requires narrowing with isinstance() first"
+  ],
+  "tests/errors/inference/crossing_union_instance_identity.py": [
+   "union__instance",
+   "identity",
+   "comparing closed union values requires narrowing with isinstance() first"
+  ],
+  "tests/errors/inference/crossing_union_subclass_identity.py": [
+   "union__subclass",
+   "identity",
+   "comparing closed union values requires narrowing with isinstance() first"
+  ],
+  "tests/errors/inference/crossing_union_dataclass_identity.py": [
+   "union__dataclass",
+   "identity",
+   "comparing closed union values requires narrowing with isinstance() first"
+  ],
+  "tests/errors/inference/crossing_union_namedtuple_identity.py": [
+   "union__namedtuple",
+   "identity",
+   "comparing closed union values requires narrowing with isinstance() first"
+  ],
+  "tests/errors/inference/crossing_union_enum_identity.py": [
+   "union__enum",
+   "identity",
+   "comparing closed union values requires narrowing with isinstance() first"
+  ],
+  "tests/errors/inference/crossing_union_exception.py": [
+   "union__exception",
+   "store",
+   "in a closed union is not supported"
+  ],
+  "tests/errors/inference/crossing_union_userexception.py": [
+   "union__userexception",
+   "store",
+   "in a closed union is not supported"
+  ],
+  "tests/errors/inference/crossing_object_to_any_bytes.py": [
+   "object_to_any__bytes",
+   "store",
+   "cannot become an Any value"
+  ],
+  "tests/errors/inference/crossing_object_to_any_dict.py": [
+   "object_to_any__dict",
+   "store",
+   "cannot become an Any value: its items are typed, and Any's containers hold Any items"
+  ],
+  "tests/errors/inference/crossing_object_to_any_set.py": [
+   "object_to_any__set",
+   "store",
+   "cannot become an Any value: Any values hold no sets yet"
+  ],
+  "tests/errors/inference/crossing_object_to_any_frozenset.py": [
+   "object_to_any__frozenset",
+   "store",
+   "cannot become an Any value: Any values hold no sets yet"
+  ],
+  "tests/errors/inference/crossing_object_to_any_vartuple.py": [
+   "object_to_any__vartuple",
+   "store",
+   "as an Any value is not supported yet"
+  ],
+  "tests/errors/inference/crossing_object_to_any_exception.py": [
+   "object_to_any__exception",
+   "store",
+   "cannot become an Any value"
+  ],
+  "tests/errors/inference/crossing_object_to_any_userexception.py": [
+   "object_to_any__userexception",
+   "store",
+   "an exception object (Oops) as Any is not supported yet"
+  ],
+  "tests/errors/inference/crossing_object_to_any_function.py": [
+   "object_to_any__function",
+   "store",
+   "a function, bound method or lambda"
+  ],
+  "tests/errors/inference/crossing_object_to_any_boundmethod.py": [
+   "object_to_any__boundmethod",
+   "store",
+   "a function, bound method or lambda"
+  ],
+  "tests/errors/inference/crossing_object_to_any_lambda.py": [
+   "object_to_any__lambda",
+   "store",
+   "a function, bound method or lambda"
+  ],
+  "tests/errors/inference/crossing_any_to_object_bytes.py": [
+   "any_to_object__bytes",
+   "store",
+   "cannot become an Any value"
+  ],
+  "tests/errors/inference/crossing_any_to_object_dict.py": [
+   "any_to_object__dict",
+   "store",
+   "cannot become an Any value: its items are typed, and Any's containers hold Any items"
+  ],
+  "tests/errors/inference/crossing_any_to_object_set.py": [
+   "any_to_object__set",
+   "store",
+   "cannot become an Any value: Any values hold no sets yet"
+  ],
+  "tests/errors/inference/crossing_any_to_object_frozenset.py": [
+   "any_to_object__frozenset",
+   "store",
+   "cannot become an Any value: Any values hold no sets yet"
+  ],
+  "tests/errors/inference/crossing_any_to_object_vartuple.py": [
+   "any_to_object__vartuple",
+   "store",
+   "as an Any value is not supported yet"
+  ],
+  "tests/errors/inference/crossing_any_to_object_exception.py": [
+   "any_to_object__exception",
+   "store",
+   "cannot become an Any value"
+  ],
+  "tests/errors/inference/crossing_any_to_object_userexception.py": [
+   "any_to_object__userexception",
+   "store",
+   "an exception object (Oops) as Any is not supported yet"
+  ],
+  "tests/errors/inference/crossing_any_to_object_template_narrow.py": [
+   "any_to_object__template",
+   "narrow",
+   "'object' object has no method"
+  ],
+  "tests/errors/inference/crossing_union_to_object_bytes.py": [
+   "union_to_object__bytes",
+   "store",
+   "in a closed union is not supported"
+  ],
+  "tests/errors/inference/crossing_union_to_object_set.py": [
+   "union_to_object__set",
+   "store",
+   "in a closed union is not supported"
+  ],
+  "tests/errors/inference/crossing_union_to_object_frozenset.py": [
+   "union_to_object__frozenset",
+   "store",
+   "in a closed union is not supported"
+  ],
+  "tests/errors/inference/crossing_union_to_object_exception.py": [
+   "union_to_object__exception",
+   "store",
+   "in a closed union is not supported"
+  ],
+  "tests/errors/inference/crossing_union_to_object_userexception.py": [
+   "union_to_object__userexception",
+   "store",
+   "in a closed union is not supported"
+  ],
+  "tests/errors/inference/crossing_union_to_any_bytes.py": [
+   "union_to_any__bytes",
+   "store",
+   "in a closed union is not supported"
+  ],
+  "tests/errors/inference/crossing_union_to_any_dict.py": [
+   "union_to_any__dict",
+   "convert",
+   "cannot become an Any value: its items are typed, and Any's containers hold Any items"
+  ],
+  "tests/errors/inference/crossing_union_to_any_set.py": [
+   "union_to_any__set",
+   "store",
+   "in a closed union is not supported"
+  ],
+  "tests/errors/inference/crossing_union_to_any_frozenset.py": [
+   "union_to_any__frozenset",
+   "store",
+   "in a closed union is not supported"
+  ],
+  "tests/errors/inference/crossing_union_to_any_vartuple.py": [
+   "union_to_any__vartuple",
+   "convert",
+   "as an Any value is not supported yet"
+  ],
+  "tests/errors/inference/crossing_union_to_any_exception.py": [
+   "union_to_any__exception",
+   "store",
+   "in a closed union is not supported"
+  ],
+  "tests/errors/inference/crossing_union_to_any_userexception.py": [
+   "union_to_any__userexception",
+   "store",
+   "in a closed union is not supported"
+  ],
+  "tests/errors/inference/crossing_protocol_to_object_template_narrow.py": [
+   "protocol_to_object__template",
+   "narrow",
+   "'object' object has no method"
+  ],
+  "tests/errors/inference/crossing_protocol_to_any_userexception.py": [
+   "protocol_to_any__userexception",
+   "store",
+   "an exception object (Oops) as Any is not supported yet"
+  ]
+ }
+}
