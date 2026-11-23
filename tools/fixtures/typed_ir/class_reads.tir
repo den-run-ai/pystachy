@@ -1,0 +1,251 @@
+; Reads of objects at classes their values' classes need not derive from, which the verifier
+; admits only where a test of the object's class word shows that it does (ircheck.class_reads,
+; class_proof.ClassProof): a test of a tagged class's tag, of an exception class's descriptor,
+; a switch on the tag, the class word a constructor stores, and a member cast's object, read
+; where its class was tested. Each function without an expected error verifies;
+; tools/test_typed_ir_text.py removes their tests to see them fail.
+
+module version=1 {
+  class Base tag=1 fields=[" class":int n:int]
+  class Mid base=Base tag=2 fields=[" class":int n:int m:int]
+  class Leaf base=Mid tag=3 fields=[" class":int n:int m:int]
+  class Other base=Base tag=4 fields=[" class":int n:int]
+  class E base=Exception fields=[" cls":str " str":str " args":str] exception=Exception
+  class F base=E fields=[" cls":str " str":str " args":str] exception=Exception
+  class Ref fields=[node:Base]
+}
+
+function @a_downcast_without_a_test(b: Base) -> int {
+entry:
+  ; expected-error {{field.addr operand 0 reads %a0 as Mid without a proof that its class derives from Mid}}
+  %t1 = field.addr index=2 (Mid %a0) : &int
+  %t2 = mem.load(&int %t1) : int
+  ret(int %t2)
+}
+
+function @a_downcast_after_an_isinstance_test(b: Base) -> int {
+entry:
+  %t1 = mach.load(%ptr %a0) : int
+  %t2 = num.cmp == (int %t1, int 2) : bool
+  %t3 = num.cmp == (int %t1, int 3) : bool
+  %t4 = scalar.bin or (bool %t2, bool %t3) : bool
+  cbr(bool %t4) -> L5, L6
+L5:
+  %t7 = field.addr index=2 (Mid %a0) : &int
+  %t8 = mem.load(&int %t7) : int
+  ret(int %t8)
+L6:
+  ret(int 0)
+}
+
+function @a_downcast_on_the_edge_its_test_rules_out(b: Base) -> int {
+entry:
+  %t1 = mach.load(%ptr %a0) : int
+  %t2 = num.cmp == (int %t1, int 2) : bool
+  %t3 = num.cmp == (int %t1, int 3) : bool
+  %t4 = scalar.bin or (bool %t2, bool %t3) : bool
+  cbr(bool %t4) -> L5, L6
+L5:
+  ret(int 0)
+L6:
+  ; expected-error {{field.addr operand 0 reads %a0 as Mid without a proof that its class derives from Mid}}
+  %t7 = field.addr index=2 (Mid %a0) : &int
+  %t8 = mem.load(&int %t7) : int
+  ret(int %t8)
+}
+
+function @the_last_class_that_tests_leave(b: Base) -> Other {
+entry:
+  %t1 = mach.load(%ptr %a0) : int
+  %t2 = num.cmp == (int %t1, int 1) : bool
+  cbr(bool %t2) -> L3, L4
+L3:
+  ret(Other null)
+L4:
+  %t5 = num.cmp != (int %t1, int 2) : bool
+  %t6 = num.cmp != (int %t1, int 3) : bool
+  %t7 = scalar.bin and (bool %t5, bool %t6) : bool
+  cbr(bool %t7) -> L8, L3
+L8:
+  ret(Other %a0)
+}
+
+function @a_switch_on_the_tag(b: Base) -> Leaf {
+entry:
+  %t1 = mach.load(%ptr %a0) : int
+  switch(int %t1, int 2, int 3) -> L2, L3, L4
+L2:
+  ret(Leaf null)
+L3:
+  ret(Leaf null)
+L4:
+  ret(Leaf %a0)
+}
+
+function @a_switch_default_read_as_one_of_its_classes(b: Base) -> Other {
+entry:
+  %t1 = mach.load(%ptr %a0) : int
+  switch(int %t1, int 2, int 3) -> L2, L3, L3
+L2:
+  ; expected-error {{ret operand 0 reads %a0 as Other without a proof that its class derives from Other}}
+  ret(Other %a0)
+L3:
+  ret(Other null)
+}
+
+function @a_reload_after_a_test(b: Base) -> int {
+  %b.1 = slot name=b : Base
+entry:
+  mem.store(&Base %b.1, Base %a0)
+  %t2 = mem.load(&Base %b.1) : Base
+  %t3 = mach.load(%ptr %t2) : int
+  %t4 = num.cmp == (int %t3, int 3) : bool
+  cbr(bool %t4) -> L5, L6
+L5:
+  %t7 = mem.load(&Base %b.1) : Base
+  %t8 = field.addr index=2 (Leaf %t7) : &int
+  %t9 = mem.load(&int %t8) : int
+  ret(int %t9)
+L6:
+  ret(int 0)
+}
+
+function @a_reload_after_a_store(b: Base, c: Base) -> int {
+  %b.1 = slot name=b : Base
+entry:
+  mem.store(&Base %b.1, Base %a0)
+  %t2 = mem.load(&Base %b.1) : Base
+  %t3 = mach.load(%ptr %t2) : int
+  %t4 = num.cmp == (int %t3, int 3) : bool
+  cbr(bool %t4) -> L5, L6
+L5:
+  mem.store(&Base %b.1, Base %a1)
+  %t7 = mem.load(&Base %b.1) : Base
+  ; expected-error {{field.addr operand 0 reads %t7 as Leaf without a proof that its class derives from Leaf}}
+  %t8 = field.addr index=2 (Leaf %t7) : &int
+  %t9 = mem.load(&int %t8) : int
+  ret(int %t9)
+L6:
+  ret(int 0)
+}
+
+function @the_class_word_a_constructor_stores(m: Mid) -> Leaf {
+entry:
+  mach.store(%ptr %a0, int 3)
+  ret(Leaf %a0)
+}
+
+function @the_class_word_of_another_class(m: Mid) -> Leaf {
+entry:
+  mach.store(%ptr %a0, int 2)
+  ; expected-error {{ret operand 0 reads %a0 as Leaf without a proof that its class derives from Leaf}}
+  ret(Leaf %a0)
+}
+
+function @an_exception_descriptor_test(e: E) -> F {
+entry:
+  %t1 = mach.load(%ptr %a0) : %ptr
+  %t2 = scalar.cmp eq (%ptr %t1, %ptr @x.F) : bool
+  cbr(bool %t2) -> L3, L4
+L3:
+  ret(F %a0)
+L4:
+  ret(F null)
+}
+
+function @an_exception_read_without_its_test(e: E) -> F {
+entry:
+  ; expected-error {{ret operand 0 reads %a0 as F without a proof that its class derives from F}}
+  ret(F %a0)
+}
+
+function @a_member_cast_read_where_its_class_was_tested(p: %ptr) -> Mid {
+entry:
+  %t1 = cast object (%ptr %a0) : union[Mid,Other]
+  %t2 = cast member (union[Mid,Other] %t1) : Mid
+  %t7 = ptr.cmp == (union[Mid,Other] %t1, None null) : bool
+  cbr(bool %t7) -> L5, L8
+L8:
+  %t3 = mach.load(%ptr %t1) : int
+  %t4 = num.cmp == (int %t3, int 4) : bool
+  cbr(bool %t4) -> L5, L6
+L5:
+  ret(Mid null)
+L6:
+  ret(Mid %t2)
+}
+
+function @a_member_cast_read_without_a_test(p: %ptr) -> Mid {
+entry:
+  %t1 = cast object (%ptr %a0) : union[Mid,Other]
+  %t2 = cast member (union[Mid,Other] %t1) : Mid
+  ; expected-error {{ret operand 0 reads %t2 as Mid without a proof that its class derives from Mid}}
+  ret(Mid %t2)
+}
+
+function @a_field_read_after_a_test_of_an_earlier_read(x: Ref, b: Base) -> int {
+  %x.1 = slot name=x : Ref
+entry:
+  mem.store(&Ref %x.1, Ref %a0)
+  %t2 = mem.load(&Ref %x.1) : Ref
+  %t3 = field.addr(Ref %t2) : &Base
+  %t4 = mem.load(&Base %t3) : Base
+  %t5 = mach.load(%ptr %t4) : int
+  %t6 = num.cmp == (int %t5, int 3) : bool
+  cbr(bool %t6) -> L7, L8
+L7:
+  %t9 = mem.load(&Ref %x.1) : Ref
+  %t10 = field.addr(Ref %t9) : &Base
+  %t11 = mem.load(&Base %t10) : Base
+  %t12 = field.addr index=2 (Leaf %t11) : &int
+  %t13 = mem.load(&int %t12) : int
+  ret(int %t13)
+L8:
+  ret(int 0)
+}
+
+function @a_field_read_after_a_store_to_the_field(x: Ref, b: Base) -> int {
+  %x.1 = slot name=x : Ref
+entry:
+  mem.store(&Ref %x.1, Ref %a0)
+  %t2 = mem.load(&Ref %x.1) : Ref
+  %t3 = field.addr(Ref %t2) : &Base
+  %t4 = mem.load(&Base %t3) : Base
+  %t5 = mach.load(%ptr %t4) : int
+  %t6 = num.cmp == (int %t5, int 3) : bool
+  cbr(bool %t6) -> L7, L8
+L7:
+  %t9 = mem.load(&Ref %x.1) : Ref
+  %t10 = field.addr(Ref %t9) : &Base
+  mem.store(&Base %t10, Base %a1)
+  %t11 = mem.load(&Base %t10) : Base
+  ; expected-error {{field.addr operand 0 reads %t11 as Leaf without a proof that its class derives from Leaf}}
+  %t12 = field.addr index=2 (Leaf %t11) : &int
+  %t13 = mem.load(&int %t12) : int
+  ret(int %t13)
+L8:
+  ret(int 0)
+}
+
+function @a_field_read_after_a_call(x: Ref, b: Base) -> int {
+  %x.1 = slot name=x : Ref
+entry:
+  mem.store(&Ref %x.1, Ref %a0)
+  %t2 = mem.load(&Ref %x.1) : Ref
+  %t3 = field.addr(Ref %t2) : &Base
+  %t4 = mem.load(&Base %t3) : Base
+  %t5 = mach.load(%ptr %t4) : int
+  %t6 = num.cmp == (int %t5, int 3) : bool
+  cbr(bool %t6) -> L7, L8
+L7:
+  %t9 = mem.load(&Ref %x.1) : Ref
+  %t10 = field.addr(Ref %t9) : &Base
+  rt entry=write (str @s.0, int 1) : None
+  %t11 = mem.load(&Base %t10) : Base
+  ; expected-error {{field.addr operand 0 reads %t11 as Leaf without a proof that its class derives from Leaf}}
+  %t12 = field.addr index=2 (Leaf %t11) : &int
+  %t13 = mem.load(&int %t12) : int
+  ret(int %t13)
+L8:
+  ret(int 0)
+}

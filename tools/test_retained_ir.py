@@ -138,7 +138,9 @@ class RealBuilds(unittest.TestCase):
                                PYSTACHY_HOME=str(ROOT), PYSTACHY_CACHE=str(root / "cache"))
             native = os.environ.get("PYSTACHY_TEST_COMPILER")
             command = [native] if native else [sys.executable, str(ROOT / "pystachy.py")]
-            expected = subprocess.run([*command, "ir", str(source)], cwd=ROOT, env=environment,
+            # (build gives the program line tables, which ir gives where PYSTACHY_DEBUG_LINES=1)
+            expected = subprocess.run([*command, "ir", str(source)], cwd=ROOT,
+                                      env=dict(environment, PYSTACHY_DEBUG_LINES="1"),
                                       capture_output=True, check=True).stdout
             self.assertNotIn(b"@pys_plain =", expected)
             output = root / "program"

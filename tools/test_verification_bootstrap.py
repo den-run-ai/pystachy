@@ -295,18 +295,21 @@ class BootstrapBundleTests(unittest.TestCase):
         standard[self.root / "build/verification.json"] = (self.root / "build/verification.json").read_bytes()
         inherited = {"PYSTACHY_AOT_OPT": "0", "PYSTACHY_CFLAGS": "-O0", "PYSTACHY_OPT": "-all",
                      "MAKEFLAGS": "n", "MAKEFILES": "/missing/makefile"}
+        callers = dict(inherited, PYSTACHY_DEBUG_LINES="1")
 
         def build(root, env, log):
             self.assertEqual(env["PYSTACHY_HOME"], str(root))
             self.assertEqual(env["PYSTACHY_LLVM"], os.environ["PYSTACHY_LLVM"])
             self.assertEqual(env["PYSTACHY_JOBS"], "2")
+            # (the bundle's `ir` stages have no line tables, which `build` otherwise adds)
+            self.assertEqual(env["PYSTACHY_DEBUG_LINES"], "0")
             self.assertTrue(Path(env["PYSTACHY_CACHE"]).is_dir())
             self.assertEqual(Path(env["PYSTACHY_CACHE"]).parent, root / "build/bootstrap-tier")
             for key in inherited:
                 self.assertNotIn(key, env)
             self.tier_outputs(root, env, log)
 
-        with mock.patch.dict(os.environ, inherited):
+        with mock.patch.dict(os.environ, callers):
             report = self.run_tier(build)
         self.assertEqual(report["result"], "pass")
         self.assertEqual(report["identity"], self.current)
