@@ -1,0 +1,10 @@
+Pair True True True True True True True
+Pair False True False True False False
+Level True True True True True
+Level True False False True False
+Bits True True False True
+Color True True False True True
+Items True True True False True
+Table True True True False
+Plain False False False False
+[exit 0]
