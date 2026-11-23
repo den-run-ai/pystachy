@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use Pystachy in your work, please cite it as below."
+title: "Pystachy"
+type: software
+abstract: "Pystachy compiles a typed subset of Python to native code through LLVM."
+authors:
+  - name: "The Pystachy contributors"
+repository-code: "https://github.com/den-run-ai/pystachy"
+url: "https://github.com/den-run-ai/pystachy"
+license: MIT
+keywords:
+  - compiler
+  - llvm
+  - python
+  - ahead-of-time compilation
+  - just-in-time compilation
