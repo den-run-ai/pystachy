@@ -382,7 +382,8 @@ class IntEnum(ReprEnum):
         return False
 
     def __ne__(self, other: object) -> bool:
-        return not self == other
+        # (int's __ne__, which a class that defines its own __eq__ keeps)
+        return not IntEnum.__eq__(self, other)
 
     def __lt__(self, other):
         return self._value_ < _int_of(other, self, '<')
@@ -544,7 +545,8 @@ class StrEnum(ReprEnum):
         return False
 
     def __ne__(self, other: object) -> bool:
-        return not self == other
+        # (str's __ne__, which a class that defines its own __eq__ keeps)
+        return not StrEnum.__eq__(self, other)
 
     def __lt__(self, other):
         return self._value_ < _str_of(other, self, '<')
@@ -975,7 +977,8 @@ class IntFlag(Flag):
         return False
 
     def __ne__(self, other: object) -> bool:
-        return not self == other
+        # (int's __ne__, which a class that defines its own __eq__ keeps)
+        return not IntFlag.__eq__(self, other)
 
     def __lt__(self, other):
         return self._value_ < _int_of(other, self, '<')
