@@ -76,6 +76,17 @@ callbacks, a reversed test, an exception edge around it and an escaped parameter
 while writes of another field, global or unrelated class and a store to an escaped
 slot of the function keep the proof.
 
+### Two alpha.1 removals through globals
+
+In the 106 programs added between v0.6.1 and alpha.1
+(`41dffd36201e`, [#1643](https://github.com/den-run-ai/pystachy/issues/1643)),
+two removed checks have open obligations in the before-pass IR. In
+`builtin_dict_basic`, a check of `@g.o` precedes a call to `Opts.scaled`, and
+the unchecked use reloads that global as `%t1207`. In `builtin_list_library`,
+the unchecked use reloads `@g.lines` as `%t923` after another subclass was
+constructed and `Lines.width` ran. A proof must preserve the global's value
+through the intervening calls and writes or establish a new nonnull value.
+
 ## Coverage of compiled code
 
 A sweep on 2026-11-11 at `e25327d` inspected every differential test program and
@@ -156,6 +167,26 @@ or pair load is that box, which also proves the return domains of functions that
 one. IR operand types, container item types, the inspection record and these runtime
 semantics are trusted; payload checks prove member agreement, not numeric ranges.
 
+### Alpha.1 numeric fields, cells and enum tags
+
+Nine function records in the added programs reject a closed-union read. Four
+in `float_field_int` load `union[float,int]` through `field.addr` on `P` or
+`Q` without an established domain. In `float_field_plain`, `Counter.add`
+selects between an instance field and a class default. In `float_return_int`,
+`Square.area` reloads its field. In both cases the inferred domain still
+includes null. Two records in `float_var_int` lack a domain for a load from an
+allocated closure cell or its environment's pointer. These eight tag reads
+need evidence of a nonnull box at the particular load. In `lib_enum_int_store`,
+`_FlagType.__call__` reaches a `Perm` payload at L63 with both `Perm` and
+`int` still possible. The member refinement at that access remains unproved.
+
+Three further reads lack a source domain in the adapter: a variable-index word
+address into a numeric named tuple (`float_field_namedtuple`, `%t430`), a
+`Counter` field address typed `&int` (`float_field_plain`, `%t21`) and a
+`Base` load (`lib_enum_int_store`, `%t620`). The distinctions here come from
+the per-program `unproved` records of `tools/lean_report.py --records`, which
+keep function specializations and distinguish unsupported reads from rejections.
+
 ## Field initialization
 
 `flow.gen_fl_fields` decides which fields of a class get an "is assigned" flag: a read of a
@@ -184,6 +215,26 @@ loaded flag (as `hasattr` loads one) is true, its field was stored: a flag is se
 its field (`setfield`), which each flag store of an object under construction must show.
 Objects that compiled code did not make here (parameters, loads from memory, call results)
 are complete: the function that allocated each let it escape only once complete.
+
+A compiled list or dict subclass starts with four or twelve hidden header
+words. Its constructor copies the built-in header before initializing user
+fields. A machine address into a directly allocated object's named header word
+can feed an immediately following integer-word store when this is its only
+use. Taking that address exposes no user field and gives no field assignment
+credit. The checker still examines the stored value for escaping objects.
+
+In alpha.1 all twelve first field failures across eleven subclass programs
+were at these header addresses. Recognizing the stores proves all field
+obligations in `builtin_dict_{bestrel,gc,override,quoter}` and
+`builtin_list_stack`. The remaining six expose a later boundary:
+`builtin_dict_basic` passes incomplete `self` to `dict.update`;
+`builtin_list_{attrs,gc,library,override,token_list}` pass it to `list.clear`.
+Together the constructors and their callers have 14 rejected function records.
+Their callers also require the constructor's contract. Permitting those calls
+would require a contract for what the runtime can observe during initialization.
+Two independent unsupported records are `getattr_hook_lookup`, whose initializer
+exceeds the 1,024-block limit, and `getattr_hook_unbound`, whose validated
+function contains an unreachable definition (`%t188`).
 
 A variable that a def or lambda takes lives in a cell, a word the function allocates as it
 begins, and each closure's environment holds the cells it takes. A cell is a private slot of

@@ -7,6 +7,7 @@ import PystachyCompanion
 import PystachyAccess
 import PystachyInt
 import PystachyWasmFrame
+import PystachyWasmDispatch
 import PystachyInline
 import PystachyStorage
 import PystachyPipeline
@@ -20,6 +21,7 @@ open Lean in
 run_cmd do
   let allowed := #[``propext, ``Classical.choice, ``Quot.sound]
   for theoremName in #[``PystachyWasmFrame.accepted_frame,
+      ``PystachyWasmDispatch.slot_in_bounds, ``PystachyWasmDispatch.slots_disjoint,
       ``PystachyBoundary.check_iff,
       ``PystachyLayout.checked_projection, ``PystachyLayout.accepted_layout_projection,
       ``PystachyAlias.accepted_reference_roundtrip, ``PystachyAlias.accepted_alias_write,

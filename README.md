@@ -124,9 +124,11 @@ has the full table, startup and memory costs, and reproduction commands.
 
 ## How it works
 
-The experimental [WebAssembly backend](wasm/README.md) can compile typed Python
-snippets directly from typed IR and run them with named tool callbacks in a Node host.
-Python handlers can catch built-in exceptions raised by the snippet or its runtime calls.
+The experimental [WebAssembly backend](wasm/README.md) compiles supported typed Python
+snippets directly from typed IR for Node and Wasmtime. Typed containers can call a
+class's comparison, hash and representation methods. The same function table handles
+typed callbacks, closures, bound methods and plain generator resumes. Python
+handlers can catch exceptions across these calls.
 
 Pystachy compiles the whole program before it runs, including the library modules
 it imports; there is no interpreter fallback. The frontend checks and infers types,
@@ -157,7 +159,7 @@ behavioral differences are listed as [deviations from CPython](https://github.co
 |---|---|---|
 | Values | `int`, `float`, `complex`, `bool`, `str`, `bytes`, `list`, `dict`, `set`, `frozenset`, `tuple`, `bytearray` | `memoryview` |
 | Functions | Closures, lambdas, decorators, `*args` and `**kwargs`, generators | `async` and `await` |
-| Classes | Single inheritance, dataclasses, `NamedTuple`, properties, operator methods, `list` and `dict` as a base | General multiple inheritance, metaclasses, subclasses of other builtin types |
+| Classes | Single inheritance, dataclasses, `NamedTuple`, enum class attributes, properties, operator methods, `list` and `dict` as a base | General multiple inheritance, metaclasses, subclasses of other builtin types |
 | Typing | Inferred locals and returns, generics, closed unions, `T \| None` narrowing | General object unions |
 | Syntax | Comprehensions, f-strings, `with`, `try`/`except`/`finally`, `:=`, bounded `match` | Mapping patterns and class patterns beyond dataclass fields; `except*` |
 | Runtime | Modules and packages, automatic memory management | Native threads, `__del__` finalizers, `eval` and `exec` |

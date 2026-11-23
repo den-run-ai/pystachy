@@ -22,7 +22,9 @@ class WasmSourceTests(unittest.TestCase):
     def test_direct_and_printed_ir_are_byte_identical(self):
         with tempfile.TemporaryDirectory() as directory:
             for case in ("apps/ouro2_hello", "apps/ouro2_classes", "apps/ouro2_queens", "exceptions/exc_uncaught",
-                         "exceptions/exc_class_try", "exceptions/exc_class_exit"):
+                         "exceptions/exc_class_try", "exceptions/exc_class_exit",
+                         "classes/object_containers", "classes/dataclass_hash_keys",
+                         "reflection/callables", "exceptions/exc_class_values", "generators/gen_protocol_noeh"):
                 with self.subTest(case=case):
                     program = ROOT / f"tests/programs/{case}.py"
                     work = Path(directory) / program.stem
@@ -60,7 +62,8 @@ class WasmSourceTests(unittest.TestCase):
             program = work / "test.py"
             wasm = work / "out.wasm"
             fallback = work / "fallback.ll"
-            program.write_text('def numbers():\n    yield "é雪🌲"\nfor n in numbers():\n    print(n)\n', encoding="utf-8")
+            program.write_text('def numbers():\n    try:\n        yield "é雪🌲"\n    finally:\n        print("", end="")\n'
+                               'for n in numbers():\n    print(n)\n', encoding="utf-8")
             result = source_command(program, wasm, fallback)
             self.assertEqual(result.returncode, 3, result.stderr)
             self.assertIn(b"refused:", result.stderr)

@@ -1,0 +1,5 @@
+Color.RED True 11
+GREEN READ
+Permission.READ|WRITE True
+['r', 'g'] True
+[exit 0]

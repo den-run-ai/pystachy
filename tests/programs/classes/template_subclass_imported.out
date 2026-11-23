@@ -1,0 +1,10 @@
+mods: init mods
+mods.shapes: init mods.shapes
+event a 1 False True
+alarm b 2 True True
+local c 3 False True
+tick tick 5
+event t 9 False False
+tick tick 7 True False
+alarm z None
+[exit 0]

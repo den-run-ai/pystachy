@@ -118,34 +118,21 @@ function runner(runtimeSource, cli) {
     }
     const tag = hasHandlers ? new WebAssembly.Tag({ parameters: ["i32"] }) : undefined;
     let program;
-    let handlersActive = false;
+    // The runtime rethrows an escaped exception once to start its uncaught report.
+    // Only that first unwind falls through to C. Python called by the report or
+    // by pys_finish (including atexit) still uses the guest's catchable tag.
+    let reportUnwind = false;
     const runtime = new WebAssembly.Instance(runtimeModule, {
       ...imports,
       codemode: toolImports(tools, () => runtime.exports.memory),
       program: {
         raise(pointer) {
-          if (handlersActive) throw new WebAssembly.Exception(tag, [pointer]);
+          if (reportUnwind) reportUnwind = false;
+          else if (hasHandlers) throw new WebAssembly.Exception(tag, [pointer]);
         },
         init() {
-          if (!hasHandlers) return program.exports.init();
-          const stack = runtime.exports.__stack_pointer;
-          const entryStack = stack.value;
-          runtime.exports.pys_eh_on();
-          let uncaught;
-          handlersActive = true;
-          try {
-            program.exports.init();
-          } catch (error) {
-            if (!(error instanceof WebAssembly.Exception && error.is(tag))) throw error;
-            uncaught = error.getArg(tag, 0);
-          } finally {
-            handlersActive = false;
-          }
-          if (uncaught !== undefined) {
-            // Throwing crossed Wasm and C frames and skipped their stack epilogues.
-            stack.value = entryStack;
-            runtime.exports.pys_throw(uncaught);
-          }
+          if (hasHandlers) runtime.exports.pys_eh_on();
+          program.exports.init();
         },
       },
       env: {
@@ -179,7 +166,22 @@ function runner(runtimeSource, cli) {
       }
     }
     try {
-      return runtime.exports.pys_wasi_run();
+      if (!hasHandlers) return runtime.exports.pys_wasi_run();
+      const stack = runtime.exports.__stack_pointer;
+      const entryStack = stack.value;
+      let uncaught;
+      for (;;) {
+        try {
+          if (uncaught === undefined) return runtime.exports.pys_wasi_run();
+          reportUnwind = true;
+          runtime.exports.pys_throw(uncaught); // noreturn
+          throw new Error("pys_throw returned from uncaught exception handling");
+        } catch (error) {
+          if (!(error instanceof WebAssembly.Exception && error.is(tag))) throw error;
+          uncaught = error.getArg(tag, 0);
+          stack.value = entryStack; // unwinding skipped the C stack epilogues
+        }
+      }
     } catch (error) {
       return error === exit ? status : trap(error);
     }

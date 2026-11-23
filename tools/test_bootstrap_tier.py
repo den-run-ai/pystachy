@@ -16,6 +16,7 @@ import unittest
 from unittest.mock import patch
 
 import check_bootstrap_tier
+from verify_doubles import MAKE_SCRIPTS, STAGE, copy_scripts
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.pystachy_compiler import driver
@@ -133,16 +134,17 @@ class MakeBootstrapControls(unittest.TestCase):
                 check_bootstrap_tier.make_bootstrap(root, environment(root), log)
             self.assertEqual((root / "pystachy").read_text(), "rebuilt\n")
 
-    def run_make(self, tier=None, mismatch=""):
+    def run_make(self, tier=None, mismatch="", attempts=1):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             source = (ROOT / "Makefile").read_text().split("\n# FILES:", 1)[0]
             (root / "Makefile").write_text(source)
+            copy_scripts(root, MAKE_SCRIPTS)
             (root / "lib").mkdir()
             (root / "lib/_pystachy_cache.py").touch()
             (root / "runtime.c").touch()
             (root / "runtime.py").touch()
-            fake = f"#!{sys.executable}\n" + '''import json
+            fake = f"#!{sys.executable}\n" + STAGE + '''import json
 import os
 from pathlib import Path
 import sys
@@ -151,17 +153,15 @@ output = Path(args[args.index("-o") + 1])
 with open("commands.jsonl", "a") as log:
     log.write(json.dumps([sys.argv[0], args[0], os.getenv("PYSTACHY_AOT_OPT")]) + "\\n")
 if args[0] == "build":
-    output.write_bytes(Path(__file__).read_bytes())
-    output.chmod(0o755)
     Path(args[args.index("--emit-ir") + 1]).write_text("compiler witness\\n")
-else:
-    text = "compiler witness\\n" if args[0] == "ir" else "runtime witness\\n"
-    if os.getenv("BOOTSTRAP_TEST_MISMATCH") == output.name:
-        text = "wrong witness\\n"
-    output.write_text(text)
+text = "compiler witness\\n" if args[0] == "ir" else "runtime witness\\n"
+if os.getenv("BOOTSTRAP_TEST_MISMATCH") == output.name:
+    text = "wrong witness\\n"
+stage(args, attempts=int(os.environ["BOOTSTRAP_TEST_ATTEMPTS"]), text=text)
 '''
             (root / "pystachy.py").write_text(fake)
-            env = environment(root) | {"PYSTACHY_AOT_OPT": "0", "BOOTSTRAP_TEST_MISMATCH": mismatch}
+            env = environment(root) | {"PYSTACHY_AOT_OPT": "0", "BOOTSTRAP_TEST_MISMATCH": mismatch,
+                                       "BOOTSTRAP_TEST_ATTEMPTS": str(attempts)}
             command = ["make", "pystachy", f"PY={sys.executable}"]
             if tier is not None:
                 command.append("BOOTSTRAP_AOT_OPT=" + tier)
@@ -186,6 +186,14 @@ else:
                 self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertFalse(installed)
 
+    def test_one_inference_attempt_is_required_before_installing_final_compiler(self):
+        # (stage 3 compiles the compiler's source again: a restart there repeats every frontend phase)
+        result, calls, installed = self.run_make(attempts=3)
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("took 3 type-inference attempts", result.stderr)
+        self.assertEqual([call[1] for call in calls], ["build", "build", "ir"])
+        self.assertFalse(installed)
+
 
 @unittest.skipUnless(os.environ.get("PYSTACHY_TEST_LLVM"), "set PYSTACHY_TEST_LLVM for real tier builds")
 class RealTierBuilds(unittest.TestCase):
@@ -200,7 +208,8 @@ class RealTierBuilds(unittest.TestCase):
                 source.write_text(program)
                 oracle = subprocess.run([sys.executable, str(source)], env=env,
                                         capture_output=True, check=True, timeout=10)
-                raw = subprocess.run(compiler + ["ir", str(source)], cwd=ROOT, env=env,
+                # (a build gives the program's functions line tables, which ir gives where asked)
+                raw = subprocess.run(compiler + ["ir", str(source)], cwd=ROOT, env=env | {"PYSTACHY_DEBUG_LINES": "1"},
                                      capture_output=True, check=True, timeout=30).stdout
                 for tier in ("0", "1", "2"):
                     with self.subTest(program=index, tier=tier):

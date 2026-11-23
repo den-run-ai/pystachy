@@ -1,0 +1,43 @@
+Money.__eq__(Token)
+Money.__eq__(Token)
+True False
+Money.__eq__(Token)
+Money.__eq__(Token)
+False True
+Price.__eq__
+Price.__ne__
+False True
+Price.__eq__
+Price.__ne__
+True False
+Money.__eq__(Token)
+Money.__eq__(Token)
+Money.__eq__(other)
+Price.__eq__
+Price.__ne__
+True False False False False
+False True False True
+Money.__eq__(Token)
+Money.__eq__(Token)
+Price.__eq__
+True True False False True
+Money.__eq__(Token)
+Price.__ne__
+False True True
+token 1
+money 1
+Money.__eq__(Token)
+token 1
+money 2
+Money.__eq__(Token)
+True True
+Money.__eq__(Token)
+equal
+Money.__eq__(Token)
+Money.__eq__(Token)
+[False, True]
+Money.__eq__(Token)
+Money.__eq__(Token)
+Money.__eq__(Token)
+2
+[exit 0]

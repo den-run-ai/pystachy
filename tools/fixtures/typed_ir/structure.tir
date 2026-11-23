@@ -1,0 +1,103 @@
+; Structured control flow (src/pystachy_compiler/structure.py, ircheck.check_structure): a
+; function's flow is reducible, each cycle entered at its head alone, and a loop record names
+; blocks of its function, with its body, step and tests in its loop and its exit out of it.
+; Each function without an expected error verifies; tools/test_typed_ir_text.py checks that a
+; structured backend can find each loop of the accepted functions at its record's head.
+
+function @a_cycle_with_two_entries(c: bool) -> None {
+entry:
+  cbr(bool %a0) -> L1, L2
+L1:
+  br -> L2
+L2:
+  ; expected-error {{a branch to L1, which closes a cycle that L1 does not dominate: control flow that is not structured}}
+  br -> L1
+}
+
+function @a_loop_record_that_names_no_block(n: int) -> None {
+entry:
+  ; expected-error {{the loop at L1 names L9, which is no block of it}}
+  br -> L1
+L1:
+  %t2 = num.cmp < (int %a0, int 10) : bool
+  cbr(bool %t2) -> L3, L4
+L3:
+  br -> L1
+L4:
+  ret.none
+loop kind=while mode="" head=L1 body=L3 step=L1 exit=L9 tests=[] indices=[]
+}
+
+function @a_loop_record_whose_body_is_out_of_its_loop(n: int) -> None {
+entry:
+  br -> L1
+L1:
+  ; expected-error {{the loop at L1 names L4, which is not one of its blocks}}
+  %t2 = num.cmp < (int %a0, int 10) : bool
+  cbr(bool %t2) -> L3, L4
+L3:
+  br -> L1
+L4:
+  ret.none
+loop kind=while mode="" head=L1 body=L4 step=L1 exit=L4 tests=[] indices=[]
+}
+
+function @a_loop_record_whose_exit_is_in_its_loop(n: int) -> None {
+entry:
+  br -> L1
+L1:
+  ; expected-error {{the loop at L1 exits to L3, one of its own blocks}}
+  %t2 = num.cmp < (int %a0, int 10) : bool
+  cbr(bool %t2) -> L3, L4
+L3:
+  br -> L1
+L4:
+  ret.none
+loop kind=while mode="" head=L1 body=L3 step=L1 exit=L3 tests=[] indices=[]
+}
+
+; ---- functions the verifier accepts
+
+function @a_loop_entered_after_a_test_that_may_skip_it(n: int) -> int {
+entry:
+  %t1 = num.cmp > (int %a0, int 0) : bool
+  cbr(bool %t1) -> L2, L5
+L2:
+  %t3 = num.cmp < (int %a0, int 100) : bool
+  cbr(bool %t3) -> L4, L5
+L4:
+  br -> L2
+L5:
+  ret(int 0)
+loop kind=while mode="" head=L2 body=L4 step=L2 exit=L5 tests=[] indices=[]
+}
+
+function @a_loop_whose_body_always_leaves(n: int) -> int {
+entry:
+  br -> L1
+L1:
+  %t2 = num.cmp < (int %a0, int 10) : bool
+  cbr(bool %t2) -> L3, L4
+L3:
+  ret(int 1)
+L4:
+  ret(int 0)
+loop kind=while mode="" head=L1 body=L3 step=L1 exit=L4 tests=[] indices=[]
+}
+
+function @nested_loops(n: int) -> None {
+entry:
+  br -> L1
+L1:
+  %t2 = num.cmp < (int %a0, int 10) : bool
+  cbr(bool %t2) -> L3, L6
+L3:
+  %t4 = num.cmp < (int %a0, int 5) : bool
+  cbr(bool %t4) -> L5, L1
+L5:
+  br -> L3
+L6:
+  ret.none
+loop kind=while mode="" head=L1 body=L3 step=L1 exit=L6 tests=[] indices=[]
+loop kind=while mode="" head=L3 body=L5 step=L3 exit=L1 tests=[] indices=[]
+}
