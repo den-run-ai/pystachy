@@ -278,6 +278,8 @@ static void marked_layout(Dict *a, Dict *b) {
 }
 /* runtime.py's hash of a key and its lookup, as one step: its idx slot or -1, and where to insert it */
 static I dhfind(Dict *d, I k, uint64_t *hp, I *free) { *hp = (uint64_t)pys_rt_dhash(d, k); return dfind(d, k, *hp, free); }
+static I dpfind(Dict *d, I k) { I r = pys_rt_dpfind(d, k); return r >= 0 ? r : -1; }   /* d.pop(k)'s lookup */
+static I dtake(Dict *d, I i) { return pys_rt_dtake(d, i); }   /* the entry in idx slot i, deleted: its value */
 static void marked_query(Dict *reference, I key, const char *desc) {
   uint64_t expected_hash = (uint64_t)hitem(key, desc), actual_hash = 0;
   I expected_free = -1, actual_free = -1;

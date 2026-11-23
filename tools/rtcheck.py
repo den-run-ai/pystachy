@@ -715,14 +715,11 @@ def fuzz_sets():
                     got, want = call("has", a, x), ("ok", int(x in a.ref))
                 elif op == "pop":
                     def pop():
-                        # (a set of ints past 64 bits: runtime.c's pys_set_big_pop, which takes the slot's two words)
+                        # (a set of ints past 64 bits: pys_set_big_pop, whose result is a promoting int's two words)
                         if mode != "big":
                             return C.element(rt.pys_set_pop(a.ptr), kind)
-                        i = rt.pys_rt_set_pop_slot(a.ptr)
-                        m = rt.pys_rt_sbig(a.ptr, i).addr
-                        k = C.w(C.w(HEAP.of(a.ptr) + 40) + 8 * i)
-                        rt.pys_rt_set_take(a.ptr, i)
-                        return C.mpz[m] if m else k
+                        k, m = rt.pys_set_big_pop(a.ptr)
+                        return C.mpz[m.addr] if m.addr else k
                     got = outcome(pop)
                     if a.exact or got[0] != "ok":
                         want = outcome(a.ref.pop)
@@ -1062,15 +1059,9 @@ def fuzz_dicts():
                     got, want = outcome(lambda: int(entry(d, x) >= 0)) if mode == "big" else outcome(rt.pys_dict_has, d.ptr, w), ("ok", int(x in d.ref))
                 elif op in ("pop", "pop_default"):
                     def big_pop():
-                        # runtime.c's pys_dict_bkey_big_pop, from runtime.py's steps: the lookup, the value's Mpz, the entry taken
-                        i = rt.pys_rt_dbfind(d.ptr, m, rt.pys_rt_hbig(d.ptr, m)) if m.addr else rt.pys_rt_dpfind(d.ptr, w)
-                        if i < 0:
-                            if op == "pop":
-                                raise KeyError(x)
-                            return -7
-                        b = rt.pys_rt_dbig(d.ptr, C.i32(C.w(HEAP.of(d.ptr) + 56) + 4 * i) - 1).addr
-                        taken = rt.pys_rt_dtake(d.ptr, i)
-                        return C.mpz[b] if b else taken
+                        # pys_dict_bkey_big_pop: by a promoting int key, a promoting int's two words (the default's)
+                        lo, b = rt.pys_dict_bkey_big_pop(d.ptr, w, m, int(op == "pop_default"), -7, _rt.nil())
+                        return C.mpz[b.addr] if b.addr else lo
                     if mode == "big":
                         got = outcome(big_pop)
                     elif op == "pop":
@@ -1086,9 +1077,13 @@ def fuzz_dicts():
                     got = outcome(rt.pys_dict_big_del, d.ptr, w, m) if mode == "big" else outcome(take)
                     want = outcome(delete)
                 elif op == "setdefault":
-                    if mode == "big":
-                        continue
-                    got, want = outcome(rt.pys_dict_setdefault, d.ptr, w, v), outcome(d.ref.setdefault, x, v)
+                    def big_setdefault():
+                        # pys_dict_bkey_big_setdefault: the value there, or the default stored, as a promoting int
+                        vw, vm = vword(v)
+                        lo, b = rt.pys_dict_bkey_big_setdefault(d.ptr, w, m, vw, vm)
+                        return C.mpz[b.addr] if b.addr else lo
+                    got = outcome(big_setdefault) if mode == "big" else outcome(rt.pys_dict_setdefault, d.ptr, w, v)
+                    want = outcome(d.ref.setdefault, x, v)
                 elif op == "popitem":
                     def popitem():
                         t = (rt.pys_dict_big_popitem if mode == "big" else rt.pys_dict_popitem)(d.ptr)

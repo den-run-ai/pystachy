@@ -4,8 +4,8 @@ from src.pystachy_compiler.diagnostics import fail, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val, slot_register, tmpname, one_num
 from src.pystachy_compiler.symbols import ClassInfo
 from src.pystachy_compiler.lower_module import const_slot, struct_types
-from src.pystachy_compiler.specs import CHECKED, CLASSREC_LL, COMPLEXC, CONTAINER_HEADERS, DYNTYPE_LL, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, RTRECORDS, RT_TBAA, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
-from src.pystachy_compiler.utils import atomic_dict, atomic_list, gelem, generator_identity, generator_slots, identity_abi, numeric_identity, is_dict, is_tuple, lt, rt_record_ll, selem, takes_self, targs, tslots
+from src.pystachy_compiler.specs import RTSYM, CHECKED, CLASSREC_LL, COMPLEXC, CONTAINER_HEADERS, DYNTYPE_LL, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, RTRECORDS, RT_TBAA, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
+from src.pystachy_compiler.utils import two_words, atomic_dict, atomic_list, gelem, generator_identity, generator_slots, identity_abi, numeric_identity, is_dict, is_tuple, lt, rt_record_ll, selem, takes_self, targs, tslots
 
 
 def gen_lower(self, fn: IFn) -> None:
@@ -26,7 +26,7 @@ def gen_lower(self, fn: IFn) -> None:
     # @v.<its symbol>, returning them as an LLVM aggregate, and its own symbol is a wrapper below
     n = self.vrets.get(f.ll, 0)
     agg = vagg(n, f.ll in self.vconst)
-    self.vtuples = fresh_rets(fn) if n > 0 else {}
+    self.vtuples = fresh_rets(fn, two_words(f, self.rtmode)) if n > 0 else {}
     self.vslots = {}
     self.vaggs = {}
     # closed recursion (Gen.recursionscope): the body is @r.<its symbol>, whose last argument is
@@ -35,13 +35,16 @@ def gen_lower(self, fn: IFn) -> None:
     cold = " cold noinline" if raises_only(fn) or (self.rtmode and f.cold) else ""  # (or runtime mode's @_rt.cold)
     if cold == "" and self.rtmode and f.inlining != "":
         cold = " noinline" if f.inlining == "noinline" else " alwaysinline"  # (@_rt.noinline, @_rt.inline)
+    two = n > 0 and two_words(f, self.rtmode)
+    outer = cold if two else ""  # (a two-word result's wrapper is what callers call: its attributes are the function's)
+    cold = "" if two else cold
     name = "@v." + f.ll[1:] if n > 0 else "@r." + f.ll[1:] if rd else f.ll
     scope = self.source_lines.function(f.name, name, f.node.line)
     debug = " !dbg " + scope if scope != "" else ""
     # (a generator function is a coroutine that LLVM's coroutine passes split: see gen.start)
     # (a function that only raises is an error path: cold, and kept out of its callers, so that
     # what it formats does not keep LLVM from inlining the checks that call it: raises_only)
-    o.append(f"define {'' if f.export and not rd else 'internal '}{agg if n > 0 else lt(f.ret)} {name}({', '.join(ps + ['i64 %rd'] if rd else ps)}){' presplitcoroutine' if fn.coro else ''}{cold}{' personality ptr @pys_personality' if fn.pads else ''}{debug} {{")
+    o.append(f"define {'' if f.export and not rd and n == 0 else 'internal '}{agg if n > 0 else lt(f.ret)} {name}({', '.join(ps + ['i64 %rd'] if rd else ps)}){' presplitcoroutine' if fn.coro else ''}{cold}{' personality ptr @pys_personality' if fn.pads else ''}{debug} {{")
     o.append("entry:")
     prologue = len(o)
     self.ftags = {}  # (its own numbers: another function's %tN is no field address of this one)
@@ -111,7 +114,20 @@ def gen_lower(self, fn: IFn) -> None:
             o.append(f"  %r = call {lt(f.ret)} @r.{f.ll[1:]}({', '.join(forwarded)})")
             o.append(f"  ret {lt(f.ret)} %r")
         o.append("}")
-    if n > 0:
+    if two:
+        # a two-word result (two_words): the symbol the runtime exports returns the slots as the
+        # {i64, ptr} that RUNTIME's int+ is, the second a pointer
+        o.append(f"define {{i64, ptr}} {f.ll}({', '.join(ps)}){outer} {{")
+        o.append("entry:")
+        o.append(f"  %v = call {agg} @v.{f.ll[1:]}({', '.join([f'{lt(f.ptypes[j])} %a{j}' for j in fn.ps])})")
+        o.append(f"  %v0 = extractvalue {agg} %v, 0")
+        o.append(f"  %v1 = extractvalue {agg} %v, 1")
+        o.append("  %p1 = inttoptr i64 %v1 to ptr")
+        o.append("  %r0 = insertvalue {i64, ptr} undef, i64 %v0, 0")
+        o.append("  %r1 = insertvalue {i64, ptr} %r0, ptr %p1, 1")
+        o.append("  ret {i64, ptr} %r1")
+        o.append("}")
+    elif n > 0:
         # its symbol, for every other use: the tuple, made from the slots the body returns
         o.append(f"define internal ptr {f.ll}({', '.join(ps)}) {{")
         o.append("entry:")
@@ -183,9 +199,17 @@ def gen_tuple_rets(self) -> None:
     # never seen. A function that such a call calls is lowered to return the slots (gen_lower);
     # the others are lowered as before
     fns: dict[str, int] = {}
+    two: dict[str, bool] = {}
     for fn in self.fns:
         # (one that returns constant tuples alone returns their addresses, which need no tuple made)
-        rets = fresh_rets(fn)
+        rets = fresh_rets(fn, two_words(fn.f, self.rtmode))
+        if two_words(fn.f, self.rtmode):
+            # (runtime mode's result of two words is always returned by value: its body must make
+            # the tuple at each return)
+            if len(rets) == 0 or len([v for v in rets if v.startswith("@tc.")]) > 0:
+                fail(f"{fn.f.name}() returns two words (RUNTIME's {RTSYM[fn.f.ll[1:]]} is a promoting int): each of its returns must make the tuple of them", fn.f.node.line)
+            two[fn.f.ll] = True
+            self.vrets[fn.f.ll] = tslots(fn.f.ret)
         if len([v for v in rets if not v.startswith("@tc.")]) > 0:
             fns[fn.f.ll] = tslots(fn.f.ret)
             if len([v for v in rets if v.startswith("@tc.")]) > 0:
@@ -204,6 +228,8 @@ def gen_tuple_rets(self) -> None:
             if v not in used:
                 self.vcalls[f"{fn.f.ll} {v}"] = True
                 self.vrets[calls[v]] = fns[calls[v]]
+            elif calls[v] in two:
+                fail(f"{fn.f.name}() uses the result of {calls[v][1:]}() as a tuple: a result of two words may only be unpacked", fn.f.node.line)
 
 def gen_key_kinds(self) -> None:
     # The key kinds that lowering stores for the dicts and sets of holes, whose types a later use
@@ -223,13 +249,14 @@ def gen_key_kinds(self) -> None:
                     if t != "" and t not in self.builtkinds:
                         self.builtkinds[t] = self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t), True)
 
-def fresh_rets(fn: IFn) -> dict[str, bool]:
+def fresh_rets(fn: IFn, two: bool = False) -> dict[str, bool]:
     # the tuples that fn returns (tupleret), if each is made by an alloc.fixed of its ret's block,
     # of fn's fixed tuple type, and nothing but tuple.stores and the ret reach it, or is a constant
     # tuple of that type (@tc.N, which any code may read: Gen.tuple_const); else none. Not a
-    # generator's (its returns are gen.ret), nor an exported function's, whose ABI C or CPython use
+    # generator's (its returns are gen.ret), nor an exported function's, whose ABI C or CPython use,
+    # but runtime mode's result of two words (two: two_words), which that ABI returns by value
     t = fn.f.ret
-    if fn.coro or fn.f.export or fn.f.pyexport or not is_tuple(t) or not t.endswith("]") or len(targs(t)) == 0 or "..." in targs(t) or "" in targs(t):
+    if fn.coro or (fn.f.export and not two) or fn.f.pyexport or not is_tuple(t) or not t.endswith("]") or len(targs(t)) == 0 or "..." in targs(t) or "" in targs(t):
         return {}
     rets: dict[str, bool] = {}
     for b in fn.blocks:

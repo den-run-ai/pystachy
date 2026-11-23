@@ -4979,6 +4979,16 @@ def pys_rt_set_take(s: _rt.Ptr, i: int) -> None:
 
 
 @_rt.unchecked
+def pys_set_big_pop(s: _rt.Ptr) -> tuple[int, _rt.Ptr]:
+    # s.pop() of a set of ints, as a promoting int: its two words, by value
+    i = pys_rt_set_pop_slot(s)
+    m = pys_rt_sbig(s, i)
+    k = _rt.word(_rt.getp(s, "Set.keys"), i)
+    pys_rt_set_take(s, i)
+    return (k if _rt.null(m) else 0), m
+
+
+@_rt.unchecked
 def pys_set_pop(s: _rt.Ptr) -> int:
     i = pys_rt_set_pop_slot(s)
     if not _rt.null(pys_rt_sbig(s, i)):
@@ -6118,6 +6128,85 @@ def pys_dict_entry_del(d: _rt.Ptr, e: int) -> None:
     # A preceding lookup found this entry; no user operation occurs between that lookup and
     # deletion. Its idx slot is found without hashing or comparing the key again
     pys_rt_dtake(d, pys_rt_dslot(d, e))
+
+
+@_rt.unchecked
+def dict_take_big(d: _rt.Ptr, i: int) -> tuple[int, _rt.Ptr]:
+    # the promoting int of the entry in idx slot i, which is deleted
+    b = pys_rt_dbig(d, _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1)
+    v = pys_rt_dtake(d, i)
+    return (v if _rt.null(b) else 0), b
+
+
+@_rt.unchecked
+def dict_value_big(d: _rt.Ptr, i: int) -> tuple[int, _rt.Ptr]:
+    # and of the entry in idx slot i, which stays
+    e = _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1
+    b = pys_rt_dbig(d, e)
+    return (_rt.word(_rt.getp(d, "Dict.vals"), e) if _rt.null(b) else 0), b
+
+
+@_rt.unchecked
+def pys_dict_big_pop(d: _rt.Ptr, k: int, has: int, lo: int, m: _rt.Ptr) -> tuple[int, _rt.Ptr]:
+    # d.pop(k) (has: d.pop(k, {lo, m})) of a dict of ints, whose value may be past 64 bits: the
+    # promoting int, by value
+    i = pys_rt_dpfind(d, k)
+    if i < 0:
+        if has == 0:
+            pys_rt_dict_keyerr(d, k)
+        return lo, m
+    v, b = dict_take_big(d, i)
+    return v, b
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_big_setdefault(d: _rt.Ptr, k: int, lo: int, m: _rt.Ptr) -> tuple[int, _rt.Ptr]:
+    # d.setdefault(k, {lo, m}): one hash and one lookup, as CPython's
+    h = pys_rt_dhash(d, k)
+    i = pys_rt_dfind(d, k, h)
+    if i >= 0:
+        v, b = dict_value_big(d, i)
+        return v, b
+    pys_rt_dadd(d, k, h, lo if _rt.null(m) else -9223372036854775807 - 1, i)
+    if not _rt.null(m):
+        pys_rt_dbig_make(d)
+        _rt.put(_rt.getp(d, "Dict.vb"), _rt.get(d, "Dict.n") - 1, _rt.addr(m))
+    return lo, m
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_bkey_big_pop(d: _rt.Ptr, klo: int, km: _rt.Ptr, has: int, lo: int, m: _rt.Ptr) -> tuple[int, _rt.Ptr]:
+    # the same by a promoting int key {klo, km}: one that fits as theirs; past 64 bits, by its Mpz
+    if _rt.null(km):
+        v, b = pys_dict_big_pop(d, klo, has, lo, m)
+        return v, b
+    i = pys_rt_dbfind(d, km, pys_rt_hbig(d, km))
+    if i < 0:
+        if has == 0:
+            pys_rt_bkeyerr(km)
+        return lo, m
+    v, b = dict_take_big(d, i)
+    return v, b
+
+
+@_rt.noinline
+@_rt.unchecked
+def pys_dict_bkey_big_setdefault(d: _rt.Ptr, klo: int, km: _rt.Ptr, lo: int, m: _rt.Ptr) -> tuple[int, _rt.Ptr]:
+    if _rt.null(km):
+        v, b = pys_dict_big_setdefault(d, klo, lo, m)
+        return v, b
+    h = pys_rt_hbig(d, km)
+    i = pys_rt_dbfind(d, km, h)
+    if i >= 0:
+        v, b = dict_value_big(d, i)
+        return v, b
+    e = pys_rt_dbadd(d, km, h, lo if _rt.null(m) else -9223372036854775807 - 1, i)
+    if not _rt.null(m):
+        pys_rt_dbig_make(d)
+        _rt.put(_rt.getp(d, "Dict.vb"), e, _rt.addr(m))
+    return lo, m
 
 
 @_rt.noinline

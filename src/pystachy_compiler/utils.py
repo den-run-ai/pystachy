@@ -36,6 +36,7 @@ from src.pystachy_compiler.specs import (
     SPECSHOW,
     RTPTR,
     RTRECORDS,
+    RTSYM,
 )
 from src.pystachy_compiler.syntax import Node
 
@@ -335,6 +336,15 @@ def rt_field(spec: str) -> list[str]:
         if fields[j] == spec[dot + 1:] or fields[j] == spec[dot + 1:] + "*":
             return [spec[:dot], str(j), "ptr" if fields[j].endswith("*") else "int"]
     return []
+
+
+def two_words(f: FnInfo, rtmode: bool) -> bool:
+    # runtime mode's result of two words: a function of runtime.py that the runtime exports and whose
+    # RUNTIME result is a promoting int (int+, an LLVM {i64, ptr}), declared as tuple[int, _rt.Ptr]. It
+    # returns the two by value, as the C function it replaces returned its struct of them: its body
+    # makes the tuple at each return (tupleret: lowering returns the slots), and runtime.py calls it
+    # only to unpack them
+    return rtmode and f.export and f.ret == "tuple[int," + RTPTR + "]" and f.ll[1:] in RTSYM and rtsig(RTSYM[f.ll[1:]])[0] == BIG
 
 
 def rt_subset(k: str, ts: list[str]) -> str:

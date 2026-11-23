@@ -81,6 +81,21 @@ class Decorators(unittest.TestCase):
                 self.assertEqual(attributes(ir, name), ["noinline"])
         self.assertEqual(attributes(ir, "f.set_big_put"), ["cold", "noinline"])
 
+    def test_a_result_of_two_words_is_returned_by_value(self):
+        # RUNTIME's int+ results: the exported symbol returns {i64, ptr}, and its body, internal,
+        # the tuple's two slots (tupleret); no tuple is allocated for it
+        with tempfile.TemporaryDirectory() as tmp:
+            ir = compile_runtime(ROOT / "runtime.py", tmp)
+        for name in ("pys_set_big_pop", "pys_dict_big_pop", "pys_dict_big_setdefault", "pys_dict_bkey_big_pop", "pys_dict_bkey_big_setdefault"):
+            with self.subTest(name):
+                self.assertRegex(ir, r"(?m)^define \{i64, ptr\} @" + name + r"\(")
+                self.assertRegex(ir, r"(?m)^define internal \{i64, i64\} @v\." + name + r"\(")
+                body = ir[ir.index("@v." + name + "("):]
+                body = body[: body.index("\n}\n")]
+                self.assertNotIn("@pys_alloc(i64 16)", body)
+        self.assertEqual(attributes(ir, "pys_dict_bkey_big_pop"), ["noinline"])
+        self.assertEqual(attributes(ir, "v.pys_dict_bkey_big_pop"), [])
+
     def test_a_dict_lookup_has_its_hash_inline_and_its_probe_out_of_line(self):
         # runtime.c's shape: the hash and the choice of probe are a copy in each entry point, and
         # the probes of int and str keys are functions of their own

@@ -292,6 +292,14 @@ A function with a result whose loops only a `return` leaves ends in a `return` t
 never reached. Without it the compiler raises for the missing result, and that raise
 would give the function an `R` it does not have.
 
+A runtime function whose `RUNTIME` result is a promoting int (`int+`, an LLVM
+`{i64, ptr}`) is declared `-> tuple[int, _rt.Ptr]`. It returns its two words by value,
+as the C function it replaces returned its struct: each `return` makes the tuple, which
+the compiler returns as its slots (the same lowering that returns a fresh tuple to a
+caller that only unpacks it), and the exported symbol turns the second into a pointer.
+`runtime.py` may call such a function only to unpack its result; the compiler rejects
+any other use, and a `return` of a tuple that the function did not make there.
+
 `runtime.c` keeps what only it can provide: `pys_alloc` and `pys_alloc_atomic`, the page
 map's answer to whether an array is scanned, the addresses of its static sentinels and the
 opt-in test. `runtime.py` declares each as an external function. The runtime's `-O2`
@@ -505,7 +513,7 @@ container code move; the table gives the state and the order.
 | Unicode and other constant tables | 1,390 | Stay as data; `runtime.py` reads them through pure helpers. |
 | Lists | 720 | Next: the identity companion's entry points, `min`/`max`, then the sort. |
 | Strings | 620 | Slices, indexed text access and its hints, `chr`/`ord`, float text. Float formatting and parsing stay with libc. |
-| Keys by descriptor: their hashes, equality and probes | 490 | With the walks. The tables of sets and dicts are `runtime.py`'s; four dict entry points wait for a result of two words. |
+| Keys by descriptor: their hashes, equality and probes | 460 | With the walks. The tables of sets and dicts, and their entry points, are `runtime.py`'s. |
 | Generic `repr`, equality and ordering | 750 | Next: walks of a value by its type descriptor. |
 | Dynamic values | 1,230 | After the walks: boxes, dispatch and the `Any` operators. |
 | Promoting ints and `math` | 930 | Last: needs `mpz/` beside it. libm wrappers keep their LLVM-specific guards. |
@@ -519,7 +527,8 @@ decides its place in the order:
 | The checks moved with the code | The identity companion's entry points: `check_lean_companion.py` pins their text, and `test_runtime_list_identity.py` their cost, in `runtime.c`. |
 | The address of a static | Text indexing (its position hints and the one-byte strs), the sentinels, dynamic values (each builtin type's descriptor and the small ints' boxes). Accessor functions stand in today. |
 | A record in a local | The sort's merge state, and the buffer that `repr` and error messages grow. |
-| A result of two words | Promoting ints, which return a 64-bit part and an `Mpz`: their arithmetic, and the dict and set entry points that return one. |
 | A word read at any alignment | The byte scans that test eight or 32 bytes at a time. |
 
-Named integer constants at module level would also replace the repeated literals.
+A result of two words, which promoting ints return (a 64-bit part and an `Mpz`), runtime
+mode has: the dict and set entry points that return one are `runtime.py`'s. Named integer
+constants at module level would also replace the repeated literals.

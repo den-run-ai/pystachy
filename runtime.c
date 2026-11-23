@@ -2801,10 +2801,9 @@ static int dlive(Dict *d, I e) {
 }
 /* A value past 64 bits of a dict of ints holds -2**63 in its slot, as a list's item does, and its
    Mpz in the entry's word of vb, an array as long as the entries' that the collector scans, which
-   the first such value makes (dbig_make); every other entry's word is null, and every store of a
+   the first such value makes (runtime.py's pys_rt_dbig_make); every other entry's word is null, and every store of a
    value clears its entry's word (dbig_clear). Compiled code reads the Mpz where it reads -2**63
    (pys_dict_big_val) */
-static void dbig_make(Dict *d) { if (!d->vb) d->vb = pys_alloc(d->size * 2 / 3 * 8); }
 static Mpz *dbig(Dict *d, I e) { return d->vb && d->vals[e] == INT64_MIN && opt_in() ? (Mpz *)d->vb[e] : NULL; }
 /* and a key past 64 bits of a dict of int keys holds -2**63 in its slot, and its Mpz in the entry's
    word of kb, which the first such key makes (dbput), as vb holds a value's; its hash is hbig's
@@ -4256,15 +4255,14 @@ __attribute__((noinline)) static I dmoved(Dict *d, I e) {
    slot an insertion of the key takes. What it asks of this file follows: the hash of a key that a
    descriptor describes (pys_rt_hobj), the probes of such keys (pys_rt_dfind_obj), the KeyError,
    whose text is a repr, and the count of the slots that probes visit (pys_rt_probe: DICT_PROBE,
-   which is nothing in the runtime and tools/dictprobe.c's counter there) */
+   which is nothing in the runtime and tools/dictprobe.c's counter there). The entry points that
+   return a promoting int's two words are runtime.py's too */
 I pys_rt_dhash(Dict *d, I k);                       /* hsh of d's key k */
 I pys_rt_dfind(Dict *d, I k, I h);                  /* k's idx slot, its hash h, or below zero */
 I pys_rt_dbfind(Dict *d, Mpz *m, I h);              /* and of a key past 64 bits, its Mpz m */
 I pys_rt_dempty(Dict *d, I h);                      /* find_empty_slot */
 I pys_rt_dslot(Dict *d, I e);                       /* the idx slot of live entry e */
 I pys_rt_dpfind(Dict *d, I k);                      /* d.pop(k)'s lookup */
-void pys_rt_dadd(Dict *d, I k, I h, I v, I r);      /* k, which d has not, where its lookup's result r says */
-I pys_rt_dbadd(Dict *d, Mpz *m, I h, I v, I r);
 I pys_rt_dset(Dict *d, I k, I h, I v);              /* d[k] = v, k's hash h: the entry */
 I pys_rt_dtake(Dict *d, I i);                       /* the value of the entry in idx slot i, which is deleted */
 void pys_rt_dbuild(Dict *d, Dict *src, I size);     /* d := src's items in a table of this size, holes dropped */
@@ -4310,10 +4308,8 @@ static I dbfind(Dict *d, Mpz *m, uint64_t h, I *free) {
   if (free && r <= -2) *free = -2 - r;
   return -1;
 }
-static inline I dpfind(Dict *d, I k) { I r = pys_rt_dpfind(d, k); return r >= 0 ? r : -1; }
 static inline I dempty(Dict *d, uint64_t h) { return pys_rt_dempty(d, (I)h); }
 static inline I entry(Dict *d, I k) { return pys_dict_find(d, k); }
-static inline I dtake(Dict *d, I i) { return pys_rt_dtake(d, i); }
 static inline I dset(Dict *d, I k, uint64_t h, I v) { return pys_rt_dset(d, k, (I)h, v); }
 static inline void build(Dict *d, Dict *src, I size) { pys_rt_dbuild(d, src, size); }
 static inline void retable(Dict *r, Dict *d) { pys_rt_dretable(r, d); }
@@ -4399,39 +4395,6 @@ static _Noreturn NOMERGE void bkeyerr(Mpz *m) {   /* the KeyError of a dict's ke
   Buf b = {0}; put(&b, "KeyError: ", 10);
   if (t) put(&b, t->s, t->len); else put(&b, "<exception str() failed>", 24);
   put(&b, "", 1); pys_fail(b.p);
-}
-/* The results of two words, a promoting int's {lo, hi}, which runtime mode cannot give yet: d.pop(k)
-   (has: d.pop(k, {lo, m})) and d.setdefault(k, {lo, m}) of a dict of ints, whose value may be past
-   64 bits, and the same by a promoting int key {klo, km} (bkey_), from runtime.py's steps */
-Big pys_dict_big_pop(Dict *d, I k, I has, I lo, Mpz *m) {
-  I i = dpfind(d, k);
-  if (i < 0) { if (!has) keyerr(d, k); Big r = {lo, m}; return r; }
-  Mpz *b = dbig(d, d->idx[i] - 1);
-  I v = dtake(d, i);
-  Big r = {b ? 0 : v, b}; return r;
-}
-LOOKUP Big pys_dict_big_setdefault(Dict *d, I k, I lo, Mpz *m) {
-  I h = pys_rt_dhash(d, k), i = pys_rt_dfind(d, k, h);
-  if (i >= 0) { I e = d->idx[i] - 1; Mpz *b = dbig(d, e); Big r = {b ? 0 : d->vals[e], b}; return r; }
-  pys_rt_dadd(d, k, h, m ? INT64_MIN : lo, i);
-  if (m) { dbig_make(d); d->vb[d->n - 1] = (I)m; }
-  Big r = {lo, m}; return r;
-}
-LOOKUP Big pys_dict_bkey_big_pop(Dict *d, I klo, Mpz *km, I has, I lo, Mpz *m) {
-  if (!km) return pys_dict_big_pop(d, klo, has, lo, m);
-  I i = dbfind(d, km, hbig(d, km), 0);
-  if (i < 0) { if (!has) bkeyerr(km); Big r = {lo, m}; return r; }
-  Mpz *b = dbig(d, d->idx[i] - 1);
-  I v = dtake(d, i);
-  Big r = {b ? 0 : v, b}; return r;
-}
-LOOKUP Big pys_dict_bkey_big_setdefault(Dict *d, I klo, Mpz *km, I lo, Mpz *m) {
-  if (!km) return pys_dict_big_setdefault(d, klo, lo, m);
-  I h = pys_rt_hbig(d, km), i = pys_rt_dbfind(d, km, h);
-  if (i >= 0) { I e = d->idx[i] - 1; Mpz *b = dbig(d, e); Big r = {b ? 0 : d->vals[e], b}; return r; }
-  I e = pys_rt_dbadd(d, km, h, m ? INT64_MIN : lo, i);
-  if (m) { dbig_make(d); d->vb[e] = (I)m; }
-  Big r = {lo, m}; return r;
 }
 
 /* ---------- sets: CPython's setobject.c ----------
@@ -5716,9 +5679,10 @@ restart:;
 }
 void pys_dict_entry_del(Dict *d, I e);   /* runtime.py's */
 /* The set's table is runtime.py's (sets): its probes, insertions, resizes, merges and the entry
-   points the compiler calls. What it asks of this file follows: the hash and the equality of
-   the elements that a type descriptor describes, which may run the program's code, the kind
-   of memory a table of such elements needs, and the KeyErrors, whose text is a repr */
+   points the compiler calls, s.pop() of a promoting int too. What it asks of this file follows:
+   the hash and the equality of the elements that a type descriptor describes, which may run the
+   program's code, the kind of memory a table of such elements needs, and the KeyErrors, whose
+   text is a repr */
 Set *pys_set_new(I kind);
 void pys_set_add(Set *s, I k);
 I pys_set_has(Set *s, I k);
@@ -5726,8 +5690,6 @@ Set *pys_set_copy(Set *s);
 List *pys_set_list(Set *s);
 void pys_rt_set_table(Set *s, I size);              /* an empty table of size slots */
 I pys_rt_set_clean(Set *s, I k, I h);               /* set_insert_clean: k's slot in a table without dummies, nor k */
-I pys_rt_set_pop_slot(Set *s);                      /* set_pop's slot (KeyError: the set is empty) */
-void pys_rt_set_take(Set *s, I i);                  /* and its element taken */
 I *pys_rt_keymem(I kind, I n) { return keymem(kind, n); }
 I pys_rt_hitem(I k, I kind) { return hitem(k, ((Str *)kind)->s); }
 /* is x, the element in slot j, equal to k (kind > 1; their hashes are): seq's answer */
@@ -5756,11 +5718,6 @@ restart:;
       if (!probes--) break;
     }
   }
-}
-Big pys_set_big_pop(Set *s) {                        /* s.pop() of a set of ints, as a promoting int */
-  I i = pys_rt_set_pop_slot(s); Mpz *m = sbig(s, i); I k = s->keys[i];
-  pys_rt_set_take(s, i);
-  Big r = {m ? 0 : k, m}; return r;
 }
 /* frozenset o of Any values as a frozenset of t's, which a frozenset[T] or an AbstractSet[T] takes
    (Gen.coerce): a new set of kind kind, whose elements are o's payloads. Each is checked as a typed
