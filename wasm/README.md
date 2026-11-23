@@ -46,13 +46,15 @@ tests/run.sh ./pystachy wasm-tir tests/programs/apps/ouro2_*.py
 ```
 
 Each typed IR value is a WebAssembly local, and so is a slot that only loads and stores
-read. Fixed-size tuple temporaries use the reactor's 16-byte-aligned stack. A
+read. In a recursion-counted function, values of one type whose lifetimes do not overlap
+share a local. Fixed-size tuple temporaries use the reactor's 16-byte-aligned stack. A
 callee can recognize and copy a `*args` tuple before it escapes its caller.
 Modules with tuple frames or exception landing pads import the stack pointer.
 
-A function's blocks lie in order inside nested `block`s within a `loop`. A forward
-branch is a `br` to its target's label, and a backward branch sets the next block's index
-and continues the loop, whose `br_table` dispatches it. The emitter handles the operations
+A function's blocks lie in order inside nested `block`s. A forward branch is a `br` to its
+target's label, or falls through to the next block. A function with a backward branch also
+has a `loop` around them: that branch sets the next block's index and continues the loop,
+whose `br_table` dispatches it. The emitter handles the operations
 of scalar code, runtime calls, direct calls, globals, class fields, tuples and list items,
 and constants (strings, tuples, field-name tables, class records), whose addresses
 `run.mjs` relocates once it has allocated the program's data. Masked integer expressions such
@@ -74,15 +76,35 @@ been verified on Node 22.23.0 and 24.22.3.
 Set `WASM_EH=standard` to emit standard `try_table` handlers for engines such as
 Wasmtime (enable its exceptions proposal). Both the source and module-text frontends
 emit these instructions directly. When LLVM 18/19 produces a WASI command with
-exception handlers, the build runs Binaryen's `wasm-opt --emit-exnref` after linking
-(tested with Binaryen 132). Commands without handlers need no conversion.
+exception handlers, the build runs Binaryen's `wasm-opt --emit-exnref` after linking,
+with reference types enabled for its `exnref` blocks. CI runs it with Binaryen 132 from npm.
+Commands without handlers need no conversion.
 The default, `WASM_EH=legacy`, also supports early Node 22 releases whose engines
 reject `try_table`. Both encodings use the same runtime and Python exception tag.
 
-The direct emitter gives a named refusal for generators, function values, dynamic values
-and classes that need
-runtime comparison or printing through the program's dispatchers. `wasm/build.sh tir`
-then builds the program through LLVM, and `WASM_TIR_LOG` records the route taken.
+Typed containers can print, compare and hash user-defined objects. For example, a
+`dict[Key, int]` can call `Key.__hash__` and `Key.__eq__` during lookup. The direct
+emitter installs the finalized class helpers in the shared function table and gives the
+reactor a row of callbacks for each static class ID. Exceptions raised by a callback
+can unwind to a Python handler in the guest. Programs using these callbacks require
+a reactor built with `wasm/build.sh runtime-wasm`.
+
+Typed callables use the same function table. A closure keeps its environment and a
+bound method keeps its receiver. An indirect call uses its finalized IR signature,
+including its exception handler. Both hosts also run registered Python exit handlers
+on normal return, on `sys.exit()` and while reporting an uncaught exception.
+
+Plain generators start on first resume. Each instance has its own heap frame, which
+keeps the next instruction, the producer's function-table index and its local slots.
+At each suspension it saves the typed temporary values needed on that edge. Resuming
+restores them before the successor block selects its phi inputs. This allows different
+producers to share an `Iterator[T]` interface. A loop can drop a recursively resumed
+generator when its handle comes directly from a constructor whose yields need no cleanup.
+For programs using `send()` or `throw()`,
+the frame also has space for the sent value and thrown exception. A new generator
+rejects a non-None first send, as Python does. Yields requiring cleanup during close
+and programs using explicit dynamic values receive a named refusal. `wasm/build.sh tir` then builds the program through LLVM, and
+`WASM_TIR_LOG` records the route taken.
 
 The source compiler passes the finalized functions and declarations directly to the emitter.
 `build/wasm/wasm_from_source SOURCE.py OUT.wasm` compiles a file in one process. Use `- -`
@@ -178,8 +200,9 @@ status = runner.run(program, tools={"issues": lambda project: "closed\nopen\nope
 ```
 
 Reuse the runner and compiled program across calls. Each call creates a fresh store with
-its own tool grants, empty stdin, arguments (including argv[0]) and environment (empty by
-default). Both interfaces inherit stdout and stderr and grant no directory mounts. The
+its own tool grants, arguments (including argv[0]) and environment (empty by default).
+The CLI inherits stdin. Embedded runs start with empty stdin unless the caller passes
+`inherit_stdin=True`. Both interfaces inherit stdout and stderr and grant no directory mounts. The
 Python API also accepts `stdout` and `stderr` file paths, truncating each file on each run.
 `run` returns the unsigned 32-bit WASI exit status. The CLI exposes its low eight bits. Wasmtime traps and host callback errors propagate to
 the Python caller. The CLI prints a trap diagnostic and exits with status 134. Calls to
@@ -211,31 +234,64 @@ covers a 2,000-container round trip and catching `RecursionError` on deeper inpu
   and such values beneath its arguments. A callee that collects only on its way to an
   exception or exit, as `pys_fail` does, needs only what a catch reads. The collector scans
   that stack up to `__stack_high`. `runtime.c` turns collection on only in a module the pass
-  rewrote, so `runtime.wasm` and directly emitted programs keep it off. Their mid-run
-  collection also needs a table of the program's globals.
+  rewrote, so `runtime.wasm` and directly emitted programs keep it off.
+  The direct reactor registers the program's global pointer slots before execution.
+  For collector testing, compile a direct program with `WASM_GUEST_ROOTS=1`. The emitter
+  mirrors its named i32 and i64 locals, including packed references, on the runtime's linear
+  stack. Its conservative scan can retain dead temporaries until their activation returns
+  or unwinds. The setting increases stack usage and code size. Automatic collection stays
+  disabled there because active runtime C and compiled runtime.py locals can still hide references.
   The shared heap tracer scans complete four-byte pointer words on wasm32. Freed memory is
   reused, never returned: linear memory cannot shrink. The engine caps it (4 GiB for wasm32).
 - **LLVM/WASI commands use WebAssembly exception handling.** The adapter lowers native
-  landing pads to Wasm catches for Pystachy's exception payload. Python handlers, cleanup
-  and uncaught reporting use the shared runtime. WASI errno numbers can differ from Linux,
+  landing pads to Wasm catches for Pystachy's exception payload. A catch unwinds to the
+  handler of the enclosing `try`, as clang's nested catches do: LLVM counts the handler's
+  code as part of its catch. Python handlers, cleanup and uncaught reporting use the shared
+  runtime. WASI errno numbers can differ from Linux,
   including which subclass a numeric `OSError` constructs. For example, both Wasm routes
   report missing files with WASI errno 44, while Linux reports errno 2.
 - **No processes, signals, users or dynamic loading.** `wasi_stubs.c` defines those calls to
   fail with `ENOSYS`, so the runtime raises the matching `OSError`.
 - **Filesystem access depends on the runner.** The CLI preopens `/` and passes Node's working
   directory as `PWD`. The embedded code mode host supplies no directory mounts.
+- **The C library's stdio is musl's.** Its `fwrite` of zero bytes still switches a stream that
+  was reading to writing. That drops the read-ahead without moving the descriptor back, and
+  marks a read-only stream failed. The runtime skips such writes, which glibc ignores.
 - **Pointers are 4 bytes.** Compiled code addresses the runtime's structs through their LLVM
   types, which follow the target's layout. Constants that hold an address in a 64-bit slot are
   rewritten as the address and a zero word (`wasm32_ir.py`). Dynamic class dispatch and
   reflection read the name, class id and flags at their target-specific offsets in `DynType`
   and the flags in a class reflection record.
   A boxed class record pointer occupies an eight-byte payload slot on both targets.
+  `vars()` reads an object's reference fields at the target's pointer width beside its 8-byte
+  ints and floats. A frame keeps its locals above its frame address on wasm32, `@main`'s too,
+  so the runtime finds a `*args` tuple that a caller made anywhere on the linear-memory stack
+  above the callee and copies it before the callee keeps it.
+- **The math library is musl's.** Some results differ from glibc's in the last place: musl's
+  `cbrt(27)` is exactly 3.0. Two musl results would also be wrong for Python, so the runtime
+  corrects them: `float("-nan")` keeps its sign, and `math.fma` keeps the sign of a product
+  that rounds to zero when the addend is zero (`wasi_stubs.c`).
+
+## Checking the whole corpus
+
+`known_differences.txt` lists each corpus program whose output in the Wasm modes differs
+from CPython's recording, with its reason: one of the differences above, or the pull request
+that fixes it. `check_corpus.py` runs `tests/run.sh` in both modes and fails on any other
+difference, so a new one is a regression or needs a reason. It names entries that now match;
+remove them once their fix lands. The whole corpus takes about 15 minutes on four cores.
+
+```sh
+python3 wasm/check_corpus.py                       # every program, both modes
+python3 wasm/check_corpus.py --modes wasm tests/programs/io/*.py
+python3 wasm/check_corpus.py --log report.txt      # a tests/run.sh report of the same run
+```
 
 ## Files
 
 | File | Purpose |
 |---|---|
 | `build.sh` | Runtime, `runtime.wasm`, emitter and program builds |
+| `check_corpus.py`, `known_differences.txt` | The corpus in the Wasm modes against its known, explained differences |
 | `run.mjs`, `run_wasmtime.py` | Node and Python/Wasmtime runners for commands and direct modules |
 | `codemode.mjs`, `tools.mjs` | String-source host and synchronous tool imports |
 | `../tools/wasm_from_source.py` | Source to Wasm from finalized compiler records |

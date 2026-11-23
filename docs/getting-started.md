@@ -78,8 +78,10 @@ the three-line `match` block with a supported conditional:
 Run the CPython, JIT and AOT commands again; each prints `285`. You can also call
 `sum_squares(0)` and check that all three return `0`. See
 [unsupported features](language.md#unsupported-features) when a diagnostic names
-a construct your program needs. `pystachy check` checks syntax only; compiling
-and executing the relevant path gives stronger evidence.
+a construct your program needs. `pystachy check` checks syntax only.
+`pystachy check FILE.py --semantic` also compiles the program and its imports as
+`ir` does, without LLVM or output, and reports the first error `run` or `build`
+would. Executing the relevant path gives stronger evidence.
 
 ## Check staged files with pre-commit
 
@@ -98,7 +100,11 @@ repos:
 Run `pre-commit install` to check staged Python files on each commit, or
 `pre-commit run pystachy-check --all-files` to check all tracked Python files.
 The hook runs the selected revision's `check` command once per file. It reports
-syntax errors without executing your code or installing LLVM.
+syntax errors without executing your code or installing LLVM. It also rejects valid
+source that Pystachy cannot read yet, such as `\N{...}` escapes, non-ASCII
+identifiers and encodings other than UTF-8, Latin-1 and ASCII
+([source text limits](language/compatibility.md#source-text)).
+Use the hook's `exclude` pattern for files that Pystachy will not compile.
 
 ## Measure the work you care about
 

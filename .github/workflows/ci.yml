@@ -171,16 +171,33 @@ jobs:
           wasm/build.sh emitter
           python3 -m pip install --only-binary=:all: wasmtime==51.0.0
           python3 wasm/run_wasmtime.py build/wasm/gc-mark-probe.wasm
+          wasm/build.sh gc-globals-probe
+          probe=build/wasm/gc-globals
+          wasm/build.sh direct wasm/test_gc_globals_guest.py "$probe/globals.wasm"
+          WASM_EH=standard WASM_GUEST_ROOTS=1 wasm/build.sh direct wasm/test_gc_locals_guest.py "$probe/locals.wasm"
+          WASM_GUEST_ROOTS=1 build/wasm/tir_wasm wasm/test_gc_packed.tir "$probe/packed.wasm"
+          for guest in globals locals packed; do
+            node --no-warnings wasm/run.mjs --runtime "$probe/runtime.wasm" "$probe/$guest.wasm"
+            python3 wasm/run_wasmtime.py --runtime "$probe/runtime.wasm" "$probe/$guest.wasm"
+          done
+          build/wasm/tir_wasm wasm/test_gc_packed.tir "$probe/no-roots.wasm"
+          if node --no-warnings wasm/run.mjs --runtime "$probe/runtime.wasm" "$probe/no-roots.wasm" 2>"$probe/control.err"; then exit 1; fi
+          grep -Fxq "missing guest roots: required 8, found 0" "$probe/control.err"
           python3 -m unittest wasm.test_wasmtime wasm.test_wasmtime_codemode
           node --no-warnings --test wasm/test_codemode.mjs
           direct_cases=(tests/programs/apps/ouro2_*.py tests/programs/runtime/rt_float_hex.py
                         tests/programs/strings/str_dict_hash.py tests/programs/language/varargs_tuple_lifetime.py
-                        tests/programs/numbers/int_masked_low32.py)
+                        tests/programs/numbers/int_masked_low32.py
+                        tests/programs/classes/builtin_list_gc.py tests/programs/classes/builtin_dict_gc.py)
           routes=$(mktemp)
           WASM_TIR_LOG="$routes" tests/run.sh "$PYSTACHY" "wasm wasm-tir" "${direct_cases[@]}" \
             tests/programs/inference/dynany_bound_methods.py \
             tests/programs/inference/dynany_identity_promote_generic.py \
-            tests/programs/library/lib_argparse_python_int.py
+            tests/programs/library/lib_argparse_python_int.py \
+            tests/programs/language/varargs_stack.py tests/programs/reflection/reflect_vars_widths.py \
+            tests/programs/reflection/getattr_hook_lookup.py \
+            tests/programs/io/bfile_basic.py tests/programs/io/bfile_truncate_read.py \
+            tests/programs/numbers/float_span.py tests/programs/upstream/upstream_math_fma.py
           # A matching recording through LLVM fallback must not mask lost direct coverage.
           for source in "${direct_cases[@]}"; do
             grep -Fxq "$source emitted" "$routes" || { cat "$routes"; exit 1; }
@@ -205,6 +222,10 @@ jobs:
           control=$(mktemp)
           WASM_SPILL_CONTROL=1 PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh "$PYSTACHY" wasm "${stress_cases[@]}" > "$control" || true
           [ "$(tail -1 "$control")" = "0 passed, ${#stress_cases[@]} failed" ] || { cat "$control"; exit 1; }
+          # Standard exceptions: Binaryen converts an LLVM command's catches to try_table.
+          npm install --prefix "$RUNNER_TEMP/binaryen" --no-audit --no-fund --ignore-scripts binaryen@132.0.0
+          PATH="$RUNNER_TEMP/binaryen/node_modules/.bin:$PATH" WASM_EH=standard tests/run.sh "$PYSTACHY" wasm \
+            tests/programs/exceptions/exc_class_strfail.py tests/programs/classes/property_read.py
 
       # These hosted/native controls run sequentially after a short GC JIT group.
       # PRs use the second native JIT worker below; neither placement adds a job.

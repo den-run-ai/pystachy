@@ -188,10 +188,11 @@ Not supported, as compile-time errors:
   which `lib/operator.py` does not apply to an `int`, and for a count of another type find the
   frame to warn from with `sys._getframe()`, which is not supported.
 - `GNUTranslations` of a catalog with a plural form, which calls `c2py()`: it needs `exec()`.
-- A subclass of `NullTranslations`, such as a translation class to add as a fallback.
-  `__init__`'s `fp`, a catalog file, has no concrete type here, so `NullTranslations` is a
-  template class, which a class cannot derive from. `add_fallback()` takes another
-  `NullTranslations`, which answers as the identity.
+- A subclass of `NullTranslations` with an `__init__` of its own whose `super().__init__(...)`
+  arguments' types are not known where it is declared. `__init__`'s `fp`, a catalog file, has
+  no concrete type here, so `NullTranslations` is a class template; a subclass without an
+  `__init__` of its own, such as a translation class to add as a fallback, derives from each
+  of its specializations ([subclasses of class templates](../docs/language/typing.md#subclasses-of-class-templates)).
 
 ### `pprint`
 
@@ -947,12 +948,13 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   definition order, and `len(C)`, `x in C` (a member, or a member's value), `C.__members__` (a
   read-only mapping, aliases included) and `repr(C)` are CPython's. Enum classes of other modules
   work where they are imported ([test](../tests/programs/library/lib_enum_import.py)), and so
-  do members in `Any` values ([test](../tests/programs/library/lib_enum_any.py)). A variable or
-  a field (`self.kind = Color`, whose class then specializes as a class template does) holds
-  the object, through which the class's members and other class attributes are read
-  (`self.kind.RED`) ([test](../tests/programs/library/lib_enum_class_fields.py)); a class
-  attribute that holds it ([error](../tests/errors/library/lib_enum_class_attr_value.py)) and
-  `type[Color]` as an annotation are not supported.
+  do members in `Any` values ([test](../tests/programs/library/lib_enum_any.py)). A variable, an instance
+  field (`self.kind = Color`), or a class attribute (`class Palette: kind = Color`) holds
+  that same enum class. Access through the instance or class supports member lookup,
+  iteration and class identity ([fields](../tests/programs/library/lib_enum_class_fields.py),
+  [class attributes](../tests/programs/library/lib_enum_class_attr_value.py)).
+  `type[Color]` annotations and joining different enum class objects in one return remain
+  unsupported.
 - An `IntEnum` member is no `int` here, nor a `StrEnum` member a `str`: each is an object of its
   class with `int`'s comparisons, arithmetic, `bool()` and `hash()`, or `str`'s comparisons,
   `+`, `in`, `len()` and `upper()`, `lower()`, `startswith()`, `endswith()` and `encode()`,
@@ -2024,9 +2026,9 @@ thread's `Thread` object (`MainThread`) work as in CPython where no other thread
   and `_is_owned()` are the lock's own where it is a reentrant lock; of any other lock they are
   `Condition`'s.
 - A `Thread` keeps no copy of `sys.stderr` and no `_invoke_excepthook` (no started thread reports
-  an exception); `_dangling` is a set, which keeps its threads (no weak containers), and
-  `current_thread()` never makes a `_DummyThread`. There is no `register_at_fork()` (no
-  `os.fork()`), and the module does not `del _thread` (#612).
+  an exception). `_dangling` tracks thread objects with typed weak references. Unreachable
+  threads can clear at the next collection. `current_thread()` never makes a `_DummyThread`.
+  There is no `register_at_fork()` (no `os.fork()`), and the module does not `del _thread` (#612).
 
 ### `concurrent.futures`
 

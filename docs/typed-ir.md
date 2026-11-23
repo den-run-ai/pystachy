@@ -29,9 +29,10 @@ The separation is partial. `Gen` still resolves, types, folds and specializes co
 building IR. Every function instruction is a registered typed operation, including
 arithmetic, internal storage, closure pointers and runtime byte accesses. There is no
 `raw` instruction or instruction-text builder. Module declarations, constants and ABI
-wrappers are serialized by the LLVM backend. This completes instruction coverage for
-the current backend; WebAssembly remains future work, and dynamic `Any` values are a
-[prototype](dynamic-any.md) that a module opts in to.
+wrappers are serialized by the LLVM backend. This completes instruction coverage for the
+LLVM backend. An experimental [WebAssembly backend](../wasm/README.md) compiles a program from
+its finalized typed IR or its module [text](#text-form), refusing by name what it does not
+lower yet, and dynamic `Any` values are a [prototype](dynamic-any.md) that a module opts in to.
 
 <a id="4-passes"></a>
 <a id="41-the-pipeline"></a>
@@ -340,12 +341,15 @@ An op that makes a packed slot gives it its type: `slot.pack`, a list read, a tu
 type: a box's payload bits, a raw identity word, a word that a runtime call returns as an
 `int`, which `slot.unpack` then reads through `%slot`. A value whose definition gives only a
 machine type, a runtime type variable or a placeholder is read at related types by every
-operand that names its own. Of the views that narrow, `opt[U]` read as `U` needs a proof: with
-`PYSTACHY_IRCHECK=1` the closed-union proof must show the value not `None` where it is read (see
-[reads of optional values](#reads-of-optional-values)). The others (`bits` of a runtime call's
-word, a derived class, other union members) take the frontend's word for a test before them:
-they are the casts that MLIR would write as ops, and the fourth table's kinds of `cast` write
-some of them so.
+operand that names its own. Of the views that narrow, three need a proof where a value is read
+with `PYSTACHY_IRCHECK=1`: `opt[U]` read as `U`, which the closed-union proof must show not
+`None` (see [reads of optional values](#reads-of-optional-values)); an object read at a class
+that its value's class need not derive from, which the class proof must show to be of that
+class, as must a member cast's value wherever it is read; and a closed union read as a union
+without some of its members (see [reads at narrower classes](#reads-at-narrower-classes)).
+`bits` of a runtime call's word still takes the runtime's declared signature at its word: it
+is the cast that MLIR would write as an op, and the fourth table's `cast bits` writes another
+op's word so.
 
 Some result numbers only name an intermediate LLVM value of their operation's lowering:
 `ovf`'s `{i64, i1}` pair, the three addresses of `list.load`, the address of a `tuple.load`.
@@ -672,7 +676,24 @@ short-circuit Boolean phis when the incoming branch decides their value. Escaped
 field and global reads, and control flow it cannot certify go through the general solver.
 
 [`optional.tir`](../tools/fixtures/typed_ir/optional.tir) holds the cases the proof admits and
-those it rejects. A runtime function's signature says `opt[T]` where it takes or returns
+those it rejects.
+
+<a id="reads-at-narrower-classes"></a>
+An operand that reads an object at a class that its value's class need not derive from (the
+`class` view that narrows, to a derived class or a class that may share an object with it;
+`ircheck.class_reads`), and any operand that reads a member cast's value, needs a proof that
+the object's class derives from it ([`class_proof.py`](../src/pystachy_compiler/class_proof.py)).
+Its facts are domains of classes: an object's starts as the classes that may have objects and
+derive from its static class, and `None`, which any class's operand may read. A tagged class's
+objects begin with their tag (`ClassInfo.tag`), and an exception's with its descriptor
+`@x.<class>`. A test of that word against a tag or a descriptor, a `switch` on it, a test
+against `None` and the word a constructor stores narrow the domain. Private slots carry facts,
+and so does an object's field of a class, keyed by the slot the object was loaded from or its
+SSA value. A store to the field or any call forgets the field facts it may change. A `ptr.cmp`
+reads no class, so it needs none. A closed union read as a union without some of its members
+(`ircheck.union_reads`) needs the closed-union proof to show its box holds none of those.
+[`class_reads.tir`](../tools/fixtures/typed_ir/class_reads.tir) holds the cases each proof admits
+and those it rejects. A runtime function's signature says `opt[T]` where it takes or returns
 `None` (`bopen`'s encoding, `exc.setcause`'s cause, `exc.cause`'s result), and `getenv`'s
 result is the call's `R`: a `str` where the default is one, else `opt[str]`.
 
@@ -750,6 +771,7 @@ temporaries, variable tuple traversal, string headers and bytes. Storage retains
 types or one of the finite machine types (`%ptr`, `%byte`, `%i32`); addresses carry
 explicit operands and indices. For a DynType address the index selects the name, class id or
 flags field of the runtime record. A classrec index selects the reflection record flags.
+A `list.header` or `dict.header` index selects a member of a fresh builtin container when initializing a subclass.
 Lowering uses the target ABI to place those fields. String alias/range metadata and in-bounds addressing are finite
 choices checked before lowering. These operations preserve the existing effects,
 layout and guard order; they do not introduce unchecked Python operations.
@@ -774,13 +796,29 @@ it never writes the high placeholder outside that frame. A consumer copies the
 companion into its private result slot before another resume. Isolated ordinary
 modules keep their raw layout; crossing checks prevent mixing representations.
 
-Each block ends with one terminator. Branch labels stay within the function, and phi
+### Control flow
+
+Each block has a label of its own, the first block's being `entry`, and ends with one
+terminator. Branch labels stay within the function, and phi
 predecessors must branch to their join. `switch` branches on an `int` to the label of the
 case it equals, else to its default: its cases are distinct `int` literals, and it reaches a
 block that starts with a phi by one edge at most, since a phi has one entry per block that
 branches there. Comparisons dispatch on class tags with it, which LLVM may lower to a jump
 table. Checked operations share cold error blocks per function, message and handler. The
 verifier checks these invariants and number bounds.
+
+Control flow is structured. Its edges are a block's terminator labels, the landing block of
+the try statement that covers it and its check's cold block (`dataflow.flow_targets`). An edge
+that closes a cycle goes to a block that dominates the edge's source, so the flow is
+reducible: each cycle has one entry, its head, and cycles nest as WebAssembly's `loop` and
+`block` constructs do, so a backend for a structured target needs no dispatch loop. A loop
+record (`IFn.loops`, a `loop` line of the [text](#text-form)), which loop passes and
+structured backends read, names blocks of its function. Where its head is the head of a loop
+of the flow, its body, step and tests are blocks of that loop and its exit is not. A loop
+whose body always leaves it closes no cycle, and a test before a loop may skip it to its exit.
+[`structure.py`](../src/pystachy_compiler/structure.py) computes the dominators, retreating
+edges and natural loops, and the verifier checks these rules after every pass;
+[`structure.tir`](../tools/fixtures/typed_ir/structure.tir) breaks each of them.
 
 <a id="37-effects"></a>
 <a id="45-effects"></a>
@@ -1149,8 +1187,8 @@ decides a fixed tuple's slots while its function is printed.
   differs from `OPS`.
 - `tools/typed_ir_text.py verify tools/fixtures/typed_ir/invalid.tir` holds the verifier to
   the error each function of the file expects, `classes.tir` holds the verifier's class view
-  to the classes its module declares, and `fields.tir` its `field.addr` rule to their structs
-  (see [text form](#text-form)).
+  to the classes its module declares, `fields.tir` its `field.addr` rule to their structs
+  (see [text form](#text-form)), and `structure.tir` its [control-flow](#control-flow) rules.
 - `tools/test_typed_ir_compile.py` (in `make check-fast`) prints a sample of programs' modules,
   compiles them from text and requires the compiler's LLVM byte for byte;
   `tools/typed_ir_text.py roundtrip` measures it for any programs.
@@ -1198,19 +1236,20 @@ Types are the compiler's canonical strings. Most are Python's (`int`, `list[floa
 the slot at `%s.3`, and `*X` is an eight-byte word that holds an `X`, as `list.load` returns a
 list item; `%ptr`, `%byte`, `%i32` and `%slot` are machine types with no Python meaning.
 
-A text holds functions alone, or a module: its attributes on its `module` line, its
-declarations between that line and `}`, then its functions, each written as it is alone. `print`
-writes a typed-after snapshot as a module. Its first declarations are the snapshot's tables of
-the program's classes, DynTypes and class layouts, which the verifier reads (the module's
-attributes and lowering's declarations, below, are left out here):
+A text holds functions alone, or a module: its attributes on its `module` line, the first
+the text's [version](#versions-and-grammar), its declarations between that line and `}`, then its
+functions, each written as it is alone. `print` writes a typed-after snapshot as a module. Its
+first declarations are the snapshot's tables of the program's classes, DynTypes and class
+layouts, which the verifier reads (the module's other attributes and lowering's declarations,
+below, are left out here):
 
 ```text
-module complete opts=[...] {
-  class Both base=Storage roles=[Reader] tagged fields=[" class":int value:int " Storage.0":bool " Storage.box.0":dyn] flags=[value:2] boxes=[value:3]
-  class Reader overlaps=[Storage] tagged fields=[" class":int]
-  class Storage overlaps=[Reader] tagged fields=[" class":int value:int] flags=[value:2] boxes=[value:3]
-  dyntype @dt.Both kind=8 cls=1 flags=256 base=@dt.Storage role=@dt.Reader payload=Both
-  layout Both descriptor=@dt.Both base=@dt.Storage role=@dt.Reader number=1 members=[int int bool dyn] llvm=[i64 i64 i1 ptr]
+module version=1 complete opts=[...] {
+  class Both base=Storage roles=[Reader] tag=1 fields=[" class":int value:int " Storage.0":bool " Storage.box.0":dyn] flags=[value:2] boxes=[value:3]
+  class Reader overlaps=[Storage] tag=2 fields=[" class":int]
+  class Storage overlaps=[Reader] tag=3 fields=[" class":int value:int] flags=[value:2] boxes=[value:3]
+  dyntype @dt.Both kind=obj cls=1 flags=[role] base=@dt.Storage role=@dt.Reader payload=Both
+  layout Both descriptor=@dt.Both base=@dt.Storage role=@dt.Reader number=1 members=[int int bool dyn]
 }
 
 function @m.Storage.__init__.1(self: Both, value: int) -> None effects=wO {
@@ -1218,7 +1257,8 @@ function @m.Storage.__init__.1(self: Both, value: int) -> None effects=wO {
 
 A class gives its single base, a class of the program or a builtin exception class; its
 fieldless secondary bases (`roles`); the unrelated classes it shares a subclass with
-(`overlaps`); whether its objects begin with a class tag; and its struct, as `field.addr`
+(`overlaps`); its `tag`, the number its objects' class word holds (0, omitted, where they
+have none); and its struct, as `field.addr`
 indexes it. `fields` lists its fields in order with their types, and `flags` and `boxes` give
 the index of a field's "is assigned" flag and identity box. A hidden field's name begins with
 a space, so it is quoted. A class's own flags take the indexes after its fields, and its own
@@ -1226,9 +1266,11 @@ boxes those after its flags. A derived class's struct begins with its base's, so
 flags and boxes are hidden fields of it: `Both` keeps the flag and identity box of `value` at
 2 and 3, where `Storage`'s struct has them, as its fields `" Storage.0"` and
 `" Storage.box.0"`. A `dyntype` is a DynType that the program emits for dynamic values, with
-its kind, class number, flags, base and role DynTypes and the static type of its boxes'
-payload, and a `layout` is the struct of a class that has one. A field that holds its default
-(`""`, `[]`, `{}`, 0 or false) is omitted.
+its kind and flags by runtime.c's names for them (`DK_OBJ` is `obj`, `DF_ROLE` `role`), its
+class number, its base and role DynTypes and the static type of its boxes' payload, and a
+`layout` is the struct of a class that has one, by its members' types. No declaration spells
+an LLVM type: lowering derives each member's (`struct_types`), and a backend its own. A field
+that holds its default (`""`, `[]`, `{}`, 0 or false) is omitted.
 
 A typed-after snapshot is taken at the lowering boundary, once finalization has run, and its
 module also holds everything else that LLVM lowering (`Gen.lower_program`: `gen_lower`,
@@ -1238,7 +1280,7 @@ program with a class, a dict filled after it was made empty and a recursive func
 its declarations left out):
 
 ```text
-module complete opts=[charslots listget listguard dictfuse tupleiter listfast moduleints fieldtbaa tupleret unionslots nullcheck allocelide callbacks] {
+module version=1 complete opts=[charslots listget listguard dictfuse tupleiter listfast moduleints fieldtbaa tupleret unionslots nullcheck allocelide callbacks] {
   class Point fields=[x:int y:int]
   hole 1 type=dict[str,int]
   global @g.counts type=dict[?,?]
@@ -1308,9 +1350,9 @@ its attributes, the declarations and its function records. `to_ifn` builds the c
 `IFn` from a function record, so a test writes IR as text, runs the verifier or one pass and
 compares the printed result: [`tools/test_typed_ir_text.py`](../tools/test_typed_ir_text.py) runs `listget`
 on [a fixture](../tools/fixtures/typed_ir/score_samples.listget.before.tir) that way, and
-checks that the fixture is what the compiler emits. It is a test and review form of the
-hosted compiler, not a versioned interchange format: its declarations follow the compiler's
-tables, and a text printed by one compiler compiles only with the same compiler.
+checks that the fixture is what the compiler emits. Besides tests and review, the text is what
+the [WebAssembly emitter](../wasm/README.md) compiles a program from (`wasm/build.sh tir`), so
+two parsers read it: see [versions and grammar](#versions-and-grammar).
 
 `verify` runs the verifier on each function of a text file, as MLIR's `-verify-diagnostics`
 does. A comment line `; expected-error {{MESSAGE}}` says that the function's verification
@@ -1328,6 +1370,54 @@ struct, at the member's type: [`fields.tir`](../tools/fixtures/typed_ir/fields.t
 fields, flags and identity boxes, a base's among them, which verify, and indexes past a
 class's struct and members at other types, which do not. A struct that no class could have,
 such as a field declared twice or a flag past the class's members, is an error of the text.
+
+### Versions and grammar
+
+A module's first attribute is its text's version, `version=1` (`TEXT_VERSION` in
+`tools/typed_ir_text.py`). What a module text means changes only with its version, so that the
+WebAssembly emitter's own parser (`wasm/tir_wasm.py`, written in the subset to compile
+natively) and any other reader can tell a text they were not written for. `parse` refuses
+another version, and the module that
+[`test_typed_ir_text.py`](../tools/test_typed_ir_text.py) writes holds the form.
+A text of functions alone has no version and reads as a module's functions do.
+Declarations, attributes and loop fields follow the compiler's tables, so a text is
+read by the same compiler's tools.
+
+A text is lines: `NL` ends one, a blank line and a line that starts with `;` are skipped, and
+no line ends with a space. In EBNF, with spacing as written:
+
+```text
+text        = module | { function } ;
+module      = "module" fields " {" NL { "  " declaration NL } "}" NL { function } ;
+declaration = keyword " " atom fields ;
+keyword     = "class" | "dyntype" | "layout" | "hole" | "global" | "root" | "const"
+            | "runtime" | "rtdata" | "extern" | "keykind" ;    (* in this order *)
+function    = "function " atom "(" [ param { ", " param } ] ") -> " atom
+              [ " coroutine" ] [ " effects=" atom ] fields " {" NL
+              { "  " instruction NL }                            (* its slots *)
+              block { block } { cold NL } { loop NL } "}" NL ;
+param       = atom ": " atom ;
+block       = atom [ " handler=" atom ] ":" NL { "  " instruction NL } ;
+instruction = [ result { " " result } " = " ] atom [ " " atom ] fields
+              [ " (" [ operand { ", " operand } ] ")" ] [ " -> " atom { ", " atom } ]
+              [ " : " atom ] [ " loc(" [ int ":" ] int ")" ] ;
+result      = [ "~" ] atom ;
+operand     = atom " " atom ;                                    (* its type, its value *)
+cold        = "cold " atom " -> " atom ;
+loop        = "loop" fields ;
+fields      = { " " key [ "=" value ] } ;                        (* a flag is its bare key *)
+value       = atom | int | "[" [ item { " " item } ] "]" | "(" [ operand { ", " operand } ] ")" ;
+item        = atom [ ":" ( atom | int ) ] | "(" operand ")" ;
+atom        = bare | string ;
+```
+
+The first block is `entry`, every block has a label of its own, and a field that holds its
+default is omitted. Which keys a line takes, in which order and of which kind, is in tables:
+`MODULE_ATTRIBUTES`, `DECLARATIONS`, `FUNCTION_ATTRIBUTES` and the loop fields of
+`tools/typed_ir_text.py`, and an operation's [row](#operation-reference) for its instructions
+(an operator is the bare atom after the operation's name). A `bare` atom is not empty, holds
+no white space, `"`, `(` or `)`, closes each `[` it opens, and has no comma outside brackets;
+any other atom is written as a JSON `string`.
 
 ### Locations
 
@@ -1369,14 +1459,14 @@ Typed instruction coverage is complete for the LLVM backend, and a module's [tex
 holds what lowering reads of a program: printed at the lowering boundary, it compiles to the
 compiler's LLVM. It does not hold yet an extension module's entry points (`Gen.funcs`,
 `gen_pyext`), runtime.py's module (`Gen.rtdefs`) or the inputs of LLVM line tables
-(`PYSTACHY_DEBUG_LINES=1`), which `compile` refuses; its tables follow `Gen`'s and are not
-versioned. Further backend neutrality needs shared compiler/runtime layout definitions and a
+(`PYSTACHY_DEBUG_LINES=1`), which `compile` refuses; its tables follow `Gen`'s, and its
+[version](#versions-and-grammar) changes with its form. Further backend neutrality needs shared compiler/runtime layout definitions and a
 clearer separation of frontend elaboration from machine contracts. Operands still read values
 through the views of
 `TYPE_VIEWS`: precise result types for empty containers and for runtime calls that return
-untyped memory (`alloc`), and casts for the views that still narrow unproved (a runtime
-call's word read through `bits`, a derived class) would leave each value one type, as MLIR's
-are; `opt[U]` read as `U` already needs a proof (see
+untyped memory (`alloc`), and a cast for the view that still narrows unproved (a runtime
+call's word read through `bits`) would leave each value one type, as MLIR's are; `opt[U]` read
+as `U`, a narrower class and a narrower union already need a proof (see
 [reads of optional values](#reads-of-optional-values)). WebAssembly GC, more general check elimination and a
 Python-object representation backend are design possibilities, not supported modes.
 
@@ -1392,11 +1482,12 @@ This is bounded compiled support, without runtime compilation or unrestricted Py
 
 Mixed scalar/list/dict unions permit finite, explicitly written nesting. The
 [recursive value-alias prototype](language/typing.md#recursive-value-aliases-prototype)
-also supports nongeneric module-level PEP 695 closed recursive unions such as
+also supports module-level PEP 695 closed recursive unions such as
 `type Tree = int | list[Tree]` and the native JSON codec's recursive value type.
 Named edges retain a finite type graph rather than repeatedly expanding canonical strings.
-Recursive aliases are nominal, and existing mutable list/dict storage remains invariant.
-Mutual recursion, generic recursive aliases and recursive shapes outside that documented
+Aliases with the same members name one graph, a generic alias one per type arguments, and
+existing mutable list/dict storage remains invariant.
+Mutual recursion and recursive shapes outside that documented
 form remain unsupported. Runtime traversals have recursion guards; the
 [JSON codec's depth and integer limits](json.md) are separate from the type graph.
 

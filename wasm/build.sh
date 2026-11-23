@@ -15,6 +15,7 @@
 #        wasm/build.sh tir FILE.py OUT.wasm    same, with LLVM fallback on an emitter refusal
 #                                              WASM_TIR_LOG records emitted or refused per file
 #        wasm/build.sh gc-mark-probe OUT.wasm  build the explicit-root wasm32 collector test
+#        wasm/build.sh gc-globals-probe       build a reactor for forced-collection root probes
 # Environment: PYSTACHY, the compiler (default ./pystachy; "python3 pystachy.py" works too);
 # PYSTACHY_LLVM, LLVM's bin directory (clang, llvm-link, opt, and wasm-ld there or on PATH);
 # WASI_SYSROOT, a wasi-libc sysroot (default: Ubuntu's wasi-libc package, whose headers and
@@ -74,7 +75,7 @@ runtime() {
   $PYSTACHY rt runtime.py -o "$t/rt-py.ll"
   "$PY" wasm/wasm32_ir.py "$t/rt-py.ll" "$t/rt-py-wasi.ll"
   # shellcheck disable=SC2086
-  "${LLVM}clang" $W -O2 -c -emit-llvm runtime.c -o "$t/rt-c.bc"
+  "${LLVM}clang" $W -O2 -c -emit-llvm "${1:-runtime.c}" -o "$t/rt-c.bc"
   # (runtime.py's module has no data layout: runtime.c's gives the linked one)
   "${LLVM}llvm-link" "$t/rt-c.bc" "$t/rt-py-wasi.ll" -o "$t/rt.bc" 2> "$t/link.err" || { cat "$t/link.err" >&2; exit 1; }
   "${LLVM}opt" -O2 "$t/rt.bc" -o "$t/rt-opt.bc"
@@ -130,7 +131,8 @@ program() ( # source|ir INPUT OUTPUT (a dash streams IR input or Wasm output)
   # (WASM_SPILL_CONTROL=1 turns it on without them: CI's control, which must then fail)
   "$PY" wasm/spill_roots.py ${WASM_SPILL_CONTROL:+--no-spill} "$t/linked.wasm" "$output"
   if [ "$standard_command" = true ]; then
-    wasm-opt --enable-exception-handling --emit-exnref "$output" -o "$t/standard.wasm"
+    # (an exnref block type needs reference types, which LLVM 18's target features lack)
+    wasm-opt --enable-exception-handling --enable-reference-types --emit-exnref "$output" -o "$t/standard.wasm"
     output=$t/standard.wasm
     if [ "$destination" != - ]; then mv "$output" "$destination"; fi
   fi
@@ -138,7 +140,7 @@ program() ( # source|ir INPUT OUTPUT (a dash streams IR input or Wasm output)
 )
 
 runtime_wasm() {
-  runtime
+  runtime "$@"
   SYS=$(sysroot)
   if [ -f "$RT/runtime.wasm" ] && [ -z "$(find "$RT/runtime.o" "$RT/stubs.o" wasm/reactor.c -newer "$RT/runtime.wasm" | head -1)" ]; then
     return 0
@@ -147,11 +149,10 @@ runtime_wasm() {
   trap 'rm -rf "$t"' EXIT
   "${LLVM}clang" --target=$TARGET --sysroot="$SYS" -O2 -Wall -Wextra -Werror -c wasm/reactor.c -o "$t/reactor.o"
   # a reactor (no main) exporting every symbol: a program module imports the runtime's functions
-  # and the recursion state by name; the runtime imports the program's code (program.init) and
-  # the class dispatchers (env.pys_obj_*), which wasm/run.mjs supplies
+  # and the recursion state by name. Object callbacks use the two modules' shared table.
   # shellcheck disable=SC2086
   "${LLVM}clang" --target=$TARGET --sysroot="$SYS" -mexec-model=reactor "$t/reactor.o" "$RT/runtime.o" "$RT/stubs.o" \
-    -o "$t/runtime.wasm" -Wl,--export-all -Wl,--growable-table -Wl,--export=__stack_pointer -Wl,--allow-undefined-file=wasm/reactor.imports -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
+    -o "$t/runtime.wasm" -Wl,--export-all -Wl,--growable-table -Wl,--export=__stack_pointer -Wl,--fatal-warnings -Wl,-z,stack-size=8388608 $LIBS
   mv "$t/runtime.wasm" "$RT/runtime.wasm"
   rm -rf "$t"; trap - EXIT
 }
@@ -200,6 +201,9 @@ case ${1:-} in
   program) [ $# = 3 ] || { echo "usage: wasm/build.sh program FILE.py OUT.wasm" >&2; exit 2; }; program source "$2" "$3" ;;
   link) [ $# = 1 ] || { echo "usage: wasm/build.sh link < INPUT.ll > OUT.wasm" >&2; exit 2; }; OPT=${WASM_OPT:-0}; program ir - - ;;
   runtime-wasm) runtime_wasm ;;
+  gc-globals-probe)
+    RT=$RT/gc-globals
+    runtime_wasm wasm/test_gc_globals.c ;;
   gc-mark-probe)
     [ $# = 2 ] || { echo "usage: wasm/build.sh gc-mark-probe OUT.wasm" >&2; exit 2; }
     SYS=$(sysroot)
@@ -209,5 +213,5 @@ case ${1:-} in
   emitter) emitter ;;
   direct) [ $# = 3 ] || { echo "usage: wasm/build.sh direct FILE.py OUT.wasm" >&2; exit 2; }; direct "$2" "$3" ;;
   tir) [ $# = 3 ] || { echo "usage: wasm/build.sh tir FILE.py OUT.wasm" >&2; exit 2; }; tir "$2" "$3" ;;
-  *) echo "usage: wasm/build.sh runtime | program FILE.py OUT.wasm | runtime-wasm | emitter | link | {direct|tir} FILE.py OUT.wasm | gc-mark-probe OUT.wasm" >&2; exit 2 ;;
+  *) echo "usage: wasm/build.sh runtime | program FILE.py OUT.wasm | runtime-wasm | emitter | link | {direct|tir} FILE.py OUT.wasm | gc-mark-probe OUT.wasm | gc-globals-probe" >&2; exit 2 ;;
 esac

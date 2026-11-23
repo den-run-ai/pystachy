@@ -126,7 +126,10 @@ program() { # tests/programs/AREA/NAME.py, its sidecars B.in, B.out... (B: the p
   esac
 }
 # Documented deviations from CPython: tests/deviations/*.out is written by hand and holds
-# stdout and stderr together (the runtime flushes stdout before reporting an error).
+# stdout and stderr together (the runtime flushes stdout before reporting an error). An
+# executable's traceback, which names this checkout's files, goes before the comparison: .out
+# holds an uncaught error's last line, as JIT code reports it.
+untraced() { sed '/^Traceback (most recent call last):$/,/^[^ ]/{/^Traceback (most recent call last):$/d;/^  /d;}' "$1"; }
 deviation() { # tests/deviations/NAME.py
   n=${1##*/}; n=${n%.py}; exp="tests/deviations/$n.out"
   for mode in $MODES; do
@@ -137,8 +140,9 @@ deviation() { # tests/deviations/NAME.py
     else
       { $PYS build "$1" -o "$T/dev.$n.exe" 2>&1 && $XENV "$T/dev.$n.exe" a1 a2 < /dev/null 2>&1; echo "[exit $?]"; } > "$T/dev.$n.$mode"
     fi
-    if cmp -s "$T/dev.$n.$mode" "$exp"; then pass=$((pass + 1)); else
-      fail=$((fail + 1)); echo "FAIL deviations/$n ($mode)"; diff "$exp" "$T/dev.$n.$mode" | head -10; fi
+    untraced "$T/dev.$n.$mode" > "$T/dev.$n.$mode.untraced"
+    if cmp -s "$T/dev.$n.$mode.untraced" "$exp"; then pass=$((pass + 1)); else
+      fail=$((fail + 1)); echo "FAIL deviations/$n ($mode)"; diff "$exp" "$T/dev.$n.$mode.untraced" | head -10; fi
   done
 }
 # A rejection exits with status 1 and writes one line to stderr, the diagnostic FILE:LINE: error:

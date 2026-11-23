@@ -22,29 +22,32 @@ or a pass on it and compare the printed result; `from_ifn` is its inverse.
 `print` writes a typed-after snapshot as a module, and the functions alone where --function
 selects some or the snapshot holds no module data (typed-before.json). The other modes read a
 module or functions alone. A module gives its attributes on its `module` line, as declarations
-give their fields, its declarations, one a line, before its `}`, and then its functions:
+give their fields, the first its text's version (TEXT_VERSION), its declarations, one a line,
+before its `}`, and then its functions:
 
-    module complete opts=[fieldtbaa tupleret] exceptions {
-      class Both base=Storage roles=[Reader] tagged fields=[" class":int value:int " Storage.0":bool " Storage.box.0":dyn] flags=[value:2] boxes=[value:3]
-      class Reader overlaps=[Storage] tagged fields=[" class":int]
-      dyntype @dt.Both kind=8 cls=1 flags=256 base=@dt.Storage role=@dt.Reader payload=Both
-      layout Both descriptor=@dt.Both base=@dt.Storage role=@dt.Reader number=1 members=[int int bool dyn] llvm=[i64 i64 i1 ptr]
+    module version=1 complete opts=[fieldtbaa tupleret] exceptions {
+      class Both base=Storage roles=[Reader] tag=1 fields=[" class":int value:int " Storage.0":bool " Storage.box.0":dyn] flags=[value:2] boxes=[value:3]
+      class Reader overlaps=[Storage] tag=2 fields=[" class":int]
+      dyntype @dt.Both kind=obj cls=1 flags=[role] base=@dt.Storage role=@dt.Reader payload=Both
+      layout Both descriptor=@dt.Both base=@dt.Storage role=@dt.Reader number=1 members=[int int bool dyn]
     }
 
-    class NAME [base=CLASS] [roles=[CLASS ...]] [overlaps=[CLASS ...]] [tagged] [fields=[FIELD:TYPE ...]] [flags=[FIELD:INT ...]] [boxes=[FIELD:INT ...]]
-    dyntype SYMBOL kind=INT cls=INT [flags=INT] [base=SYMBOL] [role=SYMBOL] [payload=TYPE]
-    layout NAME descriptor=SYMBOL [base=SYMBOL] [role=SYMBOL] number=INT [members=[TYPE ...]] [llvm=[TYPE ...]]
+    class NAME [base=CLASS] [roles=[CLASS ...]] [overlaps=[CLASS ...]] [tag=INT] [fields=[FIELD:TYPE ...]] [flags=[FIELD:INT ...]] [boxes=[FIELD:INT ...]]
+    dyntype SYMBOL kind=KIND cls=INT [flags=[FLAG ...]] [base=SYMBOL] [role=SYMBOL] [payload=TYPE]
+    layout NAME descriptor=SYMBOL [base=SYMBOL] [role=SYMBOL] number=INT [members=[TYPE ...]]
 
 A class gives its single base (a class or a builtin exception class), its fieldless secondary
-bases, the unrelated classes it shares a subclass with, whether its objects begin with a class
-tag, and its struct as field.addr indexes it: its fields in order with their types (a hidden
+bases, the unrelated classes it shares a subclass with, its tag (the number that its objects'
+class word holds, ClassInfo.tag; 0, omitted, where its objects have none), and its struct as
+field.addr indexes it: its fields in order with their types (a hidden
 field's name begins with a space, so it is quoted), and the index of each field's "is
 assigned" flag and identity box (ClassInfo.fflag and fbox). Its own flags take the indexes
 after its fields and its own boxes those after its flags; a base's are among its fields
 (" Storage.0" and " Storage.box.0"), as a derived class's struct begins with its base's
-(flow.gen_fl_fields). A dyntype gives a DynType's kind, class number, flags, base and role
-DynTypes and its boxes' payload type (dynamic.py); a layout, the struct of a class that has a
-DynType, by its members' types and their LLVM types (inspect_compiler.py's classes,
+(flow.gen_fl_fields). A dyntype gives a DynType's kind and flags by runtime.c's names for them
+(DYN_KINDS, DYN_FLAGS), its class number, its base and role DynTypes and its boxes' payload
+type (dynamic.py); a layout, the struct of a class that has a DynType, by its members' types,
+from which a record's LLVM types of them (llvm) are derived (inspect_compiler.py's classes,
 dynamic_types and dynamic_layouts). Classes come first, then dyntypes, then layouts; a field
 that holds its default ("", [], {}, 0 or false) is omitted.
 
@@ -101,8 +104,10 @@ only with -mlir-print-debuginfo: `loc(12)` is line 12 of the program's main file
 An instruction without one reads as 0.
 
 An atom (a type, a value, a label, a text, a name) is written bare where that is unambiguous,
-else as a JSON string. The form is for tests and review. It is no stable interchange format: its
-declarations follow the compiler's tables.
+else as a JSON string. Every block has a label, the first block's being entry. The form is for
+tests, review and the WebAssembly emitter (wasm/tir_wasm.py), which compiles a module from it.
+Its declarations follow the compiler's tables, so a text is read by the same compiler's tools;
+its version says which form a text is in.
 
 `verify` runs the compiler's verifier (PYSTACHY_IRCHECK=1's) on each function, as MLIR's
 -verify-diagnostics does. A comment line `; expected-error {{MESSAGE}}` in a function says that
@@ -127,6 +132,15 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# The version of the text form, a module's first attribute (version=1): what a module text means
+# changes only with it, so that a reader of module texts other than this one (the WebAssembly
+# emitter, wasm/tir_wasm.py) can tell a text it was not written for. parse refuses another
+# version; test_typed_ir_text.py's golden module holds the form, and changing that changes this.
+TEXT_VERSION = 1
+# runtime.c's DynType kinds (its DK_* enum, in order: a kind is its index) and flags (DF_*), by
+# the names a dyntype declaration writes them with (kind=obj, flags=[eq hash])
+DYN_KINDS = ("none", "bool", "int", "float", "str", "list", "dict", "tuple", "obj", "func", "iter", "gen", "type")
+DYN_FLAGS = (("eq", 1), ("cmp", 2), ("hash", 4), ("boxid", 8), ("ne", 16), ("x", 32), ("iter", 64), ("big", 128), ("role", 256))
 LOOP_ATOMS = ("kind", "mode", "head", "body", "step", "exit", "counter")
 LOOP_LISTS = ("tests", "indices")
 # A module's declarations, by keyword, in the order a module gives them: the module record's
@@ -134,19 +148,22 @@ LOOP_LISTS = ("tests", "indices")
 # names to records), and its fields in the order they are written: (key, kind, default). A field
 # that holds its default is omitted (None: none, it is always written). Kinds: an atom, an int, a
 # list of atoms, a list of ints, a flag, written as its bare key where it is true, a list of typed
-# names (each {"name", "type"}, written NAME:TYPE), a dict of names to ints (NAME:INT) or a list
-# of typed values (each {"value", "type"}, written as an op's operands are: (TYPE VALUE, ...)).
+# names (each {"name", "type"}, written NAME:TYPE), a dict of names to ints (NAME:INT), a list
+# of typed values (each {"value", "type"}, written as an op's operands are: (TYPE VALUE, ...)), a
+# DynType's kind (an int, written by its name in DYN_KINDS) or flags (an int, written as the list
+# of its flags' names in DYN_FLAGS), or a list derived from the other fields (DERIVED), which is
+# never written: parsing derives it, and printing refuses a record that holds another.
 # The first three are what the verifier reads of the program's classes; the others are what
 # lowering reads (gen_lower_module, gen_lower): lowering_state, docs/typed-ir.md#lowering-state.
 DECLARATIONS = {
     "class": ("classes", "", (("base", "atom", ""), ("roles", "list", []), ("overlaps", "list", []),
-                              ("tagged", "flag", False), ("fields", "typed", []), ("flags", "indexed", {}),
+                              ("tag", "int", 0), ("fields", "typed", []), ("flags", "indexed", {}),
                               ("boxes", "indexed", {}), ("template", "flag", False), ("exception", "atom", ""),
                               ("module", "atom", ""))),
-    "dyntype": ("dynamic_types", "symbol", (("kind", "int", None), ("cls", "int", None), ("flags", "int", 0),
+    "dyntype": ("dynamic_types", "symbol", (("kind", "dynkind", None), ("cls", "int", None), ("flags", "dynflags", 0),
                                            ("base", "atom", ""), ("role", "atom", ""), ("payload", "atom", ""))),
     "layout": ("dynamic_layouts", "name", (("descriptor", "atom", None), ("base", "atom", ""), ("role", "atom", ""),
-                                          ("number", "int", None), ("members", "list", []), ("llvm", "list", []))),
+                                          ("number", "int", None), ("members", "list", []), ("llvm", "derived", None))),
     "hole": ("holes", "number", (("type", "atom", ""),)),
     "global": ("globals", "symbol", (("type", "atom", None),)),
     "root": ("roots", "value", ()),
@@ -168,7 +185,7 @@ SNAPSHOT_TABLES = ("classes", "dynamic_types", "dynamic_layouts")
 # are (MLIR's module attributes): the program's settings and whole-program tables that lowering
 # reads. complete: the module declares all of lowering's state (it was printed at the lowering
 # boundary), which compile requires; unsupported: what the printer found it cannot serialize yet
-MODULE_ATTRIBUTES = (("complete", "flag", False), ("opts", "list", []), ("exceptions", "flag", False),
+MODULE_ATTRIBUTES = (("version", "int", None), ("complete", "flag", False), ("opts", "list", []), ("exceptions", "flag", False),
                      ("protocol", "flag", False), ("dynamic", "flag", False), ("promoting", "flag", False),
                      ("extension", "atom", ""), ("rtmode", "flag", False), ("debuglines", "flag", False),
                      ("plain", "list", []), ("untracked", "list", []), ("objects", "indexed", {}),
@@ -188,7 +205,18 @@ LOWERING_TABLES = tuple(table for table, _, _ in DECLARATIONS.values() if table 
 # each kind's Python type in a record, and what a message calls a value of it
 KINDS = {"atom": (str, "an atom"), "int": (int, "an int"), "list": (list, "a list"), "flag": (bool, "a flag"),
          "ints": (list, "a list of ints"), "typed": (list, "a list of names with types"),
-         "indexed": (dict, "a dict of names to ints"), "values": (list, "a list of typed values")}
+         "indexed": (dict, "a dict of names to ints"), "values": (list, "a list of typed values"),
+         "dynkind": (int, "an int"), "dynflags": (int, "an int"), "derived": (list, "a list")}
+
+
+def layout_llvm(record):
+    """A layout's members' LLVM types, lower_module.struct_types: what its llvm holds."""
+    utils = compiler()[4]
+    return [utils.lt(t) for t in record["members"]]
+
+
+# The derived fields (kind "derived"), by key: what derives each from its record, and what that is
+DERIVED = {"llvm": (layout_llvm, "its members' LLVM types")}
 DECODER = json.JSONDecoder()
 
 
@@ -607,10 +635,21 @@ def fields_text(record, fields, what):
     for key, kind, default in fields:
         value = record[key]
         require(type(value) is KINDS[kind][0], f"{what}: {key} must be {KINDS[kind][1]}")
+        if kind == "derived":
+            derive, derived = DERIVED[key]
+            require(value == derive(record), f"{what}: {key} must hold {derived}")
+            continue
         if value == default:
             continue
         if kind == "flag":
             parts.append(key)
+        elif kind == "dynkind":
+            require(0 <= value < len(DYN_KINDS), f"{what}: {key} {value} is no DynType kind")
+            parts.append(f"{key}={DYN_KINDS[value]}")
+        elif kind == "dynflags":
+            names = [name for name, bit in DYN_FLAGS if value & bit != 0]
+            require(sum(bit for _, bit in DYN_FLAGS if value & bit != 0) == value, f"{what}: {key} {value} holds no DynType flag")
+            parts.append(f"{key}=[{' '.join(names)}]")
         elif kind == "list":
             parts.append(f"{key}=[{' '.join(atom(v) for v in value)}]")
         elif kind == "ints":
@@ -647,6 +686,7 @@ def read_fields(text, at, end, fields, what):
         later = [k for k in keys[keys.index(key) + 1 :] if k in record]
         require(not later, f"{what} field {key} must come before {later[0] if later else ''}")
         _, kind, default = fields[keys.index(key)]
+        require(kind != "derived", f"{what} field {key} is derived from the others, not written")
         at = word.end()
         if kind == "flag":
             require(at == end or text.startswith(" ", at), f"{what} field {key} is a flag, written bare")
@@ -657,14 +697,18 @@ def read_fields(text, at, end, fields, what):
             value, at = int(number.group(1)), number.end()
         elif kind == "values":
             value, at = read_operands(text, expect(text, at, "="))
-        elif kind in ("list", "ints", "typed", "indexed"):
+        elif kind == "dynkind":
+            name, at = read_atom(text, expect(text, at, "="))
+            require(name in DYN_KINDS, f"{key}= needs a DynType kind: {', '.join(DYN_KINDS)}")
+            value = DYN_KINDS.index(name)
+        elif kind in ("list", "ints", "typed", "indexed", "dynflags"):
             at = expect(text, at, "=[")
             value = {} if kind == "indexed" else []
             while not text.startswith("]", at):
                 require(at < end, f"{key}=[ has no closing ']'")
                 if value:
                     at = expect(text, at, " ")
-                if kind == "list":
+                if kind == "list" or kind == "dynflags":
                     item, at = read_atom(text, at)
                     value.append(item)
                     continue
@@ -687,15 +731,25 @@ def read_fields(text, at, end, fields, what):
                     require(item not in value, f"{what} field {key} names {item!r} twice")
                     value[item], at = int(number.group(0)), number.end()
             at += 1
+            if kind == "dynflags":
+                bits = dict(DYN_FLAGS)
+                require(all(name in bits for name in value), f"{key}=[ needs DynType flags: {', '.join(bits)}")
+                require(len(set(value)) == len(value) and value == [name for name, _ in DYN_FLAGS if name in value],
+                        f"{key}=[ names each flag once, in the order {' '.join(bits)}")
+                value = sum(bits[name] for name in value)
         else:
             value, at = read_atom(text, expect(text, at, "="))
         require(at <= end, f"unexpected text at column {end + 1}")
         require(value != default, f"{what} field {key} is omitted where it holds its default")
         record[key] = value
     for key, kind, default in fields:
-        require(key in record or default is not None, f"{what} needs {key}=")
-    return {key: record[key] if key in record else type(default)(default) if isinstance(default, (list, dict)) else default
-            for key, kind, default in fields}
+        require(key in record or default is not None or kind == "derived", f"{what} needs {key}=")
+    out = {key: record[key] if key in record else type(default)(default) if isinstance(default, (list, dict)) else default
+           for key, kind, default in fields}
+    for key, kind, default in fields:
+        if kind == "derived":
+            out[key] = DERIVED[key][0](out)
+    return out
 
 
 def declaration_text(keyword, name, record):
@@ -774,6 +828,8 @@ def parse(text):
             elif record is None and line.startswith("module") and line.endswith(" {") and re.match(r"module[ {]", line):
                 require(module is None and not records, "a module's declarations come once, before its functions")
                 module = {"attributes": read_fields(line, len("module"), len(line) - 2, MODULE_ATTRIBUTES, "module")}
+                version = module["attributes"]["version"]
+                require(version == TEXT_VERSION, f"a module text of version {version}, where this one reads version {TEXT_VERSION}")
                 module.update({table: [] if named else {} for table, named, _ in DECLARATIONS.values()})
                 module["functions"] = records
                 declaring = True
@@ -895,15 +951,29 @@ def module_from_snapshot(snapshot):
         require(sorted(lowering["class_order"]) == sorted(classes), "the lowering record orders other classes than the snapshot's")
         order = lowering["class_order"]
         extra = lowering["classes"]
+    # (a class's tag is the number its objects' class word holds, which the lowering record gives;
+    # a snapshot without one says only whether a class has a tag, and the compiler numbers those
+    # that do from 1 in its order, where it excluded none of them from a hierarchy: program.py)
+    numbered = {}
+    for name in order:
+        if classes[name]["tagged"]:
+            numbered[name] = len(numbered) + 1
+    records = {}
+    for name in order:
+        c = classes[name]
+        record = {key: c[key] for key in c if key != "tagged"}
+        record.update(roles=list(c["roles"]), overlaps=list(c["overlaps"]), fields=[dict(f) for f in c["fields"]],
+                      flags=dict(c["flags"]), boxes=dict(c["boxes"]))
+        record.update(extra.get(name, {"template": False, "exception": "", "module": "", "tag": numbered.get(name, 0)}))
+        require((record["tag"] != 0) == c["tagged"], f"class {name}: the lowering record's tag {record['tag']} and the snapshot disagree")
+        records[name] = record
     module = {
         "attributes": {key: type(default)(default) if isinstance(default, (list, dict)) else default for key, _, default in MODULE_ATTRIBUTES},
-        "classes": {name: dict(classes[name], roles=list(classes[name]["roles"]), overlaps=list(classes[name]["overlaps"]),
-                               fields=[dict(f) for f in classes[name]["fields"]], flags=dict(classes[name]["flags"]),
-                               boxes=dict(classes[name]["boxes"]), **extra.get(name, {"template": False, "exception": "", "module": ""}))
-                    for name in order},
+        "classes": records,
         "dynamic_types": [dict(t) for t in snapshot["dynamic_types"]],
         "dynamic_layouts": [dict(t, members=list(t["members"]), llvm=list(t["llvm"])) for t in snapshot["dynamic_layouts"]],
     }
+    module["attributes"]["version"] = TEXT_VERSION
     for table in LOWERING_TABLES:
         module[table] = copy.deepcopy(lowering[table]) if lowering is not None else []
     files = snapshot.get("files", [])
@@ -1112,6 +1182,8 @@ def class_infos(module):
         info.base = c["base"]
         info.roles = list(c["roles"])
         info.overlaps = list(c["overlaps"])
+        info.tag = c["tag"]
+        info.exc = c["exception"]
         class_struct(name, c, info)
         infos[name] = info
     return infos
@@ -1170,7 +1242,7 @@ def lowering_state(gen):
     return {
         "attributes": attributes,
         "class_order": list(gen.classes),
-        "classes": {name: {"template": name in gen.tmpl, "exception": ci.exc, "module": ci.mod} for name, ci in gen.classes.items()},
+        "classes": {name: {"template": name in gen.tmpl, "exception": ci.exc, "module": ci.mod, "tag": ci.tag} for name, ci in gen.classes.items()},
         "holes": [{"number": str(k), "type": gen.holes[k]} for k in range(1, len(gen.holes))],
         "globals": [{"symbol": g.v, "type": g.t} for g in gen.globs],
         "roots": [{"value": r} for r in gen.gcroots],
@@ -1375,9 +1447,11 @@ def verify_errors(text, eh=False):
             continue
         want = expected[0]
         block = want["block"] if want["block"] is not None else record["blocks"][0]["label"]
+        # (the verifier names a block without a label "(unnamed)", where the text writes it "")
+        got = "" if reported is not None and reported.group(2) == "(unnamed)" else reported.group(2) if reported is not None else None
         if reported is None:
             problems.append(f"{name}: line {want['line']}: expected error {{{{{want['message']}}}}} was not reported")
-        elif want["message"] not in reported.group(3) or reported.group(2) != block:
+        elif want["message"] not in reported.group(3) or got != block:
             problems.append(f"{name}: line {want['line']}: expected error {{{{{want['message']}}}}} in block {block}, "
                             f"got in block {reported.group(2)}: {reported.group(3)}")
     return problems

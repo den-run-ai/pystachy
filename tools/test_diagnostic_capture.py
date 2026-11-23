@@ -85,9 +85,21 @@ class DiagnosticCaptureTests(unittest.TestCase):
 
     def generator(self, **changes):
         values = dict(retry_hierarchy=lambda msg: None, xtry="", newx={}, hints={}, newhints={}, final=False, making=[], recursive=[], line=4,
-                      ncand={}, xwant={}, xnot={}, newwant={}, curfn=None, fnkey=lambda f: f, clsused={})
+                      ncand={}, xwant={}, xnot={}, newwant={}, curfn=None, fnkey=lambda f: f, clsused={}, newlate=False)
         values.update(changes)
         return SimpleNamespace(**values)
+
+    def test_error_after_a_late_specialization_restarts_the_pass(self):
+        # code made a specialization of a subclass whose own __init__ is a class template, which the
+        # next pass makes before code is compiled (program.py's late_sub): an error may come of the
+        # hierarchy it joined late, so the pass ends in NeedHierarchy and captures nothing
+        diagnostics.CAPTURE = True
+        generator = self.generator(newlate=True, final=True)
+        with redirect_stderr(StringIO()) as output:
+            with self.assertRaises(diagnostics.NeedHierarchy):
+                gen_err(generator, "'Animal' object has no method 'bark'")
+            self.assertEqual(output.getvalue(), "")
+        self.assertEqual(diagnostics.CAPTURED, [])
 
     def test_speculative_retry_paths_capture_no_terminal_error(self):
         diagnostics.CAPTURE = True
