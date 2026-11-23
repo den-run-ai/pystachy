@@ -42,8 +42,12 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     # assigns are typed as for a class whose __init__ annotates its parameters with ts, and the
     # calls whose fields get the same types share one. A specialization is a class of its
     # own (c-1, c-2, ...): CPython's names for it are c's, messages about types show its
-    # fields' (Box[int]). It counts as a template specialization
+    # fields' (Box[int]). It counts as a template specialization. In a template hierarchy
+    # (program.py's template_bases) each specialization of its root is made with one of each
+    # member, whose objects begin as its own do (member_spec)
     t = self.classes[c]
+    if self.tmpl_member(t):
+        return self.member_spec(self.specialize(t.base, ts, given, named, lits), c)
     init = t.methods["__init__"]
     # (an annotated parameter's argument has its type, as call_fn coerces it)
     ts = [init.ptypes[i + 1] if i + 1 < len(init.ptypes) and init.ptypes[i + 1] != "" else ts[i] for i in range(len(ts))]
@@ -54,6 +58,13 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         # ints are one class, keyed and laid out so, bigints.py)
         ts = [promoted(ts[i]) if i + 1 >= len(init.ptypes) or init.ptypes[i + 1] == "" else ts[i] for i in range(len(ts))]
         given = {x: promoted(given[x]) for x in given}
+    elif int_lists() and t.tag != 0:
+        # (so too for the root of a template hierarchy, also a tuple's items, *args': one class for
+        # an int argument, as a literal makes, and a promoting one, as a parameter annotated int
+        # passes, such as the one a subclass's super().__init__(...) gives where it is declared,
+        # program.py's template_bases; else the base's objects and the subclass's would not share
+        # one location)
+        ts = [promoted_items(self, ts[i]) if i + 1 >= len(init.ptypes) or init.ptypes[i + 1] == "" else ts[i] for i in range(len(ts))]
     doing = c + ("[" if named else "(") + ",".join(ts) + ")"
     doing += "".join([f";{x}={given[x]}" for x in self.tparams.get(c, []) if x in given])
     doing += "".join([f";{x}={lit_key(lits[x])}" for x in init.params if x in lits])  # (literal_class)
@@ -67,6 +78,11 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         return self.specing[doing]
     if len(self.making) >= 100:
         self.err(f"{short(c)}() needs more than 100 nested template functions; annotate its parameters")
+    p = ""
+    if self.tmpl_sub(t):
+        # (a subclass of a class template whose own __init__ is one: derives from the specialization
+        # of its base that its super().__init__(...) makes, sub_base)
+        p = self.sub_base(t, init, ts)
     t.nspec += 1
     name = f"{c}-{t.nspec}"
     self.specing[doing] = name
@@ -92,10 +108,32 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         s.fields_ready = t.fields_ready
         s.slots = t.slots
         s.slotlimit = t.slotlimit
-        s.fields = [x for x in t.fields]  # (its class attributes, which its specializations share)
-        for x in t.fields:
-            s.fpos[x] = t.fpos[x]
-            s.ftypes[x] = t.ftypes[x]
+        if p != "":
+            # (its base's fields, then the class attributes that its own body binds, as member_spec's)
+            pc = self.classes[p]
+            s.base = p
+            s.tvars = dict(pc.tvars)
+            for x in pc.fields:
+                s.fpos[x] = len(s.fields)
+                s.fields.append(x)
+                s.ftypes[x] = pc.ftypes[x]
+            for x in pc.fnone:
+                s.fnone[x] = pc.fnone[x]
+            for x in pc.fguess:
+                s.fguess[x] = pc.fguess[x]
+            for x in pc.fann:
+                s.fann[x] = pc.fann[x]
+            b = self.classes[t.base]
+            for x in t.fields:
+                if x not in b.ftypes:
+                    self.add_field(s, x, t.ftypes[x])
+                    if x in t.fann:
+                        s.fann[x] = t.fann[x]
+        else:
+            s.fields = [x for x in t.fields]  # (its class attributes, which its specializations share)
+            for x in t.fields:
+                s.fpos[x] = t.fpos[x]
+                s.ftypes[x] = t.ftypes[x]
         if "__slots__" in t.ftypes:
             s.ftypes["__slots__"] = t.ftypes["__slots__"]
         s.fdefault = t.fdefault
@@ -161,6 +199,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         key = ",".join([x + ":" + retoken(s.ftypes[x], name, "@") for x in s.fields])
         key += "".join([f";{x}={retoken(s.tvars[x], name, '@')}" for x in self.tparams.get(c, [])])
         key += "".join([f";{x}={lit_key(lits[x])}" for x in init.params if x in lits])  # (its __init__ reads them)
+        key += f";base={p}" if p != "" else ""
         if key in t.specs:
             del self.classes[name]
             self.nts.pop(name, False)
@@ -180,7 +219,11 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         if self.template_instances >= TEMPLATE_INSTANCES:
             self.err(f"compilation needs more than {TEMPLATE_INSTANCES} template specializations; annotate template parameters or reduce type combinations")
         self.template_instances += 1
+        if p != "" and self.compiling and self.tbasing == 0:
+            self.late_sub(c, ts, doing)  # (a new one that compiled code makes: the next pass makes it first)
         t.specs[key] = name
+        if t.tag != 0:
+            self.new_tag(s)  # (a template hierarchy's: its methods dispatch on the class of self)
         shown_ts = [typestr(s.ftypes[x]) for x in s.fields if x not in t.ftypes and x not in s.fextra]
         if c in self.tparams:
             shown_ts = []  # (a generic class's: its type variables', C[int, str])
@@ -212,6 +255,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
                 self.lib = False
                 g.mod = s.mod
                 s.methods[g.name] = g  # (x.setter: a property's setter)
+        if p != "":
+            self.inherit(s)  # (then its base's others, as member_spec's)
         s.hook = t.hook
         if c in self.cnts:
             self.dc_methods(s)  # (its __repr__)
@@ -239,6 +284,12 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         self.specdone[doing] = name
         if canonical != "":
             self.specdone[canonical] = name
+        for m in [x.name for x in self.classes.values() if x.base == c and self.tmpl_member(x) and defs_declared(x)] if t.tag != 0 else []:
+            # (a template hierarchy's: one specialization of each member with this one, made
+            # complete, whose objects a value of its type may be, member_spec; that of a member
+            # whose class statement the declarations have not reached yet, as for an annotation
+            # before it, is made once they have, template_bases)
+            self.member_spec(name, m)
         return name
     finally:
         for request in owned:
@@ -250,10 +301,132 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
             self.making.pop()
 
 
+def gen_new_tag(self, s: ClassInfo) -> None:
+    # a class tag for specialization s of a template hierarchy (template_bases), made after the
+    # tags of the classes as declared: one no other class has had, and its name in the table of
+    # the names of tagged classes, where a missing field's error has made it already
+    self.ntag += 1
+    s.tag = self.ntag
+    for d in self.consts if self.fieldnames else []:
+        if d.kind == "fieldnames":
+            while len(d.refs) <= s.tag:
+                d.refs.append("null")
+            d.refs[s.tag] = self.sconst(short(s.name))
+
+
+def gen_member_spec(self, p: str, m: str) -> str:
+    # the specialization of class m, a member of a template hierarchy (tmpl_member: no __init__
+    # of its own), whose objects begin as those of p, a specialization of m's base, do, and
+    # which derives from p: made once, as p is (specialize), so that dispatch on a value of p's
+    # type knows it. Its fields are p's, then those m's body declares; its methods are m's
+    # own, then p's (inherit), among them the __init__ that makes its objects
+    key = m + "@" + p
+    if key in self.specdone:
+        return self.specdone[key]
+    t = self.classes[m]
+    pc = self.classes[p]
+    if not pc.flowed:
+        # (p is being made: its __init__'s code, whose fields its objects' layout does not hold yet)
+        self.err(f"the __init__ of {shown(pc.origin)} makes an object of {shown(m)}, which derives from it without an __init__ of its own: not supported")
+    if not defs_declared(t):
+        self.err(f"class {shown(m)}, which derives from class template {shown(pc.origin)}, is not supported where its specialization is needed before its class statement")
+    self.inherit(t)
+    self.declare_fields(t)
+    t.nspec += 1
+    name = f"{m}-{t.nspec}"
+    s = ClassInfo(name, t.node)
+    s.mod = t.mod
+    s.origin = m
+    s.base = p
+    s.speckey = m + "(" + p + ")"
+    s.tvars = dict(pc.tvars)
+    s.fields_ready = True
+    s.slots = list(t.slots)
+    s.slotlimit = t.slotlimit
+    s.lits = pc.lits
+    s.fconst = pc.fconst
+    for x in pc.fields:
+        s.fpos[x] = len(s.fields)
+        s.fields.append(x)
+        s.ftypes[x] = pc.ftypes[x]
+    # (its class attributes are m's, those m's body binds again too, which its specializations
+    # share as a template's do: default_home finds each one's class, the one whose body binds it)
+    s.fdefault = t.fdefault
+    s.fglob = t.fglob
+    for x in pc.fnone:
+        s.fnone[x] = pc.fnone[x]
+    for x in pc.fguess:
+        s.fguess[x] = pc.fguess[x]
+    for x in pc.fann:
+        s.fann[x] = pc.fann[x]
+    b = self.classes[t.base]
+    for x in t.fields:
+        if x not in b.ftypes:
+            # (what m's body declares: a class attribute, or a field annotated there)
+            self.add_field(s, x, t.ftypes[x])
+            if x in t.fann:
+                s.fann[x] = t.fann[x]
+    if "__slots__" in t.ftypes:
+        s.ftypes["__slots__"] = t.ftypes["__slots__"]
+    comparison_reserve_fields(self, s)  # (late-created, before layout, as specialize's)
+    self.classes[name] = s
+    self.specdone[key] = name
+    if self.template_instances >= TEMPLATE_INSTANCES:
+        self.err(f"compilation needs more than {TEMPLATE_INSTANCES} template specializations; annotate template parameters or reduce type combinations")
+    self.template_instances += 1
+    self.new_tag(s)
+    shown_p = SPECSHOW.get(p, short(p))
+    SPECSHOW[name] = short(m) + (shown_p[shown_p.find("[") :] if "[" in shown_p else shown_p[shown_p.find("(") :] if "(" in shown_p else "")
+    sel = self.selfcls
+    line = self.line
+    lib = self.lib
+    try:
+        self.selfcls = name
+        for d in t.node.kids[0].kids:
+            if d.kind == "def":
+                self.line = d.line
+                self.lib = s.mod != ""
+                g = self.declare_fn(d, name)
+                self.lib = False
+                g.mod = s.mod
+                s.methods[g.name] = g
+        self.inherit(s)
+        s.hook = t.hook
+        for f in s.methods.values():
+            self.check_special(f)
+        self.fl_fields(s)
+        if self.dyn_policy(s.node.line):
+            comparison_properties(s)
+    finally:
+        self.selfcls = sel
+        self.line = line
+        self.lib = lib
+    for x in [y.name for y in self.classes.values() if y.base == m and self.tmpl_member(y) and defs_declared(y)]:
+        self.member_spec(name, x)
+    return name
+
+
+def defs_declared(ci: ClassInfo) -> bool:
+    # has the program's declaration pass (program.py) declared the methods that class ci's own
+    # body defines, which a specialization of it reads (inherit, declare_fields)
+    nodes = [f.node for f in ci.methods.values()]
+    for d in ci.node.kids[0].kids:
+        if d.kind == "def" and len([n for n in nodes if n is d]) == 0:
+            return False
+    return True
+
+
 def promoted(t: str) -> str:
     # what a type variable bound to t is, in a program whose containers hold promoting ints
     # (int_lists): a promoting int for an int (specialize), else t
     return BIG if t == "int" else t
+
+def promoted_items(self, t: str) -> str:
+    # promoted, of an argument of type t of a template hierarchy's root (specialize): also of the
+    # items of a tuple, which hold promoting ints as they are (declarations.ctype)
+    if is_tuple(t):
+        return self.ctype("tuple", [promoted_items(self, x) for x in targs(t)])
+    return promoted(t)
 
 def gen_names_tv(self, a: Node, tvs: list[str]) -> bool:
     # does annotation a (also as a string) mention one of type variables tvs

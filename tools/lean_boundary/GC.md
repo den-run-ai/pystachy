@@ -136,3 +136,35 @@ sweep left unsupported raised no rejection. Designing the check found the bug `e
 `list(())` allocated an atomic array that its callers typed as a list of strs. The check rejected
 `generic_annotations.py` and `iterate_tuples.py` before the fix, and its regressions crash without
 it.
+
+### Alpha.1 container subclasses and open enum values
+
+The 106 programs added from v0.6.1 to `41dffd36201e` contain 60 rejected
+function records in 15 programs ([#1643](https://github.com/den-run-ai/pystachy/issues/1643)).
+At 57 first failures, a subclass-typed value reaches an operation requiring
+a scanned array or scanned dict keys, with no inferred allocation kind. This
+includes direct calls such as `Rows.add` appending a string, and conversions
+such as `Registry` used as `opt[dict[str,int]]`. Recovering the subtype's
+built-in view alone is insufficient: a proof must connect its backing header
+to an allocator or a verified caller contract.
+
+Two other failures in `builtin_list_iterate` and `builtin_list_stack` have a
+known atomic destination. `set.new(0)` creates a set of integers and
+`set.update_list` takes a subclass as a list of integers (L183:39 and L162:39).
+The model requires a scanned destination when it cannot rule out pointer
+elements in that source. The sixtieth failure, in `lib_enum_boundary`, is a
+different case: `_FlagType._missing_` loads a `dict[int,T]` field before
+`dict.set` at L429:25. The open value type leaves the value-array kind unproved.
+These diagnostics identify the missing allocation or element facts. They do
+not establish a runtime collection failure.
+
+The GC adapter also reports two unsupported initializers. Candidate inference
+reaches its resource bound for `getattr_hook_lookup`, and structural validation
+of `getattr_hook_unbound` finds an unreachable definition (`%t188`). To repeat
+the release-scoped sweep after building the Lean checkers, run:
+
+```sh
+git diff --diff-filter=A --name-only v0.6.1 41dffd36201e -- tests/programs tests/deviations \
+  | grep '\.py$' | xargs python3.13 tools/lean_report.py --jobs 1 \
+    --output /tmp/alpha1.md --records /tmp/alpha1.jsonl
+```

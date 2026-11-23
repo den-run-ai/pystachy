@@ -329,7 +329,8 @@ class DynamicProof:
         # from globals, fields, containers or escaped slots receive no facts.
 
     def edge(self, state: UnionState, source: str, target: str) -> UnionState:
-        s = state.clone()
+        # (state is this edge's own facts, which become the target's: dataflow.forward_fixpoint)
+        s = state
         dests: list[str] = []
         sources: list[str] = []
         bools: list[str] = []
@@ -385,8 +386,9 @@ class DynamicProof:
         return s
 
     def flow(self, b: Blk, s: UnionState, targets: list[str], edges: list[UnionState]) -> None:
-        # one block for the worklist (dataflow.forward_fixpoint): s becomes its facts at its
-        # end, and each edge that leaves it joins targets and edges
+        # one block for the worklist (dataflow.forward_fixpoint): s, the facts at the block's
+        # start, goes through its ops, and each edge that leaves it joins targets and edges with
+        # facts of its own, the last of them s itself
         label = b.label
         for i in b.code:
             if i.op == "phi":
@@ -402,14 +404,18 @@ class DynamicProof:
         if last.op == "cbr":
             targets.extend(last.b)
             edges.append(s.conditional(last.a[0].v, True))
-            edges.append(s.conditional(last.a[0].v, False))
+            s.cond(last.a[0].v, False)
+            edges.append(s)
         elif last.op == "check":
             targets.append(last.b[0])
-            edges.append(s.conditional(last.a[0].v, False))
             key = last.x if last.x != "" else last.s
             if key in self.fn.cold:
+                edges.append(s.conditional(last.a[0].v, False))
                 targets.append(self.fn.cold[key])
-                edges.append(s.conditional(last.a[0].v, True))
+                s.cond(last.a[0].v, True)
+            else:
+                s.cond(last.a[0].v, False)
+            edges.append(s)
         elif last.op == "switch" and len(last.a) > 0 and last.a[0].v in self.numbers and len(last.a) == len(last.b):
             # A class dispatcher: each case takes the tags of its class number, and the
             # default the rest. (A case whose number no DynType of the table holds learns
@@ -424,14 +430,13 @@ class DynamicProof:
                     taken[t] = True
                 targets.append(last.b[j])
                 edges.append(arm)
-            rest = s.clone()
-            rest.narrow(number, [t for t in self.full if t not in taken])
+            s.narrow(number, [t for t in self.full if t not in taken])
             targets.append(last.b[0])
-            edges.append(rest)
+            edges.append(s)
         else:
-            for target in last.b:
-                targets.append(target)
-                edges.append(s.clone())
+            for j in range(len(last.b)):
+                targets.append(last.b[j])
+                edges.append(s if j == len(last.b) - 1 else s.clone())
 
     def run(self) -> None:
         forward_fixpoint(self)

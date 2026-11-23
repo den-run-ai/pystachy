@@ -1,0 +1,5 @@
+{'u': 's', 'oi': None, 'of': None, 't': (0, 't'), 'f': 2.5, 'b': False, 's': None, 'n': 7}
+{'u': 's', 'oi': 1, 'of': 1.5, 't': (1, 't'), 'f': 2.5, 'b': False, 's': None, 'n': 7}
+{'u': 2, 'oi': 2, 'of': 1.5, 't': (2, 't'), 'f': 2.5, 'b': True, 's': None, 'n': 7}
+{'u': 3, 'oi': 3, 'of': 1.5, 't': (3, 't'), 'f': 2.5, 'b': True, 's': None, 'n': 7}
+[exit 0]

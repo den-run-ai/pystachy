@@ -209,8 +209,10 @@ applies. Bytes case methods remain ASCII-only.
 
 - **Earlier errors:** statically invalid operations (such as ordering dicts or a
   constant tuple index out of range) fail compilation, before any program output.
-- **Uncaught errors:** only the final traceback line is printed, without name
-  suggestions; stdout is flushed and exit status is 1. Compile-time
+- **Uncaught errors:** an executable (`build`, or `run` with the program cache)
+  prints CPython's traceback, without its `~^` markers, name suggestions or the
+  tracebacks of chained exceptions; JIT-run programs and `PYSTACHY_DEBUG_LINES=0`
+  print only its final line. stdout is flushed and exit status is 1. Compile-time
   `SyntaxWarning`s are omitted.
 - **Process failures:** out-of-memory, Ctrl-C and unguarded stack exhaustion end
   execution without `except`/`finally` cleanup. Explicitly raised `MemoryError`
@@ -294,11 +296,14 @@ or generator/async initializers retain eager formatting
 - **Builtin names bound on a path that does not run**, such as `len = mylen` in an `except`
   clause or an untaken `if` branch at module level, raise `NameError` when read; CPython
   finds the builtin ([#1512](https://github.com/den-run-ai/pystachy/issues/1512)).
-- **Star imports** see `__all__` only as the module's top-level statements bind and extend it.
-  Where only an `if` branch, a `try` statement or a loop binds it, the import takes every public
-  name; where the top level binds it, a change in such a statement, as
-  `if flag: __all__ += ["b"]`, is not seen. CPython takes the `__all__` that the module's code
-  leaves ([#1513](https://github.com/den-run-ai/pystachy/issues/1513)).
+- **Star imports** check the live `__all__` for ordinary module variables named by
+  literal string lists assigned or extended with `+=`, `append()` or `extend()` in
+  `if` and `try` suites. This includes packages that assign `__all__` at the top level.
+  A name added to a top-level list this way can bind a new variable. An existing
+  destination keeps its binding when that list did not originally name it.
+  Packages without a top-level export list, conditional function or class exports, and changes outside these literal
+  forms retain the top-level export rules
+  ([#1513](https://github.com/den-run-ai/pystachy/issues/1513)).
 - **`except E as name` at module level**, where an import bound `name`, leaves the module
   bound after a handler that ran; CPython unbinds `name`, so a later read raises `NameError`
   ([#1514](https://github.com/den-run-ai/pystachy/issues/1514)).
@@ -582,11 +587,16 @@ See [object protocols](semantics.md#object-protocols) and
 See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
 [single inheritance](typing.md#single-inheritance).
 
-- **Inheritance:** multiple bases outside the [method-only secondary bases](typing.md#method-only-secondary-bases) subset; ordinary hierarchies involving layout-specialized templates,
+- **Inheritance:** multiple bases outside the [method-only secondary bases](typing.md#method-only-secondary-bases) subset; hierarchies involving layout-specialized templates
+  outside the [template hierarchy subset](typing.md#subclasses-of-class-templates) (a subclass
+  whose `super().__init__(...)` arguments' types its declaration does not tell; one whose own
+  `__init__` is a template, given an object of a template's specialization, a lambda, a nested
+  function or a bound method; a template with a base of its own),
   NamedTuple or builtins; a `collections.abc` base beside other bases or a keyword, naming a type
   variable (`Sequence[T]`), or rebound by its module, and the [mixin forms](../../lib/compatibility.md#collectionsabc)
   that differ (`reversed()` of a `Mapping`, `pop(k, default=d)`, a class-method `_from_iterable`); generic inheritance outside the [visitor subset](typing.md#explicit-generic-classes)
-  (bases whose constructor binds type variables, or a type variable inside a base's type
+  (bases whose constructor binds type variables, but one specialization, `Box[int]`, or a type
+  variable inside a base's type
   argument: `Visitor[list[T]]`); mixed dataclass/ordinary hierarchies; decorated subclasses except
   dataclass-from-dataclass and [identity decorators](typing.md#single-inheritance); changing method kind; incompatible virtual call signatures or
   results; overridden static/class methods called through base-typed objects; reads of the

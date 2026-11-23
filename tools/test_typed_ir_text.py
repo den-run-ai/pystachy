@@ -51,16 +51,16 @@ LOCATED = (WRITTEN.replace("  %left.1 = slot name=left : int\n", "  %left.1 = sl
            .replace("(tuple[int,str] %stk.2) : %slot\n", "(tuple[int,str] %stk.2) : %slot loc(8)\n")
            .replace("  ret.none\n", "  ret.none loc(12)\n")
            .replace("-> L8, L5, L8\n", "-> L8, L5, L8 loc(9999999)\n"))
-MODULE = """module {
-  class Base tagged
+MODULE = """module version=1 {
+  class Base tag=1
   class Error base=Exception fields=[" cls":str " str":str " args":str]
-  class Node base=Base roles=[Reader] tagged fields=[" class":int value:int "a:b":"odd type" next:opt[Node]] flags=[value:4 "a:b":5] boxes=[value:6]
-  class Reader overlaps=[Base "odd name"] tagged
+  class Node base=Base roles=[Reader] tag=2 fields=[" class":int value:int "a:b":"odd type" next:opt[Node]] flags=[value:4 "a:b":5] boxes=[value:6]
+  class Reader overlaps=[Base "odd name"] tag=3
   class "odd name"
-  dyntype @dt.Node kind=8 cls=1 flags=256 base=@dt.Base role=@dt.Reader payload=Node
-  dyntype @dtf.0 kind=9 cls=-1 flags=8 payload=fn[m:Node.f]
-  dyntype @dt.Base kind=8 cls=0
-  layout Node descriptor=@dt.Node base=@dt.Base role=@dt.Reader number=1 members=[int tuple[int,str] dyn] llvm=[i64 "{i64, ptr}" ptr]
+  dyntype @dt.Node kind=obj cls=1 flags=[role] base=@dt.Base role=@dt.Reader payload=Node
+  dyntype @dtf.0 kind=func cls=-1 flags=[boxid] payload=fn[m:Node.f]
+  dyntype @dt.Base kind=obj cls=0
+  layout Node descriptor=@dt.Node base=@dt.Base role=@dt.Reader number=1 members=[int int+ dyn]
   layout Base descriptor=@dt.Base number=0
 }
 
@@ -281,20 +281,31 @@ class TextTests(unittest.TestCase):
 
 
 class ModuleTests(unittest.TestCase):
+    def test_dyntype_kinds_and_flags_are_named_as_runtime_c_names_them(self):
+        source = (ROOT / "runtime.c").read_text(encoding="utf-8")
+        kinds = re.search(r"enum \{ (DK_NONE[^}]*) \};", source).group(1).split(",")
+        self.assertEqual([k.strip().removeprefix("DK_").lower() for k in kinds], list(text.DYN_KINDS))
+        flags = re.search(r"enum \{ (DF_EQ[^}]*) \};", source).group(1).split(",")
+        self.assertEqual([(f.split("=")[0].strip().removeprefix("DF_").lower(), int(f.split("=")[1])) for f in flags],
+                         list(text.DYN_FLAGS))
+
     def test_written_module_reads_and_prints_unchanged(self):
         module = text.parse_module(MODULE)
         self.assertEqual(text.format_module(module), MODULE)
         self.assertEqual(text.module_roundtrip_errors(module), [])
         self.assertEqual(list(module), text.MODULE_KEYS)
-        self.assertEqual(module["attributes"], {key: default for key, _, default in text.MODULE_ATTRIBUTES})
+        self.assertEqual(module["attributes"], dict({key: default for key, _, default in text.MODULE_ATTRIBUTES}, version=1))
+        self.assertEqual(module["dynamic_types"][0], {"symbol": "@dt.Node", "kind": 8, "cls": 1, "flags": 256, "base": "@dt.Base",
+                                                      "role": "@dt.Reader", "payload": "Node"})
+        self.assertEqual(module["dynamic_layouts"][0]["llvm"], ["i64", "{i64, ptr}", "ptr"])
         self.assertEqual(list(module["classes"]), ["Base", "Error", "Node", "Reader", "odd name"])
         self.assertEqual(module["classes"]["Node"], {
-            "base": "Base", "roles": ["Reader"], "overlaps": [], "tagged": True,
+            "base": "Base", "roles": ["Reader"], "overlaps": [], "tag": 2,
             "fields": [{"name": " class", "type": "int"}, {"name": "value", "type": "int"}, {"name": "a:b", "type": "odd type"},
                        {"name": "next", "type": "opt[Node]"}],
             "flags": {"value": 4, "a:b": 5}, "boxes": {"value": 6}, "template": False, "exception": "", "module": ""})
         self.assertEqual(module["classes"]["Reader"]["overlaps"], ["Base", "odd name"])
-        self.assertEqual(module["classes"]["odd name"], {"base": "", "roles": [], "overlaps": [], "tagged": False,
+        self.assertEqual(module["classes"]["odd name"], {"base": "", "roles": [], "overlaps": [], "tag": 0,
                                                          "fields": [], "flags": {}, "boxes": {}, "template": False,
                                                          "exception": "", "module": ""})
         self.assertEqual(module["dynamic_types"][1], {"symbol": "@dtf.0", "kind": 9, "cls": -1, "flags": 8, "base": "",
@@ -302,7 +313,7 @@ class ModuleTests(unittest.TestCase):
         self.assertEqual(module["dynamic_types"][2], {"symbol": "@dt.Base", "kind": 8, "cls": 0, "flags": 0, "base": "",
                                                       "role": "", "payload": ""})
         self.assertEqual(module["dynamic_layouts"][0], {"name": "Node", "descriptor": "@dt.Node", "base": "@dt.Base",
-                                                        "role": "@dt.Reader", "number": 1, "members": ["int", "tuple[int,str]", "dyn"],
+                                                        "role": "@dt.Reader", "number": 1, "members": ["int", "int+", "dyn"],
                                                         "llvm": ["i64", "{i64, ptr}", "ptr"]})
         self.assertEqual(module["dynamic_layouts"][1]["members"], [])
         self.assertEqual(module["functions"], [text.parse_function(WRITTEN)])
@@ -317,20 +328,21 @@ class ModuleTests(unittest.TestCase):
         with self.assertRaisesRegex(text.TextError, "expected a module, found functions alone"):
             text.parse_module(WRITTEN)
         # (a module without declarations or functions)
-        self.assertEqual(text.format_module(text.parse_module("; empty\nmodule {\n}\n")), "module {\n}\n")
+        self.assertEqual(text.format_module(text.parse_module("; empty\nmodule version=1 {\n}\n")), "module version=1 {\n}\n")
 
     def test_malformed_module_is_rejected_with_its_line(self):
         for old, new, expected in (
-                ("  class Base tagged\n", "  klass Base tagged\n", "line 2: expected a declaration: class, dyntype, layout, hole"),
-                ("  class Base tagged\n", "class Base tagged\n", "line 2: expected a declaration, indented by two spaces"),
-                ("  class Base tagged\n", "  class Base tagged=1\n", "line 2: class field tagged is a flag, written bare"),
-                ("  class Base tagged\n", "  class Base tagged base=X\n", "line 2: class field base must come before tagged"),
-                ("  class Base tagged\n", "  class Base tagged tagged\n", "line 2: class field tagged is repeated"),
-                ("  class Base tagged\n", "  class Base sort=X\n", "line 2: unknown class field 'sort'"),
-                ("  class Base tagged\n", '  class Base base="" tagged\n', "line 2: class field base is omitted where it holds its default"),
-                ("  class Base tagged\n", "  class Base roles=[] tagged\n", "line 2: class field roles is omitted where it holds its default"),
-                ("  class Base tagged\n", "  class Base roles=Reader\n", "line 2: expected '=['"),
-                ("  class Base tagged\n", '  class "Base" tagged\n', "line 2: atom 'Base' must be written bare"),
+                ("  class Base tag=1\n", "  klass Base tag=1\n", "line 2: expected a declaration: class, dyntype, layout, hole"),
+                ("  class Base tag=1\n", "class Base tag=1\n", "line 2: expected a declaration, indented by two spaces"),
+                ("  class Base tag=1\n", "  class Base tag\n", "line 2: tag= needs an integer"),
+                ("  class Base tag=1\n", "  class Base tag=0\n", "line 2: class field tag is omitted where it holds its default"),
+                ("  class Base tag=1\n", "  class Base tag=1 base=X\n", "line 2: class field base must come before tag"),
+                ("  class Base tag=1\n", "  class Base tag=1 tag=1\n", "line 2: class field tag is repeated"),
+                ("  class Base tag=1\n", "  class Base sort=X\n", "line 2: unknown class field 'sort'"),
+                ("  class Base tag=1\n", '  class Base base="" tag=1\n', "line 2: class field base is omitted where it holds its default"),
+                ("  class Base tag=1\n", "  class Base roles=[] tag=1\n", "line 2: class field roles is omitted where it holds its default"),
+                ("  class Base tag=1\n", "  class Base roles=Reader\n", "line 2: expected '=['"),
+                ("  class Base tag=1\n", '  class "Base" tag=1\n', "line 2: atom 'Base' must be written bare"),
                 # (a struct: NAME:TYPE fields, NAME:INT flags and boxes, a name quoted where it has
                 # a space or a colon)
                 ('fields=[" cls":str " str":str " args":str]', "fields=[]", "line 3: class field fields is omitted where it holds its default"),
@@ -340,33 +352,42 @@ class ModuleTests(unittest.TestCase):
                 ('fields=[" cls":str', 'fields=[" cls": str', "line 3: expected an atom at column 43"),
                 ('fields=[" cls":str', 'fields=[ cls:str', "line 3: expected an atom at column 36"),
                 ('fields=[" cls":str', 'fields=["cls":str', "line 3: atom 'cls' must be written bare"),
-                ('"a:b":"odd type"', 'a:b:"odd type"', "line 4: expected ' ' at column 79"),
+                ('"a:b":"odd type"', 'a:b:"odd type"', "line 4: expected ' ' at column 78"),
                 ("flags=[value:4", "flags=[value:04", "line 4: flags=[ needs an integer after value:"),
                 ("flags=[value:4", "flags=[value:x", "line 4: flags=[ needs an integer after value:"),
                 ('flags=[value:4 "a:b":5]', "flags=[value:4 value:5]", "line 4: class field flags names 'value' twice"),
                 (' flags=[value:4 "a:b":5] boxes=[value:6]', ' boxes=[value:6] flags=[value:4 "a:b":5]',
                  "line 4: class field flags must come before boxes"),
-                ('" args":str]\n', '" args":str] tagged\n', "line 3: class field tagged must come before fields"),
-                ("kind=8 cls=0\n", "kind=8 cls=0 flags=0\n", "line 9: dyntype field flags is omitted where it holds its default"),
-                ("kind=8 cls=0\n", "kind=8\n", "line 9: dyntype @dt.Base needs cls="),
+                ('" args":str]\n', '" args":str] tag=4\n', "line 3: class field tag must come before fields"),
+                ("kind=obj cls=0\n", "kind=obj cls=0 flags=[]\n", "line 9: dyntype field flags is omitted where it holds its default"),
+                ("kind=obj cls=0\n", "kind=obj\n", "line 9: dyntype @dt.Base needs cls="),
+                ("kind=func", "kind=function", "line 8: kind= needs a DynType kind: none, bool, int"),
+                ("kind=func", "kind=9", "line 8: kind= needs a DynType kind"),
+                ("flags=[role]", "flags=[256]", "line 7: flags=[ needs DynType flags: eq, cmp, hash"),
+                ("flags=[boxid]", "flags=[boxid eq]", "line 8: flags=[ names each flag once, in the order eq cmp hash"),
+                ("flags=[boxid]", "flags=[boxid boxid]", "line 8: flags=[ names each flag once"),
+                ("dyn]\n", "dyn] llvm=[i64 \"{i64, ptr}\" ptr]\n", "line 10: layout field llvm is derived from the others, not written"),
+                ("module version=1 {", "module {", "line 1: module needs version="),
+                ("module version=1 {", "module version=2 {", "line 1: a module text of version 2, where this one reads version 1"),
+                ("module version=1 {", "module complete version=1 {", "line 1: module field version must come before complete"),
                 ("cls=-1", "cls=-01", "line 8: cls= needs an integer"),
                 ("number=0\n", "number=x\n", "line 11: number= needs an integer"),
-                ("ptr]\n", "ptr\n", "line 10: llvm=[ has no closing ']'"),
+                ("dyn]\n", "dyn\n", "line 10: members=[ has no closing ']'"),
                 ("  layout Base", "  class Late\n  layout Base", "line 11: a class after the layouts"),
-                ("  layout Base", "  dyntype @dt.Late kind=8 cls=2\n  layout Base", "line 11: a dyntype after the layouts"),
+                ("  layout Base", "  dyntype @dt.Late kind=obj cls=2\n  layout Base", "line 11: a dyntype after the layouts"),
                 ("  class Error base=Exception", "  class Error\n  class Error base=Exception", "line 4: class Error is declared twice"),
-                ("  dyntype @dt.Base kind=8 cls=0\n", "  dyntype @dt.Base kind=8 cls=0\n  dyntype @dt.Node kind=8 cls=1\n",
+                ("  dyntype @dt.Base kind=obj cls=0\n", "  dyntype @dt.Base kind=obj cls=0\n  dyntype @dt.Node kind=obj cls=1\n",
                  "line 10: dyntype @dt.Node is declared twice"),
                 ("}\n\nfunction", "\nfunction", "line 13: expected a declaration, indented by two spaces"),
-                ("function @written", "module {\n}\nfunction @written", "line 14: a module's declarations come once, before its functions")):
+                ("function @written", "module version=1 {\n}\nfunction @written", "line 14: a module's declarations come once, before its functions")):
             with self.subTest(expected=expected):
                 changed = MODULE.replace(old, new, 1)
                 self.assertNotEqual(changed, MODULE)
                 with self.assertRaises(text.TextError) as raised:
                     text.parse(changed)
                 self.assertIn(expected, str(raised.exception))
-        for source, expected in (("module {\n  class A\n", "the module's declarations have no closing brace"),
-                                 (WRITTEN + "module {\n}\n", "line 21: a module's declarations come once, before its functions")):
+        for source, expected in (("module version=1 {\n  class A\n", "the module's declarations have no closing brace"),
+                                 (WRITTEN + "module version=1 {\n}\n", "line 21: a module's declarations come once, before its functions")):
             with self.subTest(expected=expected), self.assertRaisesRegex(text.TextError, expected):
                 text.parse(source)
 
@@ -374,9 +395,9 @@ class ModuleTests(unittest.TestCase):
         module = text.parse_module(MODULE)
         for change, expected in ((lambda m: m.pop("dynamic_layouts"), "a module record holds attributes, classes, dynamic_types, dynamic_layouts, holes"),
                                  (lambda m: m.__setitem__("dynamic_types", {}), "a module's dynamic_types must be a list"),
-                                 (lambda m: m["classes"]["Base"].pop("tagged"),
-                                  "class Base: the record must hold base, roles, overlaps, tagged, fields, flags, boxes, template, exception, module"),
-                                 (lambda m: m["classes"]["Base"].__setitem__("tagged", 1), "class Base: tagged must be a flag"),
+                                 (lambda m: m["classes"]["Base"].pop("tag"),
+                                  "class Base: the record must hold base, roles, overlaps, tag, fields, flags, boxes, template, exception, module"),
+                                 (lambda m: m["classes"]["Base"].__setitem__("tag", True), "class Base: tag must be an int"),
                                  (lambda m: m["classes"]["Base"].__setitem__("fields", {}), "class Base: fields must be a list of names with types"),
                                  (lambda m: m["classes"]["Node"]["fields"].append({"name": "x"}),
                                   "class Node: each of its fields must hold a name and a type"),
@@ -386,7 +407,10 @@ class ModuleTests(unittest.TestCase):
                                  (lambda m: m["dynamic_types"][0].__setitem__("kind", "8"), "dyntype @dt.Node: kind must be an int"),
                                  (lambda m: m["dynamic_types"][0].__setitem__("flags", True), "dyntype @dt.Node: flags must be an int"),
                                  (lambda m: m["dynamic_layouts"][0].__setitem__("members", "int"), "layout Node: members must be a list"),
-                                 (lambda m: m["dynamic_layouts"][0]["llvm"].append(1), "an atom must be a string, not 1"),
+                                 (lambda m: m["dynamic_types"][0].__setitem__("kind", 13), "dyntype @dt.Node: kind 13 is no DynType kind"),
+                                 (lambda m: m["dynamic_types"][0].__setitem__("flags", 512), "dyntype @dt.Node: flags 512 holds no DynType flag"),
+                                 (lambda m: m["dynamic_layouts"][0]["llvm"].append("i64"), "layout Node: llvm must hold its members' LLVM types"),
+                                 (lambda m: m["attributes"].__setitem__("version", None), "module: version must be an int"),
                                  (lambda m: m["functions"][0].__setitem__("coroutine", 1), "@written: coroutine must be a boolean")):
             with self.subTest(expected=expected):
                 broken = json.loads(json.dumps(module))
@@ -472,11 +496,17 @@ class CompilerTests(unittest.TestCase):
             self.assertEqual(module, text.module_from_snapshot(snapshot))
             for table in ("dynamic_types", "dynamic_layouts") + text.LOWERING_TABLES:
                 self.assertEqual(module[table], snapshot[table] if table in snapshot else snapshot["lowering"][table])
-            # (a class's record is the snapshot's, and what lowering reads of it, in the compiler's order)
+            # (a class's record is the snapshot's, and what lowering reads of it, in the compiler's order;
+            # its tag the lowering record's number, where the snapshot says only whether it has one)
             lowering = snapshot["lowering"]
             self.assertEqual(list(module["classes"]), lowering["class_order"])
-            self.assertEqual(module["classes"], {name: dict(snapshot["classes"][name], **lowering["classes"][name])
+            self.assertEqual(module["classes"], {name: dict({k: v for k, v in snapshot["classes"][name].items() if k != "tagged"},
+                                                            **lowering["classes"][name])
                                                  for name in lowering["class_order"]})
+            tags = [c["tag"] for c in module["classes"].values() if c["tag"] != 0]
+            self.assertEqual(tags, list(range(1, len(tags) + 1)))
+            self.assertEqual(sorted(name for name, c in module["classes"].items() if c["tag"] != 0),
+                             sorted(name for name, c in snapshot["classes"].items() if c["tagged"]))
             self.assertTrue(module["attributes"]["complete"])
             self.assertEqual(text.refusals(module), [])
             # (secondary bases, overlaps, and the DynTypes and layouts of a dynamic program are among them)
@@ -637,14 +667,14 @@ L1:
                                     capture_output=True, text=True, check=False)
             self.assertEqual(result.returncode, 1)
             self.assertIn("@f: unexpected error in block entry", result.stderr)
-            for fixture in (self.INVALID, self.CLASSES, self.FIELDS):
+            for fixture in (self.INVALID, self.CLASSES, self.FIELDS, self.STRUCTURE, self.CLASS_READS):
                 result = subprocess.run([sys.executable, str(ROOT / "tools/typed_ir_text.py"), "verify", str(fixture)],
                                         capture_output=True, text=True, check=False)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("functions verify as expected", result.stdout)
 
     def test_annotated_fixtures_are_in_the_printed_form_but_for_their_comments(self):
-        for fixture in (self.INVALID, self.CLASSES, self.FIELDS, self.OPTIONAL):
+        for fixture in (self.INVALID, self.CLASSES, self.FIELDS, self.OPTIONAL, self.STRUCTURE, self.CLASS_READS):
             with self.subTest(fixture=fixture.name):
                 bare = "\n".join(line for line in fixture.read_text().split("\n") if not line.lstrip().startswith(";"))
                 bare = re.sub(r"\n{3,}", "\n\n", bare).lstrip("\n")
@@ -653,6 +683,92 @@ L1:
     CLASSES = FIXTURES / "classes.tir"
     FIELDS = FIXTURES / "fields.tir"
     OPTIONAL = FIXTURES / "optional.tir"
+    STRUCTURE = FIXTURES / "structure.tir"
+    CLASS_READS = FIXTURES / "class_reads.tir"
+
+    def test_a_class_read_needs_a_test_of_the_objects_class_word(self):
+        source = self.CLASS_READS.read_text()
+        self.assertEqual(text.verify_errors(source), [])
+        expected = text.expectations(source)
+        records = text.parse_functions(source)
+        admitted = [r["symbol"] for r, e in zip(records, expected, strict=True) if not e]
+        self.assertEqual((len(admitted), len(expected) - len(admitted)), (8, 9))
+        for found in expected:
+            for e in found:
+                self.assertRegex(e["message"], r"^(field.addr|ret) operand 0 reads %\w+ as (\w+) without a proof that its class derives from \2$")
+        # (a test of a class word against itself, or a switch on a constant, tells the proof
+        # nothing: without their tests, the reads it admitted are errors, but for the one whose
+        # class word the function stores)
+        untested = re.sub(r"\((int|%ptr) (%t\d+), (int|%ptr) (\d+|@x\.\w+)\)", r"(\1 \2, \1 \2)", source)
+        untested = untested.replace("switch(int %t1,", "switch(int 7,")
+        self.assertNotIn("@x.F)", untested)
+        problems = [p for p in text.verify_errors(untested) if ": unexpected error" in p]
+        self.assertEqual(sorted(p.split(":")[0] for p in problems), sorted(a for a in admitted if a != "@the_class_word_a_constructor_stores"))
+        for problem in problems:
+            self.assertRegex(problem, r"reads %\w+ as \w+ without a proof that its class derives from \w+$")
+
+    def test_a_union_read_at_a_union_without_its_members_needs_a_test_of_its_tag(self):
+        def errors(source, utags):
+            fn = text.to_ifn(text.parse_function(source))
+            gen = text.gen_for(fn)
+            gen.utags = utags
+            reported = StringIO()
+            try:
+                with redirect_stderr(reported):
+                    gen.verify(fn, False)
+            except SystemExit:
+                return reported.getvalue()
+            return ""
+        tested = """function @narrow(x: union[float,int,str], y: union[int,str]) -> union[int,str] {
+entry:
+  %t1 = union.tag(union[float,int,str] %a0) : int
+  %t2 = num.cmp == (int %t1, int 2) : bool
+  cbr(bool %t2) -> L3, L4
+L3:
+  ret(union[int,str] %a1)
+L4:
+  ret(union[int,str] %a0)
+}
+"""
+        tags = {"int": 1, "float": 2, "str": 3}
+        self.assertEqual(errors(tested, tags), "")
+        # (a test of another member leaves the float in the box)
+        self.assertIn("block L4: ret operand 0 reads %a0 as union[int,str] without a proof that it holds no float",
+                      errors(tested.replace("int 2)", "int 1)"), tags))
+
+    def test_control_flow_is_structured_and_loop_records_name_its_loops(self):
+        from src.pystachy_compiler.structure import Structure
+        source = self.STRUCTURE.read_text()
+        self.assertEqual(text.verify_errors(source), [])
+        expected = text.expectations(source)
+        records = text.parse_functions(source)
+        admitted = [r for r, e in zip(records, expected, strict=True) if not e]
+        self.assertEqual((len(admitted), len(records) - len(admitted)), (3, 4))
+        # (without their loop records, the functions whose records were wrong verify; the cycle
+        # with two entries does not)
+        bare = "\n".join(line for line in source.split("\n") if not line.startswith("loop "))
+        unreported = sorted(p.split(":")[0] for p in text.verify_errors(bare) if "was not reported" in p)
+        self.assertEqual(unreported, ["@a_loop_record_that_names_no_block", "@a_loop_record_whose_body_is_out_of_its_loop",
+                                      "@a_loop_record_whose_exit_is_in_its_loop"])
+        # (a structured backend finds each accepted loop at its record's head, in nesting order;
+        # a body that always leaves closes no cycle, and a test before a loop may skip it)
+        for record in admitted:
+            fn = text.to_ifn(record)
+            flow = Structure(fn)
+            at = {b.label: j for j, b in enumerate(fn.blocks)}
+            self.assertEqual(flow.irreducible(), [])
+            for lp in fn.loops:
+                with self.subTest(function=record["symbol"], head=lp.head):
+                    blocks = flow.loop(at[lp.head])
+                    self.assertEqual(at[lp.body] in blocks, record["symbol"] != "@a_loop_whose_body_always_leaves")
+                    self.assertNotIn(at[lp.exit], blocks)
+        nested = text.to_ifn(next(r for r in admitted if r["symbol"] == "@nested_loops"))
+        flow = Structure(nested)
+        self.assertEqual(sorted(nested.blocks[j].label for j in flow.loop(1)), ["L1", "L3", "L5"])
+        self.assertEqual(sorted(nested.blocks[j].label for j in flow.loop(2)), ["L3", "L5"])
+        skipped = text.to_ifn(next(r for r in admitted if r["symbol"] == "@a_loop_entered_after_a_test_that_may_skip_it"))
+        flow = Structure(skipped)
+        self.assertTrue(flow.dominates(0, 3) and not flow.dominates(1, 3))
 
     def test_an_optional_read_at_its_type_needs_a_test_that_it_is_not_none(self):
         source = self.OPTIONAL.read_text()
@@ -660,7 +776,7 @@ L1:
         expected = text.expectations(source)
         records = text.parse_functions(source)
         admitted = [r["symbol"] for r, e in zip(records, expected, strict=True) if not e]
-        self.assertEqual((len(admitted), len(expected) - len(admitted)), (9, 6))
+        self.assertEqual((len(admitted), len(expected) - len(admitted)), (10, 7))
         for found in expected:
             for e in found:
                 self.assertRegex(e["message"], r"^(rt operand 0|phi operand from \w+) reads %\w+ as str without a proof that it is not None$")
@@ -714,12 +830,12 @@ L1:
         admitted = [r["symbol"] for r, e in zip(text.parse_functions(source), expected, strict=True) if not e]
         self.assertEqual((len(admitted), len(expected) - len(admitted)), (6, 2))
         # (as functions alone the verifier knows no class: each reading the view admits is an error)
-        alone = re.sub(r"(?ms)^module \{$.*?^\}$\n", "", source)
+        alone = re.sub(r"(?ms)^module version=1 \{$.*?^\}$\n", "", source)
         self.assertIsInstance(text.parse(alone), list)
         problems = text.verify_errors(alone)
         self.assertEqual([p.split(":")[0] for p in problems], admitted)
         for problem in problems:
-            self.assertRegex(problem, r": unexpected error in block entry: ret operand 0 reads %a0 as \w+, but it is \w+$")
+            self.assertRegex(problem, r": unexpected error in block \w+: ret operand 0 reads %a0 as \w+, but it is \w+$")
 
     def test_a_modules_structs_are_the_ones_field_addr_indexes(self):
         source = self.FIELDS.read_text()
@@ -776,11 +892,11 @@ L1:
                                         "class A: the box of 'x' is at 1, field ' B.0' of type bool, where a base's box is a dyn field")):
             with self.subTest(expected=expected):
                 with self.assertRaises(text.TextError) as raised:
-                    text.verify_errors("module {\n" + declarations + "}\n\n" + self.CASE)
+                    text.verify_errors("module version=1 {\n" + declarations + "}\n\n" + self.CASE)
                 self.assertEqual(str(raised.exception), expected)
-        self.assertEqual(text.verify_errors("module {\n  class A base=KeyError\n  class B base=A\n}\n\n" + self.CASE), [])
+        self.assertEqual(text.verify_errors("module version=1 {\n  class A base=KeyError\n  class B base=A\n}\n\n" + self.CASE), [])
         # (a base's flag and box, at its hidden fields, and the derived class's own after its fields)
-        self.assertEqual(text.verify_errors('module {\n  class A fields=[x:int " B.0":bool " B.box.0":dyn y:int] '
+        self.assertEqual(text.verify_errors('module version=1 {\n  class A fields=[x:int " B.0":bool " B.box.0":dyn y:int] '
                                             'flags=[x:1 y:4] boxes=[x:2 y:5]\n}\n\n' + self.CASE), [])
 
 

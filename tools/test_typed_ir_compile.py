@@ -161,7 +161,7 @@ class RoundTripTests(unittest.TestCase):
         # (a module written by hand declares none of lowering's state: a module's functions alone
         # print, but do not compile)
         with self.assertRaisesRegex(text.TextError, "does not declare the state that lowering reads"):
-            text.compile_module(text.parse_module("module {\n}\n"))
+            text.compile_module(text.parse_module("module version=1 {\n}\n"))
         # (a snapshot of some functions, --function, compiles none of them)
         report, snapshot, _ = self.inspections["tests/programs/exceptions/exc_as_rebind.py"]
         some = dict(snapshot, functions=snapshot["functions"][:1])
@@ -182,8 +182,8 @@ class RoundTripTests(unittest.TestCase):
 class LoweringTextTests(unittest.TestCase):
     """The declarations and attributes that hold lowering's state print and read back."""
 
-    MODULE = """module complete opts=[fieldtbaa tupleret] exceptions protocol dynamic promoting plain=[gen[int]] untracked=[m] objects=[Point:0 "odd name":1] compared=[Point] hashed=[Point] unequal=[Point] crossed=["odd name"] {
-  class Point tagged fields=[" class":int x:int] module=m
+    MODULE = """module version=1 complete opts=[fieldtbaa tupleret] exceptions protocol dynamic promoting plain=[gen[int]] untracked=[m] objects=[Point:0 "odd name":1] compared=[Point] hashed=[Point] unequal=[Point] crossed=["odd name"] {
+  class Point tag=1 fields=[" class":int x:int] module=m
   class Box template exception=ValueError
   class "odd name"
   hole 1 type=dict[str,int]
@@ -251,10 +251,10 @@ entry:
                 (" c csym=@puts", " c=1 csym=@puts", "line 18: extern field c is a flag, written bare"),
                 ("  runtime write\n", "  runtime write\n  runtime write\n", "line 17: runtime write is declared twice"),
                 ("  global @g.p type=Point\n", "  global @g.p type=Point\n  hole 3\n", "line 8: a hole after the globals"),
-                ("module complete opts", "module complete complete opts", "line 1: module field complete is repeated"),
-                ("module complete opts", "module opts=[x] complete opts", "line 1: module field complete must come before opts"),
-                ("module complete opts", "module sort=1 opts", "line 1: unknown module field 'sort'"),
-                ("module complete opts", "module complete=1 opts", "line 1: module field complete is a flag, written bare"),
+                ("version=1 complete opts", "version=1 complete complete opts", "line 1: module field complete is repeated"),
+                ("version=1 complete opts", "version=1 opts=[x] complete opts", "line 1: module field complete must come before opts"),
+                ("version=1 complete opts", "version=1 sort=1 opts", "line 1: unknown module field 'sort'"),
+                ("version=1 complete opts", "version=1 complete=1 opts", "line 1: module field complete is a flag, written bare"),
                 ("objects=[Point:0", "objects=[Point:x", "line 1: objects=[ needs an integer after Point:")):
             with self.subTest(expected=expected):
                 changed = self.MODULE.replace(old, new, 1)
