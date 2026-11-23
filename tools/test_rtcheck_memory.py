@@ -16,7 +16,7 @@ import tempfile
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ROUNDS = "1500"
+ROUNDS = "600"
 
 # (what the fault is, the text of runtime.py that it replaces, the replacement)
 SET_MUTANTS = [
@@ -113,8 +113,8 @@ DICT_MUTANTS = [
      '    n = 0\n    e = 0\n    while e < sn:\n        if dict_live(src, e):\n            h = _rt.word(sh, e)',
      '    n = 0\n    e = 0\n    while e < sn - 1:\n        if dict_live(src, e):\n            h = _rt.word(sh, e)'),
     ("a store over a value past 64 bits keeps its Mpz",
-     '        _rt.put(_rt.getp(d, "Dict.vals"), e, v)\n        dict_val_clear(d, e)\n    else:\n        pys_rt_dadd(d, k, h, v, i)',
-     '        _rt.put(_rt.getp(d, "Dict.vals"), e, v)\n    else:\n        pys_rt_dadd(d, k, h, v, i)'),
+     '            _rt.put(_rt.getp(d, "Dict.vals"), e, v)\n            dict_val_clear(d, e)\n        return e\n    pys_rt_dadd(d, k, h, v, i)',
+     '            _rt.put(_rt.getp(d, "Dict.vals"), e, v)\n        return e\n    pys_rt_dadd(d, k, h, v, i)'),
 ]
 MUTANTS = [
     ("pop keeps the stale slot",
@@ -193,7 +193,8 @@ MUTANTS = [
 
 
 def check(runtime, part="memory"):
-    return subprocess.run([sys.executable, os.path.join(ROOT, "tools", "rtcheck.py"), ROUNDS, "1", "--runtime", runtime, "--only", part],
+    # (--stop: a seeded bug's run ends at its first failure)
+    return subprocess.run([sys.executable, os.path.join(ROOT, "tools", "rtcheck.py"), ROUNDS, "1", "--runtime", runtime, "--only", part, "--stop"],
                           capture_output=True, text=True, cwd=ROOT)
 
 

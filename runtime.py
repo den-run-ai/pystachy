@@ -5475,8 +5475,7 @@ def int_key_hash(k: int) -> int:
 @_rt.unchecked
 def pys_rt_dhash(d: _rt.Ptr, k: int) -> int:
     # the hash of key k of d: kind 0 int keys, 1 str keys (2 on it: hashed by CPython's hash),
-    # else by the descriptor of a tuple or object key. A copy in each entry point, with the
-    # lookup's choice of probe after it (pys_rt_dfind): one test of the kind for both
+    # else by the descriptor of a tuple or object key
     kind = _rt.get(d, "Dict.kind")
     if kind & -3 == 1:
         return str_key_hash(k)
@@ -5584,7 +5583,8 @@ def dict_find_str(d: _rt.Ptr, k: int, h: int, m: int) -> int:
 @_rt.inline
 @_rt.unchecked
 def pys_rt_dfind(d: _rt.Ptr, k: int, h: int) -> int:
-    # k's idx slot, k's hash being h, or below zero (see above)
+    # k's idx slot, or below zero (see above), for a key whose hash h its caller has: an
+    # entry's stored one
     size = _rt.get(d, "Dict.size")
     if size == 0:
         return -1
@@ -5594,6 +5594,31 @@ def pys_rt_dfind(d: _rt.Ptr, k: int, h: int) -> int:
     if kind > 1:
         return pys_rt_dfind_obj(d, k, h)
     return dict_find_int(d, k, h, size * 2 - 1)
+
+
+@_rt.inline
+@_rt.unchecked
+def dict_slot(d: _rt.Ptr, k: int) -> int:
+    # k's idx slot, or below zero: one hash and one lookup. Each kind of key hashes and then
+    # calls its own probe, as runtime.c's dhfind did: one test of the kind for both. (A hash
+    # of the program's may give d its first table: the size is read after it, and runtime.c's
+    # probe reads the kind's mark itself)
+    kind = _rt.get(d, "Dict.kind")
+    if kind & -3 == 1:
+        h = str_key_hash(k)
+        size = _rt.get(d, "Dict.size")
+        if size == 0:
+            return -1
+        return dict_find_str(d, k, h, (size if kind & 2 != 0 else size * 2) - 1)
+    if kind > 1:
+        h = pys_rt_hobj(kind, k)
+        if _rt.get(d, "Dict.size") == 0:
+            return -1
+        return pys_rt_dfind_obj(d, k, h)
+    size = _rt.get(d, "Dict.size")
+    if size == 0:
+        return -1
+    return dict_find_int(d, k, int_key_hash(k), size * 2 - 1)
 
 
 @_rt.unchecked
@@ -5756,9 +5781,8 @@ def pys_dict_new_atomic(kind: int, n: int) -> _rt.Ptr:
 @_rt.inline
 @_rt.unchecked
 def dict_entry(d: _rt.Ptr, k: int) -> int:
-    # k's entry, or -1: one hash and one lookup
-    h = pys_rt_dhash(d, k)
-    i = pys_rt_dfind(d, k, h)
+    # k's entry, or -1
+    i = dict_slot(d, k)
     if i < 0:
         return -1
     return _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1
@@ -5892,17 +5916,47 @@ def pys_rt_dset(d: _rt.Ptr, k: int, h: int, v: int) -> int:
     return _rt.get(d, "Dict.n") - 1
 
 
+@_rt.inline
+@_rt.unchecked
+def dict_put(d: _rt.Ptr, k: int, v: int, how: int) -> int:
+    # one hash and one lookup of k, then a store. how 0: d[k] = v, and the entry; 1:
+    # d.setdefault(k, v), and the value there, v where it was stored; 2: k's entry, added with
+    # the value v where d has none. Each kind of key hashes and then calls its own probe (see
+    # dict_slot); how is a constant of each caller, which keeps its own case
+    kind = _rt.get(d, "Dict.kind")
+    if kind & -3 == 1:
+        h = str_key_hash(k)
+        size = _rt.get(d, "Dict.size")
+        i = -1
+        if size != 0:
+            i = dict_find_str(d, k, h, (size if kind & 2 != 0 else size * 2) - 1)
+    elif kind > 1:
+        h = pys_rt_hobj(kind, k)
+        i = -1
+        if _rt.get(d, "Dict.size") != 0:
+            i = pys_rt_dfind_obj(d, k, h)
+    else:
+        h = int_key_hash(k)
+        size = _rt.get(d, "Dict.size")
+        i = -1
+        if size != 0:
+            i = dict_find_int(d, k, h, size * 2 - 1)
+    if i >= 0:
+        e = _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1
+        if how == 1:
+            return _rt.word(_rt.getp(d, "Dict.vals"), e)
+        if how == 0:
+            _rt.put(_rt.getp(d, "Dict.vals"), e, v)
+            dict_val_clear(d, e)
+        return e
+    pys_rt_dadd(d, k, h, v, i)
+    return v if how == 1 else _rt.get(d, "Dict.n") - 1
+
+
 @_rt.noinline
 @_rt.unchecked
 def pys_dict_set(d: _rt.Ptr, k: int, v: int) -> None:
-    h = pys_rt_dhash(d, k)
-    i = pys_rt_dfind(d, k, h)
-    if i >= 0:
-        e = _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1
-        _rt.put(_rt.getp(d, "Dict.vals"), e, v)
-        dict_val_clear(d, e)
-    else:
-        pys_rt_dadd(d, k, h, v, i)
+    dict_put(d, k, v, 0)
 
 
 @_rt.noinline
@@ -5912,14 +5966,7 @@ def pys_dict_set_big(d: _rt.Ptr, k: int, lo: int, m: _rt.Ptr) -> None:
     if _rt.null(m):
         pys_dict_set(d, k, lo)
         return
-    h = pys_rt_dhash(d, k)
-    i = pys_rt_dfind(d, k, h)
-    if i >= 0:
-        e = _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1
-        _rt.put(_rt.getp(d, "Dict.vals"), e, -9223372036854775807 - 1)
-    else:
-        pys_rt_dadd(d, k, h, -9223372036854775807 - 1, i)
-        e = _rt.get(d, "Dict.n") - 1
+    e = dict_put(d, k, -9223372036854775807 - 1, 0)
     pys_rt_dbig_make(d)
     _rt.put(_rt.getp(d, "Dict.vb"), e, _rt.addr(m))
 
@@ -5984,7 +6031,7 @@ def pys_rt_dpfind(d: _rt.Ptr, k: int) -> int:
     if kind > 1:
         if _rt.get(d, "Dict.len") == 0:
             return -1
-        return pys_rt_dfind(d, k, pys_rt_dhash(d, k))
+        return dict_slot(d, k)
     if size == 0:
         return -1
     return dict_find_int(d, k, int_key_hash(k), size * 2 - 1)
@@ -6060,8 +6107,7 @@ def pys_dict_big_popitem(d: _rt.Ptr) -> _rt.Ptr:
 
 @_rt.unchecked
 def pys_dict_del(d: _rt.Ptr, k: int) -> int:
-    h = pys_rt_dhash(d, k)
-    i = pys_rt_dfind(d, k, h)
+    i = dict_slot(d, k)
     if i < 0:
         pys_rt_dict_keyerr(d, k)
     return pys_rt_dtake(d, i)
@@ -6099,12 +6145,7 @@ def pys_dict_popbox(d: _rt.Ptr, k: int, dflt: int) -> int:
 @_rt.unchecked
 def pys_dict_setdefault(d: _rt.Ptr, k: int, v: int) -> int:
     # one hash and one lookup, as CPython's
-    h = pys_rt_dhash(d, k)
-    i = pys_rt_dfind(d, k, h)
-    if i >= 0:
-        return _rt.word(_rt.getp(d, "Dict.vals"), _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1)
-    pys_rt_dadd(d, k, h, v, i)
-    return v
+    return dict_put(d, k, v, 1)
 
 
 @_rt.unchecked
@@ -6193,12 +6234,7 @@ def pys_dict_big_entry(d: _rt.Ptr, lo: int, m: _rt.Ptr) -> int:
 def pys_dict_big_put(d: _rt.Ptr, lo: int, m: _rt.Ptr) -> int:
     if not _rt.null(m):
         return pys_rt_dbput(d, m, pys_rt_hbig(d, m), 0)
-    h = pys_rt_dhash(d, lo)
-    i = pys_rt_dfind(d, lo, h)
-    if i >= 0:
-        return _rt.i32_at(_rt.getp(d, "Dict.idx"), i) - 1
-    pys_rt_dadd(d, lo, h, 0, i)
-    return _rt.get(d, "Dict.n") - 1
+    return dict_put(d, lo, 0, 2)
 
 
 @_rt.unchecked

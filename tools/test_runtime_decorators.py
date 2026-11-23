@@ -86,7 +86,7 @@ class Decorators(unittest.TestCase):
         # the probes of int and str keys are functions of their own
         with tempfile.TemporaryDirectory() as tmp:
             ir = compile_runtime(ROOT / "runtime.py", tmp)
-        for name in ("pys_rt_dhash", "pys_rt_dfind", "f.dict_entry", "pys_rt_dadd"):
+        for name in ("f.dict_slot", "f.dict_put", "pys_rt_dhash", "pys_rt_dfind", "f.dict_entry", "pys_rt_dadd"):
             with self.subTest(name):
                 self.assertEqual(attributes(ir, name), ["alwaysinline"])
         for name in ("f.dict_find_int", "f.dict_find_str"):

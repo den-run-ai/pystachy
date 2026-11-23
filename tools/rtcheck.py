@@ -36,6 +36,9 @@ from src.pystachy_compiler.specs import RTRECORDS  # noqa: E402
 # runtime.py's machine memory runs on a model that checks each access (rt_heap.py), with what
 # it calls in runtime.c beside it; its @_rt.unchecked functions check their arithmetic
 ARGS = sys.argv[1:]
+STOP = "--stop" in ARGS  # end at the first failure: for a run that only asks whether there is one
+if STOP:
+    ARGS.remove("--stop")
 RUNTIME = os.path.join(ROOT, "runtime.py")
 ONLY = ""
 for flag in ("--runtime", "--only"):
@@ -104,6 +107,12 @@ def ref(f):
     return (r[0], b(r[1]) if isinstance(r[1], str) else r[1])
 
 
+def stop():
+    if STOP:
+        print(f"{cases} cases, a failure: stopped at the first")
+        sys.exit(1)
+
+
 def same(name, got, want, args):
     global fails, cases
     cases += 1
@@ -111,6 +120,7 @@ def same(name, got, want, args):
         fails += 1
         if fails <= 20:
             print(f"FAIL {name}{args!r}: runtime.py {got!r}, CPython {want!r}")
+        stop()
 
 
 def idx():
@@ -642,6 +652,7 @@ def fuzz_sets():
                     fault = f"elements {have[:12]}, CPython's {list(s.ref)[:12]}"
                 if fault != "":
                     fails += 1
+                    stop()
                     if fails <= 20:
                         print(f"FAIL set after {after} ({mode}): {fault}")
                 return fault == ""
@@ -653,6 +664,11 @@ def fuzz_sets():
                 same("set-has-run", call("has", s, 193), ("ok", 1), ())
                 if not sound(s, "a run of nine"):
                     return
+            if mode == "big" and round == 0:
+                # an element past 64 bits whose hash is -2**63's (-4): its slot holds the other
+                # sentinel, and a list of the set's elements holds -2**63 for it all the same
+                s = new([4 - (1 << 64), 7])
+                same("set-list-sentinel", outcome(lambda: values(rt.pys_set_list(s.ptr))), ("ok", set_table(s, mode)[0]), ())
             for _ in range(3):
                 new([elem() for _ in range(R.choice([0, 1, 3, 5, 9, 30]))])
             for _ in range(60):
@@ -801,6 +817,7 @@ def fuzz_sets():
                     cases += 1
                     if got[0] not in ("ok", "KeyError"):
                         fails += 1
+                        stop()
                         print(f"FAIL set {op} ({mode}), with an __eq__ that changes a set: {got}")
                     for s in sets:
                         s.ref = set(set_table(s, mode)[0])
@@ -969,6 +986,7 @@ def fuzz_dicts():
                     fault = f"items {have[:8]}, CPython's {list(d.ref.items())[:8]}"
                 if fault != "":
                     fails += 1
+                    stop()
                     if fails <= 20:
                         print(f"FAIL dict after {after} ({mode}): {fault}")
                 return fault == ""
@@ -1184,6 +1202,7 @@ def fuzz_dicts():
                     cases += 1
                     if got[0] not in ("ok", "KeyError", "RuntimeError"):
                         fails += 1
+                        stop()
                         print(f"FAIL dict {op} ({mode}), with an __eq__ that changes a dict: {got}")
                     for s in dicts:
                         s.ref = dict(dict_table(s, mode)[0])
