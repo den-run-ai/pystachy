@@ -50,6 +50,15 @@ def gen_num_union(self, t: str) -> bool:
 def gen_value_union(self, t: str) -> bool:
     return is_union(unopt(t)) and all([m in ["int", "float", "bool", "str", COMPLEXC] or is_list(m) or is_dict(m) for m in umembers(unopt(t))])
 
+def gen_tuple_union(self, t: str) -> bool:
+    # a closed union (or one | None) that holds a tuple beside a value union's members
+    # (str | tuple[str, list[str]]): the box holds the tuple as a container's slot does, and
+    # isinstance(x, tuple) names its one tuple type (union_type). Truth, len(), str(), repr()
+    # and equality select the member's; an index, a loop, arithmetic, an ordering or a method
+    # call needs the member, as a reference union's does
+    ms = umembers(unopt(t)) if is_union(unopt(t)) else []
+    return len([m for m in ms if is_tuple(m) or is_vtuple(m)]) > 0 and all([m in ["int", "float", "bool", "str", COMPLEXC] or is_list(m) or is_dict(m) or is_tuple(m) or is_vtuple(m) for m in ms])
+
 def gen_ueq_type(self, t: str) -> bool:
     # Finite builtin value trees: paired runtime descriptors handle their layouts,
     # but no class callbacks, file handles, functions or sets cross this boundary.
@@ -71,7 +80,7 @@ def gen_uop(self, v: Val, op: str) -> Val:
         return self.refl_union_str(v, "__str__")  # (each class's: reflection.py)
     calls = op == "truth" and is_union(unopt(v.t)) and all([m in ["int", "float", "bool", "str"] or is_list(m) or is_dict(m) or is_callable(m) for m in umembers(unopt(v.t))])
     objects = self.object_union(v.t) and op != "len"  # (each member's own, an object's by its methods; repr() too)
-    if not self.value_union(v.t) and not calls and not objects:
+    if not self.value_union(v.t) and not calls and not objects and not self.tuple_union(v.t):
         if len([m for m in umembers(unopt(v.t)) if is_callable(m)]) > 0:
             self.err("a union that holds a Callable requires narrowing with isinstance() or callable() first")
         self.err("closed reference union operations require narrowing with isinstance() first")
@@ -99,7 +108,7 @@ def gen_uop(self, v: Val, op: str) -> Val:
             if nxt != "":
                 self.place(nxt)
             continue
-        if op == "len" and not (members[i] == "str" or is_list(members[i]) or is_dict(members[i])):
+        if op == "len" and not (members[i] == "str" or is_list(members[i]) or is_dict(members[i]) or is_tuple(members[i]) or is_vtuple(members[i])):
             # (a number: CPython's error for that object, as len() of it alone is rejected)
             self.raise_("TypeError", self.sconst(f"object of type '{tname(members[i])}' has no len()"))
             if nxt != "":
@@ -376,6 +385,8 @@ def gen_uequal(self, op: str, a: Val, b: Val) -> Val:
     a = self.big_tuple_narrow(a) if is_tuple(a.t) and BIG in a.t else a
     b = self.big_tuple_narrow(b) if is_tuple(b.t) and BIG in b.t else b
     t = self.union_type([a.t, b.t])
+    if not t.startswith("!") and self.tuple_union(t) and not self.tuple_union(a.t) and not self.tuple_union(b.t):
+        t = "!"  # (a tuple compared with a union that holds none: by its own descriptor, below)
     if t.startswith("!") and self.ueq_type(a.t) and self.ueq_type(b.t):
         # A tuple need not become a union member just to compare with a union.
         # Each descriptor keeps its own layout, including optional/union boxes.
@@ -398,6 +409,10 @@ def gen_umember_problem(self, t: str) -> str:
         return ""
     if is_callable(t):
         return ""  # (a function value, as a Callable variable holds it: a pointer to its code and environment)
+    if (is_tuple(t) or is_vtuple(t)) and "?" not in t:
+        if BIG in t:
+            return f"{typestr(t)} of promoting ints in a closed union is not supported (a union's box holds 64-bit ints)"
+        return ""  # (a tuple, as a container holds it in a slot)
     return f"{typestr(t)} in a closed union is not supported (use scalar, list/dict or native class/file types)"
 
 def gen_union_type(self, ts: list[str]) -> str:
@@ -439,6 +454,8 @@ def gen_union_type(self, ts: list[str]) -> str:
             return "!" + self.umember_problem(m)
     if len([m for m in ms if is_callable(m)]) > 1:
         return "!a closed union holds one Callable type: callable() cannot tell two apart"
+    if len([m for m in ms if is_tuple(m) or is_vtuple(m)]) > 1:
+        return "!a closed union holds one tuple type: isinstance() cannot tell two apart"
     refs = [m for m in ms if m == "file" or m in self.classes]
     if COMPLEXC in refs and len(refs) != len(ms):
         # (a complex number is a scalar member beside scalars or containers, and a reference
@@ -531,6 +548,12 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
         # holds (to_callable, with its errors), in the union's box
         v = self.coerce(v, calls[0], what)
         src = calls[0]
+    tups = [m for m in ms if is_tuple(m) or is_vtuple(m)]
+    if src not in ms and len(tups) == 1 and (is_tuple(src) or is_vtuple(src)):
+        # a tuple where the union's tuple member is expected: as that type takes it (an int item
+        # where it holds a float, a fixed tuple where it is of any length), in the union's box
+        v = self.coerce(v, tups[0], what)
+        src = tups[0]
     if src not in ms:
         bases = [m for m in ms if src in self.classes and m in self.classes and self.derives(src, m)]
         if len(bases) != 1:

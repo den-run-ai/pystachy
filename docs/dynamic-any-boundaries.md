@@ -11,8 +11,18 @@ not a complete value-flow graph.
 `make check-fast` runs the
 [inventory test](../tools/test_dynamic_any_inventory.py). Using the compiler's
 pragma rule, it fails when a `lib/` or `ports/` module opts in without exactly one
-row here, or a row names a module that does not opt in. It checks completeness
-only; reviewers still judge each row's reasoning.
+row here, a row names a module that does not opt in, or a row's status is not a
+contract with a test that exists or a debt with an issue. Reviewers still judge each row's
+reasoning.
+
+Each row's status is one of two, and the test checks its form:
+
+- **contract**: a supported caller receives or supplies an `Any` value and uses it as one, so the
+  opt-in is part of the module's behavior and stays. The row links a test in which a caller
+  does so; typed storage that rejected or changed that program would break the
+  [ground rule](https://github.com/den-run-ai/pystachy/issues/409).
+- **debt**: no caller depends on `Any`; a compiler limitation keeps the opt-in, which goes when
+  the linked issue's work lands and the module's consumers print what they print now.
 
 The retained contracts below describe why silently replacing existing storage
 would change behavior. They do not prove that every current annotation or
@@ -21,15 +31,15 @@ state are listed separately. No new restriction on existing callers is implied.
 
 ## Library modules
 
-| Module | Consumer and retained open boundary | Concrete work and remaining containment debt |
-|---|---|---|
-| `tomllib._parser` | `loads()` returns mutable tables/arrays whose values may contain arbitrary supported `parse_float` results. Preserve callback order, returned object identity, shared objects and existing runtime errors. | Namespace flags are typed recursive nodes with integer sets. Positions, keys, string scanning and errors are concrete. A generic recursive value type could serve closed consumers, but cannot silently replace the existing mutable output storage. |
-| `tomllib._re` | `match_to_number()` returns either an integer or the supplied callback's object. A single callback may itself return different supported types. | Regex/date helpers already have concrete annotations. Specializing a known callback to `int \| T` still needs accepted-program and numeric-identity parity; closed-union inference alone does not establish it. Moving the callback function leaves transitive identity tracking in place. |
-| `tomllib._types` | `ParseFloat = Callable[[str], Any]` defines the current dynamic callback result contract. | `Key` and `Pos` are concrete. Removing this pragma changes the alias's meaning in its consumers; an alternative generic alias requires their coordinated migration. |
-| `logging` | Stored messages, arguments, extra/default values, filters and replacement records expose open payloads and callbacks. Runtime formatting invokes their supported conversion methods. | Formatting mechanics and normalized record fields should stay concrete. Level inputs have a known normal set, but invalid values must keep their existing validation timing. The historical `Filterer.filter` comment predates closed unions; its false-or-record result deserves a separate checked migration. |
-| `_pystachy_json_any` | Dynamic `json.dumps` supports open objects through `default`, tuple inputs and mutable heterogeneous graphs; dynamic `loads` returns containers callers may mutate through `Any`. | The scanner already uses typed `json._Parser` and the checked `identity-inert` hint. Closed consumers can use `JSONValue`. Preserve wide integer behavior separately from this storage choice. |
-| `inspect` | mypyc's `get_text_signature()` (`mypyc/ir/func_ir.py`, mypy 2.4.1) gives `Parameter` a default of whatever type a compiled function declares; a parameter's default and annotation and a signature's return annotation are open payloads that `str()`, `==` and `hash()` format, compare and hash at runtime and that callers read back by identity (`default is Parameter.empty`). A class template would make `Parameter` one type per default type, which a `list[Parameter]` and a `Signature` cannot mix, and a closed union cannot hold the marker object beside scalars or admit tuples and objects. | Names, kinds, the parameters' mapping, validation and formatting are concrete. A kind is an `IntEnum` member, which cannot become an `Any` value, so `replace()` constructs by class name instead of `type(self)`. The opt-in puts `enum`, `keyword` and `types` in the tracked import closure, and a non-opt-in caller that makes a `Parameter` restarts compilation with full identity tracking; `re` is kept out of the closure, at the cost of an ASCII-only name test until `str.isidentifier()` is supported. |
-| `threading` | Thread/Timer retain arbitrary supported targets, argument packs and keyword packs; Condition retains a supplied lock implementing its supported protocol. | Thread's nongeneric base requirement is compiler debt. Names after conversion, counters, waiters and normalized lock state can be concrete. Preserve existing constructor errors; this inventory adds no thread execution support. |
+| Module | Status | Consumer and retained open boundary | Concrete work and remaining containment debt |
+|---|---|---|---|
+| `tomllib._parser` | contract: a caller changes a returned table through `Any` ([test](../tests/programs/library/lib_tomllib.py)) | `loads()` returns mutable tables/arrays whose values may contain arbitrary supported `parse_float` results. Preserve callback order, returned object identity, shared objects and existing runtime errors. | Namespace flags are typed recursive nodes with integer sets. Positions, keys, string scanning and errors are concrete. A generic recursive value type could serve closed consumers, but cannot silently replace the existing mutable output storage. |
+| `tomllib._re` | contract: `parse_float` returns any object, kept by identity ([test](../tests/programs/library/lib_tomllib_boundary.py)) | `match_to_number()` returns either an integer or the supplied callback's object. A single callback may itself return different supported types. | Regex/date helpers already have concrete annotations. Specializing a known callback to `int \| T` still needs accepted-program and numeric-identity parity; closed-union inference alone does not establish it. Moving the callback function leaves transitive identity tracking in place. |
+| `tomllib._types` | contract: the callback's result type is the caller's ([test](../tests/programs/library/lib_tomllib_dynamic.py)) | `ParseFloat = Callable[[str], Any]` defines the current dynamic callback result contract. | `Key` and `Pos` are concrete. Removing this pragma changes the alias's meaning in its consumers; an alternative generic alias requires their coordinated migration. |
+| `logging` | contract: a filter calls methods of a record's message ([test](../tests/programs/library/lib_logging.py)) | Stored messages, arguments, extra/default values, filters and replacement records expose open payloads and callbacks. Runtime formatting invokes their supported conversion methods. | Formatting mechanics and normalized record fields should stay concrete. Level inputs have a known normal set, but invalid values must keep their existing validation timing. The historical `Filterer.filter` comment predates closed unions; its false-or-record result deserves a separate checked migration. |
+| `_pystachy_json_any` | contract: callers read and change documents through `Any` ([test](../tests/programs/inference/dynany_json.py)) | Dynamic `json.dumps` supports open objects through `default`, tuple inputs and mutable heterogeneous graphs; dynamic `loads` returns containers callers may mutate through `Any`. | The scanner already uses typed `json._Parser` and the checked `identity-inert` hint. Closed consumers can use `JSONValue`. Preserve wide integer behavior separately from this storage choice. |
+| `inspect` | contract: a caller operates on a default as an `Any` value ([test](../tests/programs/library/lib_inspect_any.py)) | mypyc's `get_text_signature()` (`mypyc/ir/func_ir.py`, mypy 2.4.1) gives `Parameter` a default of whatever type a compiled function declares; a parameter's default and annotation and a signature's return annotation are open payloads that `str()`, `==` and `hash()` format, compare and hash at runtime and that callers read back by identity (`default is Parameter.empty`). A class template would make `Parameter` one type per default type, which a `list[Parameter]` and a `Signature` cannot mix, and a closed union cannot hold the marker object beside scalars or admit tuples and objects. | Names, kinds, the parameters' mapping, validation and formatting are concrete. A kind is an `IntEnum` member, which cannot become an `Any` value, so `replace()` constructs by class name instead of `type(self)`. The opt-in puts `enum`, `keyword` and `types` in the tracked import closure, and a non-opt-in caller that makes a `Parameter` restarts compilation with full identity tracking; `re` is kept out of the closure, at the cost of an ASCII-only name test until `str.isidentifier()` is supported. |
+| `threading` | debt: one registry holds threads of every target type ([#962](https://github.com/den-run-ai/pystachy/issues/962)) | Thread/Timer retain arbitrary supported targets, argument packs and keyword packs, and the module's registries (`_active`, `_limbo`, `_dangling`) and `enumerate()` hold threads of every target together; Condition retains a supplied lock implementing its supported protocol. | Subclasses of class templates, also with templated `__init__`s, and template-typed fields of declaration-time specializations compile (#962), but as a class template Thread would be one class per target and argument types, which one registry cannot hold. Names after conversion, counters, waiters and normalized lock state can be concrete. Preserve existing constructor errors; this inventory adds no thread execution support. |
 
 `pathlib` no longer opts in. Its constructor's parameters are still `Any`, which each call now
 infers: the constructor's code is compiled for a call's argument types, while every field has
@@ -52,9 +62,9 @@ closed mathematical value set; the current mutable output API and its callers
 can have a broader storage contract. Prefer a typed implementation for a closed
 consumer only after preserving its aliases and the boundary to existing users.
 
-| Modules | Current boundary | Concrete work and remaining containment debt |
-|---|---|---|
-| `json_repair.py`, `json_parser.py` | Dynamic repaired results, nested mutable containers, optional result/log tuples and interoperability with dynamic JSON. | Scanning state is largely concrete already. Recursive typed storage needs two things a closed union lacks: a promoting integer member, since a repaired document keeps integers past 64 bits ([test](../tests/programs/apps/port_json_repair_wide.py), [#907](https://github.com/den-run-ai/pystachy/issues/907)), and a result that is a value, a `(value, log)` tuple or a `str` by `repair_json()`'s arguments. Returning logs through an existing `Any` tuple is an alias/layout boundary to preserve. |
+| Modules | Status | Current boundary | Concrete work and remaining containment debt |
+|---|---|---|---|
+| `json_repair.py`, `json_parser.py` | contract: callers change a repaired document through `Any` ([test](../tests/programs/apps/port_json_repair.py)) | Dynamic repaired results, nested mutable containers, optional result/log tuples and interoperability with dynamic JSON. | Scanning state is largely concrete already. Recursive typed storage needs two things a closed union lacks: a promoting integer member, since a repaired document keeps integers past 64 bits ([test](../tests/programs/apps/port_json_repair_wide.py), [#907](https://github.com/den-run-ai/pystachy/issues/907)), and a result that is a value, a `(value, log)` tuple or a `str` by `repair_json()`'s arguments. Returning logs through an existing `Any` tuple is an alias/layout boundary to preserve. |
 
 Fifteen modules of the port no longer opt in. Eleven only pass values on: the three
 package `__init__.py` files, `parse_comment.py`, `parse_number.py`,
@@ -94,16 +104,20 @@ remain in the parser's identity-tracking import closure.
 
 When `pathlib`'s comment was removed, each remaining comment was also removed alone and the
 programs that import its module were run (JIT). The first diagnostic names the contract the
-module still needs, which its row above describes.
+module still needs, which its row above describes. The `logging` and `threading` rows were
+measured again once subclasses of class templates, also those whose own `__init__` is a template,
+and template-typed fields of declaration-time specializations were supported (#962);
+`threading`'s programs are those that import it, `logging`, `subprocess` or
+`concurrent.futures`.
 
 | Module | Programs failing | First diagnostic |
 |---|---|---|
 | `tomllib._re` | 1 of 8 | `comparing closed union values requires narrowing`: a consumer tests `is` on the `int \| float` result, and only tracked identity answers that for two numbers |
 | `tomllib._types` | 7 of 8 | `make_safe_parse_float() returns both` `float` and its wrapper function |
 | `tomllib._parser` | 7 of 8 | `NestedDict`: `typing.Any is only supported in the parameter and return annotations` (its field holds any parsed value) |
-| `logging` | 5 of 5 | `inheritance with generic class templates`: `StrFormatStyle` and `Logger` inherit fields that the constructor's arguments type |
+| `logging` | 5 of 5 | `_make_style() returns both StrFormatStyle[str, None] and StringTemplateStyle[str, None, Template]`: the styles' objects begin as two specializations of `PercentStyle`, which one result cannot hold; `lib_logging.py` first meets `Logger`, a class template whose base `Filterer` is not one, outside the [template hierarchy subset](language/typing.md#subclasses-of-class-templates) |
 | `inspect` | 12 of 12 | `cannot infer the type of '_VOID_PARAMETERS'`: a list of `Parameter` objects, whose default and annotation type the class |
-| `threading` | 2 of 16 | `inheritance with generic class templates`: `Semaphore` holds a `Condition`, whose lock types its field, and a program subclasses `Thread`, whose target and arguments type its fields |
+| `threading` | 7 of 26 | `Condition`: `typing.Any is only supported in the parameter and return annotations`, its field that holds the supplied lock, where `Semaphore`'s `_cond` is made; without it, `cannot infer the type of '_active'`: `dict[int, "Thread"]` names a class template, and one registry cannot hold threads of two specializations |
 | `json_repair.py` | 15 of 18 | `repair_json() returns both` a `(value, log)` tuple and a value |
 | `json_parser.py` | 18 of 18 | `JSONParser`: `typing.Any is only supported in the parameter and return annotations` |
 

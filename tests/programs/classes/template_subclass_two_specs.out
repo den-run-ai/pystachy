@@ -1,0 +1,8 @@
+pair 1 2 3
+swapped 4 3 7
+pair a b ab
+swapped d c cd
+pair x 1 x
+swapped 2 y yy
+named zed=3 zedzedzed
+[exit 0]
