@@ -1,6 +1,6 @@
 """Try to compile 'import M' for every module of a Python standard library with Pystachy.
 
-usage: python3 tools/import_sweep.py [-j N] [--metadata META.json] [COMPILER] [LIBDIR] [OUT.json]
+usage: python3 tools/import_sweep.py [-j N] [--include-ports] [--metadata META.json] [COMPILER] [LIBDIR] [OUT.json]
        (defaults: ./pystachy, the running CPython's stdlib directory, build/import-sweep.json)
        python3 tools/import_sweep.py --overlay [COMPILER] LIBDIR DIR
        python3 tools/import_sweep.py --stubs [-j N] [--only NAME,...] [LIBDIR] [OUT.json]
@@ -8,12 +8,14 @@ Each module is compiled (pystachy ir) in a program of its own, with LIBDIR on PY
 JSON maps each module to "OK", the compiler's error or a timeout, and a summary groups the errors.
 -j runs N compilations at a time (default: the number of CPUs).
 --metadata writes a separate provenance/counts JSON; the result JSON format is unchanged.
+--include-ports also compiles imports below top-level names supplied by lib/, using the same
+overlay. This keeps the set of import requests fixed across releases that ship new ports.
 An import result means compilation to IR, not execution or full module compatibility.
 
 PYSTACHY_PATH comes before the lib/ beside the compiler, so LIBDIR's own re, heapq, functools ...
 would hide the modules lib/ has in their place. PYSTACHY_PATH is therefore a directory of symbolic
-links to the entries of LIBDIR, less the modules and packages whose names lib/ has, and the sweep
-leaves those out (the JSON names lib/'s module that replaces each). --overlay makes that directory
+links to the entries of LIBDIR, less the modules and packages whose names lib/ has. The default
+sweep leaves those out (the JSON names lib/'s module that replaces each). --overlay makes that directory
 as DIR, for 'PYSTACHY_PATH=DIR pystachy run prog.py' (DIR's symbolic links are made anew).
 
 --stubs measures what the modules built into CPython that Pystachy lacks keep from importing: it
@@ -264,9 +266,10 @@ def main(argv=None):
             parser.error("overlay directory must differ from the stdlib directory")
         overlay(args[-2], ported(os.path.abspath(args[0] if len(args) == 3 else "./pystachy")), args[-1])
         return
-    parser = argparse.ArgumentParser(usage="%(prog)s [--stubs [--only NAME,...]] [-j N] [--metadata META.json] [COMPILER] [LIBDIR] [OUT.json]")
+    parser = argparse.ArgumentParser(usage="%(prog)s [--stubs [--only NAME,...]] [-j N] [--include-ports] [--metadata META.json] [COMPILER] [LIBDIR] [OUT.json]")
     parser.add_argument("--stubs", action="store_true")
     parser.add_argument("--only", default=None)
+    parser.add_argument("--include-ports", action="store_true", help="also test imports under names supplied by lib/")
     parser.add_argument("--metadata", help="write provenance and counts to this separate JSON file")
     parser.add_argument("-j", type=int, default=os.cpu_count() or 1)
     parser.add_argument("args", nargs="*")
@@ -311,13 +314,15 @@ def main(argv=None):
                     "source_git": source_git(ROOT if options.stubs else home_of(pys)),
                     "source_git_caveat": "The selected source tree is not proof of which source built the compiler file.",
                     "scope": "Compilation of isolated imports to IR; no runtime or full module compatibility check.",
-                    "workers": options.j, "result_path": os.path.abspath(out)}
+                    "workers": options.j, "include_ports": options.include_ports, "result_path": os.path.abspath(out)}
     names = ported(pys)
     res = {}
     left = []
     todo = []
-    for m in modules(lib):
-        if m.split(".")[0] in names:
+    all_modules = modules(lib)
+    port_modules = {m for m in all_modules if m.split(".")[0] in names}
+    for m in all_modules:
+        if m in port_modules and not options.include_ports:
             res[m] = "left out: lib/ has " + m.split(".")[0]
             left.append(m)
         else:
@@ -373,12 +378,14 @@ def main(argv=None):
                          "timeout_s": timeout, "stubs": stubs,
                          "overlay": {"policy": "Exclude top-level names supplied by the compiler home lib/; prefer those ports.",
                                      "compiler_home": os.path.abspath(home_of(pys)),
-                                     "ported_names": sorted(names), "excluded_modules": sorted(left),
+                                     "ported_names": sorted(names), "port_namespace_modules": sorted(port_modules),
+                                     "excluded_modules": sorted(left),
                                      "skipped_directories": list(SKIP),
                                      "module_filter": "Python .py files except __main__, top-level __* names and names containing '-'."}})
         write_json(options.metadata, metadata)
     ok = sorted(m for m, v in res.items() if v.startswith("OK"))
-    print(f"{len(ok)} of {len(res) - len(left)} modules import{' with the stubs' if stubs else ''}: {' '.join(ok)}\n")
+    scope = " (including Pystachy ports)" if options.include_ports else ""
+    print(f"{len(ok)} of {len(res) - len(left)} modules import{' with the stubs' if stubs else ''}{scope}: {' '.join(ok)}\n")
     if left:
         print(f"{len(left)} left out, as lib/ has {', '.join(sorted(names & {m.split('.')[0] for m in left}))}: {' '.join(sorted(left))}\n")
     if stubs:

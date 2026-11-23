@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import globals_in, inert_input_sites, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends, targets
 from src.pystachy_compiler.diagnostics import Rejoin, int_program
-from src.pystachy_compiler.ir import Blk, IFn, Try, Val
+from src.pystachy_compiler.ir import IFn, Try, Val
 from src.pystachy_compiler.symbols import FnInfo
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
@@ -439,33 +439,22 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             # (a template's function that ends without a return, or one returning T | None: None;
             # also C | None for a class C, whose type, C's, includes None without showing it)
             self.ret_(Val("null", f.ret))
-            if len(self.fn.cold) > 0:
-                # the jump to the first cold block that follows is a block of its own, which
-                # LLVM starts after a terminator, without a label
-                self.blk = Blk("")
-                self.fn.blocks.append(self.blk)
-                self.term = False
         else:
             self.raise_("RuntimeError", self.sconst(f"{short(f.name)}() ended without returning a value"))
-    # One raise block serves every check of its message (guard). With line tables, it is the line
-    # of those checks where they share one, else line 0, as LLVM numbers code merged from several
-    # lines; never the line of the statement the function happens to end with
-    checklines: dict[str, int] = {}
-    if self.source_lines.enabled:
-        for cb in self.fn.blocks:
-            for chk in cb.code:
-                if chk.op == "check":
-                    ck = chk.x if chk.x != "" else chk.s
-                    checklines[ck] = chk.line if ck not in checklines or checklines[ck] == chk.line else 0
+    # One raise block serves every check of its message (guard). With line tables, one serves the
+    # checks of a line, whose line it has (its key's last line); never the line of the statement the
+    # function happens to end with
     ended = self.line
     for key in self.fn.cold:
         self.place(self.fn.cold[key])
-        if self.source_lines.enabled:
-            self.line = checklines[key] if key in checklines else 0
         msg = key
         if key in self.fn.coldh:
             self.blk.handler = self.fn.coldh[key]
             msg = key[len(self.fn.coldh[key]) + 1 :]
+        at = msg.find("\n")
+        if at >= 0:
+            self.line = int(msg[at + 1 :])
+            msg = msg[:at]
         i = msg.find(": ")
         self.raise_(msg[:i], self.sconst(msg[i + 2 :]))
     self.line = ended

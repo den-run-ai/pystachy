@@ -410,7 +410,7 @@ def private_optional_reads(fn: IFn, narrowed: dict[str, dict[str, bool]], at: di
 
 
 class UnionProof:
-    def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None, raises: dict[str, bool] | None = None, declarations: list[Val] | None = None, consts: dict[str, Data] | None = None, narrowed: dict[str, dict[str, bool]] | None = None, written: dict[str, int] | None = None, kin: dict[str, dict[str, bool]] | None = None, unions: bool = True, classes: dict[str, ClassInfo] | None = None):
+    def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None, raises: dict[str, bool] | None = None, declarations: list[Val] | None = None, consts: dict[str, Data] | None = None, narrowed: dict[str, dict[str, bool]] | None = None, written: dict[str, int] | None = None, kin: dict[str, dict[str, bool]] | None = None, unions: bool = True, classes: dict[str, ClassInfo] | None = None, ureads: dict[str, dict[str, bool]] | None = None):
         self.fn = fn
         self.classes: dict[str, ClassInfo] = {} if classes is None else classes
         # (the storage classes each call writes, its effects' wL wD wO and wG bits, where they
@@ -427,6 +427,9 @@ class UnionProof:
         # opt[U], by the types they read them at: ircheck.optional_reads; and the blocks whose
         # edges carry such a read of a phi's)
         self.narrowed: dict[str, dict[str, bool]] = {} if narrowed is None else narrowed
+        # (the values of a closed union that operands read at a union without some member of
+        # theirs, by those types: ircheck.union_reads, whose boxes must hold its members alone)
+        self.ureads: dict[str, dict[str, bool]] = {} if ureads is None else ureads
         self.phireads: dict[str, bool] = {}
         self.writes: dict[str, bool] = {} if writes is None else writes
         self.raises: dict[str, bool] = {} if raises is None else raises
@@ -603,6 +606,8 @@ class UnionProof:
                 wanted[k] = True
         for v in self.narrowed:
             wanted["U:" + v] = True
+        for v in self.ureads:
+            wanted["U:" + v] = True
         if len(self.narrowed) > 0:
             # (an object whose optional field a field key names, and the slot it is loaded from:
             # a narrowed read of the field may lean on a test of an earlier read of it)
@@ -617,7 +622,7 @@ class UnionProof:
                 if i.op != "phi":
                     break
                 for j in range(len(i.a)):
-                    if i.a[j].v in self.narrowed and i.a[j].t in self.narrowed[i.a[j].v]:
+                    if (i.a[j].v in self.narrowed and i.a[j].t in self.narrowed[i.a[j].v]) or (i.a[j].v in self.ureads and i.a[j].t in self.ureads[i.a[j].v]):
                         self.phireads[i.b[j]] = True
         changed = True
         while changed:
@@ -947,6 +952,13 @@ class UnionProof:
         # condition never selects the value, need none)
         if s.live and a.v in self.narrowed and a.t in self.narrowed[a.v] and "None" in s.dom(self.box(s, a.v)):
             self.error(b, where + " reads " + a.v + " as " + a.t + " without a proof that it is not None")
+        # (an operand that reads a closed union's box at a union without some of its members
+        # needs facts that the box holds none of those: tests of its tag)
+        if s.live and a.v in self.ureads and a.t in self.ureads[a.v]:
+            allowed = self.type_domain(a.t)
+            outside = [t for t in s.dom(self.box(s, a.v)) if t not in allowed]
+            if len(outside) > 0:
+                self.error(b, where + " reads " + a.v + " as " + a.t + " without a proof that it holds no " + outside[0])
 
     def check_phis(self, starts: dict[str, UnionState]) -> None:
         # a phi reads its operand on the edge from the block that the operand's label names: each
@@ -971,12 +983,14 @@ class UnionProof:
         op = i.op
         a = i.a
         r = tmpname(i.r[0]) if len(i.r) > 0 else ""
-        if checking and len(self.narrowed) > 0 and op != "phi":
+        if checking and (len(self.narrowed) > 0 or len(self.ureads) > 0) and op != "phi":
             for j in range(len(a)):
-                if a[j].v not in self.narrowed or a[j].t not in self.narrowed[a[j].v]:
+                optional = a[j].v in self.narrowed and a[j].t in self.narrowed[a[j].v]
+                union = a[j].v in self.ureads and a[j].t in self.ureads[a[j].v]
+                if not optional and not union:
                     continue
-                if (op == "union.tag" or op == "union.payload" or op == "union.raw") and j == 0:
-                    continue  # (their own nonnull proof below names the read more closely)
+                if (op == "union.tag" or op == "union.payload" or op == "union.raw") and j == 0 and (not union or op == "union.payload"):
+                    continue  # (their own nonnull and tag proofs below name the read more closely)
                 # (a select's value reads count where its condition selects them, as for a phi)
                 facts = s.conditional(a[0].v, j == 1) if op == "select" and j > 0 else s
                 self.check_some(facts, a[j], b, op + " operand " + str(j))
@@ -1200,7 +1214,8 @@ class UnionProof:
             self.killmem(s, "", self.written.get(op + "|" + i.s + "|" + i.x, -1))
 
     def edge(self, s: UnionState, frm: str, to: str) -> UnionState:
-        z = s.clone()
+        # (s is this edge's own facts, which become the target's: dataflow.forward_fixpoint)
+        z = s
         dests: list[str] = []
         srcs: list[str] = []
         bools: list[str] = []
@@ -1257,8 +1272,9 @@ class UnionProof:
         return z
 
     def flow(self, b: Blk, s: UnionState, dests: list[str], edges: list[UnionState]) -> None:
-        # one block for the worklist (dataflow.forward_fixpoint): s becomes its facts at its
-        # end, and each edge that leaves it joins dests and edges
+        # one block for the worklist (dataflow.forward_fixpoint): s, the facts at the block's
+        # start, goes through its ops, and each edge that leaves it joins dests and edges with
+        # facts of its own, the last of them s itself
         label = b.label
         for i in b.code:
             if i.op == "phi":
@@ -1275,14 +1291,18 @@ class UnionProof:
         if last.op == "cbr":
             dests.extend(last.b)
             edges.append(s.conditional(last.a[0].v, True))
-            edges.append(s.conditional(last.a[0].v, False))
+            s.cond(last.a[0].v, False)
+            edges.append(s)
         elif last.op == "check":
             dests.append(last.b[0])
-            edges.append(s.conditional(last.a[0].v, False))
             ck = last.x if last.x != "" else last.s
             if ck in self.fn.cold:
+                edges.append(s.conditional(last.a[0].v, False))
                 dests.append(self.fn.cold[ck])
-                edges.append(s.conditional(last.a[0].v, True))
+                s.cond(last.a[0].v, True)
+            else:
+                s.cond(last.a[0].v, False)
+            edges.append(s)
         elif last.op == "switch" and last.a[0].v in self.tagvals:
             key = self.tag(s, last.a[0].v)
             default = s.clone()
@@ -1300,9 +1320,9 @@ class UnionProof:
                     default.narrow(key, [t for t in default.dom(key) if t != member])
                 edges.append(arm)
         else:
-            for l in last.b:
-                dests.append(l)
-                edges.append(s.clone())
+            for j in range(len(last.b)):
+                dests.append(last.b[j])
+                edges.append(s if j == len(last.b) - 1 else s.clone())
 
     def run(self) -> None:
         starts = forward_fixpoint(self)

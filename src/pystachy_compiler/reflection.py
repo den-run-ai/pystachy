@@ -2673,11 +2673,12 @@ def gen_refl_lookup(self, n: Node) -> RText:
         self.narrowed = dict(narrow)
         if lf.c != "None" and lf.c not in self.classes:
             self.err(f"the text of getattr(o, name) for a run-time name is not supported where o may be a {typestr(lf.c)}, whose methods are no values (#247, #489)")
-        # Keep the receiver extracted under this leaf's union tag guard. The later text
-        # consumer dispatches on the attribute selector, after the union branches merge;
-        # it must not reinterpret the original box's payload there without its tag proof.
+        # Keep the receiver extracted under this leaf's union tag guard, or read at its exact
+        # class under its class test. The later text consumer dispatches on the attribute
+        # selector, after the branches merge; it must not reinterpret the original box's
+        # payload, or read the object at a narrower class, there without that test's proof.
         receiver = ""
-        if is_union(unopt(o.t)) and lf.c != "None":
+        if lf.c != "None" and (is_union(unopt(o.t)) or lf.c != unopt(o.t)):
             receiver = self.alloca(lf.c, "")
             self.mstore(lf.c, lf.v.v, receiver)
         names = self.refl_name_list(lf.c)
@@ -2767,7 +2768,8 @@ def gen_refl_arm_text(self, r: RText, arm: RArm, conv: str) -> Val:
         t = arm.c[arm.c.find("\x01") + 1 :]
         v = Val(self.mload(t, arm.slot), t)
         return self.repr(v) if conv == "repr" else self.to_str(v)
-    # The object captured by lookup, already extracted from a union under its tag guard.
+    # The object captured by lookup, already extracted from a union under its tag guard, or
+    # read at its exact class under its class test.
     if c == "None":
         obj = Val(self.refl_record("None"), "%ptr")
     elif arm.slot != "":

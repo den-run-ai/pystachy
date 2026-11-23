@@ -3,7 +3,6 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, nullable_union_members, umembers
 from src.pystachy_compiler.analysis import READS_ONLY_FNS, attr_fills, attr_values, called_only, calls_init, local_names, nonexpr, only_reads_items, stmt_walrus
 from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrow_type, narrowed
-from src.pystachy_compiler.builtin_bases import BWORDS
 from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
@@ -12,6 +11,7 @@ from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, own_name, owner, short
 from src.pystachy_compiler.reflection import hook_class, hook_derived, hook_field, hook_of, hook_problem, hook_type
 from src.pystachy_compiler.specs import (
+    CONTAINER_HEADERS,
     ANYUSE,
     BIG,
     BIGOPT,
@@ -25,6 +25,7 @@ from src.pystachy_compiler.specs import (
     FINAL_FIELD,
     FLEXIBLE_ALIAS,
     FROZENERR,
+    FLOATINFO,
     GLUE,
     IOPS,
     ITERS,
@@ -324,6 +325,15 @@ def gen_ann(self, n: Node) -> str:
         for t in ts:
             if t.startswith("!"):
                 return t
+        if base == "io" and ts == ["str"] and self.imported_ref(n.kids[0]) == "typing.IO":
+            return text_stream_type(self)
+        if base in ["pattern", "match"] and ts == ["str"]:
+            alias = self.imported_ref(n.kids[0])
+            if alias in ["typing.Pattern", "typing.Match"]:
+                # These typing aliases describe values made by the shipped re module.
+                cls = "re$" + alias[7:]
+                if cls in self.classes and lib_source(self.classes[cls].node.line, self.libdir, "re/__init__.py"):
+                    return cls
         if base == "list" and len(ts) == 1:
             return self.ctype("list", [ts[0]])
         if base == "dict" and len(ts) == 2:
@@ -351,6 +361,15 @@ def gen_ann(self, n: Node) -> str:
     if self.pathlike(n):
         return "!" + PATHLIKE
     return "!unsupported type annotation"
+
+def text_stream_type(self) -> str:
+    # open() has a native file handle; io.StringIO is a fixed-layout class.
+    # io.TextIOWrapper specializes on its buffer and has no single class layout.
+    cls = "io$StringIO"
+    if cls in self.classes and cls not in self.tmpl and lib_source(self.classes[cls].node.line, self.libdir, "io.py"):
+        return self.union_type(["file", cls])
+    return "file"
+
 
 def gen_class_family(self, ts: list[str]) -> str:
     # the type of an annotation A | B ... whose members include classes of the program derived
@@ -898,34 +917,114 @@ def gen_rec_fold(self, t: str) -> str:
             return "rec[" + name + "]"
     return t
 
+def gen_rec_edge(self, n: Node, name: str, tps: list[str]) -> bool:
+    # is annotation n recursive alias name itself, as its value names it: the name, or for a
+    # generic alias the name with its own type parameters tps, in their order (Value[F])
+    if len(tps) == 0:
+        return n.kind == "name" and n.s == name
+    if n.kind != "index" or n.kids[0].kind != "name" or n.kids[0].s != name:
+        return False
+    xs = n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]
+    return len(xs) == len(tps) and all([xs[i].kind == "name" and xs[i].s == tps[i] for i in range(len(tps))])
+
+def gen_rec_names(self, n: Node, names: list[str]) -> bool:
+    # does annotation n name one of names (the recursive alias, its type parameters) at any depth
+    if n.kind == "name" and n.s in names:
+        return True
+    return any([self.rec_names(k, names) for k in n.kids])
+
+def gen_rec_generic(self, name: str) -> bool:
+    # is name a generic PEP 695 alias whose value holds itself behind a list or a dict
+    # (type Value[F] = int | F | list[Value[F]] | dict[str, Value[F]]): its uses name a graph
+    # per type arguments (rec_instance), which unalias leaves whole
+    st = self.taliases[name]
+    if st.kind != "typealias" or st.kids[0].s == "" or self.alias_variadic(name):
+        return False
+    tps = self.alias_params(name)
+    for n in self.union_members(self.alias_value(name), []):
+        if n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "list" and self.rec_edge(n.kids[1], name, tps):
+            return True
+        if n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "dict" and n.kids[1].kind == "tuple" and len(n.kids[1].kids) == 2 and self.rec_edge(n.kids[1].kids[1], name, tps):
+            return True
+    return False
+
+def gen_rec_members(self, name: str, tps: list[str], args: list[str]) -> list[str]:
+    # the member types of recursive alias name's value, its self edges written rec[@] and its
+    # type parameters tps the types args; [] where the value is not of the supported shape:
+    # None, scalars, a type parameter, a tuple that names neither the alias nor a parameter,
+    # list[Self] and dict[str, Self]. Self edges occur only behind those containers
+    members: list[str] = []
+    recursive = False
+    for n in self.union_members(self.alias_value(name), []):
+        if n.kind == "None":
+            members.append("None")
+        elif n.kind == "name" and n.s in ["int", "float", "bool", "str"]:
+            members.append(n.s)
+        elif n.kind == "name" and n.s in tps:
+            members.append(args[tps.index(n.s)])
+        elif n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "list" and self.rec_edge(n.kids[1], name, tps):
+            members.append("list[rec[@]]")
+            recursive = True
+        elif n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "dict" and n.kids[1].kind == "tuple" and len(n.kids[1].kids) == 2 and n.kids[1].kids[0].kind == "name" and n.kids[1].kids[0].s == "str" and self.rec_edge(n.kids[1].kids[1], name, tps):
+            members.append("dict[str,rec[@]]")
+            recursive = True
+        elif n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "tuple" and not self.rec_names(n, [name] + tps):
+            t = self.ann(n)
+            if t.startswith("!") or not (is_tuple(t) or is_vtuple(t)):
+                return []
+            members.append(t)
+        else:
+            return []
+    return members if recursive else []
+
+def gen_rec_named(self, name: str, members: list[str]) -> str:
+    # make name a recursive graph of members (rec_members): the graph an earlier name has of
+    # the same members, else its own. A value of json.JSONValue is then one of a program's
+    # alias that lists JSONValue's members, as CPython's is. "", or why no union holds them
+    for x in list(self.recursive):
+        if self.union_type([m.replace("rec[@]", "rec[" + x + "]") for m in members]) == self.recursive[x]:
+            self.recursive[name] = self.recursive[x]
+            return ""
+    t = self.union_type([m.replace("rec[@]", "rec[" + name + "]") for m in members])
+    if t.startswith("!"):
+        return t[1:]
+    if not is_union(unopt(t)):
+        return "a recursive alias needs two member types"
+    self.recursive[name] = t
+    return ""
+
 def gen_recursive_aliases(self) -> None:
-    # Nongeneric PEP 695 aliases of scalar/None members, list[Self] and
+    # Nongeneric PEP 695 aliases of scalar/None members, tuples, list[Self] and
     # dict[str, Self]. Self edges occur only behind containers. Other recursive
     # forms keep alias_ann's diagnostic; no alias cycles or depth expansion.
+    # A generic alias of that shape names a graph where its type arguments are known
+    # (rec_instance).
     for name in self.taliases:
         st = self.taliases[name]
         if st.kind != "typealias" or st.kids[0].s != "":
             continue
-        members: list[str] = []
-        recursive = False
-        valid = True
-        for n in self.union_members(self.alias_value(name), []):
-            if n.kind == "None":
-                members.append("None")
-            elif n.kind == "name" and n.s in ["int", "float", "bool", "str"]:
-                members.append(n.s)
-            elif n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "list" and n.kids[1].kind == "name" and n.kids[1].s == name:
-                members.append("list[rec[" + name + "]]")
-                recursive = True
-            elif n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "dict" and n.kids[1].kind == "tuple" and len(n.kids[1].kids) == 2 and n.kids[1].kids[0].kind == "name" and n.kids[1].kids[0].s == "str" and n.kids[1].kids[1].kind == "name" and n.kids[1].kids[1].s == name:
-                members.append("dict[str,rec[" + name + "]]")
-                recursive = True
-            else:
-                valid = False
-        if valid and recursive:
-            t = self.union_type(members)
-            if is_union(unopt(t)):
-                self.recursive[name] = t
+        members = self.rec_members(name, [], [])
+        if len(members) > 0:
+            self.rec_named(name, members)
+
+def gen_rec_instance(self, name: str, xs: list[Node]) -> str:
+    # the type of generic recursive alias name (rec_generic) with type arguments xs: its
+    # graph for those types, named by them, or "!" and why not
+    args = [self.ann(x) for x in xs]
+    for i in range(len(args)):
+        if args[i].startswith("!"):
+            return args[i]
+        # (a promoting int is the 64-bit int a recursive alias's int member is: bigints.py)
+        args[i] = "int" if args[i] == BIG else "opt[int]" if args[i] == BIGOPT else args[i]
+    inst = name + "<" + ",".join(args).replace("[", "(").replace("]", ")") + ">"
+    if inst not in self.recursive:
+        members = self.rec_members(name, self.alias_params(name), args)
+        if len(members) == 0:
+            return f"!recursive type aliases are not supported: '{short(name)}' refers to itself"
+        why = self.rec_named(inst, members)
+        if why != "":
+            return f"!type alias '{short(name)}': {why}"
+    return self.recursive[inst]
 
 def gen_unalias(self, a: Node, seen: list[str]) -> Node:
     # annotation a with each type alias that it names replaced by the alias's value, where a
@@ -948,6 +1047,10 @@ def gen_unalias(self, a: Node, seen: list[str]) -> Node:
         xs = a.kids[1].kids if a.kids[1].kind == "tuple" else [a.kids[1]]
         if len(tps) == 0 or len(xs) != len(tps) or self.alias_variadic(name) or self.newtype_name(name):
             return a  # (left for alias_ann's error)
+        if self.rec_generic(name):
+            # (a recursive alias's graph for these type arguments, which alias_ann names: rec_instance)
+            a.kids[1] = self.unalias(a.kids[1], seen)
+            return a
         # (the type arguments replace the type parameters first: in type Pair[Row] = ..., Row is
         # the parameter, not the module's alias Row)
         v = self.subst_ann(clone(self.alias_value(name)), tps, [self.unalias(x, seen) for x in xs])
@@ -989,6 +1092,8 @@ def gen_alias_ann(self, n: Node) -> str:
         return "!" + self.alias_arity(name, tps, len(xs))
     if n.kind == "name" and len(tps) > 0 and self.taliases[name].kind == "typealias":
         return f"!generic type alias '{short(name)}' needs its type arguments here ({short(name)}[{', '.join([short(x) for x in tps])}])"
+    if n.kind == "index" and self.rec_generic(name):
+        return self.rec_instance(name, xs)
     self.resolving.append(name)
     self.unaliased = 0
     t = self.ann(self.unalias(clone(n), []))
@@ -2067,10 +2172,10 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
             if x in b.factory:
                 ci.factory[x] = b.factory[x]
     elif self.bkind(ci.name) != "":
-        # the header of the builtin container it derives from (runtime.c's List), which only that
-        # container's code reads and writes: words that may hold references, by no name
-        for k in range(BWORDS[self.bkind(ci.name)]):
-            self.add_field(ci, f" {self.bkind(ci.name)}.{k}", "str")
+        # Match the C header's integer and pointer widths before laying out user fields.
+        kind = self.bkind(ci.name)
+        for k, t in enumerate(CONTAINER_HEADERS[kind]):
+            self.add_field(ci, f" {kind}.{k}", t)
     elif ci.tag != 0:
         self.add_field(ci, " class", "int")
     elif ci.exc != "":
@@ -2168,8 +2273,6 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
             bt = self.classes[ci.base].ftypes.get(st.kids[0].s, "") if ci.base in self.classes else ""
             if t != "" and bt != "" and (self.widens(t, bt) or self.boxes(t, bt) or (t == "int" and bt == BIG)):
                 t = bt  # (a class attribute of the base bound again, with a value of its type)
-            if t == "" and ci.mod == "" and st.kids[1].kind == "name" and st.kids[1].s in self.classes and self.classes[st.kids[1].s].node.line in ENUMCLASSES:
-                self.err(f"class attribute '{st.kids[0].s}' of enum class {short(st.kids[1].s)} is not supported: a variable or a field (self.{st.kids[0].s} = {short(st.kids[1].s)}) may hold the class")
             if t == "" and ci.mod == "":
                 self.err(f"cannot infer the type of class attribute '{st.kids[0].s}'; annotate it ({st.kids[0].s}: {'Final[T]' if st.s == 'Final' else 'T'} = ...)")
             if t == "":
@@ -2815,6 +2918,26 @@ def attr_root(e: Node) -> Node:
     return e
 
 
+def reads_stream_text(self, call: Node, f: FnInfo) -> bool:
+    # Follow only methods with a fixed str result, back to an unrebound text-stream parameter.
+    while call.kind == "call" and call.kids[0].kind == "attr":
+        method = call.kids[0]
+        source = method.kids[0]
+        if source.kind == "name":
+            if source.s not in f.params or not METHODS.get("file." + method.s, "").startswith("str:"):
+                return False
+            t = f.ptypes[f.params.index(source.s)]
+            if t != "file" and not (self.reference_union(t) and t == text_stream_type(self)):
+                return False
+            rebound: dict[str, bool] = {}
+            local_names(guess_scope(f), rebound)
+            return source.s not in rebound
+        if not METHODS.get("str." + method.s, "").startswith("str:"):
+            return False
+        call = source
+    return False
+
+
 def gen_guess(self, e: Node, f: FnInfo) -> str:
     k = e.kind
     if k == "int" or k == "float" or k == "str" or k == "bytes":
@@ -2888,34 +3011,38 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         local_names(guess_scope(f), asg)
         if e.s not in asg:
             return "type[" + e.s + "]"
-    if k == "name" and e.s in self.classes and self.classes[e.s].node.line in ENUMCLASSES and self.compiling:
+    if k == "name" and e.s in self.classes and self.classes[e.s].node.line in ENUMCLASSES and (self.compiling or f.node.kind == "class"):
         # an enum class: its EnumType object (a _FlagType's, of a flag class), which its module
         # binds after the class statement (Loader's enum_classes), of the specialization of
         # lib/enum.py's class template that that call's arguments pick: the class's name, its
-        # members, by name (and a flag's by value, its masks and its boundary). Once code is being
-        # compiled, as a class template's object (unless a local of the method has the class's
-        # name): a field that holds one makes its class a template too (stores_enum_class)
+        # members, by name (and a flag's by value, its masks and its boundary). A class attribute
+        # needs that same specialization during field declaration. Its value is loaded later,
+        # when the class body runs. In a method, wait for the compilation of its specialization
+        # (stores_enum_class). In either scope a local binding can hide the class name.
         asg = {}
         local_names(guess_scope(f), asg)
         g = e.s[: e.s.rfind("$") + 1] + "_pys_enum_" + short(e.s)
         v = self.globvalues[g] if g in self.globvalues else mk("pass", "", e.line, [])
         tc = v.kids[0].s if v.kind == "call" and len(v.kids) > 0 and v.kids[0].kind == "name" else ""
-        if e.s not in asg and (tc == "enum$EnumType" or tc == "enum$_FlagType") and tc in self.tmpl:
+        if e.s not in asg and (tc == "enum$EnumType" or tc == "enum$_FlagType") and tc in self.tmpl and "__init__" in self.classes[tc].methods:
             ets = ["str", "list[" + e.s + "]", "dict[str," + e.s + "]"]
             if tc == "enum$_FlagType":
                 ets = ets + ["dict[int," + e.s + "]", "int", "int", "int", "str"]
             return self.specialize(tc, ets, {}, False, {})
     p = self.imported_ref(e) if k == "name" or k == "attr" else ""
-    if p in MODFUNCS:
-        # a builtin module's function (math.sqrt, or sqrt from-imported), unless a local of the
-        # method has the name it is read through
+    if p in MODFUNCS or p in FLOATINFO:
+        # A builtin function or a numeric sys.float_info field read through an import.
+        # A binding in the enclosing scope can shadow the imported name.
         root = e
         while root.kind == "attr":
             root = root.kids[0]
         asg = {}
         local_names(guess_scope(f), asg)
         if root.s not in asg:
-            return f"fn[b:{p}]"
+            if p in MODFUNCS:
+                return f"fn[b:{p}]"
+            if root.s not in f.params:
+                return self.modattr(p).t  # (a literal float or int, with no emitted operation)
     if k == "name" and e.s in self.globvalues and e.s not in f.params and e.s not in self.guessing:
         # a module global that one assignment binds (a constant: analysis.module_values), or one
         # in each branch that binds it, unless a local of the function has its name: the type of
@@ -3042,8 +3169,10 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return "opt[callable[None]]"
         if c in self.tmpl:
             # a class template's object: of the specialization its arguments' types pick, once
-            # code is being compiled (a specialization compiles its special methods)
-            ts: list[str] = self.guess_args(self.classes[c].methods["__init__"], e.kids[1:], f) if self.compiling else ["!"]
+            # code is being compiled (a specialization compiles its special methods), or while
+            # template_bases makes a template hierarchy's specializations before that (tbasing:
+            # one made then compiles its special methods later, as one an annotation makes)
+            ts: list[str] = self.guess_args(self.classes[c].methods["__init__"], e.kids[1:], f) if self.compiling or self.tbasing > 0 else ["!"]
             lits = self.literal_args(self.classes[c].methods["__init__"], e.kids[1:]) if self.literal_class(c) and "!" not in ts else {}
             return self.specialize(c, ts, {}, False, lits) if "!" not in ts else ""
         if c in self.classes or c in self.unsupported:
@@ -3111,6 +3240,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
     if k == "call" and e.kids[0].kind == "attr" and e.kids[0].kids[0].kind == "name" and e.kids[0].kids[0].s in self.classes:
         ms = self.classes[e.kids[0].kids[0].s].methods  # C.m(...): a static or class method
         return ms[e.kids[0].s].ret if e.kids[0].s in ms and ms[e.kids[0].s].deco != "" else ""
+    if k == "call" and e.kids[0].kind == "attr" and reads_stream_text(self, e, f):
+        return "str"
     if k == "cmp" or (k == "unary" and e.s == "not"):
         return "bool"
     if k == "ifexp" and e.kids[1].kind == "None":
