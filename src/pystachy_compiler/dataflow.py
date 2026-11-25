@@ -17,15 +17,22 @@ from src.pystachy_compiler.union_state import UnionState, union_join
 def flow_targets(fn: IFn, b: Blk) -> list[str]:
     # the labels control may go to from b: its terminator's, the landing block of the try
     # statement that covers it (an op of it that raises goes there) and its check's cold block.
-    # A label that names no block of fn is the caller's to skip
+    # A label that names no block of fn is the caller's to skip. (Where there are only the
+    # terminator's, they are its own list, which callers read and never change: the verifier
+    # asks for every block's after each pass, PYSTACHY_IRCHECK, #1644)
     last = b.code[-1]
-    targets = [v for v in last.b]
-    if b.handler != "":
-        targets.append(b.handler)
+    cold = ""
     if last.op == "check":
         key = last.x if last.x != "" else last.s
         if key in fn.cold:
-            targets.append(fn.cold[key])
+            cold = fn.cold[key]
+    if b.handler == "" and cold == "":
+        return last.b
+    targets = [v for v in last.b]
+    if b.handler != "":
+        targets.append(b.handler)
+    if cold != "":
+        targets.append(cold)
     return targets
 
 
@@ -52,7 +59,12 @@ def live_values(fn: IFn, blocks: dict[str, int]) -> dict[str, dict[str, bool]]:
                 here[tmpname(n)] = True
         live_at[b.label] = uses
         defined[b.label] = here
-        targets.append([t for t in flow_targets(fn, b) if t in blocks])
+        # (the targets themselves where each is a block, as in IR that verifies: only read, #1644)
+        ts = flow_targets(fn, b)
+        known = True
+        for t in ts:
+            known = known and t in blocks
+        targets.append(ts if known else [t for t in ts if t in blocks])
     changed = True
     while changed:
         changed = False
