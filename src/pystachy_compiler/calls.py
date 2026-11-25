@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names, numeric_statement
 from src.pystachy_compiler.bigints import converts
-from src.pystachy_compiler.builtin_bases import bparameter, bstorage_join, has_def
+from src.pystachy_compiler.builtin_bases import bparameter, bstorage_callable, bstorage_join, has_def
 from src.pystachy_compiler.class_values import template_constructor
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
@@ -568,7 +568,7 @@ def gen_to_callable(self, v: Val, t: str) -> Val:
     # that calls v's function with the env (a closure's, or a bound method's object) and t's
     # parameters. A function of a module or a builtin has no env: one constant object serves for
     # each Callable type
-    t = self.ctype("callable", targs(t))
+    t = bstorage_callable(self, t)
     code = self.adapter(v.t, t)
     if v.t.startswith("fn[f:") or v.t.startswith("fn[b:") or v.t.startswith("fn[u:"):
         g = f"@cvo.{code[4:]}"

@@ -234,6 +234,21 @@ def bstorage_join(self, a: str, b: str) -> str:
     return self.join_type(a, b)
 
 
+def bstorage_callable(self, t: str) -> str:
+    # Replay shared item requirements without public annotation normalization.
+    # Private adapters may deliberately carry exact packed promoting-int types.
+    if len(self.hints) == 0:
+        return t
+    seen: list[str] = []
+    while t not in seen:
+        seen.append(t)
+        key = "callable-items:" + self.stable(t)
+        if key not in self.hints:
+            break
+        t = self.hints[key]
+    return t
+
+
 def bborrow(self, v: Val, own: list[str]) -> Val:
     # A default operation on every member of a shared container family borrows the selected
     # member's payload. The union box remains in its original storage, keeping class and

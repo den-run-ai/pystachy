@@ -3,6 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, nullable_union_members, umembers
 from src.pystachy_compiler.analysis import READS_ONLY_FNS, attr_fills, attr_values, called_only, calls_init, local_names, nonexpr, only_reads_items, stmt_walrus
 from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrow_type, narrowed
+from src.pystachy_compiler.builtin_bases import bstorage_callable
 from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
@@ -136,17 +137,11 @@ def gen_ctype(self, base: str, ts: list[str], canon: bool = True) -> str:
     # Reject a broken serialization before either can use a different item count.
     if base == "tuple" and targs(t) != ts:
         self.err("internal error: tuple item types do not round-trip")
-    if base == "callable" and len(self.hints) > 0:
+    if base == "callable":
         # Every value, adapter and indirect call of this declared signature uses
         # the same item layout. A later requirement may extend an earlier one;
         # replay the monotone chain instead of changing one adapter's parameters.
-        seen: list[str] = []
-        while t not in seen:
-            seen.append(t)
-            key = "callable-items:" + self.stable(t)
-            if key not in self.hints:
-                break
-            t = self.hints[key]
+        t = bstorage_callable(self, t)
     return t
 
 def gen_none_items(self, t: str) -> str:
