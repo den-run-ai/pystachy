@@ -1,6 +1,6 @@
 """Statements component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BREV, BSTORE
+from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BREV, BSTORE, bborrow
 from src.pystachy_compiler.utils import identity_abi, identity_default, is_union, umembers
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
 from src.pystachy_compiler.diagnostics import shown
@@ -104,7 +104,9 @@ def gen_obj_helpers(self, c: str, which: list[int]) -> None:
     # compiles no comparison, and @o.ne for one whose != pys_dyn_ne runs (one). They are
     # compiled leniently: an operation the class does not support raises TypeError when it
     # runs rather than failing the compilation.
-    line = self.classes[c].node.line
+    node = self.classes[c].node if c in self.classes else self.classes[[m for m in umembers(c) if m in self.classes][0]].node
+    line = node.line
+    symbol = c if c in self.classes else "union." + str(self.ocls[c])
     a = mk("name", "a", line, [])
     b = mk("name", "b", line, [])
     op = mk("name", "op", line, [])
@@ -116,10 +118,15 @@ def gen_obj_helpers(self, c: str, which: list[int]) -> None:
     bodies = [[mk("return", "", line, [mk("cmp", "==", line, [a, b])])], cmp,
               [mk("return", "", line, [mk("call", "", line, [mk("name", "__pys_repr", line, []), a])])],
               [mk("return", "", line, [mk("cmp", "!=", line, [a, b])])]]
+    if c not in self.classes:
+        # A container's item comparison first tests the Python objects' identity. Separate
+        # union boxes can hold the same object, so the runtime's box-pointer shortcut alone
+        # cannot make that test. Direct union == still dispatches __eq__ without a shortcut.
+        bodies[0] = [mk("return", "", line, [mk("boolop", "or", line, [mk("cmp", "is", line, [a, b]), mk("cmp", "==", line, [a, b])])])]
     ops = ["eq", "cmp", "repr", "ne"]
     self.lenient = True
     for i in which:
-        f = FnInfo(ops[i], f"@o.{ops[i]}.{c}", self.classes[c].node, "")
+        f = FnInfo(ops[i], f"@o.{ops[i]}.{symbol}", node, "")
         f.params = ["op", "a", "b"] if i == 1 else ["a", "b"]
         f.ptypes = ["int", c, c] if i == 1 else [c, c]
         f.ret = "str" if i == 2 else "bool"
@@ -228,16 +235,19 @@ def gen_dflt_fn(self, f: FnInfo) -> FnInfo:
     # of a class template's specialization, the template's method, as each specialization's is
     # the same def, whose defaults CPython evaluates once, when the class statement runs
     o = self.classes[f.cls].origin if f.cls in self.classes else ""
-    if o != "" and f.name in self.classes[o].methods and self.classes[o].methods[f.name].node is f.node:
+    if o != "" and f.name in self.classes[o].methods and (self.classes[o].methods[f.name].node is f.node or (f.name == "__init__" and "<factory>(" in self.classes[f.cls].speckey)):
         return self.classes[o].methods[f.name]
     if f.clsuse and f.cls in self.classes:
         # a class method that names cls is a function of its own in each class that inherits it
         # (program.py's inherited methods), of the one def: that of the class that defines it,
         # whose def statement stores the default values (no statement stores the others')
+        copy = f
         c = self.classes[f.cls].base
         while c in self.classes and f.name in self.classes[c].methods and self.classes[c].methods[f.name].orig is f.orig:
             f = self.classes[c].methods[f.name]
             c = self.classes[c].base
+        if f is not copy:
+            return self.dflt_fn(f)  # the defining specialization shares its template's def
     return f
 
 def gen_early_default(self, f: FnInfo, j: int) -> None:
@@ -379,6 +389,11 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
         # an imported module's class Pystachy cannot compile: an error only where used
         self.left_out(self.cnodes[ci.node.line], ci.bad)
         return
+    for a in ci.fdefault:
+        shadow = self.class_shadow(ci, a)
+        if shadow != "":
+            self.class_slot(ci, a)
+            self.mstore("bool", "false", shadow + ".set")
     if ci.name in self.cnts and self.nt_dflt_type(ci.name) != "":
         # namedtuple()'s class: the dict of its defaults, its _field_defaults (nt_defaults)
         t = self.nt_dflt_type(ci.name)
@@ -790,10 +805,13 @@ def gen_stmt_main(self, n: Node) -> None:
         if len(n.kids) == 3:
             t = self.mapping_ann(t, n.kids[2])  # (x: dict[K, V] = defaultdict(...): the defaultdict's)
         if n.kids[0].kind == "name":
-            if t in ANNTYPES and len(self.hints) > 0:
-                # (a float variable that was given an int holds both, as an int or str one that
-                # was given an enum member does: a join's type, see ann_takes)
-                t = self.hints.get("global:" + n.kids[0].s if self.is_global(n.kids[0].s) else f"{self.fnkey(self.curfn)}|{n.kids[0].s}", t)
+            if len(self.hints) > 0:
+                key = "global:" + n.kids[0].s if self.is_global(n.kids[0].s) else f"{self.fnkey(self.curfn)}|{n.kids[0].s}"
+                if t in ANNTYPES or "container-items:" + key in self.hints:
+                    # (a float variable that was given an int holds both, as an int or str one
+                    # given an enum member does; a fresh container may hold subclass items:
+                    # inferred_container_item. None reinterprets an existing allocation)
+                    t = self.hints.get(key, t)
             self.declare(n.kids[0].s, t)
         if len(n.kids) == 3:
             v = self.expr(n.kids[2], t)
@@ -1469,6 +1487,7 @@ def gen_augassign(self, n: Node) -> None:
         self.slice_store(o, again, value)
     elif t.kind == "index":
         o = self.expr(t.kids[0], "")
+        o = bborrow(self, o, BITEM + BSTORE)
         sub = "TypeError: 'NoneType' object is not subscriptable"
         if self.bkind(o.t) == "dict" and "__missing__" in self.classes[o.t].methods and self.bdecays(o.t, BITEM + BSTORE):
             # o[k] op= v where o's class derives from dict and defines __missing__: o[k] as

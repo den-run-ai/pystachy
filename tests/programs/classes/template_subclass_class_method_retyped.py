@@ -1,8 +1,5 @@
-# A class method of a class template whose cls(...) result, made through an object of a class
-# deriving from the template, is kept in a variable that holds a template object afterwards.
-# With the class's own copy of the method the result is the class's object and the later store
-# does not compile, so the program is compiled without such copies, as before they were made
-# (#1744): cls is the template there, and the program prints what CPython prints
+# A subclass factory preserves its class when its inferred result location later holds
+# a base object too. Both share the existing tagged base layout (#1744).
 class Style:
     def __init__(self, fmt):
         self.fmt = fmt

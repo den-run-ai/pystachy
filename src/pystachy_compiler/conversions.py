@@ -2,6 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.builtin_bases import bfamily
 from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.syntax import made_var, mk
@@ -377,6 +378,16 @@ def ends_in_id(d: str) -> bool:
 
 def gen_plain_desc(self, t: str, use: str) -> str:
     # (t's own constructor is no recursive alias's, though its parts may hold one: see gen_rec_desc)
+    if bfamily(self, t) != "":
+        # A stored subclass and the plain builtin can compare equal and can define their
+        # own repr/comparison. Dispatch on the payload's tag in a typed helper, as the
+        # runtime's descriptor callback does for an ordinary class's object.
+        t = unopt(t)
+        if t not in self.ocls:
+            self.ocls[t] = len(self.ocls)
+        if use != "repr":
+            self.ocmp[t] = True
+        return f"O{self.ocls[t]:03d}"
     if is_union(unopt(t)):
         # (a union of numbers also orders, as runtime.c's opv compares its members' values)
         if not ((use == "repr" and (self.value_union(t) or self.tuple_union(t))) or (use == "==" and self.ueq_type(t)) or (self.num_union(unopt(t)) and all([op in ORDOP or op == "==" for op in use.split()]))):

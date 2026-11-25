@@ -2419,7 +2419,7 @@ def gen_refl_union_str(self, v: Val, m: str) -> Val:
     for lf in self.refl_split(v):
         self.place(lf.label)
         self.narrowed = dict(narrow)
-        r = Val(self.sconst("None"), "str") if lf.c == "None" else self.obj_str(lf.v, m)
+        r = Val(self.sconst("None"), "str") if lf.c == "None" else self.repr(lf.v) if self.bkind(lf.c) != "" and m == "__repr__" else self.to_str(lf.v) if self.bkind(lf.c) != "" else self.obj_str(lf.v, m)
         if not self.term:
             vals.append(r)
             blocks.append(self.cur)

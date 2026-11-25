@@ -1,8 +1,5 @@
-# A program in which a class under a class template cannot have its own copy of a class method
-# (what cls(...) makes is stored where a template's object is stored too, #1744) and that
-# compares an object of a class deriving from list with another class's object (#1739): the
-# program is compiled without the copies, and the comparison still hands its method the object
-# itself, not the list
+# Subclass factories and builtin-subclass comparisons preserve both class identities,
+# including when a factory result shares an inferred location with a base object (#1744/#1739).
 class Stack(list[int]):
     pass
 

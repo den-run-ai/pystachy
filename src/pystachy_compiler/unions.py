@@ -1,6 +1,7 @@
 """Explicit closed scalar, container and native reference unions."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import ann_target
+from src.pystachy_compiler.builtin_bases import bfamily
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, where
 from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
@@ -29,6 +30,8 @@ def gen_object_union(self, t: str) -> bool:
     # a method call or an attribute needs the member, as a reference union's. A complex number
     # is not one of its objects: beside scalars it is a scalar member (cx_union), and beside
     # objects and files alone a reference member (complex | C), as optional() and union_type say
+    if bfamily(self, t) != "":
+        return True
     ms = umembers(unopt(t)) if is_union(unopt(t)) else []
     refs = [m for m in ms if m == "file" or (m in self.classes and m != COMPLEXC)]
     return 0 < len(refs) < len(ms) and all([m in refs or m in ["int", "float", "bool", "str"] for m in ms])
@@ -114,7 +117,7 @@ def gen_uop(self, v: Val, op: str) -> Val:
             if nxt != "":
                 self.place(nxt)
             continue
-        if op == "repr" and members[i] not in self.classes:
+        if op == "repr" and members[i] not in self.classes and bfamily(self, v.t) == "":
             result = self.repr(self.scalar_view(v))  # (the runtime reads the box's own tag)
         else:
             item = self.uget(Val(v.v, unopt(v.t)), members[i])
@@ -460,11 +463,12 @@ def gen_union_type(self, ts: list[str]) -> str:
         # (scalars may be members beside them, each under its own tag: object_union; but not a
         # complex number as well, which is a scalar member beside scalars, see above)
         others = [m for m in ms if m not in refs and m not in ["int", "float", "bool", "str"]]
-        if len([m for m in others if m != COMPLEXC]) > 0:
+        family = bfamily(self, self.ctype("union", ms))
+        if len([m for m in others if m != COMPLEXC]) > 0 and family == "":
             return "!reference unions cannot mix native references with container members"
-        if len(others) > 0:
+        if len(others) > 0 and family == "":
             return "!reference unions cannot mix native references with complex and scalar members"
-        if len(refs) > 4:
+        if len(refs) > 4 and family == "":
             return "!reference unions support at most four members"
         for a in refs:
             for b in refs:
@@ -697,11 +701,12 @@ def gen_uisinst(self, v: Val, c: Node) -> str:
 def gen_umethod(self, o: Val, m: str, args: list[Node]) -> Val:
     # Resolve the receiver before evaluating arguments. Each expression is then
     # evaluated once; only the selected native member performs its call/defaults.
-    if not self.reference_union(o.t):
+    family = bfamily(self, o.t)
+    if not self.reference_union(o.t) and family == "":
         self.err("closed union method calls require narrowing with isinstance() first")
     members = umembers(unopt(o.t))
     for member in members:
-        if member in self.classes and m not in self.classes[member].methods:
+        if member in self.classes and m not in self.classes[member].methods and family == "":
             self.err(f"reference union member {typestr(member)} must declare method {m}() (callable fields are not supported)")
     self.guard(self.ptr_cmp('==', o, Val('null', 'None')).v, f"AttributeError: 'NoneType' object has no attribute '{m}'")
     bound: list[Node] = []
@@ -1084,7 +1089,7 @@ def field_home(self, ci: ClassInfo, name: str) -> ClassInfo:
     # specialization, the template, where its body annotates the field float, int or str (its
     # specializations share that annotation, and so the join of a value given to it: ann_takes)
     root = self.field_root(ci, name)
-    return self.classes[root.origin] if root.origin != "" and name in self.classes[root.origin].fann else root
+    return self.classes[root.origin] if root.origin != "" and "<factory>(" not in root.speckey and name in self.classes[root.origin].fann else root
 
 
 def gen_field_key(self, ci: ClassInfo, name: str) -> str:
@@ -1273,6 +1278,13 @@ def gen_join_type(self, a: str, b: str) -> str:
         return self.ctype("vtuple", [e]) if e != "" and unopt(e) != BIG and self.vtuple_holds(e) else ""
     if a == b:
         return a
+    if a in self.classes and b in self.classes and (self.tmpl_of(a) != "" or self.tmpl_of(b) != ""):
+        # A factory bound to a template subclass returns that subclass's object.
+        # A later base object can share its inferred location using the existing
+        # tagged base layout; no container elements are copied or reinterpreted.
+        j = self.join(a, b)
+        if j in self.classes:
+            return j
     if is_clsval(unopt(a)) or is_clsval(unopt(b)):
         # class objects: those of a class that both classes derive from; with another value, where
         # the module opts in to dynamic Any, an Any value (the class's box, which such a module's
@@ -1296,6 +1308,8 @@ def gen_joinable(self, t: str) -> bool:
     # members of enum classes whose objects are also CPython's ints or strs (member_takes) where
     # it has that type: an int | C, whose member keeps its class
     u = unopt(t)
+    if bfamily(self, u) != "":
+        return True
     if not is_union(u):
         return is_opt(t)
     ms = umembers(u)

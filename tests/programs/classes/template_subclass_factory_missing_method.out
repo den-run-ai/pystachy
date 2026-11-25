@@ -1,0 +1,4 @@
+replacement
+word
+AttributeError 'int' object has no attribute 'replace'
+[exit 0]

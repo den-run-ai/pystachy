@@ -54,6 +54,7 @@ from src.pystachy_compiler.specs import (
     VTUPLE_ITEMS,
 )
 from src.pystachy_compiler.syntax import Node, made_var, mk
+from src.pystachy_compiler.variables import inferred_container_item
 from src.pystachy_compiler.utils import (
     is_clsval,
     atomic_dict,
@@ -3215,6 +3216,9 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             else:
                 v = self.consume(g, pt) if join or key == "list.extend" else self.expr(args[i], want_arg, resultsoft=key in ["list.count", "list.index", "list.remove", "vtuple.count", "vtuple.index"] and i == 0)
             self.stkkey = self.nokey
+            if ((key in ["list.append", "list.insert"] and p == "*T") or (key == "dict.setdefault" and p == "*V")) and mc is not None and mc.kids[0].kind == "attr" and mc.kids[0].s == m and i + 1 < len(mc.kids) and args[i] is mc.kids[i + 1]:
+                if inferred_container_item(self, mc.kids[0].kids[0], o.t, v.t):
+                    return Val("undef", "None" if base == "list" else V)
             if key == "list.extend" and o.t in ["list[dyn]", "list[int]"] and v.t == "dyn":
                 # extend consumes its source; it does not require an aliased view
                 # with the receiver's physical layout. Check native stores as each

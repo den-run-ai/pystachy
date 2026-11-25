@@ -1,0 +1,14 @@
+Box0
+Box
+1
+IntBox1
+IntBox
+2
+Child2
+Child
+3
+1 2 3
+Box1 1
+IntBox2 2
+Child3 3
+[exit 0]

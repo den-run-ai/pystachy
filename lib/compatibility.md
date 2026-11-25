@@ -676,6 +676,10 @@ and `reversed()`. Iteration reads live items and rejects endpoint mutations, whi
 snapshots when item comparison callbacks mutate a queue. Searches (`count`, `index`,
 containment and `remove`) read live items and detect structural mutations with
 CPython's operation-specific errors; same-size replacements are preserved.
+`deque.copy()` and `Counter.copy()` construct the object's exact subclass and retain
+shallow element aliases; their inherited representations name that subclass. A deque's
+iterator reads its stored items even when a subclass overrides `__len__` or `__getitem__`
+([copy tests](../tests/programs/library/lib_collections_copy_subclass_deque.py)).
 
 The mappings hold dicts rather than derive from `dict`; `isinstance(x, dict)` and
 `isinstance(x, collections.abc.Mapping)` are true all the same, as CPython's are. They support indexing,

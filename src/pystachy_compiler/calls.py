@@ -2,7 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names, numeric_statement
 from src.pystachy_compiler.bigints import converts
-from src.pystachy_compiler.builtin_bases import has_def
+from src.pystachy_compiler.builtin_bases import bparameter, has_def
+from src.pystachy_compiler.class_values import template_constructor
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
@@ -184,6 +185,9 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         if f.s == "__class__" and receiver.kind == "call" and receiver.kids[0].kind == "attr":
             f = mk("attr", f.s, f.line, [self.vnode(self.expr(receiver, ""))])
             self.line = f.line
+        copied = template_constructor(self, f, args, want, resultsoft) if f.s == "__class__" else None
+        if copied is not None:
+            return copied
         if f.s == "__class__" and self.refl_typeof(f) is not None and self.class_value_named(unopt(self.dry(f.kids[0]))) and (not self.dyn_policy(self.line) or is_clsval(self.dry(f))):
             return self.obj_call(self.expr(f, ""), args, want, resultsoft)
         c = self.curfn.cls
@@ -405,6 +409,27 @@ def gen_class_new(self, c: str, args: list[Node], want: str, resultsoft: bool = 
         self.place(self.label())
         self.blk.dead = True
         return Val("null", c)
+    if self.curfn.clsdef != "" and self.curfn.cls in self.classes and c == (self.classes[self.curfn.cls].origin if self.classes[self.curfn.cls].origin != "" else self.curfn.cls):
+        # An inherited cls(...) may be valid for its defining class but not for
+        # this subclass. Keep untaken paths compilable and raise at the call, as
+        # CPython does, instead of abandoning every class-method copy.
+        problem = self.arity_error(self.classes[c].methods["__init__"], 1, args)
+        if problem != "":
+            for a in args:
+                self.expr(a.kids[0] if a.kind in ["kw", "starred", "dstar"] else a, "")
+            self.raise_("TypeError", self.sconst(problem))
+            self.place(self.label())
+            self.blk.dead = True
+            return Val("null", self.curfn.cls)
+        ci = self.classes[c]
+        base = ci.base
+        while base in self.classes and self.classes[base].origin == "":
+            base = self.classes[base].base
+        if c not in self.tmpl and ci.origin == "" and base in self.classes and self.classes[base].origin in self.tmpl:
+            init = ci.methods["__init__"]
+            ts = self.super_arg_types(init, args, self.curfn)
+            if "!" not in ts and len(ts) == len(init.ptypes) - 1 and ts != init.ptypes[1:]:
+                return self.class_new(self.specialize(c, ts, {}, False, {}, True), args, want, resultsoft)
     if c in self.tmpl:
         # a class template: the types of the arguments pick the specialization, whose
         # object call_fn makes once it has them (in made[0])
@@ -1003,10 +1028,20 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
             self.err(f"calling {short(o.t)}.{m}() is not supported (its iterator is the list it steps through here): iterate over the object")
         if ci.methods[m].prop:
             return self.obj_call(hook_prop(self, ci.methods[m], o, m), args, "")
+        if self.template_class_call(o, m):
+            return self.cls_dispatch(o, m, args, want, resultsoft)
         self.cls_bound(ci.methods[m], o.t, True)
         # Only user calls consume the result context; builtin methods retain their
         # normal argument contexts, including when forwarding an open empty result.
         return self.call_fn(ci.methods[m], [o] if ci.methods[m].deco == "" else [], args, want, resultsoft=resultsoft)  # (a static or class method gets no o)
+    if self.curfn.cls in self.classes and "<factory>(" in self.classes[self.curfn.cls].speckey:
+        base = "list" if is_list(o.t) else "dict" if is_dict(o.t) else "tuple" if is_tuple(o.t) else "int" if o.t in ["bool", BIG] else o.t
+        if base in HASATTR and m not in HASATTR["any"].split() + HASATTR[base].split():
+            # A constructor specialized for the factory's real arguments may
+            # reach an attribute its annotation's type had. Fail at that lookup,
+            # before evaluating call arguments, as CPython does.
+            self.raise_("AttributeError", self.sconst(f"'{tname(o.t)}' object has no attribute '{m}'"))
+            return Val("undef", want if want not in ["", "?"] else "None")
     return self.bmethod(o, m, args)
 
 def gen_unbound_call(self, tn: str, m: str, args: list[Node], want: str = "") -> Val:
@@ -1540,7 +1575,10 @@ def ann_param(self, f: FnInfo, j: int, t: str) -> bool:
     # does an argument of type t compile f again, for a parameter j annotated float, int or str
     # that takes it as it is (ann_takes): an int (a promoting one too) or a bool for a float, the
     # member of an IntEnum, IntFlag or StrEnum class for an int or a str; a function's or an
-    # ordinary method's, whose body then reads the argument, as CPython's does
+    # ordinary method's, whose body then reads the argument, as CPython's does. A list/dict
+    # subclass likewise retains its class for a compatible container annotation.
+    if bparameter(self, f, j, t):
+        return True
     if f.ptypes[j] not in ANNTYPES or not ann_takes(self, f.ptypes[j], t) or j == f.vararg or j == f.kwarg or len(f.node.kids) < 3:
         return False
     if f.gen or f.extern or f.export or f.pyexport or f.clo >= 0 or f.prop or f.acc != "" or f.deco != "":
@@ -1590,14 +1628,19 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     contract = f.cls in self.tparams and len(self.want_tvars(f.cls, ctx)) > 0
     context = ctx if contract or typeargs == "" else typeargs
     hint = self.want_params(f.cls, context) if f.name == "__init__" and len(pre) > 0 and pre[0].v == "" and f.cls in self.tparams else []
+    late = False  # (an argument that compiles f for its own type: see ann_param)
     for i in range(np):
-        vals.append(self.pcoerce(pre[i], f.ptypes[i], f, i) if i < len(pre) else Val("", ""))
+        own = i < len(pre) and not self.rtmode and bparameter(self, f, i, pre[i].t)
+        v = pre[i] if i < len(pre) else Val("", "")
+        if own and v.t == "None":
+            v = Val(v.v, self.optional(f.ptypes[i]))  # comparison's None arm (bparameter)
+        vals.append(self.pcoerce(v, "" if own else f.ptypes[i], f, i) if i < len(pre) else v)
+        late = late or own
     pos = len(pre)
     extra: list[Val] = []
     kwn: list[str] = []
     kwv: list[Val] = []
     offs: dict[int, Val] = {}  # (the index of each list that an @extern call takes as ffi.at(xs, k))
-    late = False  # (an argument that compiles f for its own type: see ann_param)
     for a in args:
         j = pos
         e = a

@@ -222,6 +222,11 @@ class ClassInfo:
         self.nspec = 0  # (the names it has given: one each, also to those found to be one already made)
         self.origin = ""
         self.speckey = ""  # (a specialization: the types of the call that made it, see Gen.stable)
+        # Constructor recipe for replaying a template object used as a factory
+        # argument before the next pass compiles dispatch on that factory's base.
+        self.specargs: list[str] = []
+        self.specgiven: dict[str, str] = {}
+        self.specnamed = False
         # a specialization of a generic class (Gen.tparams): the types its type variables are bound
         # to, by the call that made it (Gen.bind); a TypeVarTuple's is a tuple type of its types
         self.tvars: dict[str, str] = {}

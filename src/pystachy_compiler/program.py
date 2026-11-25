@@ -476,7 +476,7 @@ def gen_inherit(self, ci: ClassInfo) -> None:
             if tf.deco == "classmethod" and tf.clsuse and tf.node is f.node:
                 src = tf
                 defined = tf.cls
-        if m not in ci.methods and src.clsuse and src.mod == ci.mod and len([x for x in src.defaults if not is_const(x) and x.kind != "noann"]) == 0:
+        if m not in ci.methods and src.clsuse and (src.mod == ci.mod or defined != "") and (defined != "" or len([x for x in src.defaults if not is_const(x) and x.kind != "noann"]) == 0):
             self.line = src.node.line
             self.lib = src.mod != ""
             self.selfcls = ci.name
@@ -1423,6 +1423,15 @@ def gen_template_bases(self) -> None:
         # is compiled; a class that this pass does not declare, an imported one that the program
         # does not use yet, has none)
         c = self.tlate[k][0]
+        if "<factory>(" in k and c in self.classes:
+            # Private layouts of fixed subclasses, requested by inherited factories,
+            # must join the class-tag registry before any dispatch is compiled too.
+            self.tbasing += 1
+            try:
+                self.specialize(c, self.factory_resolve(self.tlate[k][1:]), {}, False, {}, True)
+            finally:
+                self.tbasing -= 1
+            continue
         if c not in self.classes or not self.tmpl_sub(self.classes[c]):
             continue
         ts = self.tlate[k][1:]
@@ -1443,15 +1452,16 @@ def gen_template_bases(self) -> None:
             for m in [x.name for x in self.classes.values() if x.base == s.origin and self.tmpl_member(x)]:
                 self.member_spec(s.name, m)
 
-def gen_sub_base(self, t: ClassInfo, init: FnInfo, ts: list[str]) -> str:
+def gen_sub_base(self, t: ClassInfo, init: FnInfo, ts: list[str], base: str = "", factory: bool = False) -> str:
     # the specialization that the specialization of class t (tmpl_sub) for arguments of types ts
     # derives from: the one of t's base that its __init__ init's super().__init__(...) (or
     # base.__init__(self, ...)) makes, for the types that guess gives its arguments where ts types
     # init's parameters, as template_bases gives a fixed subclass's
-    root = t.base
+    base = t.base if base == "" else base
+    root = base
     while not self.declares(root, "__init__"):
         root = self.classes[root].base
-    why = self.super_init_problem(t.name, init.node, t.base, root)
+    why = self.super_init_problem(t.name, init.node, base, root)
     if why != "":
         self.err(why)
     f = FnInfo("__init__", init.ll, init.node, t.name)
@@ -1459,12 +1469,12 @@ def gen_sub_base(self, t: ClassInfo, init: FnInfo, ts: list[str]) -> str:
     f.ptypes = [t.name] + ts
     f.mod = init.mod
     calls: list[Node] = []
-    super_inits(init.node.kids[2], t.base, init.params[0], calls)
+    super_inits(init.node.kids[2], base, init.params[0], calls)
     pts = self.super_arg_types(self.classes[root].methods["__init__"], super_init_args(calls[0]), f)
     if "!" in pts:
         self.line = calls[0].line
         self.err(f"the types of the arguments of super().__init__(...) in {short(t.name)}.__init__ must be known from the types of its parameters (literals, its parameters, functions, the defaults of {short(root)}.__init__): they decide which specialization of class template {short(root)} its objects begin as")
-    return self.specialize(t.base, pts, {}, False, {})
+    return self.specialize(base, pts, {}, False, {}, factory)
 
 def gen_late_sub(self, c: str, ts: list[str], doing: str) -> None:
     # a specialization of class c (tmpl_sub) for arguments of types ts (doing: specialize's key of
@@ -2396,10 +2406,19 @@ def gen_prepare_program(self, mods: list[Mod]) -> PreparedProgram:
     for m in mods:
         self.class_stores(m.body.kids, "", "")  # (before an annotation makes a class template's specialization)
     for ci in self.classes.values():
-        for d in ci.node.kids[0].kids:
-            # (a class method's cls.x = v, as declare_fn takes the method: its one decorator)
-            if d.kind == "def" and len(d.kids) == 4 and len(d.kids[3].kids) == 0 and d.kids[3].s == "classmethod" and len(d.kids[0].kids) > 0 and d.kids[0].kids[0].kind == "param":
-                self.class_stores(d.kids[2].kids, d.kids[0].kids[0].s, ci.name)
+        home = ci
+        seen: dict[str, bool] = {}
+        while True:
+            for d in home.node.kids[0].kids:
+                # An inherited class method stores on its receiver class. Discover
+                # those possible shadows before compiling any read or specialization.
+                if d.kind == "def" and d.s not in seen:
+                    seen[d.s] = True
+                    if len(d.kids) == 4 and len(d.kids[3].kids) == 0 and d.kids[3].s == "classmethod" and len(d.kids[0].kids) > 0 and d.kids[0].kids[0].kind == "param":
+                        self.class_stores(d.kids[2].kids, d.kids[0].kids[0].s, ci.name)
+            if home.base not in self.classes:
+                break
+            home = self.classes[home.base]
     for m in mods:
         self.any_variables(m.body, False)
     # the sentinels, NAME = object() (also NAME: Final[Any] = object()), that nothing else binds,

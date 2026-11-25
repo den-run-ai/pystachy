@@ -1,10 +1,11 @@
 """Variables component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BSTORE
+from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BSTORE, bborrow
 from src.pystachy_compiler.utils import identity_default, is_union, umembers
 import os
 from src.pystachy_compiler.analysis import (
     aliases,
+    ann_target,
     assigns,
     bind_count,
     chk_names,
@@ -1246,6 +1247,81 @@ def gen_refine(self, name: str, t: str, glob: bool = False) -> None:
         if is_dict(t) or is_set(t):
             self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t))  # (a tuple key's descriptor, a string constant from here on, which lowering prints)
 
+def inferred_container_origin(self, n: Node) -> list[str]:
+    # A single display allocation, possibly read through plain aliases. An annotated
+    # display may hold subclasses too, but an annotated alias cannot change its source.
+    # Retype the allocation on a fresh inference pass, never an existing typed view.
+    seen: list[str] = []
+    module_scope = False
+    while n.kind == "name" and n.s not in seen:
+        name = n.s
+        seen.append(name)
+        glob = module_scope or (name not in self.ltype and (name in self.gtypes or self.is_global(name)))
+        if glob:
+            if owner(name) not in self.inits or name in self.constflags:
+                return []
+            body = self.inits[owner(name)].node.kids
+        else:
+            if name in self.curfn.params or name in self.compvars or name in self.nlw:
+                return []
+            body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
+        annotated = ann_target(body, name)
+        if bind_count(body, name) != (2 if annotated else 1):
+            return []
+        pending = body[:]
+        value = self.nokey
+        while len(pending) > 0:
+            st = pending.pop()
+            if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+                continue
+            if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[0].s == name:
+                value = st.kids[1]
+            elif st.kind == "annassign" and len(st.kids) == 3 and st.kids[0].kind == "name" and st.kids[0].s == name:
+                value = st.kids[2]
+            for kid in st.kids:
+                if kid.kind == "block":
+                    pending.extend(kid.kids)
+                elif kid.kind == "except":
+                    pending.extend(kid.kids[1].kids)
+        if value.kind == "list" or value.kind == "dict":
+            return ["global" if glob else "local", name, "annotated" if annotated else "inferred"]
+        if annotated:
+            return []
+        n = value
+        module_scope = glob  # a module's alias RHS cannot refer to the caller's locals
+    return []
+
+
+def inferred_container_item(self, source: Node, container: str, item: str) -> bool:
+    # Keeping a list/dict subclass at a comparison may give shared inferred storage
+    # another member of its builtin family. Ask for boxes at the original allocation.
+    # Parameters and unknown/annotated aliases retain their existing fixed layout.
+    if self.final or self.drying > 0 or self.rtmode or not (is_list(container) or is_dict(container)):
+        return False
+    old = elem(container) if is_list(container) else targs(container)[1]
+    members = (umembers(old) if is_union(old) else [old]) + (umembers(item) if is_union(item) else [item])
+    bases = [self.bbase(t) if t in self.classes else t for t in members]
+    if old == item or not any(t in self.classes for t in members) or len(bases) == 0 or not (is_list(bases[0]) or is_dict(bases[0])) or any(t != bases[0] for t in bases):
+        return False
+    at = inferred_container_origin(self, source)
+    if len(at) == 0:
+        return False
+    other = self.ctype("list", [item]) if is_list(container) else self.ctype("dict", [targs(container)[0], item])
+    if at[2] == "annotated":
+        key = "global:" + at[1] if at[0] == "global" else f"{self.fnkey(self.curfn)}|{at[1]}"
+        joined = self.join_type(self.newhints.get(key, container), other)
+        if joined == "" or joined == container or joined == self.hints.get(key, ""):
+            return False
+        # Only this fresh allocation may refine a container annotation. Its display
+        # is rebuilt with tagged items on the next pass, before any alias can exist.
+        self.newhints[key] = joined
+        self.newhints["container-items:" + key] = "1"
+        return True
+    was = self.join_at(at[0], at[1], container)
+    joined = self.join_hint(container, other)
+    self.join_at(was[0], was[1], was[2])
+    return joined
+
 def gen_lookahead(self, name: str, ahead: bool = False) -> str:
     # an empty list or dict read before the code that fills it: the first use in this
     # function's source that shows its items (an append, d[k] = v, ...; of name or of a twin
@@ -1996,6 +2072,8 @@ def gen_ustore(self, o: Val, t: Node, v: Val) -> None:
 
 def gen_assign(self, t: Node, v: Val) -> None:
     k = t.kind
+    if k == "tuple" or k == "list":
+        v = bborrow(self, v, BITER)
     if (k == "tuple" or k == "list") and self.bdecays(v.t, BITER):
         v = self.bview(v)  # (a, b = o: the items of the builtin container its class derives from, builtin_bases.py)
     if k == "index" and t.kids[0].kind == "attr" and t.kids[1].kind != "slice" and self.dotted(t.kids[0]) == "os.environ":
@@ -2118,6 +2196,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
             self.list_store(Val(o.v, self.qtype(t.kids[0].s)), self.list_hold(v, v.t), "set", ix.v)
     elif k == "index":
         o = self.expr(t.kids[0], self.default_want(t.kids[0], "[]", [t.kids[1]], v.t))
+        o = bborrow(self, o, BSTORE)
         nosub = "TypeError: 'NoneType' object does not support item assignment"
         if self.bdecays(o.t, BSTORE):
             self.bstored(o.t, t.kids[1], v.t)
@@ -2128,12 +2207,16 @@ def gen_assign(self, t: Node, v: Val) -> None:
         if is_list(unopt(o.t)):
             ix = self.ival(t.kids[1], "", True, o, nosub)
             o = self.unwrap(o, nosub)
+            if inferred_container_item(self, t.kids[0], o.t, v.t):
+                return
             self.list_store(o, self.list_hold(v, elem(o.t)), "set", ix.v)
         elif is_dict(unopt(o.t)):
             kv = targs(unopt(o.t))
             kc = self.key_coerce(self.expr(t.kids[1], kv[0]), kv[0])
             ks = self.key_slot(kc)
             o = self.unwrap(o, nosub)
+            if inferred_container_item(self, t.kids[0], o.t, v.t):
+                return
             self.dict_put(o, kc, ks, self.list_hold(v, kv[1]), kv)  # (a tuple of ints: held, bigints.py)
         elif o.t in self.classes:
             # o[k] = v: o.__setitem__(k, v), once v, o and k are evaluated (a tuple display k in

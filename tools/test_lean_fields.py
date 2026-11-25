@@ -232,7 +232,7 @@ class FieldInitTests(unittest.TestCase):
                 reference = inspect(source, root / "snapshot")
                 # The header words are the subclass's hidden typed fields (" list.0", ...), which
                 # main.init copies from a fresh list or dict by field.addr and mem.store (#1675).
-                for mode in ("header", "label read", "escaped address", "missing init"):
+                for mode in ("header", "raw header", "label read", "escaped address", "missing init"):
                     with self.subTest(mode=mode):
                         snapshot = copy.deepcopy(reference)
                         fn = self.function(snapshot, "@main.init")
@@ -244,7 +244,15 @@ class FieldInitTests(unittest.TestCase):
                         store = next(i for i in range(pos + 1, len(operations))
                                      if operations[i]["op"] == "mem.store"
                                      and operations[i]["operands"][0]["value"] == dest)
-                        if mode == "label read":  # the header writes leave label unset until __init__
+                        if mode == "raw header":
+                            # The obsolete raw-header exception admitted this use while label
+                            # was unassigned. Typed headers need no exception; raw ones escape.
+                            address = instruction("mach.addr", "%ptr", results=[1000],
+                                                  operands=[(obj, "%ptr"), ("0", "int")])
+                            address["text"] = "int"
+                            operations[pos:pos] = [address, instruction("mach.store", operands=[
+                                ("%t1000", "%ptr"), ("0", "int")])]
+                        elif mode == "label read":  # the header writes leave label unset until __init__
                             call = next(i for i, op in enumerate(operations)
                                         if op["op"] == "call" and op["text"] == "@m.Box.__init__")
                             label = instruction("field.addr", "&str", results=[1000], operands=[(obj, "Box")])

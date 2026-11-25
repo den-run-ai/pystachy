@@ -1,0 +1,17 @@
+deque deque 2 3
+deque([1, 2], maxlen=3) False [1, 2]
+[1, 2] [1, 2, 3]
+deque 3 [1, 2]
+Queue Queue 99 3
+Queue([1, 2], maxlen=3) False [1, 2]
+[1, 2] [1, 2, 3]
+Queue 3 [1, 2]
+DeepQueue DeepQueue 99 3
+DeepQueue([1, 2], maxlen=3) False [1, 2]
+[1, 2] [1, 2, 3]
+DeepQueue 3 [1, 2]
+Queue Queue 99 None
+Queue([1, 2]) False [1, 2]
+[1, 2] [1, 2, 3]
+Queue None [1, 2]
+[exit 0]

@@ -1,6 +1,6 @@
 """Expressions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.builtin_bases import BARITH, BCMP, BIN, BITEM, BITER, BREV, BTRUTH
+from src.pystachy_compiler.builtin_bases import BARITH, BCMP, BIN, BITEM, BITER, BREV, BTRUTH, bborrow, bparameter
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrow_type, narrows, search_type
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
@@ -572,9 +572,9 @@ def gen_isinst(self, t: str, c: Node) -> int:
                 what = f"a {short(t)} member" if t == mx[0] else f"a {short(t)} value, which may be a {short(mx[0])} member,"
                 self.err(f"isinstance() of {what} and {short(c.s)} is not supported: an enum class of {'int' if self.derives(mx[0], 'enum$_IntMixin') else 'str'} and Enum derives from {'IntEnum' if self.derives(mx[0], 'enum$_IntMixin') else 'StrEnum'} here, where CPython's derives from Enum only")
         if t in self.classes and self.classes[t].tag > 0:
-            if self.derives(t, c.s):
+            if self.derives(t, c.s) or self.tmpl_derives(t, c.s):
                 return -2
-            if c.s in self.tmpl:
+            if c.s in self.tmpl or len([x for x in self.classes.values() if x.origin == c.s]) > 0:
                 # (a class template's: an object of a template hierarchy's class, template_bases, is
                 # one where its chain holds a specialization of it)
                 if self.tmpl_derives(t, c.s):
@@ -798,7 +798,7 @@ def gen_class_matches(self, c: str, t: Node) -> bool:
     if self.cabc_ref(t) != "":
         return self.cabc_exact(c, self.cabc_ref(t)) == 1  # (an object of exactly c: not its subclasses')
     if t.kind == "name" and t.s in self.classes:
-        return self.derives(c, t.s) or (t.s in self.tmpl and self.tmpl_derives(c, t.s))
+        return self.derives(c, t.s) or self.tmpl_derives(c, t.s)
     return self.isinst(c, t) in [1, -2]
 
 def gen_obj_isinst(self, v: Val, t: Node) -> Val:
@@ -1751,6 +1751,45 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     self.err(f"unsupported expression '{k}'")
     return Val("", "")
 
+def gen_class_shadow(self, ci: ClassInfo, a: str) -> str:
+    # A class under a template may acquire an inherited attribute through cls. Its
+    # specializations share one shadow slot, which is absent until the first store.
+    c = ci.origin if ci.origin in self.classes and a in self.classes[ci.origin].fdefault and self.classes[ci.origin].fdefault[a] is ci.fdefault.get(a, None) else ci.name
+    h = self.classes[c]
+    if c + "." + a not in self.cstores or h.base not in self.classes or a not in h.fdefault or self.classes[h.base].fdefault.get(a, None) is not h.fdefault[a]:
+        return ""
+    b = h.base
+    while b in self.classes:
+        if self.tmpl_of(b) != "":
+            return f"@d.s.{c}.{a}"
+        b = self.classes[b].base
+    return ""
+
+
+def gen_class_slot(self, ci: ClassInfo, a: str, box: bool = False) -> Val:
+    # Resolve the inherited default at runtime: before a shadow's first store a
+    # later base-class assignment remains visible, afterwards only that shadow is.
+    self.class_default(ci, a)
+    suffix = ".box" if box else ""
+    c = ci.origin if ci.origin in self.classes and a in self.classes[ci.origin].fdefault and self.classes[ci.origin].fdefault[a] is ci.fdefault[a] else ci.name
+    h = self.classes[c]
+    t = "dyn" if box else self.default_home(ci, a).ftypes[a] if "<factory>(" in ci.speckey else ci.ftypes[a]
+    slot = Val(ci.fglob[a] + suffix, "&" + t)
+    if h.base in self.classes and a in self.classes[h.base].fdefault and self.classes[h.base].fdefault[a] is h.fdefault[a]:
+        slot = self.class_slot(self.classes[h.base], a, box)
+    shadow = self.class_shadow(h, a)
+    if shadow != "":
+        if shadow not in self.cshadowed:
+            self.cshadowed[shadow] = True
+            self.global_var(shadow, h.ftypes[a])
+            self.global_var(shadow + ".set", "bool")
+            if numeric_identity(h.ftypes[a]) and self.class_identity(h):
+                self.global_var(shadow + ".box", "dyn")
+        chosen = self.select(self.mload("bool", shadow + ".set"), Val(shadow + suffix, "%ptr"), Val(slot.v, "%ptr"))
+        return self.cast(Val(chosen, "%ptr"), "&" + t, "bits")
+    return slot
+
+
 def gen_class_attr(self, cn: Node, a: str) -> Val:
     # C.a through the class: a NamedTuple's _fields, or the value a class-body default binds
     # (instances read it until they assign the field; C.a = v is not supported)
@@ -1762,12 +1801,12 @@ def gen_class_attr(self, cn: Node, a: str) -> Val:
     t = ci.ftypes[a]
     identity = numeric_identity(t) and self.class_identity(ci)
     self.identity_field(ci, t, False)  # (dynamic.py)
-    if is_const(ci.fdefault[a]) and cn.s + "." + a not in self.cvars and not identity:
+    if is_const(ci.fdefault[a]) and cn.s + "." + a not in self.cvars and not identity and self.class_shadow(ci, a) == "":
         return field_value(self, ci, a, self.expr(ci.fdefault[a], t))
     self.class_default(ci, a)
-    v = Val(self.mload(t, ci.fglob[a]), t)
+    v = self.mem_load(self.class_slot(ci, a))
     if identity and self.idhere():
-        self.dyn_id_read(v, ci.fglob[a] + ".box")
+        self.dyn_id_read(v, self.class_slot(ci, a, True).v)
     return v
 
 def gen_class_stores(self, ns: list[Node], cls: str, c: str) -> None:
@@ -1837,7 +1876,7 @@ def gen_cvar(self, cn: Node, a: str) -> ClassInfo:
     # one global each, which the objects of both read
     ci = self.classes[c]
     h = self.default_home(ci, a)
-    if h is not ci:
+    if h is not ci and self.class_shadow(ci, a) == "":
         how = f" (cls in class method {self.curfn.name}(), which {short(c)} inherits)" if self.curfn.deco == "classmethod" and self.curfn.cls == c and self.curfn.name not in self.body_names(ci.node) else ""
         self.err(f"assigning class attribute '{a}' through {short(c)}{how}, which inherits it from {short(h.name)}, is not supported (CPython would give {short(c)} an attribute of its own; {short(h.name)}.{a} = ... changes the one they share)")
     for x in self.classes.values():
@@ -1849,9 +1888,16 @@ def gen_class_store(self, ci: ClassInfo, a: str, v: Val) -> None:
     # C.a = v through the class: its class variable's global
     self.class_default(ci, a)
     self.identity_field(ci, ci.ftypes[a], True)  # (dynamic.py)
-    self.mstore(ci.ftypes[a], field_value(self, ci, a, v).v, ci.fglob[a])
+    shadow = self.class_shadow(ci, a)
+    slot = ci.fglob[a]
+    if shadow != "":
+        self.class_slot(ci, a)  # declares the slot and its absent/present flag
+        slot = shadow
+    self.mstore(ci.ftypes[a], field_value(self, ci, a, v).v, slot)
     if numeric_identity(ci.ftypes[a]) and self.class_identity(ci):
-        self.dyn_id_store(ci.fglob[a] + ".box", v, ci.ftypes[a])
+        self.dyn_id_store(slot + ".box", v, ci.ftypes[a])
+    if shadow != "":
+        self.mstore("bool", "true", shadow + ".set")
 
 def gen_no_class_attr(self, c: str, a: str) -> None:
     # C.a where class C binds no class attribute a: CPython's AttributeError, or why it is not supported
@@ -1922,6 +1968,62 @@ def gen_class_call(self, cn: Node, m: str, args: list[Node], want: str, resultso
         self.err(f"{short(cn.s)}.{m}() is a method of its objects: calling it through the class is not supported; call it on an object, o.{m}(...)")
     self.cls_bound(f, cn.s, False)
     return self.call_fn(f, [], args, want, resultsoft=resultsoft)
+
+def gen_template_class_call(self, o: Val, m: str) -> bool:
+    if not self.copies or o.t not in self.classes or self.classes[o.t].tag == 0 or self.classes[o.t].methods[m].deco != "classmethod":
+        return False
+    ci = self.classes[o.t]
+    f = ci.methods[m]
+    if f.clsdef != "":
+        return True
+    # A specialization of the defining template keeps that declaration's cls.
+    # Its subclass-specific copies still need selection for a base-typed receiver.
+    return ci.origin in self.classes and m in self.classes[ci.origin].methods and self.classes[ci.origin].methods[m].clsuse and self.classes[ci.origin].methods[m].node is f.node
+
+
+def gen_cls_dispatch(self, o: Val, m: str, args: list[Node], want: str, resultsoft: bool = False) -> Val:
+    # Like instance-method dispatch, but the selected class method takes no self.
+    # Capture arguments once; each concrete class owns its inherited cls binding.
+    cs = [c for c in self.classes.values() if c.tag > 0 and not c.excluded and self.derives(c.name, o.t)]
+    f = self.classes[o.t].methods[m]
+    bound: list[Node] = []
+    pos = 0
+    for a in args:
+        j = f.params.index(a.s) if a.kind == "kw" and a.s in f.params else pos
+        t = f.ptypes[j] if j < len(f.ptypes) and j != f.vararg and j != f.kwarg else ""
+        value = self.expr(a.kids[0] if a.kind == "kw" else a, t)
+        if self.idhere() and numeric_identity(value.t):
+            captured = Val(value.v, value.t).identity(value)
+            captured.idfrom = self.dyn_id_box(value).v
+            value = captured
+        arg = self.vnode(value)
+        bound.append(mk("kw", a.s, a.line, [arg]) if a.kind == "kw" else arg)
+        if a.kind != "kw":
+            pos += 1
+    tag = self.mload("int", o.v)
+    end = self.label()
+    vals: list[Val] = []
+    edges: list[str] = []
+    narrow = dict(self.narrowed)
+    for i in range(len(cs)):
+        c = cs[i]
+        nxt = self.label() if i + 1 < len(cs) else ""
+        if nxt != "":
+            arm = self.label()
+            self.cbr(self.num_cmp("==", Val(tag, "int"), Val(str(c.tag), "int")).v, arm, nxt)
+            self.place(arm)
+        self.narrowed = dict(narrow)
+        self.cls_bound(c.methods[m], c.name, False)
+        v = self.call_fn(c.methods[m], [], bound, want, direct=True, resultsoft=resultsoft)
+        if not self.term:
+            vals.append(v)
+            edges.append(self.cur)
+            self.br(end)
+        if nxt != "":
+            self.place(nxt)
+    self.narrowed = narrow
+    return self.refl_phi(vals, edges, end, f"class method {short(o.t)}.{m}()")
+
 
 def gen_cls_bound(self, f: FnInfo, c: str, obj: bool) -> None:
     # a class method that uses cls, called through class c (obj: through an object of c, which
@@ -3548,6 +3650,7 @@ def gen_index(self, n: Node, want: str = "") -> Val:
 
 def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
     # o[i], where o is the value of n.kids[0] and n.kids[1] the index
+    o = bborrow(self, o, BITEM)
     if self.curfn.cmpops:
         if self.term and o.v == "undef":
             return Val("undef", "int")
@@ -4581,6 +4684,8 @@ def gen_cmp_method(self, t: str, m: str, other: str) -> str:
         return m  # (a parameter that is a union of objects and scalars takes a member, boxed as a call boxes it)
     if f.bad == "" and len(f.params) == 2 and f.ptypes[1] == "dyn" and self.dyn_boxable(other) == "":
         return m  # (an Any parameter, in a module that compiles Any so: the operand boxed, dynamic.py)
+    if f.bad == "" and len(f.params) == 2 and bparameter(self, f, 1, other):
+        return m  # (the subclass itself, with a list/dict annotation: call_fn specializes it)
     if f.bad == "" and len(f.params) == 2 and ((other == "int" and (f.ptypes[1] == BIG or f.ptypes[1] == BIGOPT)) or (other == BIG and self.widens("int", f.ptypes[1]))):
         return m  # (an int as a promoting int, and a promoting int as a 64-bit int, NARROW past 64 bits: as a call converts them, bigints.py)
     return ""
@@ -4892,6 +4997,12 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False, stage:
         row: list[int] = []
         for y in ys:
             w = self.cmp_widen(op, x, y, a.t, b.t, stage)
+            # A nullable container-subclass specialization shares the actual operand
+            # across its None and object alternatives, not the None alternative's literal.
+            if x.t == "None" and w[0].t != "None":
+                w[0] = Val(a.v, w[0].t)
+            if y.t == "None" and w[1].t != "None":
+                w[1] = Val(b.v, w[1].t)
             k = self.cmp_key(op, w[0], w[1], stage)
             if k not in arm_of:
                 arm_of[k] = len(keys)
@@ -5071,6 +5182,13 @@ def gen_cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str, stage: int = 
     lhs = x if p[0] == "a" else y
     rhs = y if p[0] == "a" else x
     st = bt if p[0] == "a" else at
+    if rhs.t == "None" and self.bkind(st) != "" and self.cmp_method(lhs.t, p[1], st) != "":
+        f = self.classes[lhs.t].methods[p[1]]
+        q = self.cmp_stage(op, x.t, st, stage) if p[0] == "a" else self.cmp_stage(op, st, y.t, stage)
+        if len(f.ptypes) == 2 and (f.ptypes[1] == "" or bparameter(self, f, 1, st)) and q == p:
+            # The same method handles both None and an object of this class. A nullable
+            # class parameter preserves both, including the TypeError from list(None).
+            return [x, Val(rhs.v, st)] if p[0] == "a" else [Val(rhs.v, st), y]
     if rhs.t == st or rhs.t not in self.classes or st not in self.classes or not self.derives(rhs.t, st) or self.cmp_method(lhs.t, p[1], st) == "":
         return [x, y]
     f = self.classes[lhs.t].methods[p[1]]
@@ -6959,6 +7077,11 @@ def gen_cmp3(self, op: str, a: Val, b: Val) -> Val:
         # (an object of a class of the program and another such object or a value of a builtin
         # type, which no rule above compares: as an object of a class with subclasses is compared)
         return self.inherit_cmp(op, a, b)
+    if op in ORDOP and is_dict(a.t) and is_dict(b.t) and self.lenient and self.curfn.ll.startswith("@o."):
+        # A descriptor registers ordering beside equality, even for a dict family. Its
+        # unused ordering callback must compile; an actual ordering raises Python's error.
+        self.raise_("TypeError", self.sconst(f"'{op}' not supported between instances of 'dict' and 'dict'"))
+        return Val("false", "bool")
     x = "an exception" if a.t == "exc" else "object" if a.t == OBJECTC else "int" if a.t == BIG else "bytearray" if a.t == BYTEARRAYC else a.t
     y = "an exception" if b.t == "exc" else "object" if b.t == OBJECTC else "int" if b.t == BIG else "bytearray" if b.t == BYTEARRAYC else b.t
     self.err(f"cannot compare {x} {op} {y}")

@@ -3761,7 +3761,7 @@ def gen_getfield(self, o: Val, p: Val, name: str, plain: bool = False) -> Val:
                     if sub.ftypes[name] != p.t:
                         self.err(f"reading __slots__ through {short(ci.name)} is not supported when subclasses use different declaration types; read it through the concrete class")
                     self.class_default(sub, name)
-                    dv = self.mem_load(Val(sub.fglob[name], "&" + p.t))
+                    dv = self.mem_load(self.class_slot(sub, name))
                     r = self.select(self.num_cmp("==", Val(tag, "int"), Val(str(sub.tag), "int")).v, dv, Val(r, p.t))
         return Val(r, p.t)
     if o.t + "." + name in self.cvars:
@@ -3781,12 +3781,12 @@ def gen_getfield(self, o: Val, p: Val, name: str, plain: bool = False) -> Val:
                     match = self.num_cmp('==', Val(tag, "int"), Val(str(sub.tag), "int")).v
                     if sub.name + "." + name in self.cvars or not is_const(sub.fdefault[name]) or box != "":
                         self.class_default(sub, name)
-                        dv = self.mem_load(Val(sub.fglob[name], "&" + p.t))
+                        dv = self.coerce(self.mem_load(self.class_slot(sub, name)), p.t)
                     else:
                         dv = self.coerce(self.expr(sub.fdefault[name], p.t), p.t)
                     cv = Val(self.select(match, dv, cv), p.t)
                     if box != "":
-                        cb = self.select(match, Val(sub.fglob[name] + ".box", "%ptr"), Val(cb, "%ptr"))
+                        cb = self.select(match, Val(self.class_slot(sub, name, True).v, "%ptr"), Val(cb, "%ptr"))
                     assigned = self.scalar('or', [Val(assigned, 'bool'), Val(match, 'bool')])
             bad = self.scalar('xor', [Val(assigned, 'bool'), Val('true', 'bool')])
             r = self.select(own, fv, cv)
@@ -3794,12 +3794,12 @@ def gen_getfield(self, o: Val, p: Val, name: str, plain: bool = False) -> Val:
                 box = self.cast(Val(self.select(own, Val(box, "%ptr"), Val(cb, "%ptr")), "%ptr"), "&dyn", "bits").v  # (the identity box's address)
         else:
             self.class_default(ci, name)
-            r = self.select(own, fv, self.mem_load(Val(ci.fglob[name], "&" + p.t)))
+            r = self.select(own, fv, self.coerce(self.mem_load(self.class_slot(ci, name)), p.t))
             if is_opt(p.t) or is_union(p.t):
                 self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
             v = Val(r, p.t)
             if box != "":
-                box = self.cast(Val(self.select(own, Val(box, "%ptr"), Val(ci.fglob[name] + ".box", "%ptr")), "%ptr"), "&dyn", "bits").v  # (the identity box's address)
+                box = self.cast(Val(self.select(own, Val(box, "%ptr"), Val(self.class_slot(ci, name, True).v, "%ptr")), "%ptr"), "&dyn", "bits").v  # (the identity box's address)
                 self.dyn_id_read(v, box)
             return v
     shadows = self.exc_shadows(ci, name) if name in ci.fflag and name not in ci.fsure else []

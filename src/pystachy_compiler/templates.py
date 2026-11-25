@@ -1,6 +1,7 @@
 """Templates component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names
+from src.pystachy_compiler.builtin_bases import bparameter
 from src.pystachy_compiler.diagnostics import int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_aliases, comparison_properties, comparison_rebinds, comparison_reserve_fields
 from src.pystachy_compiler.generators import fresh_yield_context
@@ -36,7 +37,7 @@ from src.pystachy_compiler.utils import (
 )
 
 
-def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bool, lits: dict[str, Node]) -> str:
+def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bool, lits: dict[str, Node], factory: bool = False) -> str:
     # the specialization of class template c that c(args) makes an object of, for arguments
     # of types ts (its __init__'s, after self, as call_fn has them): the fields its __init__
     # assigns are typed as for a class whose __init__ annotates its parameters with ts, and the
@@ -45,12 +46,24 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     # fields' (Box[int]). It counts as a template specialization. In a template hierarchy
     # (program.py's template_bases) each specialization of its root is made with one of each
     # member, whose objects begin as its own do (member_spec)
+    # factory: an inherited cls(...) constructs a fixed subclass with different argument
+    # types. Its private layout keeps the original nominal class and class attributes;
+    # only that constructor's arguments and own fields are inferred again.
     t = self.classes[c]
+    if factory:
+        chain: list[str] = []
+        base = c
+        while base in self.classes:
+            chain.append(base)
+            base = self.classes[base].base
+        for i in range(len(chain) - 1, -1, -1):
+            self.inherit(self.classes[chain[i]])
     if self.tmpl_member(t):
         return self.member_spec(self.specialize(t.base, ts, given, named, lits), c)
     init = t.methods["__init__"]
     # (an annotated parameter's argument has its type, as call_fn coerces it)
-    ts = [init.ptypes[i + 1] if i + 1 < len(init.ptypes) and init.ptypes[i + 1] != "" else ts[i] for i in range(len(ts))]
+    if not factory:
+        ts = [init.ptypes[i + 1] if i + 1 < len(init.ptypes) and init.ptypes[i + 1] != "" else ts[i] for i in range(len(ts))]
     if int_lists() and c in self.tparams:
         # (in a program where a module opts in to promoting ints, and none to dynamic Any, whose
         # values cannot hold them, an int that binds a type variable of generic class c, by an
@@ -65,7 +78,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         # program.py's template_bases; else the base's objects and the subclass's would not share
         # one location)
         ts = [promoted_items(self, ts[i]) if i + 1 >= len(init.ptypes) or init.ptypes[i + 1] == "" else ts[i] for i in range(len(ts))]
-    doing = c + ("[" if named else "(") + ",".join(ts) + ")"
+    recorded = self.factory_types(ts) if factory else ts
+    doing = c + ("<factory>(" if factory else "[" if named else "(") + ",".join(recorded) + ")"
     doing += "".join([f";{x}={given[x]}" for x in self.tparams.get(c, []) if x in given])
     doing += "".join([f";{x}={lit_key(lits[x])}" for x in init.params if x in lits])  # (literal_class)
     if doing in self.specdone:
@@ -79,7 +93,14 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     if len(self.making) >= 100:
         self.err(f"{short(c)}() needs more than 100 nested template functions; annotate its parameters")
     p = ""
-    if self.tmpl_sub(t):
+    if factory:
+        b = self.classes[t.base]
+        base = b.origin if b.origin in self.tmpl else b.name
+        if not self.declares(c, "__init__"):
+            p = self.specialize(base, ts, {}, False, {}, base not in self.tmpl)
+        else:
+            p = self.sub_base(t, init, ts, base, base not in self.tmpl)
+    elif self.tmpl_sub(t):
         # (a subclass of a class template whose own __init__ is one: derives from the specialization
         # of its base that its super().__init__(...) makes, sub_base)
         p = self.sub_base(t, init, ts)
@@ -101,6 +122,9 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         s.mod = t.mod
         s.origin = c
         s.speckey = doing
+        s.specargs = list(ts)
+        s.specgiven = dict(given)
+        s.specnamed = named
         # Readiness itself can resolve a recursive class-attribute annotation.
         # Every active request must already name a nominal class at that point.
         self.classes[name] = s
@@ -125,7 +149,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
                 s.fann[x] = pc.fann[x]
             b = self.classes[t.base]
             for x in t.fields:
-                if x not in b.ftypes:
+                if x not in b.ftypes and (not factory or x in t.fdefault):
                     self.add_field(s, x, t.ftypes[x])
                     if x in t.fann:
                         s.fann[x] = t.fann[x]
@@ -150,6 +174,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         fi.params = init.params
         fi.ptypes = [name] + ts
         fi.mod = init.mod
+        body = factory_body(self, init.node.kids[2], fi) if factory else init.node.kids[2]
         args = ", ".join([typestr(x) for x in ts])
         self.making.append(f"specializing {shown(c)}({args}) for the call at {where(self.line)}")
         self.selfcls = name  # (c names its specialization in its annotations, see ann)
@@ -197,7 +222,10 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
                 owned.append(canonical)
         if c in self.cnts:
             self.nts[name] = True  # (namedtuple()'s, whose objects are NamedTuples)
-        self.scan_fields(s, fi, init.node.kids[2].kids, {})
+        if not factory or self.declares(c, "__init__"):
+            self.scan_fields(s, fi, body.kids, {})
+        if factory:
+            factory_fields(self, s, fi, body)
         comparison_reserve_fields(self, s)  # late-created specialization, before layout
         if len(lits) > 0:
             s.lits = lits
@@ -228,7 +256,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
             self.err(f"compilation needs more than {TEMPLATE_INSTANCES} template specializations; annotate template parameters or reduce type combinations")
         self.template_instances += 1
         if p != "" and self.compiling and self.tbasing == 0:
-            self.late_sub(c, ts, doing)  # (a new one that compiled code makes: the next pass makes it first)
+            self.late_sub(c, recorded, doing)  # (a new one that compiled code makes: the next pass makes it first)
         t.specs[key] = name
         if t.tag != 0:
             self.new_tag(s)  # (a template hierarchy's: its methods dispatch on the class of self)
@@ -255,6 +283,9 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
                 g = self.declare_fn(d, name)
                 self.lib = False
                 g.mod = s.mod
+                if factory and g.name == "__init__":
+                    g.ptypes = [name] + ts
+                    g.node = Node(d.kind, d.s, d.line, [body if i == 2 else d.kids[i] for i in range(len(d.kids))])
                 if self.copies:
                     cls_shared(t, g)
                 s.methods[g.name] = g  # (x.setter: a property's setter)
@@ -304,6 +335,101 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
             self.making.pop()
 
 
+def factory_body(self, n: Node, f: FnInfo) -> Node:
+    # Constructor annotations cannot change what a Python factory stores. Infer
+    # a contradictory assignment in this private layout from its actual argument.
+    if n.kind == "def" or n.kind == "class" or n.kind == "lambda":
+        return n
+    if n.kind == "annassign" and len(n.kids) == 3:
+        actual = self.guess(n.kids[2], f)
+        expected = self.vtype(n.kids[1])
+        if actual not in ["", "None"] and not actual.startswith("!") and actual != expected and not ann_takes(self, expected, actual):
+            return mk("assign", "", n.line, [n.kids[0], n.kids[2]])
+    return Node(n.kind, n.s, n.line, [factory_body(self, k, f) for k in n.kids])
+
+
+def factory_fields(self, ci: ClassInfo, f: FnInfo, n: Node) -> None:
+    # Own fields may keep a class default until the initializer assigns the real
+    # argument. Keep both values in a union, without changing an inherited prefix.
+    if n.kind == "def" or n.kind == "class" or n.kind == "lambda":
+        return
+    if n.kind == "assign" or (n.kind == "annassign" and len(n.kids) == 3):
+        for a in n.kids[:-1] if n.kind == "assign" else [n.kids[0]]:
+            if a.kind == "attr" and a.kids[0].kind == "name" and a.kids[0].s == f.params[0] and a.s in ci.fdefault and self.field_root(ci, a.s) is ci:
+                actual = self.guess(n.kids[-1], f)
+                if actual != "" and not actual.startswith("!"):
+                    combined = self.union_type([ci.ftypes[a.s], actual])
+                    if not combined.startswith("!"):
+                        ci.ftypes[a.s] = combined
+                        ci.fguess[a.s] = True
+    for k in n.kids:
+        factory_fields(self, ci, f, k)
+
+
+def gen_factory_types(self, ts: list[str]) -> list[str]:
+    # Late factory requests cannot keep transient Item-1 names: the next pass
+    # may instantiate Item's layouts in another order. Keep constructor recipes
+    # in the same monotone registry and use opaque tokens in its argument types.
+    out: list[str] = []
+    for t in ts:
+        for ci in list(self.classes.values()):
+            if ci.origin == "" or retoken(t, ci.name, "@") == t:
+                continue
+            key = "<factory-type>" + self.stable(ci.name)
+            if key not in self.tlate:
+                token = "%factorytype" + str(len(self.tlate))
+                self.tlate[key] = ["factory-type", token]
+                args = self.factory_types(ci.specargs)
+                row = ["factory-type", token, ci.origin, "1" if ci.specnamed else "0", "1" if "<factory>(" in ci.speckey else "0", str(len(args))] + args
+                row.append(str(len(ci.specgiven)))
+                for name in ci.specgiven:
+                    row.extend([name, self.factory_types([ci.specgiven[name]])[0]])
+                row.append(str(len(ci.lits)))
+                for name in ci.lits:
+                    row.extend([name, lit_text(ci.lits[name])])
+                self.tlate[key] = row
+            t = retoken(t, ci.name, self.tlate[key][1])
+        out.append(t)
+    return out
+
+
+def gen_factory_resolve(self, ts: list[str]) -> list[str]:
+    # Replay dependencies before factory layouts receive tags. The specialization
+    # memo owns the current pass's token-to-class mapping; no stale layout is read.
+    out: list[str] = []
+    for t in ts:
+        for row in list(self.tlate.values()):
+            if row[0] != "factory-type" or retoken(t, row[1], "@") == t:
+                continue
+            token = row[1]
+            if token not in self.specdone:
+                if token in self.specing or len(row) < 6:
+                    self.err("recursive factory argument layouts are not supported")
+                self.specing[token] = token
+                try:
+                    n = int(row[5])
+                    args = self.factory_resolve(row[6:6 + n])
+                    i = 6 + n
+                    n = int(row[i])
+                    i += 1
+                    given: dict[str, str] = {}
+                    for _ in range(n):
+                        given[row[i]] = self.factory_resolve([row[i + 1]])[0]
+                        i += 2
+                    n = int(row[i])
+                    i += 1
+                    lits: dict[str, Node] = {}
+                    for _ in range(n):
+                        lits[row[i]] = self.parse_expr(row[i + 1])
+                        i += 2
+                    self.specdone[token] = self.specialize(row[2], args, given, row[3] == "1", lits, row[4] == "1")
+                finally:
+                    self.specing.pop(token, "")
+            t = retoken(t, token, self.specdone[token])
+        out.append(t)
+    return out
+
+
 def gen_new_tag(self, s: ClassInfo) -> None:
     # a class tag for specialization s of a template hierarchy (template_bases), made after the
     # tags of the classes as declared: one no other class has had, and its name in the table of
@@ -351,6 +477,9 @@ def gen_member_spec(self, p: str, m: str) -> str:
     s.origin = m
     s.base = p
     s.speckey = m + "(" + p + ")"
+    s.specargs = list(pc.specargs)
+    s.specgiven = dict(pc.specgiven)
+    s.specnamed = pc.specnamed
     s.tvars = dict(pc.tvars)
     s.fields_ready = True
     s.slots = list(t.slots)
@@ -1000,6 +1129,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     g.nullable_self = nullable_self
     g.prop = f.prop
     g.clsuse = f.clsuse
+    g.clsdef = f.clsdef
     g.orig = f.orig
     g.iters = f.iters
     g.gen = f.gen
@@ -1042,17 +1172,18 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
         missing = {a: self.classes[cmpfields].ftypes[a] for a in self.classes[cmpfields].ftypes if a not in actual.ftypes and a not in actual.methods}
         if g.cmprebind == "":
             comparison_missing(g.node.kids[2], comparison_aliases(g.node.kids[2], f.params[1]), missing)
-    late = [j for j in range(len(ts)) if j < len(f.ptypes) and f.ptypes[j] in ANNTYPES and ts[j] != f.ptypes[j] and ann_takes(self, f.ptypes[j], ts[j])]
+    late = [j for j in range(len(ts)) if j < len(f.ptypes) and ((f.ptypes[j] in ANNTYPES and ts[j] != f.ptypes[j] and ann_takes(self, f.ptypes[j], ts[j])) or bparameter(self, f, j, ts[j]))]
     if len(late) > 0 and cmpfields == "":
-        # an int for a float parameter, an enum member for an int or str one (see ann_param): in
+        # an int for a float parameter, an enum member for an int or str one, or a list/dict
+        # subclass for its container annotation (see ann_param): in
         # this instance's own copy of the def the parameter has no annotation, so its body may
         # bind it again, as a template's
         g.node = clone(f.node)
         for par in g.node.kids[0].kids:
             if par.kind == "param" and par.s in [f.params[j] for j in late]:
                 par.kids[0] = mk("noann", "", f.node.line, [])
-        if g.ret in ANNTYPES and not f.gen:
-            # -> float, -> int or -> str: what this instance returns may be its int or member,
+        if (g.ret in ANNTYPES or (any(bparameter(self, f, j, ts[j]) for j in late) and (is_list(unopt(g.ret)) or is_dict(unopt(g.ret))))) and not f.gen:
+            # What this instance returns may be its int, member or container subclass,
             # which CPython returns as it is; its returns decide (the annotation again, where it
             # calls itself before one)
             g.ret = ""
@@ -1076,7 +1207,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     if len(nums) > 0 and cmpfields == "":
         why += f", which passes an int for the float parameter {' and '.join(nums)}: pass a float, as in 1.0 or float(x), to compile it as annotated"
     for j in late if cmpfields == "" else []:
-        if f.ptypes[j] != "float":
+        if f.ptypes[j] in ANNTYPES and f.ptypes[j] != "float":
             # (an enum member for an int or str parameter: ann_param)
             why += f", which passes a member of {short(ts[j]) if ts[j] in self.classes else typestr(ts[j])} for the {f.ptypes[j]} parameter {f.params[j]}: pass its .value to compile it as annotated"
     args = ", ".join(ts[1:] if f.clo >= 0 or takes_self(f) else ts) if size <= 256 else f"<{len(ts)} arguments, {size} type bytes>"  # (a closure's env, a method's self aside)

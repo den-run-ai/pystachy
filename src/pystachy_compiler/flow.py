@@ -582,6 +582,8 @@ def gen_default_home(self, ci: ClassInfo, fl: str) -> ClassInfo:
     # the class whose class body binds class attribute fl of ci: ci's, or the base's that an
     # exception class inherits it from (the same default, which declare_fields copies down;
     # a class body that binds fl again has a default of its own)
+    if "<factory>(" in ci.speckey and fl in ci.fdefault and ci.origin in self.classes and self.classes[ci.origin].fdefault.get(fl, None) is ci.fdefault[fl]:
+        ci = self.classes[ci.origin]
     while fl in ci.fdefault and ci.base in self.classes and fl in self.classes[ci.base].fdefault and self.classes[ci.base].fdefault[fl] is ci.fdefault[fl]:
         ci = self.classes[ci.base]
     return ci

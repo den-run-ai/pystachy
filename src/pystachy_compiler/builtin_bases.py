@@ -15,7 +15,7 @@ from src.pystachy_compiler.ir import FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import CONTAINER_HEADERS
 from src.pystachy_compiler.syntax import Node, made_var, mentions, mk
-from src.pystachy_compiler.utils import elem, is_dict, is_gen, is_list, targs, typestr, unopt
+from src.pystachy_compiler.utils import elem, is_dict, is_gen, is_list, is_opt, is_tuple, is_union, targs, typestr, umembers, unopt
 
 # the special methods whose operations a class deriving from a container takes from it where it
 # defines none of them (Gen.bdecays): the others are an ordinary class's
@@ -142,7 +142,113 @@ def gen_bview(self, v: Val, sized: bool = False) -> Val:
 
 def gen_bdecay(self, v: Val, own: list[str], sized: bool = False) -> Val:
     # v as the builtin container its class derives from, where the class defines none of own
-    return self.bview(v, sized) if self.bdecays(v.t, own) else v
+    if self.bdecays(v.t, own):
+        return self.bview(v, sized)
+    # Borrowing a shared container for these operations leaves its stored class untouched.
+    # Comparisons and arithmetic dispatch on the original member, including reflected calls.
+    if len(own) > 0 and all(m in ["__iter__", "__reversed__", "__getitem__", "__setitem__", "__delitem__", "__len__", "__bool__", "__contains__"] for m in own):
+        return bborrow(self, v, own)
+    return v
+
+
+def bparameter_type(self, t: str, expected: str) -> int:
+    # Whether a parameter's annotation describes t, including containers that retain a
+    # subclass item in its own representation: -1 for incompatible types, 0 for unchanged
+    # types, 1 where the body needs the actual subclass or tagged item type. In particular,
+    # list[Stack | list[int]] is never read as a list of untagged list pointers.
+    if t == expected:
+        return 0
+    u = unopt(t)
+    w = unopt(expected)
+    if w != "" and ((self.bkind(u) != "" and self.bbase(u) == w) or bfamily(self, u) == w):
+        return 1
+    if not ((is_list(u) and is_list(w)) or (is_dict(u) and is_dict(w)) or (is_tuple(u) and is_tuple(w))):
+        return -1
+    actual = targs(u)
+    declared = targs(w)
+    if len(actual) != len(declared) or (is_dict(u) and actual[0] != declared[0]):
+        return -1
+    changed = 0
+    for i in range(len(actual)):
+        match = bparameter_type(self, actual[i], declared[i])
+        if match < 0:
+            return -1
+        changed = max(changed, match)
+    return changed
+
+
+def bparameter(self, f: FnInfo, j: int, t: str) -> bool:
+    # A list/dict annotation accepts its subclass, also inside another annotated container.
+    # Compile the body for the actual representation. Native/exported interfaces and
+    # closures keep their declared representation.
+    if j >= len(f.ptypes):
+        return False
+    declared = f.ptypes[j]
+    # A union's class member can receive None in its comparison method even when the
+    # container annotation omits it. Compile that arm with a nullable container parameter;
+    # operations on None then raise only if the method actually executes them.
+    nullable = j == 1 and f.cls != "" and f.name in ["__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"] and (is_list(declared) or is_dict(declared)) and (t == "None" or (is_opt(t) and unopt(t) == declared))
+    if not nullable and bparameter_type(self, t, declared) != 1:
+        return False
+    if f.gen or f.extern or f.export or f.pyexport or f.clo >= 0 or f.prop or f.acc != "" or f.deco != "" or len(f.node.kids) < 3:
+        return False
+    return j != f.vararg and j != f.kwarg
+
+
+def bfamily(self, t: str) -> str:
+    # A closed union of objects sharing one list/dict payload, including its plain builtin
+    # form. Its boxes keep each object's class; no original container or alias is changed.
+    if not is_union(unopt(t)):
+        return ""
+    base = ""
+    subclass = False
+    for m in umembers(unopt(t)):
+        b = m
+        if self.bkind(m) != "":
+            b = self.bbase(m)
+            subclass = True
+        if (not is_list(b) and not is_dict(b)) or "?" in b or (base != "" and base != b):
+            return ""
+        base = b
+    return base if subclass else ""
+
+
+def bborrow(self, v: Val, own: list[str]) -> Val:
+    # A default operation on every member of a shared container family borrows the selected
+    # member's payload. The union box remains in its original storage, keeping class and
+    # identity for later observations. None stays None so the operation evaluates its other
+    # operands before raising. An override, including dict.__missing__, needs member dispatch.
+    base = bfamily(self, v.t)
+    if base == "":
+        return v
+    methods = own + (["__missing__"] if "__getitem__" in own else [])
+    members = umembers(unopt(v.t))
+    for m in members:
+        if self.bkind(m) != "" and any(name in self.classes[m].methods for name in methods):
+            return v
+    t = base if v.v in self.nn else self.optional(base)
+    ph = Ins("phi", t, "")
+    end = self.label()
+    if v.v not in self.nn:
+        nonnull = self.label()
+        self.incoming(ph, "null", self.cur)
+        self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, end, nonnull)
+        self.place(nonnull)
+    tag = self.mload('int', v.v)
+    for i in range(len(members)):
+        m = members[i]
+        nxt = self.label() if i + 1 < len(members) else ""
+        if nxt != "":
+            arm = self.label()
+            self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(m)), "int")).v, arm, nxt)
+            self.place(arm)
+        item = self.uget(Val(v.v, unopt(v.t)), m)
+        self.incoming(ph, item.v, self.cur)
+        self.br(end)
+        if nxt != "":
+            self.place(nxt)
+    self.place(end)
+    return Val(self.phi(ph), t)
 
 
 def gen_bcompared(self, op: str, a: Val, b: Val) -> list[Val]:

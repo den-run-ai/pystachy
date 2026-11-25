@@ -1255,7 +1255,7 @@ def gen_class_defaults(self, o: Val) -> None:
             identity = fl in ci.fbox and numeric_identity(t)
             if not is_const(ci.fdefault[fl]) or identity:
                 self.class_default(h, fl)  # (compiled before the class statement runs)
-            v = Val(self.mload(t, h.fglob[fl]), t) if fl in h.fglob else field_value(self, ci, fl, self.expr(ci.fdefault[fl], t))
+            v = field_value(self, ci, fl, Val(self.mload(h.ftypes[fl], h.fglob[fl]), h.ftypes[fl])) if fl in h.fglob else field_value(self, ci, fl, self.expr(ci.fdefault[fl], t))
             if identity:
                 self.dyn_id_read(v, h.fglob[fl] + ".box")
             self.setfield(o, self.field(o, fl), fl, v)

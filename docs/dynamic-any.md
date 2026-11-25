@@ -1072,6 +1072,11 @@ can still need an explicit `list[Any]` destination.
 - A function value prints as `<function>`; builtin functions and methods (`len`, `"".join`)
   cannot become `Any` values yet.
 
+- Literal-name `getattr()` of an `Any`-held builtin still treats its methods as missing:
+  `getattr(xs, "append", None)` returns `None` for a list instead of its bound method.
+  This accepted wrong result also occurs in v0.6.1 and remains tracked in
+  [the builtin-method call gap](https://github.com/den-run-ai/pystachy/issues/774#issuecomment-7153347568).
+
 - Calls of `Any` values and their methods take positional and keyword arguments, and what a
   typed call unpacks (a tuple's items, a dict display with str keys, a function's `**kwargs`).
   [Runtime argument unpacking](#runtime-argument-unpacking) additionally supports fixed

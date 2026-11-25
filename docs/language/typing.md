@@ -955,8 +955,10 @@ whose type holds its objects: `Base | Child` and `datetime | date` are the base 
 a whole declared member is supported, while narrowing a base member to a subclass is not yet
 implemented.
 
-Reference unions cannot mix with container members or exception types; scalar members
-may join them, as [below](#objects-beside-scalars).
+Reference unions cannot mix with exception types. Container members are limited to a
+`list` or `dict` together with subclasses of that same container type, as described under
+[subclasses of list and dict](#subclasses-of-list-and-dict); scalar members may join
+ordinary reference unions, as [below](#objects-beside-scalars).
 Callable fields, bound-method extraction and unpacked method arguments
 are unsupported. Use a typed local for an empty-container argument that needs an
 expected type. Field and property reads and stores dispatch on the member. A read of
@@ -971,7 +973,8 @@ before equality comparison, truth testing or formatting. Beside only objects, a 
 member makes a reference union, `complex | C`, whose `==` and `!=`, also in a tuple's
 searches, compare member by member: complex numbers by value, an object by its class's
 `__eq__`, else by identity. Containers remain
-invariant, and no reference union is [inferred](#inferred-unions). This adds deterministic
+invariant, apart from inference at a fresh allocation of shared list/dict-subclass storage
+described below; other reference unions are not [inferred](#inferred-unions). This adds deterministic
 native execution, without profiles, an interpreter, runtime compilation or speculative
 assumptions; boxing and dispatch have costs, so no performance improvement is claimed.
 
@@ -1373,36 +1376,53 @@ a class variable of the template with its current value, as the template's objec
 they assign it themselves or a subclass's body binds it again
 ([test](../../tests/programs/classes/template_subclass_class_variable.py),
 [specializations that compiled code makes](../../tests/programs/classes/template_subclass_class_variable_late.py)).
-A class method that such a class inherits and that uses `cls` is the class's own: called through
-an object of the class, as through the class's name, `cls` is that class, so `cls.__name__`, a
-class attribute its body binds again and `cls(...)` are its
-([test](../../tests/programs/classes/template_subclass_class_method.py)), and `cls.x = v` changes
-the class's `x` where its class body binds `x`
-([test](../../tests/programs/classes/template_subclass_cls_store_own.py)). That holds for a
-program that compiles with those copies. Where it does not, no class of the program has one and
-`cls` is the template that defines the method, as it was before
-([#1744](https://github.com/den-run-ai/pystachy/issues/1744)): what `cls(...)` makes is stored
-where a template's object is stored too
-([test](../../tests/programs/classes/template_subclass_class_method_retyped.py),
-[test](../../tests/programs/classes/template_subclass_class_method_retyped_generic.py)), the
-class's own `__init__` takes other arguments
-([test](../../tests/programs/classes/template_subclass_class_method_init.py)), or the method
-assigns through `cls` an attribute that the class inherits, of which CPython gives the class its
-own ([test](../../tests/programs/classes/template_subclass_cls_store_kept.py)), or the method is
-called through an object of a class under the template that another class derives from
-([test](../../tests/programs/classes/template_subclass_class_method_location.py)) or that has no
-copy of its own (a class in another module than the method's; a method with a default value
-evaluated when its def runs): calls of class methods are not dispatched on the object's class,
-and the copy of the location's class is not the object's. Such a program still passes list and
-dict subclass objects to comparison methods as themselves
-([test](../../tests/programs/classes/template_subclass_class_method_objects.py)), and one whose
-comparisons cannot take such objects still has the copies, whichever of the two its code reaches
-first ([test](../../tests/programs/classes/template_subclass_class_method_copy_first.py),
-[test](../../tests/programs/classes/template_subclass_class_method_cmp_first.py)). Through a
-location typed by the template itself, `cls` is the template also for an object of a deriving
-class. A class method that a class under a template defines itself is called as any other
-class's ([error test](../../tests/errors/classes/template_subclass_own_class_method.py)).
-These classes are still not values: `issubclass()` and `type[C]` reject them.
+A class method inherited from a class template receives the object's actual class as `cls`,
+also through a location typed by a base specialization. `cls.__name__`, `cls(...)`, and reads
+of class attributes use that class
+([test](../../tests/programs/classes/template_subclass_class_method.py),
+[base-typed dispatch](../../tests/programs/classes/template_subclass_class_method_dispatch.py)).
+Assigning an inherited attribute through `cls` gives the subclass its own value. Until that
+first assignment, later changes to the base's value remain visible; instances that have
+assigned the attribute themselves keep their own value. All specializations of one subclass
+share its class attributes
+([test](../../tests/programs/classes/template_subclass_cls_store_inherited.py),
+[existing equal-value stores](../../tests/programs/classes/template_subclass_cls_store_kept.py)).
+
+The copies share the defining method's computed defaults, evaluated once when its `def` runs,
+including when the subclass belongs to another module
+([test](../../tests/programs/classes/template_subclass_class_method_imported.py)). A factory
+result and a later base object can share an inferred location through their common tagged
+base. If `cls(...)` passes the wrong number of arguments to the subclass's constructor, that
+call raises `TypeError` when reached; an untaken branch does not discard the subclass binding
+([test](../../tests/programs/classes/template_subclass_class_method_factory.py)).
+
+An inherited factory can also construct a fixed subclass with argument types that differ
+from its constructor annotations. The compiler infers a separate layout for that call's
+objects, including fields the constructor assigns, while keeping the class's identity and
+class attributes shared. It does not change the layout of existing objects. An own field
+that first reads a class default and then receives another type holds both in a union;
+the class default retains its original type and value
+([test](../../tests/programs/classes/template_subclass_factory_layout.py),
+[constructor chains and generic bases](../../tests/programs/classes/template_subclass_factory_chain.py)).
+Computed constructor defaults still run once, and factory arguments run once
+([test](../../tests/programs/classes/template_subclass_factory_defaults.py)). A method lookup
+on a builtin value that lacks that attribute raises `AttributeError` before the method's
+arguments run ([test](../../tests/programs/classes/template_subclass_factory_missing_method.py)).
+Factory arguments may themselves be template objects, including through a container.
+Their constructor recipes are replayed before compiling dispatch on a base-typed location;
+the runtime passes the original objects and keeps their aliases
+([test](../../tests/programs/classes/template_subclass_factory_template_arguments.py)).
+
+Class-specific method bodies still form a compilation trial. Where their types cannot be
+represented, the program retains the earlier template-bound compilation; the remaining
+boundary is tracked in [#1744](https://github.com/den-run-ai/pystachy/issues/1744).
+A class method defined by an ordinary class under a generic specialization keeps the
+ordinary-class limits
+([error test](../../tests/errors/classes/template_subclass_own_class_method.py)).
+These classes are still not values: `issubclass()` and `type[C]` reject them. An immediate
+`x.__class__(...)` call can construct the exact runtime subclass with normally inferred
+constructor arguments ([test](../../tests/programs/classes/template_class_constructor.py));
+storing that class as a value is still rejected.
 
 The compiler rejects, with a message that names the limit: a subclass with a secondary base or a
 decorator; an `__init__` that calls `super().__init__(...)` other than once at its top level, or
@@ -2001,19 +2021,30 @@ the builtin's unless the class defines that operator's method, so a class that d
 defines the reflected method is asked first. Compared with an object of another class that
 defines the comparison, the object is that method's argument as it is, in either operand order:
 `isinstance(other, C)` holds there and `type(other)` is `C`
-([test](../../tests/programs/classes/builtin_subclass_compared_operand.py)). That holds for a
-program whose every such comparison compiles so. Where one does not, each of the program's
-comparisons hands its method the container instead, in which `isinstance(other, C)` is false: a
-method's parameter is annotated `list[int] | None` or its code passes the operand on as a list
-([test](../../tests/programs/classes/builtin_subclass_compared_container.py)), or what it stores
-the operand in holds plain lists or another class's objects too
-([test](../../tests/programs/classes/builtin_subclass_compared_stored.py),
-[test](../../tests/programs/classes/builtin_subclass_compared_stored_sites.py),
-[test](../../tests/programs/classes/builtin_subclass_compared_stored_classes.py)). A class that
-defines `__eq__` but not `__ne__` keeps the container's `!=`. A tuple search (`in`, `count()`,
-`index()`) hands such a method the container too, where the method does not take the object,
-and compares the object with a list or dict as its container
-([test](../../tests/programs/classes/builtin_subclass_tuple_search.py)). A slice, `+`, `*`,
+([test](../../tests/programs/classes/builtin_subclass_compared_operand.py)). Compatible
+`list[T]` and `dict[K, V]` parameter annotations, including optional forms and ordinary
+helper calls, retain that class by compiling the function for its actual argument
+([test](../../tests/programs/classes/builtin_subclass_compared_annotations.py)). A reflected
+method's possible `None` argument no longer forces every comparison to lose its subclass;
+the method receives `None`, and an operation on it raises when that operation runs
+([test](../../tests/programs/classes/builtin_subclass_compared_nullable.py),
+[annotated method](../../tests/programs/classes/builtin_subclass_storage_annotated_eq.py)).
+The first append in such a method may also infer a bare base's item type
+([test](../../tests/programs/classes/builtin_subclass_bare_compared.py)). Shared storage is
+described below.
+
+The whole-program compatibility retry remains for other uses that cannot compile with the
+subclass types: every comparison then passes the underlying list or dict, so observing the
+argument's class can still be wrong ([#1739](https://github.com/den-run-ai/pystachy/issues/1739)).
+Existing programs that already match CPython remain accepted
+([stored values](../../tests/programs/classes/builtin_subclass_compared_stored.py),
+[several sites](../../tests/programs/classes/builtin_subclass_compared_stored_sites.py),
+[several classes](../../tests/programs/classes/builtin_subclass_compared_stored_classes.py)).
+A class that defines `__eq__` but not `__ne__` keeps the container's `!=`. Tuple searches
+(`in`, `count()`, `index()`) use the subclass for compatible comparison annotations and
+otherwise retain their existing method-admission limits
+([test](../../tests/programs/classes/builtin_subclass_tuple_search.py),
+[#1763](https://github.com/den-run-ai/pystachy/issues/1763)). A slice, `+`, `*`,
 `|` or `copy()` makes a plain list or dict, as in CPython. Without `__eq__` and `__hash__` the objects are unhashable, as
 lists and dicts are.
 
@@ -2031,12 +2062,36 @@ base (`class C(list[str])`, `class D(dict[str, int])`) where nothing stores an i
 items of different types are stored; all objects of the class, and of its specializations, hold
 one item type.
 
-An object keeps its class only in storage of its class: variables, fields, unannotated
-parameters (which specialize the function, as for any class) and containers such as `list[C]`.
-Storing it where a `list[T]` or `dict[K, V]` is expected (an annotated parameter, return or
-variable, or an item of `list[list[T]]`), as a dynamic `Any` value, or copying it with
-`copy.copy()` or `copy.deepcopy()` is rejected rather than losing its class; `list(x)` and
-`dict(x)` copy the items. Other builtin bases (`set`, `str`, `int`, `tuple`, ...), a class
+An object keeps its class in variables, fields, specialized parameters and containers such
+as `list[C]`. A closed union may combine several subclasses with the same exact builtin
+base, also with that builtin type: `Stack | Queue | list[int]`, for example. Its tagged
+storage preserves the original objects and their aliases; comparisons, formatting, type
+tests and method calls select the stored member. Container equality and searches test the
+objects' identity before calling `__eq__`, even when separate union boxes hold the same
+object; direct `==` still calls the method
+([union](../../tests/programs/classes/builtin_subclass_storage_union.py),
+[identity](../../tests/programs/classes/builtin_subclass_storage_identity.py)). Indexing,
+iteration, slices, item mutation and deletion can borrow the common builtin payload where
+all members inherit the corresponding operation
+([lists](../../tests/programs/classes/builtin_subclass_storage_operations.py),
+[dicts](../../tests/programs/classes/builtin_subclass_storage_mapping.py)).
+
+A single fresh list or dict display may infer such tagged item storage from subsequent
+`append()`, `insert()`, `setdefault()` or indexed stores. A simple name-alias chain keeps
+the original allocation; an annotated fresh display can also retain the subclasses.
+Compatible nested container parameters specialize for that actual storage, without
+reinterpreting tagged slots as plain container pointers
+([alias](../../tests/programs/classes/builtin_subclass_storage_alias.py),
+[dict values](../../tests/programs/classes/builtin_subclass_storage_dict.py),
+[annotated helper](../../tests/programs/classes/builtin_subclass_storage_annotated.py)).
+This inference does not change an existing annotated alias, a parameter's allocation or a
+location with ambiguous assignments.
+
+Other conversions into a declared base-container layout, dynamic `Any` storage, and
+`copy.copy()` or `copy.deepcopy()` remain rejected; `list(x)` and `dict(x)` explicitly copy
+the items. Ordinary compatible parameter annotations keep the subclass, and a helper that
+returns its specialized parameter returns that original object. Other builtin bases
+(`set`, `str`, `int`, `tuple`, ...), a class
 deriving from such a class, such a class in multiple inheritance or with a decorator, a
 `TypeVar` item type, `__new__`, `C.fromkeys()`, special methods called through `super()` other
 than `__init__`, `__getitem__`, `__setitem__`, `__delitem__`, `__contains__`, `__len__`,

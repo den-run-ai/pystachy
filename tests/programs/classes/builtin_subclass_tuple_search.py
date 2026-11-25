@@ -1,7 +1,7 @@
 # A tuple search (in, count(), index()) for an object of a class deriving from list or dict, or
 # in a tuple that holds one, beside an object of a class whose __eq__ takes only the container
 # (its parameter is annotated list[int] | None or dict[str, int] | None). CPython calls the
-# method, with the object; the method takes the container here, as == hands it over (#1763).
+# method with the object, whose class the annotated parameter now preserves (#1739).
 # Where the method takes the object (unannotated, object), it gets the object itself. Beside a
 # list or dict, such an object is compared as its container, whose == it inherits
 class Stack(list[int]):

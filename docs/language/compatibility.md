@@ -617,11 +617,11 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   sequence patterns, a key that `__missing__` would see converted (a `bool` among `int` keys),
   and a bare base whose objects receive no item, or items of different types (name the types
   in the base).
-- **Inherited members:** assigning inherited class attributes through subclasses without their
-  own defaults; changing field types; derived-only fields without supported narrowing;
+- **Inherited members:** outside the [template-class method support](typing.md#subclasses-of-class-templates),
+  assigning inherited class attributes through subclasses without their own defaults, or
   inherited `cls`-using classmethods through base-typed objects, across modules or with
-  nonconstant defaults; `super` outside supported instance-method contexts, with an unrelated
-  class or a different receiver.
+  nonconstant defaults; changing field types; derived-only fields without supported narrowing;
+  `super` outside supported instance-method contexts, with an unrelated class or a different receiver.
 - **Methods and hooks:** assigning `cls`; static/class decorators on special
   methods; `C.__init__(o)` outside ordinary inheritance; decorators beyond staticmethod, classmethod,
   property/setter/deleter, abstractmethod, contextmanager, functools.cached_property,

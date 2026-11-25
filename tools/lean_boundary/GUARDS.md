@@ -216,15 +216,17 @@ its field (`setfield`), which each flag store of an object under construction mu
 Objects that compiled code did not make here (parameters, loads from memory, call results)
 are complete: the function that allocated each let it escape only once complete.
 
-A compiled list or dict subclass starts with four or twelve hidden header
-words. Its constructor copies the built-in header before initializing user
-fields. A machine address into a directly allocated object's named header word
-can feed an immediately following integer-word store when this is its only
-use. Taking that address exposes no user field and gives no field assignment
-credit. The checker still examines the stored value for escaping objects.
+A compiled list or dict subclass starts with four or twelve hidden header words.
+Its constructor copies the built-in header through typed `field.addr` and
+`mem.store` operations before initializing user fields. The field proof excludes
+these hidden words and **trusts their initialization**: a missing header store,
+a header read before its store, or a header store redirected to a declared field
+can still receive an accepted field report. Acceptance proves only the inventoried
+field obligations, not the container header's validity. Raw machine addresses into
+an object under construction count as escapes, including header addresses.
 
-In alpha.1 all twelve first field failures across eleven subclass programs
-were at these header addresses. Recognizing the stores proves all field
+In the historical alpha.1 census, all twelve first field failures across eleven
+subclass programs were at raw header addresses. The former exception proved all field
 obligations in `builtin_dict_{bestrel,gc,override,quoter}` and
 `builtin_list_stack`. The remaining six expose a later boundary:
 `builtin_dict_basic` passes incomplete `self` to `dict.update`;

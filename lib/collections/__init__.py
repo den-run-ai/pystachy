@@ -123,8 +123,9 @@ class deque(Generic[_T]):
 
     def copy(self) -> Self:
         """Return a shallow copy of a deque."""
-        d = deque(self._items(), self.maxlen)
-        return d
+        if self.maxlen is None:
+            return self.__class__(self)
+        return self.__class__(self, self.maxlen)
 
     def __copy__(self) -> Self:
         """Return a shallow copy of a deque."""
@@ -252,8 +253,10 @@ class deque(Generic[_T]):
     def __contains__(self, x: _T) -> bool:
         return self._find(x, 0, len(self)) >= 0
 
-    def __iter__(self):
-        return _deque_iterator(self)
+    def __iter__(self) -> Iterator[_T]:
+        # Inherited calls share the iterator's source type; its reads bypass overrides.
+        source: deque[_T] = self
+        return _deque_iterator(source)
 
     def __reversed__(self) -> Iterator[_T]:
         """Return a reverse iterator over the deque."""
@@ -320,8 +323,8 @@ class deque(Generic[_T]):
 
     def __repr__(self) -> str:
         if self.maxlen is None:
-            return f"deque({self._items()!r})"
-        return f"deque({self._items()!r}, maxlen={self.maxlen})"
+            return f"{type(self).__name__}({self._items()!r})"
+        return f"{type(self).__name__}({self._items()!r}, maxlen={self.maxlen})"
 
 
 ################################################################################
@@ -954,7 +957,7 @@ class Counter(Generic[_T]):
 
     def copy(self) -> Self:
         'Return a shallow copy.'
-        return Counter(self)
+        return self.__class__(self)
 
     def __getitem__(self, key: _T) -> int:
         # (dict's, which calls __missing__ for a missing key)
@@ -1038,12 +1041,12 @@ class Counter(Generic[_T]):
 
     def __repr__(self) -> str:
         if not self:
-            return 'Counter()'
+            return f'{self.__class__.__name__}()'
         # dict() preserves the ordering returned by most_common()
         d: dict[_T, int] = {}
         for elem, count in self.most_common():
             d[elem] = count
-        return f'Counter({d!r})'
+        return f'{self.__class__.__name__}({d!r})'
 
     # Multiset-style mathematical operations discussed in:
     #       Knuth TAOCP Volume II section 4.6.3 exercise 19
@@ -1271,7 +1274,7 @@ class _deque_iterator:
         self._source = source
         self._state: int = source._state
         self._index = 0
-        self._remaining: int = len(source)
+        self._remaining: int = len(source._left) + len(source._right)
 
     def __iter__(self):
         return self
@@ -1282,7 +1285,8 @@ class _deque_iterator:
             raise RuntimeError("deque mutated during iteration")
         if self._remaining == 0:
             raise StopIteration
-        value = self._source[self._index]
+        left = len(self._source._left)
+        value = self._source._left[left - 1 - self._index] if self._index < left else self._source._right[self._index - left]
         self._index += 1
         self._remaining -= 1
         return value
