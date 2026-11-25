@@ -197,6 +197,7 @@ def gen_bkept(self, op: str, a: Val, b: Val) -> Val:
     # the start with the containers. Nothing of a trial is the program's then, and no program
     # that compiled with the containers stops compiling
     diagnostics.TRYING = True
+    diagnostics.HANDED = True
     return self.cmp3(op, a, b)
 
 
