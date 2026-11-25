@@ -6210,6 +6210,12 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, 
         a = self.ntup(a)
     if (item.t == BIG) != (a.t == BIG) and self.big_union(a if item.t == BIG else item):
         return self.titem_big(item, a, item.t == BIG, hit, ph, value, lenient) or identity
+    if len(self.bsubn) > 0:
+        # (an object of a class deriving from a builtin container beside one whose __eq__ takes
+        # only the container: that, as == hands it over, builtin_bases.py)
+        ab = self.bsearched(item, a)
+        item = ab[0]
+        a = ab[1]
     paired = item.t != a.t and self.ueq_type(item.t) and self.ueq_type(a.t) and not (self.isnum(item.t) and self.isnum(a.t))
     setpair = is_set(item.t) and is_set(a.t) and self.wider(selem(item.t), selem(a.t)) != ""
     nested = self.dyn_policy(self.line) and self.container_pair_type(item.t, a.t)

@@ -1391,6 +1391,7 @@ from src.pystachy_compiler.builtin_bases import (
     gen_bkeeps as builtin_bases_bkeeps,
     gen_bkept as builtin_bases_bkept,
     gen_bcompared as builtin_bases_bcompared,
+    gen_bsearched as builtin_bases_bsearched,
     gen_bdecay as builtin_bases_bdecay,
     gen_bearly as builtin_bases_bearly,
     gen_bdecays as builtin_bases_bdecays,
@@ -5947,6 +5948,9 @@ class Gen:
 
     def bcompared(self, op: str, a: Val, b: Val) -> list[Val]:
         return builtin_bases_bcompared(self, op, a, b)
+
+    def bsearched(self, item: Val, a: Val) -> list[Val]:
+        return builtin_bases_bsearched(self, item, a)
 
     def bcalled(self, op: str, t: str, side: int) -> bool:
         return builtin_bases_bcalled(self, op, t, side)

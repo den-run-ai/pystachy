@@ -2010,7 +2010,10 @@ the operand in holds plain lists or another class's objects too
 ([test](../../tests/programs/classes/builtin_subclass_compared_stored.py),
 [test](../../tests/programs/classes/builtin_subclass_compared_stored_sites.py),
 [test](../../tests/programs/classes/builtin_subclass_compared_stored_classes.py)). A class that
-defines `__eq__` but not `__ne__` keeps the container's `!=`. A slice, `+`, `*`,
+defines `__eq__` but not `__ne__` keeps the container's `!=`. A tuple search (`in`, `count()`,
+`index()`) hands such a method the container too, where the method does not take the object,
+and compares the object with a list or dict as its container
+([test](../../tests/programs/classes/builtin_subclass_tuple_search.py)). A slice, `+`, `*`,
 `|` or `copy()` makes a plain list or dict, as in CPython. Without `__eq__` and `__hash__` the objects are unhashable, as
 lists and dicts are.
 

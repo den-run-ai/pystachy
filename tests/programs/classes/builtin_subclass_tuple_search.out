@@ -1,0 +1,29 @@
+Typed.__eq__ [1]
+True
+Typed.__eq__ [1]
+Typed.__eq__ [1]
+True False
+Typed.__eq__ [1]
+Typed.__eq__ [1]
+Typed.__eq__ [1]
+2 1
+Typed.__eq__ [1]
+Typed.__eq__ [1]
+Typed.__eq__ [1]
+True 2
+TypedD.__eq__ {'a': 1}
+TypedD.__eq__ {'a': 1}
+True True
+Loose.__eq__ Stack
+Obj.__eq__ Stack
+True True
+Typed.__eq__ [1]
+Typed.__eq__ [1]
+True True
+Typed.__eq__ [1, 2]
+Typed.__eq__ [1, 2]
+Typed.__eq__ [1, 2]
+False 0
+True True 2 1
+True True False True
+[exit 0]
