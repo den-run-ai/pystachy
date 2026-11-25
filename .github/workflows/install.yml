@@ -41,6 +41,10 @@ jobs:
           make test-install
 
       - name: Bootstrap fixed point
+        # Only the temporary compiler uses O1; Make still builds the installed
+        # compiler at O2 and checks all compiler/runtime fixed-point witnesses.
+        env:
+          BOOTSTRAP_AOT_OPT: ${{ matrix.os == 'macos-15-intel' && '1' || '2' }}
         run: make
 
       - name: Hosted and native JIT/AOT smoke

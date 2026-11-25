@@ -237,6 +237,8 @@ jobs:
 
       - name: Bootstrap, package, and test relocation without Python
         env:
+          # Keep Intel runner headroom without changing the final compiler tier.
+          BOOTSTRAP_AOT_OPT: ${{ matrix.os == 'macos-15-intel' && '1' || '2' }}
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
           RELEASE_COMMIT: ${{ needs.prepare.outputs.commit }}
           RELEASE_TARGET: ${{ matrix.target }}
