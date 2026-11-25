@@ -148,6 +148,10 @@ beta and release-candidate builds. A plain pre-1.0 version publishes as a normal
 
 Every platform rebuilds the compiler to its bootstrap fixed point. Archives include a
 relative launcher, runtime sources, libraries, licenses, source metadata and checksums.
+The macOS Intel installation and archive jobs use `BOOTSTRAP_AOT_OPT=1` for the
+temporary first-stage compiler to reduce runner load. The installed compiler still
+uses `-O2`; both compiler and runtime fixed-point checks remain required. Other
+platforms retain the default bootstrap tier, and all jobs keep their time limits.
 Smoke tests extract and move the archive, then compare JIT/AOT output with CPython using
 a compiler PATH without Python and a cache outside the installation. GC stress is tested
 as well, the programs include a JSON round trip and code-point string indexing, and a warm
