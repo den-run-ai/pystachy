@@ -1269,8 +1269,8 @@ class Counter(Generic[_T]):
 def _count(item: tuple[_T, int]) -> int:
     # (operator.itemgetter(1), most_common's key)
     return item[1]
-class _deque_iterator:
-    def __init__(self, source):
+class _deque_iterator(Generic[_T]):
+    def __init__(self, source: deque[_T]):
         self._source = source
         self._state: int = source._state
         self._index = 0
@@ -1279,7 +1279,7 @@ class _deque_iterator:
     def __iter__(self):
         return self
 
-    def __next__(self):
+    def __next__(self) -> _T:
         if self._source._state != self._state:
             self._remaining = 0
             raise RuntimeError("deque mutated during iteration")

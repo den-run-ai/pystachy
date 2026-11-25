@@ -1413,9 +1413,10 @@ Their constructor recipes are replayed before compiling dispatch on a base-typed
 the runtime passes the original objects and keeps their aliases
 ([test](../../tests/programs/classes/template_subclass_factory_template_arguments.py)).
 
-Class-specific method bodies still form a compilation trial. Where their types cannot be
-represented, the program retains the earlier template-bound compilation; the remaining
-boundary is tracked in [#1744](https://github.com/den-run-ai/pystachy/issues/1744).
+An inherited factory always keeps the subclass binding. Where its body cannot be compiled
+for the subclass's constructor arguments or field layout, compilation reports the unsupported
+operation; it cannot fall back to constructing the base class
+([error test](../../tests/errors/classes/template_subclass_factory_unsupported_body.py)).
 A class method defined by an ordinary class under a generic specialization keeps the
 ordinary-class limits
 ([error test](../../tests/errors/classes/template_subclass_own_class_method.py)).
@@ -2022,9 +2023,10 @@ defines the reflected method is asked first. Compared with an object of another 
 defines the comparison, the object is that method's argument as it is, in either operand order:
 `isinstance(other, C)` holds there and `type(other)` is `C`
 ([test](../../tests/programs/classes/builtin_subclass_compared_operand.py)). Compatible
-`list[T]` and `dict[K, V]` parameter annotations, including optional forms and ordinary
-helper calls, retain that class by compiling the function for its actual argument
-([test](../../tests/programs/classes/builtin_subclass_compared_annotations.py)). A reflected
+`list[T]` and `dict[K, V]` parameter annotations, including optional forms, ordinary
+helpers and closures, retain that class by compiling the function for its actual argument
+([ordinary functions](../../tests/programs/classes/builtin_subclass_compared_annotations.py),
+[closures](../../tests/programs/classes/builtin_subclass_closure_parameter.py)). A reflected
 method's possible `None` argument no longer forces every comparison to lose its subclass;
 the method receives `None`, and an operation on it raises when that operation runs
 ([test](../../tests/programs/classes/builtin_subclass_compared_nullable.py),
@@ -2033,10 +2035,10 @@ The first append in such a method may also infer a bare base's item type
 ([test](../../tests/programs/classes/builtin_subclass_bare_compared.py)). Shared storage is
 described below.
 
-The whole-program compatibility retry remains for other uses that cannot compile with the
-subclass types: every comparison then passes the underlying list or dict, so observing the
-argument's class can still be wrong ([#1739](https://github.com/den-run-ai/pystachy/issues/1739)).
-Existing programs that already match CPython remain accepted
+Every comparison keeps its original object. If the method's parameter, helper or storage
+cannot retain that class, compilation reports the unsupported conversion. It cannot retry
+with a plain container argument that changes the method's class observations.
+Supported inferred shared storage remains accepted
 ([stored values](../../tests/programs/classes/builtin_subclass_compared_stored.py),
 [several sites](../../tests/programs/classes/builtin_subclass_compared_stored_sites.py),
 [several classes](../../tests/programs/classes/builtin_subclass_compared_stored_classes.py)).
@@ -2077,15 +2079,39 @@ all members inherit the corresponding operation
 [dicts](../../tests/programs/classes/builtin_subclass_storage_mapping.py)).
 
 A single fresh list or dict display may infer such tagged item storage from subsequent
-`append()`, `insert()`, `setdefault()` or indexed stores. A simple name-alias chain keeps
-the original allocation; an annotated fresh display can also retain the subclasses.
-Compatible nested container parameters specialize for that actual storage, without
-reinterpreting tagged slots as plain container pointers
+`append()`, `insert()`, `setdefault()` or indexed stores. A simple alias chain, including
+compatible annotated aliases, keeps the original allocation and its item layout; an
+annotated fresh display can also retain the subclasses. Compatible nested container
+parameters specialize for that actual storage, without reinterpreting tagged slots as
+plain container pointers
 ([alias](../../tests/programs/classes/builtin_subclass_storage_alias.py),
 [dict values](../../tests/programs/classes/builtin_subclass_storage_dict.py),
-[annotated helper](../../tests/programs/classes/builtin_subclass_storage_annotated.py)).
-This inference does not change an existing annotated alias, a parameter's allocation or a
-location with ambiguous assignments.
+[annotated helper](../../tests/programs/classes/builtin_subclass_storage_annotated.py),
+[annotated aliases](../../tests/programs/classes/builtin_subclass_storage_annotated_alias.py)).
+A specialized helper's stores may request the same tagged storage at its caller's fresh
+allocation, also through another helper; the call keeps the original container and items
+([test](../../tests/programs/classes/builtin_subclass_storage_parameters.py)).
+
+A builtin `list(...)` allocation may also acquire tagged items. Its new outer list keeps
+its elements' original identities while leaving the source list's storage unchanged
+([test](../../tests/programs/classes/builtin_subclass_storage_constructor.py)). A field
+whose only assignment creates a fresh list or dict in its declaring `__init__` can infer
+the same storage. Every instance uses that layout from construction, and aliases of the
+field keep the same container
+([aliases and separate instances](../../tests/programs/classes/builtin_subclass_storage_field_alias.py),
+[dict field](../../tests/programs/classes/builtin_subclass_storage_field_dict.py),
+[class-body annotation](../../tests/programs/classes/builtin_subclass_storage_field_declared.py)).
+
+This inference requires a known allocation. It does not reinterpret a helper argument
+returned by an arbitrary call, a user function named `list`, a shared class default, a field
+initialized from an argument, or a field that other code may replace. Such storage must
+declare its union explicitly, for example `list[Stack | list[int]]`; a store that would
+erase the object's class is rejected at the unsupported boundary
+([helper origin](../../tests/errors/classes/builtin_subclass_storage_parameter_origin.py),
+[shadowed constructor](../../tests/errors/classes/builtin_subclass_storage_constructor_alias.py),
+[class default](../../tests/errors/classes/builtin_subclass_storage_field_default.py),
+[field parameter](../../tests/errors/classes/builtin_subclass_storage_field_parameter.py),
+[replacement](../../tests/errors/classes/builtin_subclass_storage_field_replaced.py)).
 
 Other conversions into a declared base-container layout, dynamic `Any` storage, and
 `copy.copy()` or `copy.deepcopy()` remain rejected; `list(x)` and `dict(x)` explicitly copy

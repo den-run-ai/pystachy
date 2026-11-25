@@ -1257,7 +1257,7 @@ def gen_class_defaults(self, o: Val) -> None:
                 self.class_default(h, fl)  # (compiled before the class statement runs)
             v = field_value(self, ci, fl, Val(self.mload(h.ftypes[fl], h.fglob[fl]), h.ftypes[fl])) if fl in h.fglob else field_value(self, ci, fl, self.expr(ci.fdefault[fl], t))
             if identity:
-                self.dyn_id_read(v, h.fglob[fl] + ".box")
+                self.dyn_id_read(v, self.class_slot(ci, fl, True).v)
             self.setfield(o, self.field(o, fl), fl, v)
 
 def gen_exc_keep(self, o: Val, vals: list[Val], coded: bool = True) -> None:

@@ -8,7 +8,6 @@ decided from the static type alone: no list or dict holds a class word or a flag
 path tests for a subclass.
 """
 from __future__ import annotations
-from src.pystachy_compiler import diagnostics
 from src.pystachy_compiler.diagnostics import where
 from src.pystachy_compiler.frames import IterArg
 from src.pystachy_compiler.ir import FnInfo, Ins, Val
@@ -179,8 +178,8 @@ def bparameter_type(self, t: str, expected: str) -> int:
 
 def bparameter(self, f: FnInfo, j: int, t: str) -> bool:
     # A list/dict annotation accepts its subclass, also inside another annotated container.
-    # Compile the body for the actual representation. Native/exported interfaces and
-    # closures keep their declared representation.
+    # Compile the body for the actual representation. Native/exported interfaces
+    # keep their declared representation.
     if j >= len(f.ptypes):
         return False
     declared = f.ptypes[j]
@@ -190,7 +189,7 @@ def bparameter(self, f: FnInfo, j: int, t: str) -> bool:
     nullable = j == 1 and f.cls != "" and f.name in ["__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"] and (is_list(declared) or is_dict(declared)) and (t == "None" or (is_opt(t) and unopt(t) == declared))
     if not nullable and bparameter_type(self, t, declared) != 1:
         return False
-    if f.gen or f.extern or f.export or f.pyexport or f.clo >= 0 or f.prop or f.acc != "" or f.deco != "" or len(f.node.kids) < 3:
+    if f.gen or f.extern or f.export or f.pyexport or f.prop or f.acc != "" or f.deco != "" or len(f.node.kids) < 3:
         return False
     return j != f.vararg and j != f.kwarg
 
@@ -275,8 +274,9 @@ def gen_bkeeps(self, op: str, a: Val, b: Val) -> bool:
     # reflected method where the left operand's container declines a right operand that is no
     # such container (one of the container's kind, an object of another class deriving from it
     # too, is compared by the container, which does not decline it). False where bcompared
-    # decides as CPython does, and in a compilation that hands over the containers (Gen.trials)
-    if not self.trials or op not in BCMP or (self.bkind(a.t) == "" and self.bkind(b.t) == ""):
+    # decides as CPython does. A user's method must always receive the original object:
+    # restarting with its builtin view can silently change both the method and stored aliases.
+    if op not in BCMP or (self.bkind(a.t) == "" and self.bkind(b.t) == ""):
         return False
     if op != "==" and op != "!=" and (self.bkind(a.t) == "dict" or self.bkind(b.t) == "dict"):
         return False
@@ -297,13 +297,8 @@ def gen_bkept(self, op: str, a: Val, b: Val) -> Val:
     # a op b with both operands as they are: the program's method takes the object itself, whose
     # class isinstance() and type() tell there. Its type is the class's where the container's
     # was, in the method and in whatever the method stores it in, returns it to or passes it on
-    # to, so code anywhere in the program may stop compiling, or decline an attempt it made
-    # (Gen.xtry), that compiled with the container: from here on the compilation is a trial
-    # (diagnostics.TRYING), and where any of that happens the driver compiles the program from
-    # the start with the containers. Nothing of a trial is the program's then, and no program
-    # that compiled with the containers stops compiling
-    diagnostics.TRYING = True
-    diagnostics.HANDED = True
+    # to. A storage or call boundary that cannot preserve it reports its ordinary diagnostic;
+    # it must not retry the whole program with class-erasing container views (#1739).
     return self.cmp3(op, a, b)
 
 

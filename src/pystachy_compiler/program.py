@@ -3,7 +3,6 @@ from __future__ import annotations
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
 from src.pystachy_compiler.builtin_bases import builtin_base
 from src.pystachy_compiler.analysis import all_imports, chk_names, collect, constant_writes, defines, module_anns, module_ints, module_reads, module_strs, module_values, name_nodes, needs_eh, none_assigns, reads_builtin
-from src.pystachy_compiler import diagnostics
 from src.pystachy_compiler.diagnostics import NeedHierarchy, Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
@@ -467,7 +466,7 @@ def gen_inherit(self, ci: ClassInfo) -> None:
             continue  # (its own @property def makes a new property, without the base's setter and deleter)
         src = f
         defined = f.clsdef
-        if self.copies and m not in ci.methods and not f.clsuse and f.deco == "classmethod" and b.origin in self.classes and m in self.classes[b.origin].methods:
+        if m not in ci.methods and not f.clsuse and f.deco == "classmethod" and b.origin in self.classes and m in self.classes[b.origin].methods:
             # (a specialization's class method is declared again from its template's def, in
             # which cls already reads the template's name: the template's is the one that uses
             # cls, and a class deriving from the specialization gets its own copy of it, as
@@ -495,14 +494,9 @@ def gen_inherit(self, ci: ClassInfo) -> None:
             g.orig = src.orig
             g.clsuse = True
             g.clsdef = defined
-            if defined != "":
-                # (in this copy cls is the class where it was the template: what cls(...) makes
-                # and takes, and what the method stores through cls, are the class's now, so code
-                # here or anywhere that compiled with the template's may not. From here on the
-                # compilation is a trial, which the driver gives up for the one without these
-                # copies where a pass fails or declines an attempt: diagnostics.TRYING)
-                diagnostics.TRYING = True
-                diagnostics.COPIED = True
+            # cls names this class even if its constructor or stores cannot compile.
+            # Falling back to the template's body would silently construct or mutate
+            # the wrong class; an unsupported copy must report its own diagnostic.
             g.pending = True
             g.bad = g.bad if g.bad != "" else src.bad  # the defining declaration checked the body
             ci.methods[m] = g

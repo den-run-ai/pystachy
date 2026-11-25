@@ -1,7 +1,7 @@
 """Builtins component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
-from src.pystachy_compiler.builtin_bases import BITER
+from src.pystachy_compiler.builtin_bases import BITER, bfamily
 from src.pystachy_compiler.utils import clsof, is_union, umembers
 from src.pystachy_compiler.diagnostics import int_lists
 from src.pystachy_compiler.frames import IterArg, Reduce
@@ -2379,7 +2379,9 @@ def gen_typed_list(self, v: Val, want: str) -> Val:
     if not is_list(v.t) or not is_list(w) or elem(v.t) == elem(w) or "?" in w:
         return v
     line = self.line
-    if elem(v.t) == "dyn":
+    # A fresh list may likewise need tagged container-family items. Rebuild only
+    # this result; its source and the original item objects keep their identities.
+    if elem(v.t) == "dyn" or bfamily(self, elem(w)) != "":
         item = mk("name", "__item", line, [])
         return self.listcomp(mk("listcomp", "", line, [item, made_var("__item", line), self.vnode(v)]), w)
     if is_tuple(elem(v.t)) and is_tuple(elem(w)) and len(targs(elem(v.t))) == len(targs(elem(w))) and "dyn" in targs(elem(v.t)):

@@ -1980,7 +1980,8 @@ def field_ann(self, ci: ClassInfo, name: str, a: Node) -> str:
     t = self.vtype(a)
     if t in ANNTYPES:
         ci.fann[name] = True
-    return self.hints.get(self.field_key(ci, name), t) if t in ANNTYPES and len(self.hints) > 0 else t
+    key = self.field_key(ci, name)
+    return self.hints.get(key, t) if len(self.hints) > 0 and (t in ANNTYPES or "container-items:" + key in self.hints) else t
 
 def gen_add_field(self, ci: ClassInfo, name: str, t: str) -> None:
     if name in ci.methods and ci.methods[name].prop:
@@ -2658,7 +2659,10 @@ def gen_scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dic
                     why = f"field '{name}' of namedtuple {short(ci.name)} given {'None' if given == 'None' else 'a value whose type cannot be inferred'} is not supported (the call that makes an object types its fields)"
                 if k == "annassign" and t in ANNTYPES:
                     ci.fann[name] = True  # (annotated float, int or str: what it is given may widen it too, see ann_takes)
-                jh = self.hints.get(f"field:{self.stable(ci.name)}.{name}", "") if (k == "assign" or name in ci.fann) and len(self.hints) > 0 else ""
+                key = self.field_key(ci, name)
+                kept_items = "container-items:" + key in self.hints
+                key = key if kept_items else f"field:{self.stable(ci.name)}.{name}"
+                jh = self.hints.get(key, "") if len(self.hints) > 0 and (k == "assign" or name in ci.fann or kept_items) else ""
                 if jh != "":
                     t = jh  # (a join's type: as if annotated, see join_hint)
                     why = ""

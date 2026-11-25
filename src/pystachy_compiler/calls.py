@@ -14,6 +14,7 @@ from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, COMP
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.unions import ANNTYPES, ann_open, ann_returns, ann_site, ann_takes, field_value
+from src.pystachy_compiler.variables import inferred_container_arguments
 from src.pystachy_compiler.utils import (
     is_clsval,
     clsof,
@@ -1624,6 +1625,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     line = self.line
     np = len(f.params)
     vals: list[Val] = []
+    sources: list[Node] = []
     # A surrounding annotation is a storage contract; C[T](...) alone only hints
     # at unbound or conflicting arguments. Keep both through unpacked calls.
     # C(...) of a generic class that a lambda returns is a forwarding call: the Callable's
@@ -1639,6 +1641,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         if own and v.t == "None":
             v = Val(v.v, self.optional(f.ptypes[i]))  # comparison's None arm (bparameter)
         vals.append(self.pcoerce(v, "" if own else f.ptypes[i], f, i) if i < len(pre) else v)
+        sources.append(self.nokey)
         late = late or own
     pos = len(pre)
     extra: list[Val] = []
@@ -1667,6 +1670,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             e = a.kids[0]
         else:
             pos += 1
+        sources[j] = e
         if f.extern and self.ffi_at(e):
             vals[j] = self.at_arg(e, f, j, offs)
             continue
@@ -1810,6 +1814,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         # A direct return-call keeps the open-result marker for an empty callee,
         # while forwarding the caller's separate fresh-display context.
         f = self.instance(f, [v.t for v in vals], nnp, self.curfn.rctx if want == "?" else want, self.curfn.rsoft if want == "?" else resultsoft, nullable_self=nullable_self)
+    if (len(self.hints) > 0 or len(self.newhints) > 0) and inferred_container_arguments(self, f, sources, vals):
+        return Val("undef", f.ret if f.ret != "" else "None")
     if got is not None or self.curfn.ll.startswith("@o.x."):
         if got is not None:
             got.append(f)  # (and a class's helper for Any operands reads it too: xdecline)

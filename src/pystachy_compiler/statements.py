@@ -1,6 +1,6 @@
 """Statements component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BREV, BSTORE, bborrow
+from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BREV, BSTORE, bborrow, bparameter_type
 from src.pystachy_compiler.utils import identity_abi, identity_default, is_union, umembers
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
 from src.pystachy_compiler.diagnostics import shown
@@ -805,6 +805,12 @@ def gen_stmt_main(self, n: Node) -> None:
         if len(n.kids) == 3:
             t = self.mapping_ann(t, n.kids[2])  # (x: dict[K, V] = defaultdict(...): the defaultdict's)
         if n.kids[0].kind == "name":
+            if len(n.kids) == 3 and n.kids[2].kind in ["name", "attr"] and self.typed_now(n.kids[2]):
+                # An alias uses its source's slots, including subclass tags. A base
+                # container annotation must not reinterpret those existing slots.
+                alias_type = self.dry(n.kids[2])
+                if ((is_list(alias_type) and is_list(t)) or (is_dict(alias_type) and is_dict(t))) and bparameter_type(self, alias_type, t) == 1:
+                    t = alias_type
             if len(self.hints) > 0:
                 key = "global:" + n.kids[0].s if self.is_global(n.kids[0].s) else f"{self.fnkey(self.curfn)}|{n.kids[0].s}"
                 if t in ANNTYPES or "container-items:" + key in self.hints:
@@ -813,6 +819,15 @@ def gen_stmt_main(self, n: Node) -> None:
                     # inferred_container_item. None reinterprets an existing allocation)
                     t = self.hints.get(key, t)
             self.declare(n.kids[0].s, t)
+        elif n.kids[0].kind == "attr":
+            target = n.kids[0]
+            cls = unopt(self.dry(target.kids[0]))
+            if cls in self.classes and target.s in self.classes[cls].ftypes:
+                ci = self.classes[cls]
+                if "container-items:" + self.field_key(ci, target.s) in self.hints:
+                    # This field's sole initializer allocates its final item layout;
+                    # an annotation must not first make an untagged container.
+                    t = ci.ftypes[target.s]
         if len(n.kids) == 3:
             v = self.expr(n.kids[2], t)
             # (x: T | None = <a T> knows x holds a T, see narrowed. An int for a float variable or

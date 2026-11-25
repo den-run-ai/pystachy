@@ -1770,6 +1770,13 @@ def gen_class_slot(self, ci: ClassInfo, a: str, box: bool = False) -> Val:
     # Resolve the inherited default at runtime: before a shadow's first store a
     # later base-class assignment remains visible, afterwards only that shadow is.
     self.class_default(ci, a)
+    if box and not numeric_identity(self.default_home(ci, a).ftypes[a]):
+        # A factory's instance field may hold a number while its shared class
+        # default remains a string or bool. That default has no numeric companion.
+        # Give this read an empty local slot, never a fictitious class global.
+        absent = self.alloca("dyn", "")
+        self.mem_store(Val(absent, "&dyn"), Val("null", "dyn"))
+        return Val(absent, "&dyn")
     suffix = ".box" if box else ""
     c = ci.origin if ci.origin in self.classes and a in self.classes[ci.origin].fdefault and self.classes[ci.origin].fdefault[a] is ci.fdefault[a] else ci.name
     h = self.classes[c]
@@ -1970,7 +1977,7 @@ def gen_class_call(self, cn: Node, m: str, args: list[Node], want: str, resultso
     return self.call_fn(f, [], args, want, resultsoft=resultsoft)
 
 def gen_template_class_call(self, o: Val, m: str) -> bool:
-    if not self.copies or o.t not in self.classes or self.classes[o.t].tag == 0 or self.classes[o.t].methods[m].deco != "classmethod":
+    if o.t not in self.classes or self.classes[o.t].tag == 0 or self.classes[o.t].methods[m].deco != "classmethod":
         return False
     ci = self.classes[o.t]
     f = ci.methods[m]
@@ -2041,12 +2048,10 @@ def gen_cls_bound(self, f: FnInfo, c: str, obj: bool) -> None:
     if f.clsdef != "" and c in self.classes and self.classes[c].origin in self.classes:
         # (the copy that a class under a class template has of the template's class method,
         # #1744, is called as any class's class method is: through an object only of a class
-        # that no class derives from, and that has the copy. Elsewhere cls would be another
-        # class than the object's, and not the template either, which it was before the copies
-        # and with which a program may print what CPython prints: the error then ends the trial
-        # the copies are (inherit), and the program is compiled without them. The classes that
-        # derive from a specialization's class are its template's, which the source names: a
-        # specialization of one may be made after this call)
+        # that no class derives from, and that has the copy. Elsewhere cls would name
+        # another class, so the unsupported call must report that binding mismatch.
+        # The classes that derive from a specialization's class are its template's,
+        # which the source names: a specialization of one may be made after this call)
         k = self.classes[c].origin
     subs = [x.name for x in self.classes.values() if obj and x.name != k and self.derives(x.name, k)]
     if f.cls != c:

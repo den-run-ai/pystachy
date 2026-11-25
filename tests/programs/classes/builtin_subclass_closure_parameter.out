@@ -1,0 +1,13 @@
+comparison
+True
+[10, 1]
+True True [1, 3]
+[10, 1, 1]
+True [2, 4]
+[10, 1, 1, 1]
+[10, 1, 1, 1, 2]
+True [0, 4, 4]
+[20, 2]
+True [1, 3, 4]
+True True {'a': 1, 'b': 7}
+[exit 0]

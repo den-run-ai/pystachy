@@ -286,8 +286,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
                 if factory and g.name == "__init__":
                     g.ptypes = [name] + ts
                     g.node = Node(d.kind, d.s, d.line, [body if i == 2 else d.kids[i] for i in range(len(d.kids))])
-                if self.copies:
-                    cls_shared(t, g)
+                cls_shared(t, g)
                 s.methods[g.name] = g  # (x.setter: a property's setter)
         if p != "":
             self.inherit(s)  # (then its base's others, as member_spec's)
@@ -343,7 +342,7 @@ def factory_body(self, n: Node, f: FnInfo) -> Node:
     if n.kind == "annassign" and len(n.kids) == 3:
         actual = self.guess(n.kids[2], f)
         expected = self.vtype(n.kids[1])
-        if actual not in ["", "None"] and not actual.startswith("!") and actual != expected and not ann_takes(self, expected, actual):
+        if expected != "dyn" and actual not in ["", "None"] and not actual.startswith("!") and actual != expected and not ann_takes(self, expected, actual):
             return mk("assign", "", n.line, [n.kids[0], n.kids[2]])
     return Node(n.kind, n.s, n.line, [factory_body(self, k, f) for k in n.kids])
 
@@ -359,7 +358,11 @@ def factory_fields(self, ci: ClassInfo, f: FnInfo, n: Node) -> None:
                 actual = self.guess(n.kids[-1], f)
                 if actual != "" and not actual.startswith("!"):
                     combined = self.union_type([ci.ftypes[a.s], actual])
-                    if not combined.startswith("!"):
+                    if combined.startswith("!") and (actual == BIG or ci.ftypes[a.s] == BIG):
+                        # Mixed scalar fields use the existing closed-union width
+                        # boundary, including its checked conversion of a wide int.
+                        combined = self.join_type(ci.ftypes[a.s], actual)
+                    if combined != "" and not combined.startswith("!"):
                         ci.ftypes[a.s] = combined
                         ci.fguess[a.s] = True
     for k in n.kids:
@@ -535,8 +538,7 @@ def gen_member_spec(self, p: str, m: str) -> str:
                 g = self.declare_fn(d, name)
                 self.lib = False
                 g.mod = s.mod
-                if self.copies:
-                    cls_shared(t, g)
+                cls_shared(t, g)
                 s.methods[g.name] = g
         self.inherit(s)
         s.hook = t.hook

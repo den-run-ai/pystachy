@@ -7,6 +7,7 @@ from src.pystachy_compiler.analysis import (
     aliases,
     ann_target,
     assigns,
+    attr_values,
     bind_count,
     chk_names,
     closure_free,
@@ -1247,11 +1248,59 @@ def gen_refine(self, name: str, t: str, glob: bool = False) -> None:
         if is_dict(t) or is_set(t):
             self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t))  # (a tuple key's descriptor, a string constant from here on, which lowering prints)
 
+def inferred_field_container_origin(self, n: Node, global_scope: bool = False) -> list[str]:
+    # A field has one layout for every instance. Only its sole, fresh initializer
+    # may request tagged items: every instance then allocates that layout on the
+    # next inference pass, before any reference can observe the old one.
+    if n.kind != "attr":
+        return []
+    receiver = n.kids[0]
+    if global_scope and receiver.kind != "name":
+        return []
+    t = unopt(self.gtypes.get(receiver.s, "") if global_scope else self.dry(receiver))
+    if t not in self.classes or n.s not in self.classes[t].ftypes:
+        return []
+    root = self.field_root(self.classes[t], n.s)
+    if n.s in root.fdefault or "__init__" not in root.methods:
+        return []
+    init = root.methods["__init__"]
+    if init.node.kind != "def" or len(init.params) == 0:
+        return []
+    if len(self.attrvals) == 0:
+        self.attrvals[""] = []
+        self.attrown[""] = []
+        for module in self.inits.values():
+            attr_values(module.node, self.nokey, "", self.attrvals, self.attrown, self.nokey)
+    family = [c.node for c in self.classes.values()
+              if c is root or self.derives(c.name, root.name) or self.derives(root.name, c.name)]
+    values = self.attrvals.get(n.s, [])
+    owners = self.attrown.get(n.s, [])
+    fresh: list[Node] = []
+    for i in range(len(values)):
+        if owners[i] is not self.nokey and not any(c is owners[i] for c in family):
+            continue  # a self-field of an unrelated class cannot replace this field
+        if owners[i] is not root.node or values[i].kind not in ["list", "dict"]:
+            return []
+        fresh.append(values[i])
+    if len(fresh) != 1:
+        return []
+    for statement in init.node.kids[2].kids:
+        if statement.kind not in ["assign", "annassign"] or statement.kids[-1] is not fresh[0]:
+            continue
+        if statement.kind == "assign" and len(statement.kids) != 2:
+            return []  # other targets could expose the allocation through another layout
+        target = statement.kids[0]
+        if target.kind == "attr" and target.s == n.s and target.kids[0].kind == "name" and target.kids[0].s == init.params[0]:
+            return ["field", self.field_key(root, n.s), "annotated"]
+    return []
+
+
 def inferred_container_origin(self, n: Node) -> list[str]:
-    # A single display allocation, possibly read through plain aliases. An annotated
-    # display may hold subclasses too, but an annotated alias cannot change its source.
-    # Retype the allocation on a fresh inference pass, never an existing typed view.
+    # A chain of single bindings ending at one display allocation. Every binding,
+    # including an annotated alias, must use the allocation's tagged item layout.
+    # Retype the entire chain on a fresh inference pass, never an existing typed view.
     seen: list[str] = []
+    locations: list[str] = []
     module_scope = False
     while n.kind == "name" and n.s not in seen:
         name = n.s
@@ -1262,12 +1311,17 @@ def inferred_container_origin(self, n: Node) -> list[str]:
                 return []
             body = self.inits[owner(name)].node.kids
         else:
-            if name in self.curfn.params or name in self.compvars or name in self.nlw:
+            if name in self.compvars or name in self.nlw:
                 return []
             body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
+            if name in self.curfn.params:
+                # A specialized helper can ask its caller to rebuild a fresh origin.
+                # Rebound parameters do not identify that caller's allocation.
+                return ["parameter", name, "inferred"] if self.curfn.inst and bind_count(body, name) == 0 else []
         annotated = ann_target(body, name)
         if bind_count(body, name) != (2 if annotated else 1):
             return []
+        locations.extend(["global" if glob else "local", name, "annotated" if annotated else "inferred"])
         pending = body[:]
         value = self.nokey
         while len(pending) > 0:
@@ -1283,19 +1337,24 @@ def inferred_container_origin(self, n: Node) -> list[str]:
                     pending.extend(kid.kids)
                 elif kid.kind == "except":
                     pending.extend(kid.kids[1].kids)
-        if value.kind == "list" or value.kind == "dict":
-            return ["global" if glob else "local", name, "annotated" if annotated else "inferred"]
-        if annotated:
-            return []
+        fresh = value.kind == "list" or value.kind == "dict"
+        if value.kind == "call" and len(value.kids) > 0 and value.kids[0].kind == "name" and value.kids[0].s == "list" and not self.bound("list"):
+            fresh = True
+        if fresh:
+            return locations
         n = value
         module_scope = glob  # a module's alias RHS cannot refer to the caller's locals
+    field = inferred_field_container_origin(self, n, module_scope)
+    if len(field) > 0:
+        return locations + field
     return []
 
 
 def inferred_container_item(self, source: Node, container: str, item: str) -> bool:
     # Keeping a list/dict subclass at a comparison may give shared inferred storage
     # another member of its builtin family. Ask for boxes at the original allocation.
-    # Parameters and unknown/annotated aliases retain their existing fixed layout.
+    # Specialized parameters propagate the requirement to their callers; aliases
+    # without a single fresh origin keep their fixed layout.
     if self.final or self.drying > 0 or self.rtmode or not (is_list(container) or is_dict(container)):
         return False
     old = elem(container) if is_list(container) else targs(container)[1]
@@ -1307,19 +1366,51 @@ def inferred_container_item(self, source: Node, container: str, item: str) -> bo
     if len(at) == 0:
         return False
     other = self.ctype("list", [item]) if is_list(container) else self.ctype("dict", [targs(container)[0], item])
-    if at[2] == "annotated":
-        key = "global:" + at[1] if at[0] == "global" else f"{self.fnkey(self.curfn)}|{at[1]}"
+    if at[0] == "parameter":
+        key = "parameter-items:" + self.fnkey(self.curfn) + "|" + at[1]
         joined = self.join_type(self.newhints.get(key, container), other)
         if joined == "" or joined == container or joined == self.hints.get(key, ""):
             return False
-        # Only this fresh allocation may refine a container annotation. Its display
-        # is rebuilt with tagged items on the next pass, before any alias can exist.
+        # The current body is discarded. Its caller must prove the allocation's
+        # origin and request that layout there before any call can use tagged slots.
         self.newhints[key] = joined
-        self.newhints["container-items:" + key] = "1"
         return True
-    was = self.join_at(at[0], at[1], container)
-    changed = self.join_hint(container, other)
-    self.join_at(was[0], was[1], was[2])
+    changed = False
+    for i in range(0, len(at), 3):
+        key = at[i + 1] if at[i] == "field" else "global:" + at[i + 1] if at[i] == "global" else f"{self.fnkey(self.curfn)}|{at[i + 1]}"
+        current = self.hints.get(key, container)
+        if at[i + 2] == "annotated":
+            joined = self.join_type(self.newhints.get(key, current), other)
+            if joined != "" and joined != current and joined != self.hints.get(key, ""):
+                # The allocation and its aliases are rebuilt together, before any
+                # reference can expose items in the earlier untagged layout.
+                self.newhints[key] = joined
+                self.newhints["container-items:" + key] = "1"
+                changed = True
+        else:
+            was = self.join_at(at[i], at[i + 1], current)
+            if self.join_hint(current, other):
+                changed = True
+            self.join_at(was[0], was[1], was[2])
+    return changed
+
+
+def inferred_container_arguments(self, f: FnInfo, sources: list[Node], values: list[Val]) -> bool:
+    # Propagate requirements found while specializing a helper to its actual arguments.
+    # This can walk several helper calls; only a proven fresh allocation ends the chain.
+    # No parameter annotation changes the representation of an existing argument.
+    changed = False
+    prefix = "parameter-items:" + self.fnkey(f) + "|"
+    for j in range(len(f.params)):
+        key = prefix + f.params[j]
+        needed = self.newhints.get(key, self.hints.get(key, ""))
+        if needed == "" or values[j].t == needed:
+            continue
+        item = elem(needed) if is_list(needed) else targs(needed)[1]
+        if inferred_container_item(self, sources[j], values[j].t, item):
+            changed = True
+        else:
+            self.err(f"cannot infer shared container storage for parameter '{f.params[j]}': declare {typestr(needed)} at its allocation")
     return changed
 
 def gen_lookahead(self, name: str, ahead: bool = False) -> str:
