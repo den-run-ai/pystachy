@@ -9,6 +9,7 @@ from src.pystachy_compiler.names import short
 from src.pystachy_compiler.optimizations import recursion_unsnapshot
 from src.pystachy_compiler.specs import BIG, CTYPES, NONEVAR, RTSYM
 from src.pystachy_compiler.syntax import Node, mk
+from src.pystachy_compiler.variables import inferred_container_signature
 from src.pystachy_compiler.utils import (
     RtFn,
     clone,
@@ -27,6 +28,7 @@ from src.pystachy_compiler.utils import (
 
 def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     # the code generator's state at the start of function f, whose statements are body
+    inferred_container_signature(self, f)
     self.fn = IFn(f)
     self.fn.located = True  # (each op it adds takes the line being compiled: Gen.add)
     self.blk = self.fn.blocks[0]

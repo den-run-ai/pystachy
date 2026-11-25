@@ -212,6 +212,22 @@ def bfamily(self, t: str) -> str:
     return base if subclass else ""
 
 
+def bstorage_join(self, a: str, b: str) -> str:
+    # One physical item layout for aliases of the same list/dict. Only a closed
+    # family of a builtin container and its subclasses can request this rewrite.
+    if not ((is_list(a) and is_list(b)) or (is_dict(a) and is_dict(b))):
+        return ""
+    if is_dict(a) and targs(a)[0] != targs(b)[0]:
+        return ""
+    x = targs(a)[0] if is_list(a) else targs(a)[1]
+    y = targs(b)[0] if is_list(b) else targs(b)[1]
+    members = (umembers(x) if is_union(x) else [x]) + (umembers(y) if is_union(y) else [y])
+    bases = [self.bbase(t) if t in self.classes else t for t in members]
+    if not any(t in self.classes for t in members) or len(bases) == 0 or not (is_list(bases[0]) or is_dict(bases[0])) or any(t != bases[0] for t in bases):
+        return ""
+    return self.join_type(a, b)
+
+
 def bborrow(self, v: Val, own: list[str]) -> Val:
     # A default operation on every member of a shared container family borrows the selected
     # member's payload. The union box remains in its original storage, keeping class and

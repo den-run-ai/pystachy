@@ -2208,6 +2208,9 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
                     self.err(why)
                 ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
             t = self.guess(st.kids[1], FnInfo("", "", ci.node, ""))
+            key = self.field_key(ci, st.kids[0].s)
+            if "container-items:" + key in self.hints:
+                t = self.hints.get(key, t)
             bt = self.classes[ci.base].ftypes.get(st.kids[0].s, "") if ci.base in self.classes else ""
             if t != "" and bt != "" and (self.widens(t, bt) or self.boxes(t, bt) or (t == "int" and bt == BIG)):
                 t = bt  # (a class attribute of the base bound again, with a value of its type)

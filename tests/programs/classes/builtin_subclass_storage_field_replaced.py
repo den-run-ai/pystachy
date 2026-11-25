@@ -1,16 +1,15 @@
-# error: expected list[int], got Stack
 class Stack(list[int]):
     pass
 
 
 class Store:
     def __init__(self):
-        self.seen: list[list[int]]
-        self.alias: list[list[int]]
-        self.seen = self.alias = []
+        self.seen: list[list[int]] = []
 
 
 store = Store()
+replacement: list[list[int]] = []
+store.seen = replacement
 
 
 class Probe:

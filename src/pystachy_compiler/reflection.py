@@ -1003,7 +1003,12 @@ def gen_refl_setattr(self, args: list[Node]) -> Val:
     v = self.expr(args[2], want)
     if o.t in self.classes and (a not in self.classes[o.t].ftypes or (a == " enum int" and self.enum_intlike(o.t)) or (a == " enum str" and self.derives(o.t, "enum$StrEnum"))) and not self.is_prop(o.t, a) and self.classes[o.t].tag > 0:
         self.err(f"setattr() of '{a}' on a {short(o.t)}, which does not have it, would add an attribute to the object, which is not supported (#489)")
-    self.assign(mk("attr", a, self.line, [self.vnode(o)]), v)
+    source = self.joinsrc
+    self.joinsrc = args[2]
+    try:
+        self.assign(mk("attr", a, self.line, [self.vnode(o)]), v)
+    finally:
+        self.joinsrc = source
     return Val("null", "None")
 
 

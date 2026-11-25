@@ -1,4 +1,3 @@
-# error: expected list[int], got Stack
 class Stack(list[int]):
     pass
 

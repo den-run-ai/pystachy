@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names, numeric_statement
 from src.pystachy_compiler.bigints import converts
-from src.pystachy_compiler.builtin_bases import bparameter, has_def
+from src.pystachy_compiler.builtin_bases import bparameter, bstorage_join, has_def
 from src.pystachy_compiler.class_values import template_constructor
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
@@ -14,7 +14,7 @@ from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, COMP
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.unions import ANNTYPES, ann_open, ann_returns, ann_site, ann_takes, field_value
-from src.pystachy_compiler.variables import inferred_container_arguments
+from src.pystachy_compiler.variables import inferred_container_arguments, inferred_container_item, inferred_container_signature
 from src.pystachy_compiler.utils import (
     is_clsval,
     clsof,
@@ -1600,6 +1600,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     # which may return NotImplemented to it is rejected (here, or by decline where compiled later)
     if f.pyexport:
         self.err(f"{f.name}() is @export, so Pystachy code may not call it (under CPython each call goes through the export's checks and conversions): call a private function that both use")
+    inferred_container_signature(self, f)
     if f.bad != "":
         self.err(f.bad)  # (before its arguments, whose types may be placeholders')
     if f.name == "importlib$import_module" and lib_source(f.node.line, self.libdir, "importlib/__init__.py"):
@@ -1635,6 +1636,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     context = ctx if contract or typeargs == "" else typeargs
     hint = self.want_params(f.cls, context) if f.name == "__init__" and len(pre) > 0 and pre[0].v == "" and f.cls in self.tparams else []
     late = False  # (an argument that compiles f for its own type: see ann_param)
+    storage_retry = False
     for i in range(np):
         own = i < len(pre) and not self.rtmode and bparameter(self, f, i, pre[i].t)
         v = pre[i] if i < len(pre) else Val("", "")
@@ -1694,7 +1696,10 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         passing = self.fn.build.idpass
         self.fn.build.idpass = self.id_move(e)
         try:
-            if cache is None and not self.rtmode and ann_param(self, f, j, arg.t) and (f.cls == "" or (f.cls in self.classes and (self.classes[f.cls].tag == 0 or f.name == "__init__") and self.classes[f.cls].origin == "" and f.cls not in self.tmpl)):
+            if pt != "" and arg.t != pt and bstorage_join(self, arg.t, pt) == pt and inferred_container_item(self, e, arg.t, targs(pt)[0] if is_list(pt) else targs(pt)[1]):
+                vals[j] = arg
+                storage_retry = True
+            elif cache is None and not self.rtmode and ann_param(self, f, j, arg.t) and (f.cls == "" or (f.cls in self.classes and (self.classes[f.cls].tag == 0 or f.name == "__init__") and self.classes[f.cls].origin == "" and f.cls not in self.tmpl)):
                 # an int for a float parameter, or an enum member for an int or str one (PEP 484
                 # accepts it, and CPython passes it on as it is): the function compiles for it,
                 # as a template's does (see instance)
@@ -1755,6 +1760,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             if f.params[j] == fl or f.params[j] == fl + ".factory":
                 vals[j] = self.call_fn(self.classes[f.cls].methods[fl + ".factory"], [], [])
     self.line = line
+    if storage_retry:
+        return Val("undef", f.ret if f.ret != "" else "None")
     if cache is not None:
         # Evaluate and bind as an ordinary call, including def-time closure defaults,
         # but look up a key before invoking the function. The shape is a static tag:

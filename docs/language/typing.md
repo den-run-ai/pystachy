@@ -2094,24 +2094,37 @@ allocation, also through another helper; the call keeps the original container a
 
 A builtin `list(...)` allocation may also acquire tagged items. Its new outer list keeps
 its elements' original identities while leaving the source list's storage unchanged
-([test](../../tests/programs/classes/builtin_subclass_storage_constructor.py)). A field
-whose only assignment creates a fresh list or dict in its declaring `__init__` can infer
-the same storage. Every instance uses that layout from construction, and aliases of the
-field keep the same container
+([test](../../tests/programs/classes/builtin_subclass_storage_constructor.py)). An
+undecorated, unannotated helper whose only executable statement returns its sole argument
+or a module binding may preserve that allocation's provenance. The call still executes;
+its result and the original allocation share the same item layout
+([argument return](../../tests/programs/classes/builtin_subclass_storage_constructor_alias.py),
+[module return](../../tests/programs/classes/builtin_subclass_storage_parameter_origin.py),
+[scope and aliases](../../tests/programs/classes/builtin_subclass_storage_transparent_helpers.py)).
+
+Instance fields and shared class defaults can infer the same tagged storage. Every
+initializer and later writer must construct that layout or propagate its requirement to
+the source allocation before compilation succeeds. This includes annotated constructor
+parameters, replacements through class or instance attributes, and inherited fields.
+All instances use the final field layout, while distinct allocations stay distinct and
+existing aliases keep their original containers
 ([aliases and separate instances](../../tests/programs/classes/builtin_subclass_storage_field_alias.py),
 [dict field](../../tests/programs/classes/builtin_subclass_storage_field_dict.py),
-[class-body annotation](../../tests/programs/classes/builtin_subclass_storage_field_declared.py)).
+[constructor aliases](../../tests/programs/classes/builtin_subclass_storage_field_constructor_alias.py),
+[class defaults and replacements](../../tests/programs/classes/builtin_subclass_storage_field_default_replaced.py),
+[subclass writer](../../tests/programs/classes/builtin_subclass_storage_field_subclass_alias.py)).
+Several assignment targets that receive one list or dict use the same layout and keep
+the same object. A computed receiver and a literal-name `setattr()` retain Python's
+evaluation order and check the actual destination field
+([shared allocation](../../tests/programs/classes/builtin_subclass_storage_field_multiple_targets_reversed.py),
+[computed receiver](../../tests/programs/classes/builtin_subclass_storage_field_call_receiver.py),
+[reflective writer](../../tests/programs/classes/builtin_subclass_storage_field_literal_setattr.py)).
 
-This inference requires a known allocation. It does not reinterpret a helper argument
-returned by an arbitrary call, a user function named `list`, a shared class default, a field
-initialized from an argument, or a field that other code may replace. Such storage must
-declare its union explicitly, for example `list[Stack | list[int]]`; a store that would
-erase the object's class is rejected at the unsupported boundary
-([helper origin](../../tests/errors/classes/builtin_subclass_storage_parameter_origin.py),
-[shadowed constructor](../../tests/errors/classes/builtin_subclass_storage_constructor_alias.py),
-[class default](../../tests/errors/classes/builtin_subclass_storage_field_default.py),
-[field parameter](../../tests/errors/classes/builtin_subclass_storage_field_parameter.py),
-[replacement](../../tests/errors/classes/builtin_subclass_storage_field_replaced.py)).
+This inference requires a known allocation and checked writers. An arbitrary call's
+result is not proof that its storage can change, and a parameter annotation alone cannot
+reinterpret a caller's existing slots. Where provenance cannot be established, declare
+the union at the allocation, for example `list[Stack | list[int]]`; an unsupported
+conversion is reported instead of silently erasing the stored object's class.
 
 Other conversions into a declared base-container layout, dynamic `Any` storage, and
 `copy.copy()` or `copy.deepcopy()` remain rejected; `list(x)` and `dict(x)` explicitly copy

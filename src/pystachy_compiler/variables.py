@@ -1,13 +1,12 @@
 """Variables component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BSTORE, bborrow
+from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BSTORE, bborrow, bstorage_join
 from src.pystachy_compiler.utils import identity_default, is_union, umembers
 import os
 from src.pystachy_compiler.analysis import (
     aliases,
     ann_target,
     assigns,
-    attr_values,
     bind_count,
     chk_names,
     closure_free,
@@ -35,11 +34,13 @@ from src.pystachy_compiler.specs import BIG, BIGOPT, BYTEARRAYC, COMPLEXC, INERT
 from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, made_var, mk, name_targets, starred_target
 from src.pystachy_compiler.utils import (
     elem,
+    clsof,
     empty_ann,
     empty_default,
     empty_display,
     holds_no_object,
     is_const,
+    is_clsval,
     is_dict,
     is_fn,
     is_fset,
@@ -1249,50 +1250,63 @@ def gen_refine(self, name: str, t: str, glob: bool = False) -> None:
             self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t))  # (a tuple key's descriptor, a string constant from here on, which lowering prints)
 
 def inferred_field_container_origin(self, n: Node, global_scope: bool = False) -> list[str]:
-    # A field has one layout for every instance. Only its sole, fresh initializer
-    # may request tagged items: every instance then allocates that layout on the
-    # next inference pass, before any reference can observe the old one.
+    # A field has one layout for every instance and its shared class default.
+    # Each initializer and assignment checks its own RHS against that layout:
+    # a fresh allocation can rebuild on retry, an alias propagates the requirement
+    # to its origin, and ordinary coercion rejects an unproved representation.
     if n.kind != "attr":
         return []
     receiver = n.kids[0]
     if global_scope and receiver.kind != "name":
         return []
     t = unopt(self.gtypes.get(receiver.s, "") if global_scope else self.dry(receiver))
+    if global_scope and t == "" and receiver.s in self.classes:
+        t = "type[" + receiver.s + "]"
+    t = clsof(t) if is_clsval(t) else t
     if t not in self.classes or n.s not in self.classes[t].ftypes:
         return []
     root = self.field_root(self.classes[t], n.s)
-    if n.s in root.fdefault or "__init__" not in root.methods:
-        return []
-    init = root.methods["__init__"]
-    if init.node.kind != "def" or len(init.params) == 0:
-        return []
-    if len(self.attrvals) == 0:
-        self.attrvals[""] = []
-        self.attrown[""] = []
-        for module in self.inits.values():
-            attr_values(module.node, self.nokey, "", self.attrvals, self.attrown, self.nokey)
-    family = [c.node for c in self.classes.values()
-              if c is root or self.derives(c.name, root.name) or self.derives(root.name, c.name)]
-    values = self.attrvals.get(n.s, [])
-    owners = self.attrown.get(n.s, [])
-    fresh: list[Node] = []
-    for i in range(len(values)):
-        if owners[i] is not self.nokey and not any(c is owners[i] for c in family):
-            continue  # a self-field of an unrelated class cannot replace this field
-        if owners[i] is not root.node or values[i].kind not in ["list", "dict"]:
+    if n.s in root.fdefault:
+        root = self.field_root(self.cvar_home(root, n.s), n.s)
+        if n.s not in root.fdefault:
             return []
-        fresh.append(values[i])
-    if len(fresh) != 1:
-        return []
-    for statement in init.node.kids[2].kids:
-        if statement.kind not in ["assign", "annassign"] or statement.kids[-1] is not fresh[0]:
-            continue
-        if statement.kind == "assign" and len(statement.kids) != 2:
-            return []  # other targets could expose the allocation through another layout
-        target = statement.kids[0]
-        if target.kind == "attr" and target.s == n.s and target.kids[0].kind == "name" and target.kids[0].s == init.params[0]:
-            return ["field", self.field_key(root, n.s), "annotated"]
-    return []
+    return ["field", self.field_key(root, n.s), "annotated"]
+
+
+def inferred_container_return(self, n: Node, global_scope: bool) -> tuple[Node, bool]:
+    # A transparent helper returns exactly its sole argument or a module binding.
+    # Follow that identity, not its result's current type. Calls and argument
+    # evaluation stay in the program; this only finds the allocation to retype.
+    if n.kind != "call" or len(n.kids) == 0 or n.kids[0].kind != "name":
+        return (self.nokey, global_scope)
+    name = n.kids[0].s
+    typ = self.gtypes.get(name, "") if global_scope else self.ltype.get(name, self.gtypes.get(name, ""))
+    f: FnInfo | None = None
+    if typ.startswith("fn[c:"):
+        f = self.closures[int(typ[5:typ.find(":", 5)])].f
+    elif typ.startswith("fn[f:"):
+        f = self.funcs.get(typ[5:-1], None)
+    elif typ == "":
+        f = self.funcs.get(name, None)
+    if f is None or f.bad != "" or f.cls != "" or f.gen or f.extern or f.export or f.pyexport or f.deco != "" or f.prop or f.acc != "" or f.vararg >= 0 or f.kwarg >= 0:
+        return (self.nokey, global_scope)
+    if f.node.kind != "def" or len(f.node.kids) != 3 or f.node.kids[1].kind != "noann":
+        return (self.nokey, global_scope)
+    body = [s for s in f.node.kids[2].kids if not (s.kind == "expr" and len(s.kids) == 1 and s.kids[0].kind == "str")]
+    if len(body) != 1 or body[0].kind != "return" or len(body[0].kids) != 1 or body[0].kids[0].kind != "name":
+        return (self.nokey, global_scope)
+    returned = body[0].kids[0]
+    first = 1 if f.clo >= 0 else 0
+    if len(f.params) == first + 1 and returned.s == f.params[first] and f.ptypes[first] == "" and len(n.kids) == 2:
+        arg = n.kids[1]
+        if arg.kind == "kw" and arg.s == returned.s:
+            return (arg.kids[0], global_scope)
+        if arg.kind not in ["kw", "starred", "dstar"]:
+            return (arg, global_scope)
+    if len(f.params) == first and len(n.kids) == 1 and returned.s in self.gtypes:
+        if f.clo < 0 or returned.s not in self.closures[f.clo].caps:
+            return (returned, True)
+    return (self.nokey, global_scope)
 
 
 def inferred_container_origin(self, n: Node) -> list[str]:
@@ -1302,10 +1316,22 @@ def inferred_container_origin(self, n: Node) -> list[str]:
     seen: list[str] = []
     locations: list[str] = []
     module_scope = False
-    while n.kind == "name" and n.s not in seen:
+    while True:
+        if n.kind == "call":
+            returned = inferred_container_return(self, n, module_scope)
+            if returned[0] is self.nokey:
+                return []
+            n = returned[0]
+            module_scope = returned[1]
+            continue
+        if n.kind != "name":
+            break
         name = n.s
-        seen.append(name)
         glob = module_scope or (name not in self.ltype and (name in self.gtypes or self.is_global(name)))
+        key = ("global:" if glob else "local:") + name
+        if key in seen:
+            break
+        seen.append(key)
         if glob:
             if owner(name) not in self.inits or name in self.constflags:
                 return []
@@ -1315,9 +1341,12 @@ def inferred_container_origin(self, n: Node) -> list[str]:
                 return []
             body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
             if name in self.curfn.params:
-                # A specialized helper can ask its caller to rebuild a fresh origin.
-                # Rebound parameters do not identify that caller's allocation.
-                return ["parameter", name, "inferred"] if self.curfn.inst and bind_count(body, name) == 0 else []
+                # A helper can ask its caller to rebuild a fresh origin. Ordinary
+                # constructors also update their checked parameter signature. Fixed
+                # interfaces and shared defaults cannot be reinterpreted this way.
+                f = self.curfn
+                ordinary = not (f.extern or f.export or f.pyexport or f.gen) and f.defaults[f.params.index(name)].kind == "noann"
+                return ["parameter", name, "inferred"] if f.name not in ["<callable>", "<dispatch>"] and (f.inst or ordinary) and bind_count(body, name) == 0 else []
         annotated = ann_target(body, name)
         if bind_count(body, name) != (2 if annotated else 1):
             return []
@@ -1411,6 +1440,37 @@ def inferred_container_arguments(self, f: FnInfo, sources: list[Node], values: l
             changed = True
         else:
             self.err(f"cannot infer shared container storage for parameter '{f.params[j]}': declare {typestr(needed)} at its allocation")
+    return changed
+
+
+def inferred_container_signature(self, f: FnInfo) -> None:
+    # A non-specialized constructor/helper can learn that its container parameter
+    # needs tagged items. Every caller checks this signature before passing a value.
+    # Existing template instances instead propagate to their original call sites.
+    if f.inst or f.generic or f.extern or f.export or f.pyexport or f.gen or f.name in ["<callable>", "<dispatch>"] or len(self.hints) == 0:
+        return
+    prefix = "parameter-items:" + self.fnkey(f) + "|"
+    for j in range(len(f.params)):
+        needed = self.hints.get(prefix + f.params[j], "")
+        if needed != "" and bstorage_join(self, f.ptypes[j], needed) == needed and f.defaults[j].kind == "noann":
+            f.ptypes[j] = needed
+
+
+def inferred_container_assignment(self, target: Node, source: Node, wanted: str, actual: str) -> bool:
+    # All aliases of one allocation need the same item representation. Retype the
+    # destination and/or the proven source on a new pass; never cast one slot layout
+    # to another. A source without provenance is still rejected by ordinary coercion.
+    if wanted == actual:
+        return False
+    joined = bstorage_join(self, wanted, actual)
+    if joined == "":
+        return False
+    item = elem(joined) if is_list(joined) else targs(joined)[1]
+    changed = False
+    if wanted != joined and inferred_container_item(self, target, wanted, item):
+        changed = True
+    if actual != joined and inferred_container_item(self, source, actual, item):
+        changed = True
     return changed
 
 def gen_lookahead(self, name: str, ahead: bool = False) -> str:
@@ -2067,6 +2127,16 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
         return t if is_list(t) or t == "dyn" else ""
     if n.kind == "attr" or n.kind == "index":
         t = self.target_type(n.kids[0], True)
+        if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s in self.classes and n.kids[0].s not in self.ltype:
+            ci = self.classes[n.kids[0].s]
+            if n.s in ci.ftypes and "container-items:" + self.field_key(ci, n.s) in self.hints:
+                return ci.ftypes[n.s]  # (a fresh RHS of a marked class-variable store)
+        if n.kind == "attr" and t == "" and any(storage_key.startswith("container-items:field:") and storage_key.endswith("." + n.s) for storage_key in self.hints):
+            # A call receiver is evaluated after the RHS at runtime. Its static
+            # field layout can still type a fresh RHS without executing that call.
+            actual = unopt(self.dry(n.kids[0]))
+            if actual in self.classes and n.s in self.classes[actual].ftypes and "container-items:" + self.field_key(self.classes[actual], n.s) in self.hints:
+                return self.classes[actual].ftypes[n.s]
         if n.kind == "index" and self.bdecays(t, BSTORE) and "?" not in self.bbase(t):
             t = self.bbase(t)  # (an item of the builtin container its class derives from: builtin_bases.py)
         if t == "dyn":
@@ -2163,6 +2233,8 @@ def gen_ustore(self, o: Val, t: Node, v: Val) -> None:
 
 def gen_assign(self, t: Node, v: Val) -> None:
     k = t.kind
+    if k in ["name", "attr"] and inferred_container_assignment(self, t, self.joinsrc, self.target_type(t), v.t):
+        return
     if k == "tuple" or k == "list":
         v = bborrow(self, v, BITER)
     if (k == "tuple" or k == "list") and self.bdecays(v.t, BITER):
@@ -2195,7 +2267,9 @@ def gen_assign(self, t: Node, v: Val) -> None:
     elif k == "attr" and t.s == "__module__" and t.kids[0].kind == "name" and t.kids[0].s in self.xmods and t.kids[0].s not in self.ltype:
         self.exc_set_module(t.kids[0], v)
     elif k == "attr" and t.kids[0].kind == "name" and t.kids[0].s in self.classes and t.kids[0].s not in self.ltype:
-        self.class_store(self.cvar(t.kids[0], t.s), t.s, v)
+        ci = self.cvar(t.kids[0], t.s)
+        if not inferred_container_assignment(self, t, self.joinsrc, ci.ftypes[t.s], v.t):
+            self.class_store(ci, t.s, v)
     elif k == "attr":
         o = self.expr(t.kids[0], "")
         if self.reference_union(o.t) or (self.rolex != o.v and self.role_field(o.t, t.s)):
@@ -2244,6 +2318,8 @@ def gen_assign(self, t: Node, v: Val) -> None:
         if self.is_prop(o.t, t.s):
             self.prop_store(o, t.s, v)
             return
+        if o.t in self.classes and inferred_container_assignment(self, mk("attr", t.s, t.line, [self.vnode(o)]), self.joinsrc, self.classes[o.t].ftypes.get(t.s, ""), v.t):
+            return  # (a computed receiver or reflective store has its actual field type here)
         # The native same-class comparison helper may be compiled before its
         # Any adapter. Discover a wholly new field here from the actual RHS,
         # without changing any ordinary field or marking the body unsupported.

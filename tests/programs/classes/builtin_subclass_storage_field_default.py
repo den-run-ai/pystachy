@@ -1,20 +1,12 @@
-# error: expected list[int], got Stack
 class Stack(list[int]):
     pass
 
 
 class Store:
-    def __init__(self):
-        self.seen: list[list[int]] = []
+    seen: list[list[int]] = []
 
 
-class Child(Store):
-    def __init__(self):
-        super().__init__()
-        self.seen = []
-
-
-store = Child()
+store = Store()
 
 
 class Probe:
@@ -26,3 +18,4 @@ class Probe:
 
 
 print(Probe() == Stack([1]))
+print(type(store.seen[0]).__name__, store.seen is Store.seen)

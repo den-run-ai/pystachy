@@ -1,9 +1,9 @@
 """Statements component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BREV, BSTORE, bborrow, bparameter_type
+from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BREV, BSTORE, bborrow, bparameter_type, bstorage_join
 from src.pystachy_compiler.utils import identity_abi, identity_default, is_union, umembers
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.diagnostics import Rejoin, shown
 from src.pystachy_compiler.frames import Exit, IterArg, SeqStart, StopCatch
 from src.pystachy_compiler.ir import Blk, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
@@ -38,7 +38,9 @@ from src.pystachy_compiler.specs import (
 from src.pystachy_compiler.patterns import unsupported_match, unsupported_reason
 from src.pystachy_compiler.syntax import Node, mk, names_in, starred_target
 from src.pystachy_compiler.unions import ANNTYPES, ann_returns, ann_site, ann_takes
+from src.pystachy_compiler.variables import inferred_container_assignment, inferred_container_item
 from src.pystachy_compiler.utils import (
+    clsof,
     is_clsval,
     bool_for_int,
     elem,
@@ -430,7 +432,14 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
             # early_default, as calls.py decides from the default, int | C's too)
             cv = cv or (syn and identity_default(st.kids[2]))
             if (cv or not is_const(st.kids[2])) and (fl not in ci.fglob or ci.fglob[fl] in self.pending):
-                self.class_store(ci, fl, self.expr(st.kids[2], t))
+                value = self.expr(st.kids[2], t)
+                if "container-items:" + self.field_key(ci, fl) in self.hints and value.t != t and ((is_list(t) and is_list(value.t)) or (is_dict(t) and is_dict(value.t))):
+                    # A shared default may alias a module allocation. Rebuild that
+                    # origin and all its aliases before storing the final layout.
+                    item = elem(t) if is_list(t) else targs(t)[1]
+                    if inferred_container_item(self, st.kids[2], value.t, item):
+                        raise Rejoin()
+                self.class_store(ci, fl, value)
                 self.pending.pop(ci.fglob[fl], False)
             self.ann_reads(st.kids[1])  # (CPython evaluates the annotation after the value)
         elif st.kind == "annassign":
@@ -769,7 +778,15 @@ def gen_stmt_main(self, n: Node) -> None:
             if len(n.kids) == 2 and starred_target(t0) and (self.iterator_call(val) or self.is_mapcall(val) or (val.kind == "listcomp" and val.s == "gen")):
                 v = self.consume(val, "")  # (a, *b = range(n): UNPACK_EX takes every item first)
             else:
-                v = self.expr(val, self.target_type(t0))
+                storage_want = self.target_type(t0)
+                for target in n.kids[1:-1]:
+                    target_want = self.target_type(target)
+                    shared = bstorage_join(self, storage_want, target_want)
+                    if storage_want == "" and bstorage_join(self, target_want, target_want) != "":
+                        shared = target_want
+                    if shared != "":
+                        storage_want = shared
+                v = self.expr(val, storage_want)
             src = self.joinsrc
             moving = self.fn.build.idmove
             passing = self.fn.build.idpass
@@ -822,14 +839,17 @@ def gen_stmt_main(self, n: Node) -> None:
         elif n.kids[0].kind == "attr":
             target = n.kids[0]
             cls = unopt(self.dry(target.kids[0]))
+            cls = clsof(cls) if is_clsval(cls) else cls
             if cls in self.classes and target.s in self.classes[cls].ftypes:
                 ci = self.classes[cls]
                 if "container-items:" + self.field_key(ci, target.s) in self.hints:
-                    # This field's sole initializer allocates its final item layout;
-                    # an annotation must not first make an untagged container.
+                    # Every writer uses this field's final item layout; an
+                    # annotation must not first make an untagged container.
                     t = ci.ftypes[target.s]
         if len(n.kids) == 3:
             v = self.expr(n.kids[2], t)
+            if inferred_container_assignment(self, n.kids[0], n.kids[2], t, v.t):
+                return
             # (x: T | None = <a T> knows x holds a T, see narrowed. An int for a float variable or
             # field, an enum member for an int or str one, is the store's to take or reject: its
             # join, see join_hint)

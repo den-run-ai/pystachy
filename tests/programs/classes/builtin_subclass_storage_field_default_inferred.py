@@ -1,21 +1,19 @@
-# error: expected list[int], got Stack
 class Stack(list[int]):
     pass
 
 
 class Store:
-    seen: list[list[int]] = []
-
-
-store = Store()
+    seen = [[0]]
 
 
 class Probe:
     def __eq__(self, other):
         if other is None:
             return False
-        store.seen.append(other)
+        Store.seen.append(other)
         return isinstance(other, Stack)
 
 
-print(Probe() == Stack([1]))
+item = Stack([1])
+print(Probe() == item)
+print(Store.seen, Store.seen[1] is item, type(Store.seen[1]).__name__)
