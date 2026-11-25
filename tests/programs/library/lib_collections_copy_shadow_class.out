@@ -1,0 +1,9 @@
+Queue [1, 2] None
+[1, 2] [1, 2, 9] False
+Queue [3, 4] 3
+[3, 4] [3, 4, 9] False
+Child [5] 2
+[5] [5, 9] False
+counter shadow called
+Counter 1 2
+[exit 0]

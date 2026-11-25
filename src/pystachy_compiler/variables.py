@@ -1318,9 +1318,9 @@ def inferred_container_item(self, source: Node, container: str, item: str) -> bo
         self.newhints["container-items:" + key] = "1"
         return True
     was = self.join_at(at[0], at[1], container)
-    joined = self.join_hint(container, other)
+    changed = self.join_hint(container, other)
     self.join_at(was[0], was[1], was[2])
-    return joined
+    return changed
 
 def gen_lookahead(self, name: str, ahead: bool = False) -> str:
     # an empty list or dict read before the code that fills it: the first use in this

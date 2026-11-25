@@ -124,12 +124,12 @@ class deque(Generic[_T]):
     def copy(self) -> Self:
         """Return a shallow copy of a deque."""
         if self.maxlen is None:
-            return self.__class__(self)
-        return self.__class__(self, self.maxlen)
+            return type(self)(self)
+        return type(self)(self, self.maxlen)
 
     def __copy__(self) -> Self:
         """Return a shallow copy of a deque."""
-        return self.copy()
+        return deque.copy(self)
 
     def count(self, x: _T) -> int:
         """Return number of occurrences of value."""

@@ -585,17 +585,19 @@ def gen_class_value_call(self, c: Val, args: list[Node]) -> Val:
 
 
 def template_constructor(self, n: Node, args: list[Node], want: str, resultsoft: bool) -> Val | None:
-    # An immediate x.__class__(...) call need not store the generic class as a value.
+    # An immediate x.__class__(...) or type(x)(...) call need not store the generic
+    # class as a value. type(x) ignores an ordinary attribute named __class__.
     # Dispatch on x's exact class, then specialize that class's constructor normally.
     # In particular an inherited collections.copy() must make the subclass, not its base.
-    if n.kind != "attr" or n.s != "__class__" or self.refl_typeof(n) is None:
+    operand = self.refl_typeof(n)
+    if operand is None:
         return None
-    t = unopt(self.dry(n.kids[0]))
+    t = unopt(self.dry(operand))
     if t not in self.classes or self.classes[t].origin == "":
         return None
-    if any("__class__" in self.classes[c].ftypes or "__class__" in self.classes[c].methods for c in self.refl_concrete(t)):
+    if n.kind == "attr" and any("__class__" in self.classes[c].ftypes or "__class__" in self.classes[c].methods for c in self.refl_concrete(t)):
         return None
-    v = self.expr(n.kids[0], "")
+    v = self.expr(operand, "")
     nodes: list[Node] = []
     for a in args:
         x = a.kids[0] if a.kind == "kw" else a

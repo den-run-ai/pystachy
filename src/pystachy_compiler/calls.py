@@ -233,6 +233,10 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         if f.s != "close" and r.t != BFILE:  # (__enter__() and __iter__() return the file: it stays open)
             self.close_temp(receiver, o)
         return r
+    if f.kind == "call":
+        copied = template_constructor(self, f, args, want, resultsoft)
+        if copied is not None:
+            return copied
     if f.kind == "name":
         # (a union's value that a test narrowed to its Callable member is that Callable here)
         self.not_callable(f.s, self.now_type(f.s) if is_union(unopt(self.ltype[f.s])) else self.ltype[f.s])

@@ -609,7 +609,7 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
 - **Builtin bases:** a base other than `list`, `list[T]`, `dict` or `dict[K, V]` (`set`,
   `str`, `int`, `tuple`, ...); for a [list or dict
   subclass](typing.md#subclasses-of-list-and-dict), storing or passing its object where a
-  `list[T]`, a `dict[K, V]` or a dynamic `Any` value is expected, `copy.copy()` and
+  dynamic `Any` value is expected, `copy.copy()` and
   `copy.deepcopy()` of it, a class deriving from it, multiple inheritance or a decorator with
   it, a `TypeVar` item type, `__new__`, special methods other than `__init__`, `__getitem__`,
   `__setitem__`, `__delitem__`, `__contains__`, `__len__`, `__repr__` and `__str__` through
