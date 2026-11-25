@@ -55,6 +55,9 @@ is not True
 == Counter({'which': 2, 'witch': 1, 'had': 1, 'witches': 1, 'wrist': 1, 'watch': 1})
 is not True
 == Counter({'which': 2, 'witch': 1, 'had': 1, 'witches': 1, 'wrist': 1, 'watch': 1})
+copy subclass == MyCounter({'a': 3, 't': 3, 's': 2, 'r': 2, 'l': 1, 'i': 1, 'b': 1, 'f': 1})
+copy subclass len 8
+copy subclass type True
 elements [' ', ' ', ' ', ' ', ' ', ' ', ' ', 'a', 'a', 'b', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'h', 'h', 'h', 'h', 'l', 'l', 'l', 'l', 'o', 'r', 's', 's', 's', 's', 's', 's', 's', 's', 't', 'y']
 sorted [' ', 'a', 'b', 'e', 'h', 'l', 'o', 'r', 's', 't', 'y']
 dict True

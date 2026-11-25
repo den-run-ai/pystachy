@@ -38,7 +38,7 @@ from src.pystachy_compiler.specs import (
 from src.pystachy_compiler.patterns import unsupported_match, unsupported_reason
 from src.pystachy_compiler.syntax import Node, mk, names_in, starred_target
 from src.pystachy_compiler.unions import ANNTYPES, ann_returns, ann_site, ann_takes
-from src.pystachy_compiler.variables import inferred_container_assignment, inferred_container_item
+from src.pystachy_compiler.variables import inferred_container_assignment, inferred_container_default_type, inferred_container_item, inferred_container_signature
 from src.pystachy_compiler.utils import (
     clsof,
     is_clsval,
@@ -256,6 +256,7 @@ def gen_early_default(self, f: FnInfo, j: int) -> None:
     # a call that leaves out parameter j of f, compiled before f's def statement (in a
     # template's function, or a function compiled early): the global that is to hold the
     # default value is declared now, and the def statement stores the value into it (hoist)
+    inferred_container_signature(self, f)
     if f.cls != "" and f.name == "__init__" and f.node.kids[0].kind == "noann":
         # a dataclass's __init__: the class statement evaluates the field's default
         self.class_default(self.classes[f.cls], f.params[j])
@@ -270,6 +271,7 @@ def gen_early_default(self, f: FnInfo, j: int) -> None:
         t = self.modtype(f.defaults[j], f.mod)
         if t == "" or "?" in t:
             self.err(f"the default value of parameter '{f.params[j]}' of {f.name}() cannot be typed here, before its def statement runs; annotate the parameter")
+    t = inferred_container_default_type(self, f, j, t)
     self.pending[f"{f.ll}.{j}"] = True
     if t == "None":
         f.dglob[j] = "=None"
@@ -295,11 +297,12 @@ def gen_class_default(self, ci: ClassInfo, fl: str) -> None:
 
 def gen_hoist(self, f: FnInfo) -> None:
     # Python evaluates default values once, when the def statement runs
+    inferred_container_signature(self, f)
     for j in range(len(f.params)):
         d = f.defaults[j]
         early = f"{f.ll}.{j}" in self.pending
         if (f.dglob[j] == "" or early) and (not is_const(d) or (identity_default(d) and self.fn_identity(f))):
-            t = f.ptypes[j] if f.bad == "" else ""  # (an unsupported annotation is no type)
+            t = inferred_container_default_type(self, f, j, f.ptypes[j]) if f.bad == "" else ""  # (an unsupported annotation is no type)
             self.line = d.line
             bad = self.default_problem(d, t) if f.mod != "" and not self.class_reads(d, FnInfo("", "", f.node, ""), t) else ""
             if bad != "":
@@ -309,6 +312,11 @@ def gen_hoist(self, f: FnInfo) -> None:
                 f.dglob[j] = "!" + bad
                 continue
             v = self.expr(d, t)
+            if t != "" and v.t != t and bstorage_join(self, v.t, t) == t:
+                # A default may share a module allocation. Rebuild the origin
+                # before declaring/storing the one default object all calls share.
+                if inferred_container_item(self, d, v.t, elem(t) if is_list(t) else targs(t)[1]):
+                    raise Rejoin()
             if t == COMPLEXC and (f.mod != "" or is_const(d)) and not early and v.t in ["int", "float", "bool", BIG]:
                 # a function of an imported module whose complex parameter defaults to a real
                 # number, which CPython keeps as it is: the default ran, and is an error only

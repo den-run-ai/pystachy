@@ -161,6 +161,12 @@ def bparameter_type(self, t: str, expected: str) -> int:
     w = unopt(expected)
     if w != "" and ((self.bkind(u) != "" and self.bbase(u) == w) or bfamily(self, u) == w):
         return 1
+    family = bfamily(self, w)
+    if family != "" and family in umembers(w) and (u == family or (self.bkind(u) != "" and self.bbase(u) == family) or bfamily(self, u) == family):
+        # The plain builtin member already admits its subclasses. Keep their
+        # actual storage when another caller added a tagged family member to
+        # this parameter; unions of named subclasses alone keep their bounds.
+        return 1
     if not ((is_list(u) and is_list(w)) or (is_dict(u) and is_dict(w)) or (is_tuple(u) and is_tuple(w))):
         return -1
     actual = targs(u)

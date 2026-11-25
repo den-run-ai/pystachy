@@ -136,6 +136,17 @@ def gen_ctype(self, base: str, ts: list[str], canon: bool = True) -> str:
     # Reject a broken serialization before either can use a different item count.
     if base == "tuple" and targs(t) != ts:
         self.err("internal error: tuple item types do not round-trip")
+    if base == "callable" and len(self.hints) > 0:
+        # Every value, adapter and indirect call of this declared signature uses
+        # the same item layout. A later requirement may extend an earlier one;
+        # replay the monotone chain instead of changing one adapter's parameters.
+        seen: list[str] = []
+        while t not in seen:
+            seen.append(t)
+            key = "callable-items:" + self.stable(t)
+            if key not in self.hints:
+                break
+            t = self.hints[key]
     return t
 
 def gen_none_items(self, t: str) -> str:

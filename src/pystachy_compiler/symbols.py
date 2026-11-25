@@ -43,6 +43,7 @@ class FnInfo:
         self.idnames: dict[str, bool] = {}  # numeric locals/parameters whose objects can leave
         self.params: list[str] = []
         self.ptypes: list[str] = []
+        self.storage_callable = ""  # an adapter's whole Callable signature, or its result-inference key; layout requirements rebuild the entire callable type
         self.defaults: list[Node] = []
         self.dglob: list[str] = []  # global holding a default evaluated at def time, or ""
         self.uflags: dict[str, bool] = {}  # locals some read may find unassigned

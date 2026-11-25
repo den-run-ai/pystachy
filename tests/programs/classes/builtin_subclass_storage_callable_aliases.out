@@ -1,0 +1,6 @@
+True True
+True True
+True True True
+[1, 5] [1, 5] [2]
+True [[0], [1, 5], [2], [1, 5], [1, 5]]
+[exit 0]

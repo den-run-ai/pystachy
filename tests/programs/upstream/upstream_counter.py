@@ -1,5 +1,5 @@
 # Adapted from CPython 3.13.16 Lib/test/test_collections.py, class TestCounter: test_basics,
-# test_total, test_order_preservation, test_update, test_copying, test_conversions,
+# test_total, test_order_preservation, test_update, test_copying, test_copy_subclass, test_conversions,
 # test_invariant_for_the_in_operator, test_multiset_operations, test_inplace_operations,
 # test_subtract, test_unary, test_helper_function, test_eq, test_le, test_lt, test_ge and
 # test_gt, commit cbc944f4bc59639a444dd971c737788ba2283a91.
@@ -24,7 +24,7 @@
 #   issubclass() of Mapping and dict, c.__contains__(), hash(c), and c.update(dict(a=5, b=3))
 #   (a display here)
 # - test_init and test_update's and test_subtract's TypeErrors (Counter(self=42), ...,
-#   iterable=None), test_update_reentrant_add_clears_counter (int subclass), test_copy_subclass,
+#   iterable=None), test_update_reentrant_add_clears_counter (int subclass),
 #   test_repr_nonsortable (a None count), test_copying's copy/deepcopy/pickle/eval(repr()),
 #   test_helper_function's OrderedDict and Counter subclasses
 # - test_multiset_operations' Counter.__add__ & co as values (the operators are called) and its
@@ -175,6 +175,16 @@ def test_copying() -> None:
     check_dup(Counter(words))
 
 
+def test_copy_subclass() -> None:
+    class MyCounter(Counter):
+        pass
+    c = MyCounter('slartibartfast')
+    d = c.copy()
+    check("copy subclass ==", d, c)
+    check("copy subclass len", len(d), len(c))
+    check("copy subclass type", type(d) == type(c), True)
+
+
 def test_conversions() -> None:
     s = 'she sells sea shells by the sea shore'
     check("elements", sorted(Counter(s).elements()), sorted(s))
@@ -315,6 +325,7 @@ test_total()
 test_order_preservation()
 test_update()
 test_copying()
+test_copy_subclass()
 test_conversions()
 test_invariant_for_the_in_operator()
 test_multiset_operations()

@@ -1605,6 +1605,19 @@ They can be used in variables, parameters, fields, returns and containers, and a
 keys. A `Callable` requires positional arguments and an exact return type.
 `Callable[..., R]` and keyword calls through a `Callable` are unsupported.
 
+A typed `Callable` can also retain list/dict-subclass items in a shared nested container.
+Its targets and callers use one item layout for the complete callable signature; each
+argument must already have that layout or trace back to a compatible allocation whose
+aliases can retain it. The original containers and items keep their identities, including
+when several functions or closures share the signature
+([aliases and targets](../../tests/programs/classes/builtin_subclass_storage_callable_aliases.py)).
+Factories whose return is a class-template specialization infer that result before choosing
+the shared signature
+([inferred result](../../tests/programs/classes/builtin_subclass_storage_callable_inferred.py),
+[multiple factories](../../tests/programs/classes/builtin_subclass_storage_callable_inferred_targets.py)).
+An opaque call result with an incompatible fixed item layout remains rejected
+([boundary](../../tests/errors/classes/builtin_subclass_storage_callable_fixed_origin.py)).
+
 Object methods and supported string, list, dict and file methods bind their object when read:
 `handler = obj.method`, `key=str.lower`, `write=file.write`. Bound methods compare equal
 when they refer to the same method of the same object; their identity test is rejected.
@@ -2119,6 +2132,17 @@ evaluation order and check the actual destination field
 ([shared allocation](../../tests/programs/classes/builtin_subclass_storage_field_multiple_targets_reversed.py),
 [computed receiver](../../tests/programs/classes/builtin_subclass_storage_field_call_receiver.py),
 [reflective writer](../../tests/programs/classes/builtin_subclass_storage_field_literal_setattr.py)).
+List and dict defaults can also infer tagged items at the definition that creates them.
+The default still evaluates once when that definition runs, in its defining scope.
+Omitted-argument calls and a generic function's specializations share that original
+default object. Repeated calls through one closure share its default, while separate
+executions of the closure's definition create separate default objects. Explicit
+arguments keep their own allocations and aliases
+([shared default and explicit arguments](../../tests/programs/classes/builtin_subclass_storage_default_alias.py),
+[dict default](../../tests/programs/classes/builtin_subclass_storage_default_dict.py),
+[evaluation order](../../tests/programs/classes/builtin_subclass_storage_default_creation_order.py),
+[closure defaults](../../tests/programs/classes/builtin_subclass_storage_closure_default_alias.py),
+[generic defaults](../../tests/programs/classes/builtin_subclass_storage_generic_default_unannotated.py)).
 
 This inference requires a known allocation and checked writers. An arbitrary call's
 result is not proof that its storage can change, and a parameter annotation alone cannot

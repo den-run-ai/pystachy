@@ -419,8 +419,11 @@ def gen_closure(self, n: Node) -> Val:
     dvals: list[Val] = []
     offset = len(c.caps)
     for j in c.defs:
-        t = f.ptypes[j]
+        t = inferred_container_default_type(self, f, j, f.ptypes[j])
         v = self.expr(f.defaults[j], t)
+        if t != "" and v.t != t and bstorage_join(self, v.t, t) == t:
+            if inferred_container_item(self, f.defaults[j], v.t, elem(t) if is_list(t) else targs(t)[1]):
+                raise Rejoin()
         v = self.coerce(v, t) if t != "" else v
         if v.t == "None" and t == "":
             self.err(f"a default value None of a parameter of {what} is not supported here: annotate the parameter ({f.params[j]}: T | None = None)")
@@ -1342,10 +1345,13 @@ def inferred_container_origin(self, n: Node) -> list[str]:
             body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
             if name in self.curfn.params:
                 # A helper can ask its caller to rebuild a fresh origin. Ordinary
-                # constructors also update their checked parameter signature. Fixed
-                # interfaces and shared defaults cannot be reinterpreted this way.
+                # constructors also update their checked parameter signature. A
+                # default must belong to this function and rebuild before any call.
                 f = self.curfn
-                ordinary = not (f.extern or f.export or f.pyexport or f.gen) and f.defaults[f.params.index(name)].kind == "noann"
+                if f.storage_callable != "" and f.params.index(name) > 0 and bind_count(body, name) == 0:
+                    return ["callable", str(f.params.index(name)), f.storage_callable]
+                own_default = f.clo < 0 and not f.generic and not f.inst and self.dflt_fn(f) is f
+                ordinary = not (f.extern or f.export or f.pyexport or f.gen) and (f.defaults[f.params.index(name)].kind == "noann" or own_default)
                 return ["parameter", name, "inferred"] if f.name not in ["<callable>", "<dispatch>"] and (f.inst or ordinary) and bind_count(body, name) == 0 else []
         annotated = ann_target(body, name)
         if bind_count(body, name) != (2 if annotated else 1):
@@ -1395,6 +1401,21 @@ def inferred_container_item(self, source: Node, container: str, item: str) -> bo
     if len(at) == 0:
         return False
     other = self.ctype("list", [item]) if is_list(container) else self.ctype("dict", [targs(container)[0], item])
+    if at[0] == "callable":
+        pending = at[2].startswith("callable-infer:")
+        key = at[2] if pending else "callable-items:" + self.stable(at[2])
+        signature = "callable[" + ",".join(["None"] + self.curfn.ptypes[1:]) + "]" if pending else at[2]
+        types = targs(self.newhints.get(key, signature))
+        index = int(at[1])
+        joined = bstorage_join(self, types[index], other)
+        if joined == "" or joined == types[index]:
+            return False
+        types[index] = joined
+        needed = "callable[" + ",".join(types) + "]" if pending else self.ctype("callable", types)
+        if needed == self.hints.get(key, ""):
+            return False
+        self.newhints[key] = needed
+        return True
     if at[0] == "parameter":
         key = "parameter-items:" + self.fnkey(self.curfn) + "|" + at[1]
         joined = self.join_type(self.newhints.get(key, container), other)
@@ -1424,7 +1445,7 @@ def inferred_container_item(self, source: Node, container: str, item: str) -> bo
     return changed
 
 
-def inferred_container_arguments(self, f: FnInfo, sources: list[Node], values: list[Val]) -> bool:
+def inferred_container_arguments(self, f: FnInfo, sources: list[Node], values: list[Val], defaults: FnInfo) -> bool:
     # Propagate requirements found while specializing a helper to its actual arguments.
     # This can walk several helper calls; only a proven fresh allocation ends the chain.
     # No parameter annotation changes the representation of an existing argument.
@@ -1435,6 +1456,17 @@ def inferred_container_arguments(self, f: FnInfo, sources: list[Node], values: l
         needed = self.newhints.get(key, self.hints.get(key, ""))
         if needed == "" or values[j].t == needed:
             continue
+        if sources[j] is self.nokey and defaults.defaults[j].kind != "noann":
+            # A template instance's default belongs to the original definition,
+            # not to this particular argument signature. Rebuild its one global
+            # or each closure environment before an omitted call reads the slots.
+            default_key = "default-items:" + self.fnkey(defaults) + "|" + defaults.params[j]
+            current = self.newhints.get(default_key, self.hints.get(default_key, values[j].t))
+            joined = bstorage_join(self, current, needed)
+            if joined != "" and joined != self.hints.get(default_key, ""):
+                self.newhints[default_key] = joined
+                changed = True
+                continue
         item = elem(needed) if is_list(needed) else targs(needed)[1]
         if inferred_container_item(self, sources[j], values[j].t, item):
             changed = True
@@ -1443,16 +1475,27 @@ def inferred_container_arguments(self, f: FnInfo, sources: list[Node], values: l
     return changed
 
 
+def inferred_container_default_type(self, f: FnInfo, j: int, t: str) -> str:
+    # Defaults are shared by all instances of a function template and by calls
+    # through one closure. Their owner decides the storage before allocation.
+    needed = self.hints.get("default-items:" + self.fnkey(f) + "|" + f.params[j], "")
+    if needed == "":
+        return t
+    actual = self.dry(f.defaults[j]) if t == "" else t
+    return needed if bstorage_join(self, actual, needed) == needed else t
+
+
 def inferred_container_signature(self, f: FnInfo) -> None:
     # A non-specialized constructor/helper can learn that its container parameter
     # needs tagged items. Every caller checks this signature before passing a value.
-    # Existing template instances instead propagate to their original call sites.
+    # Its own shared defaults rebuild at definition time before callers read them;
+    # template instances instead propagate to their original call sites.
     if f.inst or f.generic or f.extern or f.export or f.pyexport or f.gen or f.name in ["<callable>", "<dispatch>"] or len(self.hints) == 0:
         return
     prefix = "parameter-items:" + self.fnkey(f) + "|"
     for j in range(len(f.params)):
         needed = self.hints.get(prefix + f.params[j], "")
-        if needed != "" and bstorage_join(self, f.ptypes[j], needed) == needed and f.defaults[j].kind == "noann":
+        if needed != "" and bstorage_join(self, f.ptypes[j], needed) == needed and (f.defaults[j].kind == "noann" or (f.clo < 0 and self.dflt_fn(f) is f)):
             f.ptypes[j] = needed
 
 

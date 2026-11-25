@@ -14,7 +14,7 @@ from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, COMP
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.unions import ANNTYPES, ann_open, ann_returns, ann_site, ann_takes, field_value
-from src.pystachy_compiler.variables import inferred_container_arguments, inferred_container_item, inferred_container_signature
+from src.pystachy_compiler.variables import inferred_container_arguments, inferred_container_default_type, inferred_container_item, inferred_container_signature
 from src.pystachy_compiler.utils import (
     is_clsval,
     clsof,
@@ -568,6 +568,7 @@ def gen_to_callable(self, v: Val, t: str) -> Val:
     # that calls v's function with the env (a closure's, or a bound method's object) and t's
     # parameters. A function of a module or a builtin has no env: one constant object serves for
     # each Callable type
+    t = self.ctype("callable", targs(t))
     code = self.adapter(v.t, t)
     if v.t.startswith("fn[f:") or v.t.startswith("fn[b:") or v.t.startswith("fn[u:"):
         g = f"@cvo.{code[4:]}"
@@ -638,6 +639,7 @@ def gen_adapter(self, ft: str, t: str) -> str:
     self.adapters[key] = ll
     line = self.line
     f = FnInfo("<callable>", ll, mk("def", "<callable>", line, []), "")
+    f.storage_callable = t
     f.params = ["_f"] + [f"_a{j}" for j in range(len(ts) - 1)]
     f.ptypes = [ft] + ts[1:]
     for _ in f.params:
@@ -707,12 +709,22 @@ def gen_adapter_ret(self, ft: str, ps: list[str]) -> str:
     key = ft + " " + ",".join(ps)
     if key in self.adrets:
         return self.adrets[key]
+    target = ft
+    if ft.startswith("fn[c:"):
+        closure = self.closures[int(ft[5:ft.find(":", 5)])]
+        target = "closure:" + self.fnkey(closure.f) + "(" + ",".join(closure.ctypes) + ")"
+    storage_key = "callable-infer:" + self.stable(target + " " + ",".join(ps))
+    parameters = targs(self.hints[storage_key])[1:] if storage_key in self.hints else ps
     line = self.line
     ll = f"@cv.{self.ncv}"  # (its key needs what it returns: it is registered once compiled)
     self.ncv += 1
     f = FnInfo("<callable>", ll, mk("def", "<callable>", line, []), "")
+    # The return type is not known yet. These argument requirements belong only
+    # to this exact function and original parameter vector, until its body gives
+    # a complete Callable signature that all aliases and calls can share.
+    f.storage_callable = storage_key
     f.params = ["_f"] + [f"_a{j}" for j in range(len(ps))]
-    f.ptypes = [ft] + ps
+    f.ptypes = [ft] + parameters
     for _ in f.params:
         f.defaults.append(mk("noann", "", line, []))
         f.dglob.append("")
@@ -733,8 +745,24 @@ def gen_adapter_ret(self, ft: str, ps: list[str]) -> str:
     self.restore(fr)
     self.making.pop()
     self.adrets[key] = f.ret
-    t = self.ctype("callable", [f.ret] + ps)
-    if targs(t) == [f.ret] + ps:
+    t = self.ctype("callable", [f.ret] + parameters)
+    original = "callable[" + ",".join([f.ret] + ps) + "]"
+    canonical = self.ctype("callable", [f.ret] + ps)
+    if canonical != t:
+        hint = "callable-items:" + self.stable(original)
+        previous = targs(self.newhints.get(hint, canonical))
+        required = targs(t)
+        for j in range(1, len(required)):
+            if previous[j] != required[j]:
+                required[j] = bstorage_join(self, previous[j], required[j])
+                if required[j] == "":
+                    self.err("incompatible shared container storage for this Callable signature")
+        combined = self.ctype("callable", required)
+        if combined != canonical:
+            if self.final or self.rtmode:
+                self.err("cannot infer shared container storage for this Callable signature")
+            self.newhints[hint] = combined
+    if targs(t) == [f.ret] + parameters:
         # (the adapter of that Callable, where it takes and returns what this one does: not where
         # it returns a promoting int for this one's 64-bit int, ctype, which adapter compiles)
         self.adapters[ft + " " + t] = ll
@@ -752,8 +780,14 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
     if len(args) != len(ts) - 1:
         self.err(f"a {typestr(ct)} takes {len(ts) - 1} argument{'s' if len(ts) != 2 else ''}, but {len(args)} {'were' if len(args) != 1 else 'was'} given")
     vals: list[Val] = []
+    storage_retry = False
     for j in range(len(args)):
-        value = self.coerce(self.expr(args[j], ts[j + 1]), ts[j + 1], f"argument {j + 1} of a {typestr(ct)}")
+        actual = self.expr(args[j], ts[j + 1])
+        if ts[j + 1] != "" and actual.t != ts[j + 1] and bstorage_join(self, actual.t, ts[j + 1]) == ts[j + 1] and inferred_container_item(self, args[j], actual.t, targs(ts[j + 1])[0] if is_list(ts[j + 1]) else targs(ts[j + 1])[1]):
+            value = actual
+            storage_retry = True
+        else:
+            value = self.coerce(actual, ts[j + 1], f"argument {j + 1} of a {typestr(ct)}")
         if self.idhere() and numeric_identity(value.t) and not self.dyn_id_fresh(value):
             # A pre-evaluated vnode can also feed a sibling branch. Keep this call's
             # snapshot on its own Val, rather than publishing branch-local SSA there.
@@ -761,6 +795,8 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
             captured.idfrom = self.dyn_id_box(value).v
             value = captured
         vals.append(value)
+    if storage_retry:
+        return Val("undef", ts[0])
     o = self.unwrap(o, "TypeError: 'NoneType' object is not callable")
     code = self.mload('%ptr', o.v)
     env = self.mload('env', self.maddr('%ptr', f'{o.v}', '1', True))
@@ -1740,6 +1776,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             elif df.dglob[j].startswith("&"):
                 # a closure's default: in its env (pre[0]), evaluated where it was defined
                 t = t if t != "" else df.dtypes[j]
+                t = inferred_container_default_type(self, df, j, t)
                 da = self.maddr('int', pre[0].v, f'{df.dglob[j][1:]}', True)
                 vals[j] = Val(self.mload(t, da), t)
                 if self.fn_identity(f) and numeric_identity(t):
@@ -1748,11 +1785,14 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
                     vals[j].idfrom = self.mload('dyn', ba)
             elif df.dglob[j] != "":
                 t = t if t != "" else df.dtypes[j]
+                t = inferred_container_default_type(self, df, j, t)
                 vals[j] = Val(self.mload(t, df.dglob[j]), t)
                 if self.fn_identity(df) and numeric_identity(t):
                     vals[j].idfrom = self.mload('dyn', df.dglob[j] + '.box')
             else:
                 vals[j] = self.pcoerce(self.expr(f.defaults[j], t), t, f, j)
+            if vals[j].t != f.ptypes[j] and bparameter(self, f, j, vals[j].t):
+                late = True  # (a shared default keeps its actual tagged item layout)
     for fl in self.dc_fields(self.classes[f.cls]) if len(facs) > 0 else []:
         # a dataclass field's default_factory, called for each object (see dc_factory), after
         # the other defaults, which only read globals, in field order (see declare_fields)
@@ -1821,7 +1861,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         # A direct return-call keeps the open-result marker for an empty callee,
         # while forwarding the caller's separate fresh-display context.
         f = self.instance(f, [v.t for v in vals], nnp, self.curfn.rctx if want == "?" else want, self.curfn.rsoft if want == "?" else resultsoft, nullable_self=nullable_self)
-    if (len(self.hints) > 0 or len(self.newhints) > 0) and inferred_container_arguments(self, f, sources, vals):
+    if (len(self.hints) > 0 or len(self.newhints) > 0) and inferred_container_arguments(self, f, sources, vals, df):
         return Val("undef", f.ret if f.ret != "" else "None")
     if got is not None or self.curfn.ll.startswith("@o.x."):
         if got is not None:
