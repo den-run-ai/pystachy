@@ -93,6 +93,29 @@ class SharedCompilerWorkflowTests(unittest.TestCase):
         # Every free-threaded build has its GIL build beside it.
         self.assertTrue(all(version[:-1] in versions for version in versions if version.endswith('t')))
 
+    def test_coverage_reruns_replace_parts_and_reports(self):
+        jobs = workflow('coverage.yml')['jobs']
+        for part, report, prefix in (
+            ('hosted', 'hosted-report', 'coverage'),
+            ('runtime', 'runtime-report', 'runtime-coverage'),
+        ):
+            with self.subTest(coverage=part):
+                self.assertEqual(jobs[report]['needs'], part)
+                self.assertNotIn('if', jobs[report])  # Failed parts must not produce a report.
+                for name, artifact in ((part, prefix + '-part-${{ strategy.job-index }}'),
+                                       (report, prefix)):
+                    uploads = [step['with'] for step in jobs[name]['steps']
+                               if step.get('uses', '').startswith('actions/upload-artifact@')]
+                    self.assertEqual(len(uploads), 1)
+                    self.assertEqual(uploads[0]['name'], artifact)
+                    self.assertEqual(uploads[0]['overwrite'], 'true')
+                    self.assertEqual(uploads[0]['if-no-files-found'], 'error')
+                downloads = [step['with'] for step in jobs[report]['steps']
+                             if step.get('uses', '').startswith('actions/download-artifact@')]
+                self.assertEqual(downloads, [{'pattern': prefix + '-part-*',
+                                             'path': 'build/' + prefix + '/parts',
+                                             'merge-multiple': 'true'}])
+
     def test_scripts_continue_to_build_private_configuration_specific_runtimes(self):
         variant = (ROOT / 'tools/variants.sh').read_text()
         self.assertIn('PYSTACHY_CACHE="$W/cache-$v" tests/run.sh "$PYS"', variant)

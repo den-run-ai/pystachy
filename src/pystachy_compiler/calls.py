@@ -2,7 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names, numeric_statement
 from src.pystachy_compiler.bigints import converts
-from src.pystachy_compiler.builtin_bases import has_def
+from src.pystachy_compiler.builtin_bases import bparameter, bstorage_callable, bstorage_join, has_def
+from src.pystachy_compiler.class_values import template_constructor
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
@@ -13,6 +14,7 @@ from src.pystachy_compiler.specs import BFILE, BIG, BYTEARRAYC, BYTEARRAYS, COMP
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.unions import ANNTYPES, ann_open, ann_returns, ann_site, ann_takes, field_value
+from src.pystachy_compiler.variables import inferred_container_arguments, inferred_container_default_type, inferred_container_item, inferred_container_signature
 from src.pystachy_compiler.utils import (
     is_clsval,
     clsof,
@@ -184,6 +186,9 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         if f.s == "__class__" and receiver.kind == "call" and receiver.kids[0].kind == "attr":
             f = mk("attr", f.s, f.line, [self.vnode(self.expr(receiver, ""))])
             self.line = f.line
+        copied = template_constructor(self, f, args, want, resultsoft) if f.s == "__class__" else None
+        if copied is not None:
+            return copied
         if f.s == "__class__" and self.refl_typeof(f) is not None and self.class_value_named(unopt(self.dry(f.kids[0]))) and (not self.dyn_policy(self.line) or is_clsval(self.dry(f))):
             return self.obj_call(self.expr(f, ""), args, want, resultsoft)
         c = self.curfn.cls
@@ -229,6 +234,10 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         if f.s != "close" and r.t != BFILE:  # (__enter__() and __iter__() return the file: it stays open)
             self.close_temp(receiver, o)
         return r
+    if f.kind == "call":
+        copied = template_constructor(self, f, args, want, resultsoft)
+        if copied is not None:
+            return copied
     if f.kind == "name":
         # (a union's value that a test narrowed to its Callable member is that Callable here)
         self.not_callable(f.s, self.now_type(f.s) if is_union(unopt(self.ltype[f.s])) else self.ltype[f.s])
@@ -405,6 +414,27 @@ def gen_class_new(self, c: str, args: list[Node], want: str, resultsoft: bool = 
         self.place(self.label())
         self.blk.dead = True
         return Val("null", c)
+    if self.curfn.clsdef != "" and self.curfn.cls in self.classes and c == (self.classes[self.curfn.cls].origin if self.classes[self.curfn.cls].origin != "" else self.curfn.cls):
+        # An inherited cls(...) may be valid for its defining class but not for
+        # this subclass. Keep untaken paths compilable and raise at the call, as
+        # CPython does, instead of abandoning every class-method copy.
+        problem = self.arity_error(self.classes[c].methods["__init__"], 1, args)
+        if problem != "":
+            for a in args:
+                self.expr(a.kids[0] if a.kind in ["kw", "starred", "dstar"] else a, "")
+            self.raise_("TypeError", self.sconst(problem))
+            self.place(self.label())
+            self.blk.dead = True
+            return Val("null", self.curfn.cls)
+        ci = self.classes[c]
+        base = ci.base
+        while base in self.classes and self.classes[base].origin == "":
+            base = self.classes[base].base
+        if c not in self.tmpl and ci.origin == "" and base in self.classes and self.classes[base].origin in self.tmpl:
+            init = ci.methods["__init__"]
+            ts = self.super_arg_types(init, args, self.curfn)
+            if "!" not in ts and len(ts) == len(init.ptypes) - 1 and ts != init.ptypes[1:]:
+                return self.class_new(self.specialize(c, ts, {}, False, {}, True), args, want, resultsoft)
     if c in self.tmpl:
         # a class template: the types of the arguments pick the specialization, whose
         # object call_fn makes once it has them (in made[0])
@@ -538,6 +568,7 @@ def gen_to_callable(self, v: Val, t: str) -> Val:
     # that calls v's function with the env (a closure's, or a bound method's object) and t's
     # parameters. A function of a module or a builtin has no env: one constant object serves for
     # each Callable type
+    t = bstorage_callable(self, t)
     code = self.adapter(v.t, t)
     if v.t.startswith("fn[f:") or v.t.startswith("fn[b:") or v.t.startswith("fn[u:"):
         g = f"@cvo.{code[4:]}"
@@ -608,6 +639,7 @@ def gen_adapter(self, ft: str, t: str) -> str:
     self.adapters[key] = ll
     line = self.line
     f = FnInfo("<callable>", ll, mk("def", "<callable>", line, []), "")
+    f.storage_callable = t
     f.params = ["_f"] + [f"_a{j}" for j in range(len(ts) - 1)]
     f.ptypes = [ft] + ts[1:]
     for _ in f.params:
@@ -677,12 +709,22 @@ def gen_adapter_ret(self, ft: str, ps: list[str]) -> str:
     key = ft + " " + ",".join(ps)
     if key in self.adrets:
         return self.adrets[key]
+    target = ft
+    if ft.startswith("fn[c:"):
+        closure = self.closures[int(ft[5:ft.find(":", 5)])]
+        target = "closure:" + self.fnkey(closure.f) + "(" + ",".join(closure.ctypes) + ")"
+    storage_key = "callable-infer:" + self.stable(target + " " + ",".join(ps))
+    parameters = targs(self.hints[storage_key])[1:] if storage_key in self.hints else ps
     line = self.line
     ll = f"@cv.{self.ncv}"  # (its key needs what it returns: it is registered once compiled)
     self.ncv += 1
     f = FnInfo("<callable>", ll, mk("def", "<callable>", line, []), "")
+    # The return type is not known yet. These argument requirements belong only
+    # to this exact function and original parameter vector, until its body gives
+    # a complete Callable signature that all aliases and calls can share.
+    f.storage_callable = storage_key
     f.params = ["_f"] + [f"_a{j}" for j in range(len(ps))]
-    f.ptypes = [ft] + ps
+    f.ptypes = [ft] + parameters
     for _ in f.params:
         f.defaults.append(mk("noann", "", line, []))
         f.dglob.append("")
@@ -703,8 +745,24 @@ def gen_adapter_ret(self, ft: str, ps: list[str]) -> str:
     self.restore(fr)
     self.making.pop()
     self.adrets[key] = f.ret
-    t = self.ctype("callable", [f.ret] + ps)
-    if targs(t) == [f.ret] + ps:
+    t = self.ctype("callable", [f.ret] + parameters)
+    original = "callable[" + ",".join([f.ret] + ps) + "]"
+    canonical = self.ctype("callable", [f.ret] + ps)
+    if canonical != t:
+        hint = "callable-items:" + self.stable(original)
+        previous = targs(self.newhints.get(hint, canonical))
+        required = targs(t)
+        for j in range(1, len(required)):
+            if previous[j] != required[j]:
+                required[j] = bstorage_join(self, previous[j], required[j])
+                if required[j] == "":
+                    self.err("incompatible shared container storage for this Callable signature")
+        combined = self.ctype("callable", required)
+        if combined != canonical:
+            if self.final or self.rtmode:
+                self.err("cannot infer shared container storage for this Callable signature")
+            self.newhints[hint] = combined
+    if targs(t) == [f.ret] + parameters:
         # (the adapter of that Callable, where it takes and returns what this one does: not where
         # it returns a promoting int for this one's 64-bit int, ctype, which adapter compiles)
         self.adapters[ft + " " + t] = ll
@@ -722,8 +780,14 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
     if len(args) != len(ts) - 1:
         self.err(f"a {typestr(ct)} takes {len(ts) - 1} argument{'s' if len(ts) != 2 else ''}, but {len(args)} {'were' if len(args) != 1 else 'was'} given")
     vals: list[Val] = []
+    storage_retry = False
     for j in range(len(args)):
-        value = self.coerce(self.expr(args[j], ts[j + 1]), ts[j + 1], f"argument {j + 1} of a {typestr(ct)}")
+        actual = self.expr(args[j], ts[j + 1])
+        if ts[j + 1] != "" and actual.t != ts[j + 1] and bstorage_join(self, actual.t, ts[j + 1]) == ts[j + 1] and inferred_container_item(self, args[j], actual.t, targs(ts[j + 1])[0] if is_list(ts[j + 1]) else targs(ts[j + 1])[1]):
+            value = actual
+            storage_retry = True
+        else:
+            value = self.coerce(actual, ts[j + 1], f"argument {j + 1} of a {typestr(ct)}")
         if self.idhere() and numeric_identity(value.t) and not self.dyn_id_fresh(value):
             # A pre-evaluated vnode can also feed a sibling branch. Keep this call's
             # snapshot on its own Val, rather than publishing branch-local SSA there.
@@ -731,6 +795,8 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
             captured.idfrom = self.dyn_id_box(value).v
             value = captured
         vals.append(value)
+    if storage_retry:
+        return Val("undef", ts[0])
     o = self.unwrap(o, "TypeError: 'NoneType' object is not callable")
     code = self.mload('%ptr', o.v)
     env = self.mload('env', self.maddr('%ptr', f'{o.v}', '1', True))
@@ -1003,10 +1069,20 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
             self.err(f"calling {short(o.t)}.{m}() is not supported (its iterator is the list it steps through here): iterate over the object")
         if ci.methods[m].prop:
             return self.obj_call(hook_prop(self, ci.methods[m], o, m), args, "")
+        if self.template_class_call(o, m):
+            return self.cls_dispatch(o, m, args, want, resultsoft)
         self.cls_bound(ci.methods[m], o.t, True)
         # Only user calls consume the result context; builtin methods retain their
         # normal argument contexts, including when forwarding an open empty result.
         return self.call_fn(ci.methods[m], [o] if ci.methods[m].deco == "" else [], args, want, resultsoft=resultsoft)  # (a static or class method gets no o)
+    if self.curfn.cls in self.classes and "<factory>(" in self.classes[self.curfn.cls].speckey:
+        base = "list" if is_list(o.t) else "dict" if is_dict(o.t) else "tuple" if is_tuple(o.t) else "int" if o.t in ["bool", BIG] else o.t
+        if base in HASATTR and m not in HASATTR["any"].split() + HASATTR[base].split():
+            # A constructor specialized for the factory's real arguments may
+            # reach an attribute its annotation's type had. Fail at that lookup,
+            # before evaluating call arguments, as CPython does.
+            self.raise_("AttributeError", self.sconst(f"'{tname(o.t)}' object has no attribute '{m}'"))
+            return Val("undef", want if want not in ["", "?"] else "None")
     return self.bmethod(o, m, args)
 
 def gen_unbound_call(self, tn: str, m: str, args: list[Node], want: str = "") -> Val:
@@ -1540,7 +1616,10 @@ def ann_param(self, f: FnInfo, j: int, t: str) -> bool:
     # does an argument of type t compile f again, for a parameter j annotated float, int or str
     # that takes it as it is (ann_takes): an int (a promoting one too) or a bool for a float, the
     # member of an IntEnum, IntFlag or StrEnum class for an int or a str; a function's or an
-    # ordinary method's, whose body then reads the argument, as CPython's does
+    # ordinary method's, whose body then reads the argument, as CPython's does. A list/dict
+    # subclass likewise retains its class for a compatible container annotation.
+    if bparameter(self, f, j, t):
+        return True
     if f.ptypes[j] not in ANNTYPES or not ann_takes(self, f.ptypes[j], t) or j == f.vararg or j == f.kwarg or len(f.node.kids) < 3:
         return False
     if f.gen or f.extern or f.export or f.pyexport or f.clo >= 0 or f.prop or f.acc != "" or f.deco != "":
@@ -1557,6 +1636,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     # which may return NotImplemented to it is rejected (here, or by decline where compiled later)
     if f.pyexport:
         self.err(f"{f.name}() is @export, so Pystachy code may not call it (under CPython each call goes through the export's checks and conversions): call a private function that both use")
+    inferred_container_signature(self, f)
     if f.bad != "":
         self.err(f.bad)  # (before its arguments, whose types may be placeholders')
     if f.name == "importlib$import_module" and lib_source(f.node.line, self.libdir, "importlib/__init__.py"):
@@ -1582,6 +1662,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     line = self.line
     np = len(f.params)
     vals: list[Val] = []
+    sources: list[Node] = []
     # A surrounding annotation is a storage contract; C[T](...) alone only hints
     # at unbound or conflicting arguments. Keep both through unpacked calls.
     # C(...) of a generic class that a lambda returns is a forwarding call: the Callable's
@@ -1590,14 +1671,21 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     contract = f.cls in self.tparams and len(self.want_tvars(f.cls, ctx)) > 0
     context = ctx if contract or typeargs == "" else typeargs
     hint = self.want_params(f.cls, context) if f.name == "__init__" and len(pre) > 0 and pre[0].v == "" and f.cls in self.tparams else []
+    late = False  # (an argument that compiles f for its own type: see ann_param)
+    storage_retry = False
     for i in range(np):
-        vals.append(self.pcoerce(pre[i], f.ptypes[i], f, i) if i < len(pre) else Val("", ""))
+        own = i < len(pre) and not self.rtmode and bparameter(self, f, i, pre[i].t)
+        v = pre[i] if i < len(pre) else Val("", "")
+        if own and v.t == "None":
+            v = Val(v.v, self.optional(f.ptypes[i]))  # comparison's None arm (bparameter)
+        vals.append(self.pcoerce(v, "" if own else f.ptypes[i], f, i) if i < len(pre) else v)
+        sources.append(self.nokey)
+        late = late or own
     pos = len(pre)
     extra: list[Val] = []
     kwn: list[str] = []
     kwv: list[Val] = []
     offs: dict[int, Val] = {}  # (the index of each list that an @extern call takes as ffi.at(xs, k))
-    late = False  # (an argument that compiles f for its own type: see ann_param)
     for a in args:
         j = pos
         e = a
@@ -1620,6 +1708,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             e = a.kids[0]
         else:
             pos += 1
+        sources[j] = e
         if f.extern and self.ffi_at(e):
             vals[j] = self.at_arg(e, f, j, offs)
             continue
@@ -1643,7 +1732,10 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         passing = self.fn.build.idpass
         self.fn.build.idpass = self.id_move(e)
         try:
-            if cache is None and not self.rtmode and ann_param(self, f, j, arg.t) and (f.cls == "" or (f.cls in self.classes and (self.classes[f.cls].tag == 0 or f.name == "__init__") and self.classes[f.cls].origin == "" and f.cls not in self.tmpl)):
+            if pt != "" and arg.t != pt and bstorage_join(self, arg.t, pt) == pt and inferred_container_item(self, e, arg.t, targs(pt)[0] if is_list(pt) else targs(pt)[1]):
+                vals[j] = arg
+                storage_retry = True
+            elif cache is None and not self.rtmode and ann_param(self, f, j, arg.t) and (f.cls == "" or (f.cls in self.classes and (self.classes[f.cls].tag == 0 or f.name == "__init__") and self.classes[f.cls].origin == "" and f.cls not in self.tmpl)):
                 # an int for a float parameter, or an enum member for an int or str one (PEP 484
                 # accepts it, and CPython passes it on as it is): the function compiles for it,
                 # as a template's does (see instance)
@@ -1684,6 +1776,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             elif df.dglob[j].startswith("&"):
                 # a closure's default: in its env (pre[0]), evaluated where it was defined
                 t = t if t != "" else df.dtypes[j]
+                t = inferred_container_default_type(self, df, j, t)
                 da = self.maddr('int', pre[0].v, f'{df.dglob[j][1:]}', True)
                 vals[j] = Val(self.mload(t, da), t)
                 if self.fn_identity(f) and numeric_identity(t):
@@ -1692,11 +1785,14 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
                     vals[j].idfrom = self.mload('dyn', ba)
             elif df.dglob[j] != "":
                 t = t if t != "" else df.dtypes[j]
+                t = inferred_container_default_type(self, df, j, t)
                 vals[j] = Val(self.mload(t, df.dglob[j]), t)
                 if self.fn_identity(df) and numeric_identity(t):
                     vals[j].idfrom = self.mload('dyn', df.dglob[j] + '.box')
             else:
                 vals[j] = self.pcoerce(self.expr(f.defaults[j], t), t, f, j)
+            if vals[j].t != f.ptypes[j] and bparameter(self, f, j, vals[j].t):
+                late = True  # (a shared default keeps its actual tagged item layout)
     for fl in self.dc_fields(self.classes[f.cls]) if len(facs) > 0 else []:
         # a dataclass field's default_factory, called for each object (see dc_factory), after
         # the other defaults, which only read globals, in field order (see declare_fields)
@@ -1704,6 +1800,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             if f.params[j] == fl or f.params[j] == fl + ".factory":
                 vals[j] = self.call_fn(self.classes[f.cls].methods[fl + ".factory"], [], [])
     self.line = line
+    if storage_retry:
+        return Val("undef", f.ret if f.ret != "" else "None")
     if cache is not None:
         # Evaluate and bind as an ordinary call, including def-time closure defaults,
         # but look up a key before invoking the function. The shape is a static tag:
@@ -1763,6 +1861,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         # A direct return-call keeps the open-result marker for an empty callee,
         # while forwarding the caller's separate fresh-display context.
         f = self.instance(f, [v.t for v in vals], nnp, self.curfn.rctx if want == "?" else want, self.curfn.rsoft if want == "?" else resultsoft, nullable_self=nullable_self)
+    if (len(self.hints) > 0 or len(self.newhints) > 0) and inferred_container_arguments(self, f, sources, vals, df):
+        return Val("undef", f.ret if f.ret != "" else "None")
     if got is not None or self.curfn.ll.startswith("@o.x."):
         if got is not None:
             got.append(f)  # (and a class's helper for Any operands reads it too: xdecline)

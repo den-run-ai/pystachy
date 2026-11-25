@@ -910,6 +910,10 @@ from src.pystachy_compiler.expressions import (
     gen_boolop as expressions_boolop,
     gen_cat as expressions_cat,
     gen_class_attr as expressions_class_attr,
+    gen_class_shadow as expressions_class_shadow,
+    gen_class_slot as expressions_class_slot,
+    gen_template_class_call as expressions_template_class_call,
+    gen_cls_dispatch as expressions_cls_dispatch,
     gen_class_call as expressions_class_call,
     gen_class_ready as expressions_class_ready,
     gen_class_store as expressions_class_store,
@@ -1432,6 +1436,8 @@ from src.pystachy_compiler.templates import (
     gen_match_key as templates_match_key,
     gen_names_tv as templates_names_tv,
     gen_specialize as templates_specialize,
+    gen_factory_types as templates_factory_types,
+    gen_factory_resolve as templates_factory_resolve,
     gen_new_tag as templates_new_tag,
     gen_member_spec as templates_member_spec,
     gen_literal_class as templates_literal_class,
@@ -1621,7 +1627,7 @@ class Gen:
         self.wake: list[int] = []  # a min-heap of the positions of those called and not yet compiled
         self.called: dict[str, bool] = {}
         self.gflag: dict[str, bool] = {}
-        self.ocls: dict[str, int] = {}  # classes that appear inside containers: id in descriptors
+        self.ocls: dict[str, int] = {}  # classes and container-subclass unions: id in descriptors
         self.ocmp: dict[str, bool] = {}  # those of ocls a descriptor compares, not only prints (obj_helpers)
         self.fchk: dict[str, bool] = {}  # the records whose fields desc is checking
         self.hcls: dict[str, bool] = {}  # those of them that keys hash through the program (H<id>: obj_hash)
@@ -1744,13 +1750,6 @@ class Gen:
         # finds; the method whose call with one is being compiled (then an error restarts: gen_err)
         self.xnot: dict[str, bool] = {}
         self.newx: dict[str, bool] = {}
-        # the driver's: a comparison hands a method of the program the object of a class deriving
-        # from a builtin container as itself (bkeeps), not its container (trials), and a class
-        # under a class template has its own copy of a class method (inherit: copies); each
-        # False once a pass that did so failed or declined an attempt, the copies first, and
-        # for the code no driver pass compiles
-        self.trials = False
-        self.copies = False
         self.xwant: dict[str, bool] = {}  # narrowings of class tuples that a function needs (narrows, err)
         self.newwant: dict[str, bool] = {}  # and those this pass found it needs
         self.ncand: dict[str, bool] = {}  # the narrowings this pass did not make (narrows)
@@ -1958,6 +1957,9 @@ class Gen:
         # before cvar_stores takes its class variables from it (specialize), and cvar_stores
         # then keeps those it found too; made per pass, as cvars
         self.cstores: dict[str, bool] = {}
+        # Shadow globals survive dry/nested compilation like class defaults; a retry
+        # creates a fresh Gen, and Frame save/restore does not discard their declarations.
+        self.cshadowed: dict[str, bool] = {}
         self.typevars: list[str] = []  # module globals bound to typing.TypeVar(...) or TypeVarTuple(...), which only annotations may name
         self.tvtuples: dict[str, bool] = {}  # those bound to a TypeVarTuple, which an annotation unpacks (*Ts)
         self.tvdefaults: dict[str, bool] = {}  # and those with a default (TypeVar("T", default=...), class C[T = int])
@@ -4348,8 +4350,8 @@ class Gen:
     def tmpl_sub(self, ci: ClassInfo) -> bool:
         return program_tmpl_sub(self, ci)
 
-    def sub_base(self, t: ClassInfo, init: FnInfo, ts: list[str]) -> str:
-        return program_sub_base(self, t, init, ts)
+    def sub_base(self, t: ClassInfo, init: FnInfo, ts: list[str], base: str = "", factory: bool = False) -> str:
+        return program_sub_base(self, t, init, ts, base, factory)
 
     def late_sub(self, c: str, ts: list[str], doing: str) -> None:
         program_late_sub(self, c, ts, doing)
@@ -5000,6 +5002,18 @@ class Gen:
 
     def list_hint_type(self, a: str, b: str) -> str:
         return expressions_list_hint_type(self, a, b)
+
+    def class_shadow(self, ci: ClassInfo, a: str) -> str:
+        return expressions_class_shadow(self, ci, a)
+
+    def class_slot(self, ci: ClassInfo, a: str, box: bool = False) -> Val:
+        return expressions_class_slot(self, ci, a, box)
+
+    def template_class_call(self, o: Val, m: str) -> bool:
+        return expressions_template_class_call(self, o, m)
+
+    def cls_dispatch(self, o: Val, m: str, args: list[Node], want: str, resultsoft: bool = False) -> Val:
+        return expressions_cls_dispatch(self, o, m, args, want, resultsoft)
 
     def class_attr(self, cn: Node, a: str) -> Val:
         return expressions_class_attr(self, cn, a)
@@ -5745,8 +5759,14 @@ class Gen:
     def tests(self, ns: list[Node], p: str) -> bool:
         return calls_tests(self, ns, p)
 
-    def specialize(self, c: str, ts: list[str], given: dict[str, str], named: bool, lits: dict[str, Node]) -> str:
-        return templates_specialize(self, c, ts, given, named, lits)
+    def specialize(self, c: str, ts: list[str], given: dict[str, str], named: bool, lits: dict[str, Node], factory: bool = False) -> str:
+        return templates_specialize(self, c, ts, given, named, lits, factory)
+
+    def factory_types(self, ts: list[str]) -> list[str]:
+        return templates_factory_types(self, ts)
+
+    def factory_resolve(self, ts: list[str]) -> list[str]:
+        return templates_factory_resolve(self, ts)
 
     def new_tag(self, s: ClassInfo) -> None:
         templates_new_tag(self, s)

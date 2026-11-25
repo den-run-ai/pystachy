@@ -1,0 +1,11 @@
+default
+init a class
+init 1 class
+Sub 1 2 1
+Sub True True
+1 1 0 1
+init 2 class
+Sub 2 4 2
+2 2 0 2
+aa 2 new
+[exit 0]

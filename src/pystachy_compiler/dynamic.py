@@ -18,6 +18,7 @@ the program's classes, functions the compiler writes once every class that is bo
 from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
 from src.pystachy_compiler.bigints import held
+from src.pystachy_compiler.builtin_bases import bstorage_join
 from src.pystachy_compiler.class_values import boxed_class_record
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, TupleBoxes, dynamic_file, dynamic_program, int_lists, int_program, static_file
 from src.pystachy_compiler.frames import Reduce
@@ -5469,6 +5470,8 @@ def dyn_packed_default(self, f: FnInfo, pre: list[Val], j: int) -> Val:
         value = Val("null", "None")
     elif df.dglob[j].startswith("&"):
         t = t if t != "" else df.dtypes[j]
+        if df.dtypes[j] != "" and bstorage_join(self, t, df.dtypes[j]) == df.dtypes[j]:
+            t = df.dtypes[j]  # (the owner's proved slot layout, also in optional adapters)
         value = Val(self.mload(t, self.maddr("int", pre[0].v, df.dglob[j][1:], True)), t)
         if self.fn_identity(f) and numeric_identity(t):
             clo = self.closures[f.clo]
@@ -5476,6 +5479,8 @@ def dyn_packed_default(self, f: FnInfo, pre: list[Val], j: int) -> Val:
             value.idfrom = self.mload("dyn", self.maddr("int", pre[0].v, str(offset), True))
     elif df.dglob[j] != "":
         t = t if t != "" else df.dtypes[j]
+        if df.dtypes[j] != "" and bstorage_join(self, t, df.dtypes[j]) == df.dtypes[j]:
+            t = df.dtypes[j]
         value = Val(self.mload(t, df.dglob[j]), t)
         if self.fn_identity(df) and numeric_identity(t):
             value.idfrom = self.mload("dyn", df.dglob[j] + ".box")

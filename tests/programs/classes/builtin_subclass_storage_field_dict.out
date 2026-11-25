@@ -1,0 +1,4 @@
+True
+Table True True
+{'x': 6, 'y': 7} {'first': {'x': 6, 'y': 7}} {}
+[exit 0]

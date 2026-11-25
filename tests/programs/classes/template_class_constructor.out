@@ -1,0 +1,7 @@
+Box 2
+['receiver', 'argument', 'init']
+Child 2
+['receiver', 'argument', 'init']
+TypeError NoneType takes no arguments
+['receiver', 'argument']
+[exit 0]

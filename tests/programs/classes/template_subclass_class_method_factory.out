@@ -1,0 +1,5 @@
+Sub 2
+Style 3
+square
+TypeError Square.__init__() missing 1 required positional argument: 'color'
+[exit 0]

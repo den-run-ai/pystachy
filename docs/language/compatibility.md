@@ -609,7 +609,7 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
 - **Builtin bases:** a base other than `list`, `list[T]`, `dict` or `dict[K, V]` (`set`,
   `str`, `int`, `tuple`, ...); for a [list or dict
   subclass](typing.md#subclasses-of-list-and-dict), storing or passing its object where a
-  `list[T]`, a `dict[K, V]` or a dynamic `Any` value is expected, `copy.copy()` and
+  dynamic `Any` value is expected, `copy.copy()` and
   `copy.deepcopy()` of it, a class deriving from it, multiple inheritance or a decorator with
   it, a `TypeVar` item type, `__new__`, special methods other than `__init__`, `__getitem__`,
   `__setitem__`, `__delitem__`, `__contains__`, `__len__`, `__repr__` and `__str__` through
@@ -617,11 +617,11 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   sequence patterns, a key that `__missing__` would see converted (a `bool` among `int` keys),
   and a bare base whose objects receive no item, or items of different types (name the types
   in the base).
-- **Inherited members:** assigning inherited class attributes through subclasses without their
-  own defaults; changing field types; derived-only fields without supported narrowing;
+- **Inherited members:** outside the [template-class method support](typing.md#subclasses-of-class-templates),
+  assigning inherited class attributes through subclasses without their own defaults, or
   inherited `cls`-using classmethods through base-typed objects, across modules or with
-  nonconstant defaults; `super` outside supported instance-method contexts, with an unrelated
-  class or a different receiver.
+  nonconstant defaults; changing field types; derived-only fields without supported narrowing;
+  `super` outside supported instance-method contexts, with an unrelated class or a different receiver.
 - **Methods and hooks:** assigning `cls`; static/class decorators on special
   methods; `C.__init__(o)` outside ordinary inheritance; decorators beyond staticmethod, classmethod,
   property/setter/deleter, abstractmethod, contextmanager, functools.cached_property,

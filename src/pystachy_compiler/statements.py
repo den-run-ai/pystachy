@@ -1,9 +1,9 @@
 """Statements component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BREV, BSTORE
+from src.pystachy_compiler.builtin_bases import BDEL, BITEM, BITER, BREV, BSTORE, bborrow, bparameter_type, bstorage_join
 from src.pystachy_compiler.utils import identity_abi, identity_default, is_union, umembers
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.diagnostics import Rejoin, shown
 from src.pystachy_compiler.frames import Exit, IterArg, SeqStart, StopCatch
 from src.pystachy_compiler.ir import Blk, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.symbols import ClassInfo, FnInfo
@@ -38,7 +38,9 @@ from src.pystachy_compiler.specs import (
 from src.pystachy_compiler.patterns import unsupported_match, unsupported_reason
 from src.pystachy_compiler.syntax import Node, mk, names_in, starred_target
 from src.pystachy_compiler.unions import ANNTYPES, ann_returns, ann_site, ann_takes
+from src.pystachy_compiler.variables import inferred_container_assignment, inferred_container_default_type, inferred_container_item, inferred_container_signature
 from src.pystachy_compiler.utils import (
+    clsof,
     is_clsval,
     bool_for_int,
     elem,
@@ -104,7 +106,9 @@ def gen_obj_helpers(self, c: str, which: list[int]) -> None:
     # compiles no comparison, and @o.ne for one whose != pys_dyn_ne runs (one). They are
     # compiled leniently: an operation the class does not support raises TypeError when it
     # runs rather than failing the compilation.
-    line = self.classes[c].node.line
+    node = self.classes[c].node if c in self.classes else self.classes[[m for m in umembers(c) if m in self.classes][0]].node
+    line = node.line
+    symbol = c if c in self.classes else "union." + str(self.ocls[c])
     a = mk("name", "a", line, [])
     b = mk("name", "b", line, [])
     op = mk("name", "op", line, [])
@@ -116,10 +120,15 @@ def gen_obj_helpers(self, c: str, which: list[int]) -> None:
     bodies = [[mk("return", "", line, [mk("cmp", "==", line, [a, b])])], cmp,
               [mk("return", "", line, [mk("call", "", line, [mk("name", "__pys_repr", line, []), a])])],
               [mk("return", "", line, [mk("cmp", "!=", line, [a, b])])]]
+    if c not in self.classes:
+        # A container's item comparison first tests the Python objects' identity. Separate
+        # union boxes can hold the same object, so the runtime's box-pointer shortcut alone
+        # cannot make that test. Direct union == still dispatches __eq__ without a shortcut.
+        bodies[0] = [mk("return", "", line, [mk("boolop", "or", line, [mk("cmp", "is", line, [a, b]), mk("cmp", "==", line, [a, b])])])]
     ops = ["eq", "cmp", "repr", "ne"]
     self.lenient = True
     for i in which:
-        f = FnInfo(ops[i], f"@o.{ops[i]}.{c}", self.classes[c].node, "")
+        f = FnInfo(ops[i], f"@o.{ops[i]}.{symbol}", node, "")
         f.params = ["op", "a", "b"] if i == 1 else ["a", "b"]
         f.ptypes = ["int", c, c] if i == 1 else [c, c]
         f.ret = "str" if i == 2 else "bool"
@@ -228,22 +237,26 @@ def gen_dflt_fn(self, f: FnInfo) -> FnInfo:
     # of a class template's specialization, the template's method, as each specialization's is
     # the same def, whose defaults CPython evaluates once, when the class statement runs
     o = self.classes[f.cls].origin if f.cls in self.classes else ""
-    if o != "" and f.name in self.classes[o].methods and self.classes[o].methods[f.name].node is f.node:
+    if o != "" and f.name in self.classes[o].methods and (self.classes[o].methods[f.name].node is f.node or (f.name == "__init__" and "<factory>(" in self.classes[f.cls].speckey)):
         return self.classes[o].methods[f.name]
     if f.clsuse and f.cls in self.classes:
         # a class method that names cls is a function of its own in each class that inherits it
         # (program.py's inherited methods), of the one def: that of the class that defines it,
         # whose def statement stores the default values (no statement stores the others')
+        copy = f
         c = self.classes[f.cls].base
         while c in self.classes and f.name in self.classes[c].methods and self.classes[c].methods[f.name].orig is f.orig:
             f = self.classes[c].methods[f.name]
             c = self.classes[c].base
+        if f is not copy:
+            return self.dflt_fn(f)  # the defining specialization shares its template's def
     return f
 
 def gen_early_default(self, f: FnInfo, j: int) -> None:
     # a call that leaves out parameter j of f, compiled before f's def statement (in a
     # template's function, or a function compiled early): the global that is to hold the
     # default value is declared now, and the def statement stores the value into it (hoist)
+    inferred_container_signature(self, f)
     if f.cls != "" and f.name == "__init__" and f.node.kids[0].kind == "noann":
         # a dataclass's __init__: the class statement evaluates the field's default
         self.class_default(self.classes[f.cls], f.params[j])
@@ -258,6 +271,7 @@ def gen_early_default(self, f: FnInfo, j: int) -> None:
         t = self.modtype(f.defaults[j], f.mod)
         if t == "" or "?" in t:
             self.err(f"the default value of parameter '{f.params[j]}' of {f.name}() cannot be typed here, before its def statement runs; annotate the parameter")
+    t = inferred_container_default_type(self, f, j, t)
     self.pending[f"{f.ll}.{j}"] = True
     if t == "None":
         f.dglob[j] = "=None"
@@ -283,11 +297,12 @@ def gen_class_default(self, ci: ClassInfo, fl: str) -> None:
 
 def gen_hoist(self, f: FnInfo) -> None:
     # Python evaluates default values once, when the def statement runs
+    inferred_container_signature(self, f)
     for j in range(len(f.params)):
         d = f.defaults[j]
         early = f"{f.ll}.{j}" in self.pending
         if (f.dglob[j] == "" or early) and (not is_const(d) or (identity_default(d) and self.fn_identity(f))):
-            t = f.ptypes[j] if f.bad == "" else ""  # (an unsupported annotation is no type)
+            t = inferred_container_default_type(self, f, j, f.ptypes[j]) if f.bad == "" else ""  # (an unsupported annotation is no type)
             self.line = d.line
             bad = self.default_problem(d, t) if f.mod != "" and not self.class_reads(d, FnInfo("", "", f.node, ""), t) else ""
             if bad != "":
@@ -297,6 +312,11 @@ def gen_hoist(self, f: FnInfo) -> None:
                 f.dglob[j] = "!" + bad
                 continue
             v = self.expr(d, t)
+            if t != "" and v.t != t and bstorage_join(self, v.t, t) == t:
+                # A default may share a module allocation. Rebuild the origin
+                # before declaring/storing the one default object all calls share.
+                if inferred_container_item(self, d, v.t, elem(t) if is_list(t) else targs(t)[1]):
+                    raise Rejoin()
             if t == COMPLEXC and (f.mod != "" or is_const(d)) and not early and v.t in ["int", "float", "bool", BIG]:
                 # a function of an imported module whose complex parameter defaults to a real
                 # number, which CPython keeps as it is: the default ran, and is an error only
@@ -379,6 +399,11 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
         # an imported module's class Pystachy cannot compile: an error only where used
         self.left_out(self.cnodes[ci.node.line], ci.bad)
         return
+    for a in ci.fdefault:
+        shadow = self.class_shadow(ci, a)
+        if shadow != "":
+            self.class_slot(ci, a)
+            self.mstore("bool", "false", shadow + ".set")
     if ci.name in self.cnts and self.nt_dflt_type(ci.name) != "":
         # namedtuple()'s class: the dict of its defaults, its _field_defaults (nt_defaults)
         t = self.nt_dflt_type(ci.name)
@@ -415,7 +440,14 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
             # early_default, as calls.py decides from the default, int | C's too)
             cv = cv or (syn and identity_default(st.kids[2]))
             if (cv or not is_const(st.kids[2])) and (fl not in ci.fglob or ci.fglob[fl] in self.pending):
-                self.class_store(ci, fl, self.expr(st.kids[2], t))
+                value = self.expr(st.kids[2], t)
+                if "container-items:" + self.field_key(ci, fl) in self.hints and value.t != t and ((is_list(t) and is_list(value.t)) or (is_dict(t) and is_dict(value.t))):
+                    # A shared default may alias a module allocation. Rebuild that
+                    # origin and all its aliases before storing the final layout.
+                    item = elem(t) if is_list(t) else targs(t)[1]
+                    if inferred_container_item(self, st.kids[2], value.t, item):
+                        raise Rejoin()
+                self.class_store(ci, fl, value)
                 self.pending.pop(ci.fglob[fl], False)
             self.ann_reads(st.kids[1])  # (CPython evaluates the annotation after the value)
         elif st.kind == "annassign":
@@ -754,7 +786,15 @@ def gen_stmt_main(self, n: Node) -> None:
             if len(n.kids) == 2 and starred_target(t0) and (self.iterator_call(val) or self.is_mapcall(val) or (val.kind == "listcomp" and val.s == "gen")):
                 v = self.consume(val, "")  # (a, *b = range(n): UNPACK_EX takes every item first)
             else:
-                v = self.expr(val, self.target_type(t0))
+                storage_want = self.target_type(t0)
+                for target in n.kids[1:-1]:
+                    target_want = self.target_type(target)
+                    shared = bstorage_join(self, storage_want, target_want)
+                    if storage_want == "" and bstorage_join(self, target_want, target_want) != "":
+                        shared = target_want
+                    if shared != "":
+                        storage_want = shared
+                v = self.expr(val, storage_want)
             src = self.joinsrc
             moving = self.fn.build.idmove
             passing = self.fn.build.idpass
@@ -790,13 +830,34 @@ def gen_stmt_main(self, n: Node) -> None:
         if len(n.kids) == 3:
             t = self.mapping_ann(t, n.kids[2])  # (x: dict[K, V] = defaultdict(...): the defaultdict's)
         if n.kids[0].kind == "name":
-            if t in ANNTYPES and len(self.hints) > 0:
-                # (a float variable that was given an int holds both, as an int or str one that
-                # was given an enum member does: a join's type, see ann_takes)
-                t = self.hints.get("global:" + n.kids[0].s if self.is_global(n.kids[0].s) else f"{self.fnkey(self.curfn)}|{n.kids[0].s}", t)
+            if len(n.kids) == 3 and n.kids[2].kind in ["name", "attr"] and self.typed_now(n.kids[2]):
+                # An alias uses its source's slots, including subclass tags. A base
+                # container annotation must not reinterpret those existing slots.
+                alias_type = self.dry(n.kids[2])
+                if ((is_list(alias_type) and is_list(t)) or (is_dict(alias_type) and is_dict(t))) and bparameter_type(self, alias_type, t) == 1:
+                    t = alias_type
+            if len(self.hints) > 0:
+                key = "global:" + n.kids[0].s if self.is_global(n.kids[0].s) else f"{self.fnkey(self.curfn)}|{n.kids[0].s}"
+                if t in ANNTYPES or "container-items:" + key in self.hints:
+                    # (a float variable that was given an int holds both, as an int or str one
+                    # given an enum member does; a fresh container may hold subclass items:
+                    # inferred_container_item. None reinterprets an existing allocation)
+                    t = self.hints.get(key, t)
             self.declare(n.kids[0].s, t)
+        elif n.kids[0].kind == "attr":
+            target = n.kids[0]
+            cls = unopt(self.dry(target.kids[0]))
+            cls = clsof(cls) if is_clsval(cls) else cls
+            if cls in self.classes and target.s in self.classes[cls].ftypes:
+                ci = self.classes[cls]
+                if "container-items:" + self.field_key(ci, target.s) in self.hints:
+                    # Every writer uses this field's final item layout; an
+                    # annotation must not first make an untagged container.
+                    t = ci.ftypes[target.s]
         if len(n.kids) == 3:
             v = self.expr(n.kids[2], t)
+            if inferred_container_assignment(self, n.kids[0], n.kids[2], t, v.t):
+                return
             # (x: T | None = <a T> knows x holds a T, see narrowed. An int for a float variable or
             # field, an enum member for an int or str one, is the store's to take or reject: its
             # join, see join_hint)
@@ -1469,6 +1530,7 @@ def gen_augassign(self, n: Node) -> None:
         self.slice_store(o, again, value)
     elif t.kind == "index":
         o = self.expr(t.kids[0], "")
+        o = bborrow(self, o, BITEM + BSTORE)
         sub = "TypeError: 'NoneType' object is not subscriptable"
         if self.bkind(o.t) == "dict" and "__missing__" in self.classes[o.t].methods and self.bdecays(o.t, BITEM + BSTORE):
             # o[k] op= v where o's class derives from dict and defines __missing__: o[k] as

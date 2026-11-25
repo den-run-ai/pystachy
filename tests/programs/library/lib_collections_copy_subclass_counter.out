@@ -1,0 +1,12 @@
+Counter Counter False
+3 Counter({'b': 2, 'a': 1}) False True
+2 5
+Counts Counts True
+99 Counts({'b': 2, 'a': 1}) False True
+2 5
+DeepCounts DeepCounts True
+99 DeepCounts({'b': 2, 'a': 1}) False True
+2 5
+Counts()
+Counts({'a': 1})
+[exit 0]

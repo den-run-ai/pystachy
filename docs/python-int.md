@@ -253,6 +253,7 @@ these closed-union limits do not apply to them.
 | Nested `Callable` types | Ints inside types other than scalar `int`/`int \| None`, such as a tuple parameter or result. |
 | Container/generator reads in fixed-width modules | Ordinary list, dict, set and generator reads, including tuple-contained ints; examples include `random.shuffle()` and generic functions. The iterator/library exceptions above still apply. |
 | Library and builtin inputs | `range()`, indexes, slices and integer-taking methods/math/library calls outside the supported APIs above; list ints consumed by `tuple()`, `math.prod()`, `math.fsum()` and FFI. |
+| Typed `round()` | `round(1e20)` and `round(10 ** 30, -2)` raise `OverflowError` where CPython returns a wide int. This also affects v0.6.1 ([#1777](https://github.com/den-run-ai/pystachy/issues/1777)). |
 | Mixed numeric `sum()` | Ints in an `int \| float` list, ints added to a float start, or a large integer start with float items. |
 | Tuple consumers | `sum()`, `min()`, `max()`, `any()`, `all()`, `sorted()` and `list()` use the corresponding list-item representation and its limits. |
 | Fixed-width `Any` unboxing | Assigning to an explicit fixed-width `int` or `int \| None` in a module without the opt-in. Passing the value through `Any` itself preserves it. |

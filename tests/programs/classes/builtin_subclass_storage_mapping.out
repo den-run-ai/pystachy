@@ -1,0 +1,9 @@
+True
+[{'a': 1}, {'b': 2}] True
+Mapping ['a'] 1
+4 5
+dict ['b'] 0
+4 5
+[{'a': 1, 'd': 5}, {'b': 2, 'd': 5}] True
+'<' not supported between instances of 'Mapping' and 'dict'
+[exit 0]

@@ -1,0 +1,5 @@
+InitCounter InitCounter({'b': 2, 'a': 1}) ['counter']
+InitDeque InitDeque([1, 2]) ['deque 0']
+NestedQueue [1, 2] [1, 2] True 1 2
+InitDeque InitDeque([1, 2], maxlen=3) ['deque 1']
+[exit 0]

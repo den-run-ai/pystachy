@@ -1,0 +1,9 @@
+Queue [1, 2] None
+[1, 2] False
+Queue [3, 4] 3
+[3, 4] False
+Child [5] 2
+[5] False
+override copy called
+[99]
+[exit 0]

@@ -1,0 +1,12 @@
+eq Stack
+True False
+True
+eq list
+eq NoneType
+True 2 0
+eq NoneType
+eq NoneType
+False False
+True
+object of type 'NoneType' has no len()
+[exit 0]

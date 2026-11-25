@@ -1,0 +1,9 @@
+True
+eq Stack
+False
+True
+eq list
+True 2
+0
+False
+[exit 0]

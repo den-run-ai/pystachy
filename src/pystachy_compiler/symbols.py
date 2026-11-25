@@ -43,6 +43,7 @@ class FnInfo:
         self.idnames: dict[str, bool] = {}  # numeric locals/parameters whose objects can leave
         self.params: list[str] = []
         self.ptypes: list[str] = []
+        self.storage_callable = ""  # an adapter's whole Callable signature, or its result-inference key; layout requirements rebuild the entire callable type
         self.defaults: list[Node] = []
         self.dglob: list[str] = []  # global holding a default evaluated at def time, or ""
         self.uflags: dict[str, bool] = {}  # locals some read may find unassigned
@@ -222,6 +223,11 @@ class ClassInfo:
         self.nspec = 0  # (the names it has given: one each, also to those found to be one already made)
         self.origin = ""
         self.speckey = ""  # (a specialization: the types of the call that made it, see Gen.stable)
+        # Constructor recipe for replaying a template object used as a factory
+        # argument before the next pass compiles dispatch on that factory's base.
+        self.specargs: list[str] = []
+        self.specgiven: dict[str, str] = {}
+        self.specnamed = False
         # a specialization of a generic class (Gen.tparams): the types its type variables are bound
         # to, by the call that made it (Gen.bind); a TypeVarTuple's is a tuple type of its types
         self.tvars: dict[str, str] = {}

@@ -3,6 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, nullable_union_members, umembers
 from src.pystachy_compiler.analysis import READS_ONLY_FNS, attr_fills, attr_values, called_only, calls_init, local_names, nonexpr, only_reads_items, stmt_walrus
 from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrow_type, narrowed
+from src.pystachy_compiler.builtin_bases import bstorage_callable
 from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import Data, Ins, Val, tmpname
@@ -136,6 +137,11 @@ def gen_ctype(self, base: str, ts: list[str], canon: bool = True) -> str:
     # Reject a broken serialization before either can use a different item count.
     if base == "tuple" and targs(t) != ts:
         self.err("internal error: tuple item types do not round-trip")
+    if base == "callable":
+        # Every value, adapter and indirect call of this declared signature uses
+        # the same item layout. A later requirement may extend an earlier one;
+        # replay the monotone chain instead of changing one adapter's parameters.
+        t = bstorage_callable(self, t)
     return t
 
 def gen_none_items(self, t: str) -> str:
@@ -1980,7 +1986,8 @@ def field_ann(self, ci: ClassInfo, name: str, a: Node) -> str:
     t = self.vtype(a)
     if t in ANNTYPES:
         ci.fann[name] = True
-    return self.hints.get(self.field_key(ci, name), t) if t in ANNTYPES and len(self.hints) > 0 else t
+    key = self.field_key(ci, name)
+    return self.hints.get(key, t) if len(self.hints) > 0 and (t in ANNTYPES or "container-items:" + key in self.hints) else t
 
 def gen_add_field(self, ci: ClassInfo, name: str, t: str) -> None:
     if name in ci.methods and ci.methods[name].prop:
@@ -2207,6 +2214,9 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
                     self.err(why)
                 ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
             t = self.guess(st.kids[1], FnInfo("", "", ci.node, ""))
+            key = self.field_key(ci, st.kids[0].s)
+            if "container-items:" + key in self.hints:
+                t = self.hints.get(key, t)
             bt = self.classes[ci.base].ftypes.get(st.kids[0].s, "") if ci.base in self.classes else ""
             if t != "" and bt != "" and (self.widens(t, bt) or self.boxes(t, bt) or (t == "int" and bt == BIG)):
                 t = bt  # (a class attribute of the base bound again, with a value of its type)
@@ -2658,7 +2668,10 @@ def gen_scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dic
                     why = f"field '{name}' of namedtuple {short(ci.name)} given {'None' if given == 'None' else 'a value whose type cannot be inferred'} is not supported (the call that makes an object types its fields)"
                 if k == "annassign" and t in ANNTYPES:
                     ci.fann[name] = True  # (annotated float, int or str: what it is given may widen it too, see ann_takes)
-                jh = self.hints.get(f"field:{self.stable(ci.name)}.{name}", "") if (k == "assign" or name in ci.fann) and len(self.hints) > 0 else ""
+                key = self.field_key(ci, name)
+                kept_items = "container-items:" + key in self.hints
+                key = key if kept_items else f"field:{self.stable(ci.name)}.{name}"
+                jh = self.hints.get(key, "") if len(self.hints) > 0 and (k == "assign" or name in ci.fann or kept_items) else ""
                 if jh != "":
                     t = jh  # (a join's type: as if annotated, see join_hint)
                     why = ""
@@ -3761,7 +3774,7 @@ def gen_getfield(self, o: Val, p: Val, name: str, plain: bool = False) -> Val:
                     if sub.ftypes[name] != p.t:
                         self.err(f"reading __slots__ through {short(ci.name)} is not supported when subclasses use different declaration types; read it through the concrete class")
                     self.class_default(sub, name)
-                    dv = self.mem_load(Val(sub.fglob[name], "&" + p.t))
+                    dv = self.mem_load(self.class_slot(sub, name))
                     r = self.select(self.num_cmp("==", Val(tag, "int"), Val(str(sub.tag), "int")).v, dv, Val(r, p.t))
         return Val(r, p.t)
     if o.t + "." + name in self.cvars:
@@ -3781,12 +3794,12 @@ def gen_getfield(self, o: Val, p: Val, name: str, plain: bool = False) -> Val:
                     match = self.num_cmp('==', Val(tag, "int"), Val(str(sub.tag), "int")).v
                     if sub.name + "." + name in self.cvars or not is_const(sub.fdefault[name]) or box != "":
                         self.class_default(sub, name)
-                        dv = self.mem_load(Val(sub.fglob[name], "&" + p.t))
+                        dv = self.coerce(self.mem_load(self.class_slot(sub, name)), p.t)
                     else:
                         dv = self.coerce(self.expr(sub.fdefault[name], p.t), p.t)
                     cv = Val(self.select(match, dv, cv), p.t)
                     if box != "":
-                        cb = self.select(match, Val(sub.fglob[name] + ".box", "%ptr"), Val(cb, "%ptr"))
+                        cb = self.select(match, Val(self.class_slot(sub, name, True).v, "%ptr"), Val(cb, "%ptr"))
                     assigned = self.scalar('or', [Val(assigned, 'bool'), Val(match, 'bool')])
             bad = self.scalar('xor', [Val(assigned, 'bool'), Val('true', 'bool')])
             r = self.select(own, fv, cv)
@@ -3794,12 +3807,12 @@ def gen_getfield(self, o: Val, p: Val, name: str, plain: bool = False) -> Val:
                 box = self.cast(Val(self.select(own, Val(box, "%ptr"), Val(cb, "%ptr")), "%ptr"), "&dyn", "bits").v  # (the identity box's address)
         else:
             self.class_default(ci, name)
-            r = self.select(own, fv, self.mem_load(Val(ci.fglob[name], "&" + p.t)))
+            r = self.select(own, fv, self.coerce(self.mem_load(self.class_slot(ci, name)), p.t))
             if is_opt(p.t) or is_union(p.t):
                 self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
             v = Val(r, p.t)
             if box != "":
-                box = self.cast(Val(self.select(own, Val(box, "%ptr"), Val(ci.fglob[name] + ".box", "%ptr")), "%ptr"), "&dyn", "bits").v  # (the identity box's address)
+                box = self.cast(Val(self.select(own, Val(box, "%ptr"), Val(self.class_slot(ci, name, True).v, "%ptr")), "%ptr"), "&dyn", "bits").v  # (the identity box's address)
                 self.dyn_id_read(v, box)
             return v
     shadows = self.exc_shadows(ci, name) if name in ci.fflag and name not in ci.fsure else []

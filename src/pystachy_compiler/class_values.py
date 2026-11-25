@@ -584,6 +584,45 @@ def gen_class_value_call(self, c: Val, args: list[Node]) -> Val:
     return Val(self.phi(ph), base)
 
 
+def template_constructor(self, n: Node, args: list[Node], want: str, resultsoft: bool) -> Val | None:
+    # An immediate x.__class__(...) or type(x)(...) call need not store the generic
+    # class as a value. type(x) ignores an ordinary attribute named __class__.
+    # Dispatch on x's exact class, then specialize that class's constructor normally.
+    # In particular an inherited collections.copy() must make the subclass, not its base.
+    operand = self.refl_typeof(n)
+    if operand is None:
+        return None
+    t = unopt(self.dry(operand))
+    if t not in self.classes or self.classes[t].origin == "":
+        return None
+    if n.kind == "attr" and any("__class__" in self.classes[c].ftypes or "__class__" in self.classes[c].methods for c in self.refl_concrete(t)):
+        return None
+    v = self.expr(operand, "")
+    nodes: list[Node] = []
+    for a in args:
+        x = a.kids[0] if a.kind == "kw" else a
+        y = x if pure_arg(x) else self.vnode(self.expr(x, ""))
+        nodes.append(mk("kw", a.s, a.line, [y]) if a.kind == "kw" else y)
+    leaves = self.refl_split(v)
+    end = self.label()
+    vals: list[Val] = []
+    blocks: list[str] = []
+    for leaf in leaves:
+        self.place(leaf.label)
+        out = Val("null", "None")
+        if leaf.c == "None":
+            if len(nodes) > 0:
+                self.raise_("TypeError", self.sconst(NONETYPE_ARGS))
+        else:
+            c = self.classes[leaf.c].origin
+            out = self.class_new(c if c != "" else leaf.c, nodes, want, resultsoft)
+        if not self.term:
+            vals.append(out)
+            blocks.append(self.cur)
+            self.br(end)
+    return self.refl_phi(vals, blocks, end, "construction through a template's class")
+
+
 # the names NoneType's class object has itself (dir(type(None))): a class attribute of such a
 # name is not read through a class object, which may be NoneType's (but __doc__, a str)
 NONETYPE_NAMES = "__bool__ __class__ __delattr__ __dir__ __doc__ __eq__ __format__ __ge__ __getattribute__ __getstate__ __gt__ __hash__ __init__ __init_subclass__ __le__ __lt__ __ne__ __new__ __reduce__ __reduce_ex__ __repr__ __setattr__ __sizeof__ __str__ __subclasshook__"

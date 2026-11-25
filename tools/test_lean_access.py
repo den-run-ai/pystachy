@@ -441,12 +441,21 @@ class ProvedCheckerTests(SnapshotFixture):
     def test_a_class_variable_reload_keeps_its_entry_unless_it_is_stored_between(self):
         self.assertTrue(self.verdict(self.snapshot, "@f.class_lookup"))
         snapshot, function = self.selected("@f.class_lookup")
-        block, _ = self.find(function, "rt", "dict.val")
-        reload = next(index for index, operation in enumerate(block["operations"])
-                      if operation["op"] == "mach.load" and operation["operands"][0]["value"].startswith("@"))
-        table = block["operations"][reload]["operands"][0]["value"]
-        # (Registry.names = <another value> before the reload: the entry belongs to the old dict)
-        block["operations"].insert(reload, op("mach.store", [(table, "%ptr"), ("%a0", "str")]))
+        block, index = self.find(function, "rt", "dict.val")
+        reloaded = block["operations"][index]["operands"][0]["value"]
+        block, reload = next((b, i) for b in function["blocks"] for i, o in enumerate(b["operations"])
+                             if o["results"] and f"%t{o['results'][0]}" == reloaded)
+        load = block["operations"][reload]
+        self.assertEqual(load["op"], "mem.load")
+        address = load["operands"][0]
+        self.assertTrue(address["value"].startswith("@"))
+        fresh = max(number for b in function["blocks"] for o in b["operations"] for number in o["results"]) + 1
+        block["operations"].insert(reload, op("rt", [("1", "int"), ("1", "int")],
+                                              results=[fresh], text="dict.new", typ=load["type"]))
+        # Allocating another dict leaves the entry live; replacing Registry.names does not.
+        self.assertTrue(self.verdict(snapshot, "@f.class_lookup"))
+        block["operations"].insert(reload + 1, op("mem.store", [
+            (address["value"], address["type"]), (f"%t{fresh}", load["type"])]))
         self.assertFalse(self.verdict(snapshot, "@f.class_lookup"))
 
     def test_another_field_of_the_class_keeps_the_dict_but_an_aliasing_view_does_not(self):

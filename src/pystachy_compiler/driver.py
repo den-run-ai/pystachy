@@ -138,29 +138,10 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
     # of ImportError (Loader.keep_site, #1504), the passes after it keep their except clauses at
     # run time (diagnostics.TRIAL); if one of those fails, the program is compiled from the start
     # as before, keeping none, and that compilation reports what it finds.
-    # Where a comparison would hand a method of the program a list or dict in place of the object
-    # of a class deriving from one (#1706), the passes hand it the object (Gen.trials, bkept), and
-    # every pass from the first that does is a trial (diagnostics.TRYING): if one of them fails,
-    # or declines a call or a narrowing (Gen.newx), which such an object's type may have caused,
-    # the program is compiled from the start handing over the containers, exactly as before, and
-    # that compilation reports what it finds. So a program's comparisons hand over such objects
-    # all or none, and none that compiled with the containers stops compiling (#1739).
-    # The copies of class methods that classes under a class template get (Gen.inherit, #1744)
-    # are a trial of the same kind, from the first one declared: in a copy cls is the class, so
-    # what cls(...) makes and what its __init__ takes are the class's, and code that compiled
-    # with the template's may not. A trial that made copies is given up for a compilation
-    # without them (Gen.copies), which may be a trial of the comparisons alone; one that made
-    # none, for the compilation without the comparisons' objects (Gen.trials), which may make
-    # copies. Where a trial that did both fails, and then the one of the comparisons alone, the
-    # copies are tried again alone (regain): which comparison or copy a program's code reaches
-    # first does not decide what it is compiled with. Each switch is turned off once and the
-    # copies back on once, so at most four compilations are made, the last the one before both.
-    trials = True
-    copies = True
-    regain = False
-    diagnostics.TRYING = False
-    diagnostics.COPIED = False
-    diagnostics.HANDED = False
+    # Comparisons keep a builtin-container subclass's object (Gen.bkept), and an
+    # inherited class method keeps its actual class (Gen.inherit). Neither can fall
+    # back to a base representation: doing so silently changes observable Python
+    # behavior. Unsupported storage or method bodies report their own diagnostics.
     keeps: dict[str, bool] = {}
     nokeep = False
     hints: dict[str, str] = {}
@@ -207,8 +188,6 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
         g.idfull = idfull
         g.idtry = idtry
         g.clsany = clsany
-        g.trials = trials
-        g.copies = copies
         ld = Loader(dirs)
         ld.ext = ext
         ld.keeps = keeps
@@ -230,37 +209,9 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
                     # Other backends may return or decline without consuming anything.
                     RENAMED.clear()
             diagnostics.TRIAL = False
-            diagnostics.TRYING = False
-            diagnostics.COPIED = False
-            diagnostics.HANDED = False
             return result
         except Rejoin as retry:
-            if diagnostics.TRYING and len([k for k in g.newx if k not in xnot]) > 0:
-                # (from the start, as below for a failure, without what was on trial)
-                if diagnostics.COPIED:
-                    copies = False
-                    regain = diagnostics.HANDED
-                else:
-                    trials = False
-                    copies = copies or regain
-                    regain = False
-                diagnostics.TRYING = False
-                diagnostics.COPIED = False
-                diagnostics.HANDED = False
-                diagnostics.TRIAL = False
-                keeps = {}
-                hints = {}
-                xnot = {}
-                xwant = {}
-                passes = 0
-                idfull = False
-                idtry = True
-                slice_eh = False
-                ntboxes = False
-                hierarchies = {}
-                tlate = {}
-                clsany = {}
-            elif isinstance(retry, NeedHandlers):
+            if isinstance(retry, NeedHandlers):
                 for k in ld.newkeeps:
                     keeps[k] = True
                 diagnostics.TRIAL = True
@@ -307,24 +258,11 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str,
                 for k in g.newwant:
                     xwant[k] = True
         except Exception:
-            if not diagnostics.TRIAL and not diagnostics.TRYING:
+            if not diagnostics.TRIAL:
                 raise
-            # (diagnostics.Untried, or any other failure of a pass that kept except clauses or
-            # was a trial of Gen.trials: the program is compiled as if that had never been tried.
-            # Gen.trials goes first: the compilation without it is the one that tries the except
-            # clauses as before)
-            if diagnostics.TRYING and diagnostics.COPIED:
-                copies = False
-                regain = diagnostics.HANDED
-            elif diagnostics.TRYING:
-                trials = False
-                copies = copies or regain
-                regain = False
-            else:
-                nokeep = True
-            diagnostics.TRYING = False
-            diagnostics.COPIED = False
-            diagnostics.HANDED = False
+            # A failed optional-import handler pass retries without those handlers;
+            # the object's class and inherited methods are unchanged on every pass.
+            nokeep = True
             diagnostics.TRIAL = False
             keeps = {}
             hints = {}

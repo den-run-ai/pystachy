@@ -655,12 +655,13 @@ def gen_dispatch(self, op: str) -> None:
     self.out.append(f"  switch i64 %c, label %none [{' '.join(cases)}]")
     for c in cs:
         i = self.ocls[c]
+        symbol = c if c in self.classes else "union." + str(i)
         self.out.append(f"k{i}:")
         if op == "repr":
-            self.out.append(f"  %r{i} = call ptr @o.repr.{c}(ptr %pa, ptr %pb)")
+            self.out.append(f"  %r{i} = call ptr @o.repr.{symbol}(ptr %pa, ptr %pb)")
             self.out.append(f"  ret ptr %r{i}")
         else:
-            self.out.append(f"  %r{i} = call i1 @o.{op}.{c}({'i64 %op, ' if op == 'cmp' else ''}ptr %pa, ptr %pb)")
+            self.out.append(f"  %r{i} = call i1 @o.{op}.{symbol}({'i64 %op, ' if op == 'cmp' else ''}ptr %pa, ptr %pb)")
             self.out.append(f"  %z{i} = zext i1 %r{i} to i64")
             self.out.append(f"  ret i64 %z{i}")
     for c in hs:

@@ -1,6 +1,5 @@
-# As template_subclass_class_method_retyped.py, for a class deriving from a generic class's
-# specialization: what cls(...) makes through its object is stored where a Box[int] is stored
-# afterwards, so the program is compiled without the class's own copy of the method (#1744)
+# The subclass factory and a later Box[int] object share their inferred location through
+# the common tagged base specialization (#1744).
 from typing import Generic, TypeVar
 
 T = TypeVar("T")
